@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DriveLab — Volante Direct Drive Open-Source</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1a1d21; --muted:#5b6470; --line:#e3e6ea;
+    --accent:#c8102e; --accent2:#0d6efd; --ok:#1a9e57; --warn:#c77700; --danger:#c8102e;
+    --chip:#eef1f5; --code:#f0f2f5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1216; --card:#171b21; --ink:#e7ebf0; --muted:#9aa4b0; --line:#262c34;
+      --accent:#ff4d5e; --accent2:#5aa0ff; --ok:#3ecf87; --warn:#f0b040; --danger:#ff5a68;
+      --chip:#1e242c; --code:#12161b;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1a1d21; --muted:#5b6470; --line:#e3e6ea;
+    --accent:#c8102e; --accent2:#0d6efd; --ok:#1a9e57; --warn:#c77700; --danger:#c8102e;
+    --chip:#eef1f5; --code:#f0f2f5;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1216; --card:#171b21; --ink:#e7ebf0; --muted:#9aa4b0; --line:#262c34;
+    --accent:#ff4d5e; --accent2:#5aa0ff; --ok:#3ecf87; --warn:#f0b040; --danger:#ff5a68;
+    --chip:#1e242c; --code:#12161b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+  header.hero{border-radius:16px;padding:32px;background:
+    linear-gradient(135deg,rgba(200,16,46,.12),rgba(13,110,253,.10));
+    border:1px solid var(--line);margin-bottom:28px}
+  h1{margin:0 0 6px;font-size:30px;letter-spacing:-.5px}
+  .sub{color:var(--muted);font-size:16px;margin:0}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:999px;
+    padding:5px 12px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:22px 24px;margin-bottom:20px}
+  h2{margin:0 0 14px;font-size:20px;display:flex;align-items:center;gap:10px}
+  h2 .n{color:var(--accent);font-variant-numeric:tabular-nums}
+  h3{margin:20px 0 8px;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  p{margin:0 0 12px}
+  .muted{color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 4px}
+  .scroll{overflow-x:auto}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  tr:last-child td{border-bottom:none}
+  code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:16px;
+    overflow-x:auto;font-size:12.5px;line-height:1.45;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
+  .b-ok{background:rgba(26,158,87,.15);color:var(--ok)}
+  .b-buy{background:rgba(13,110,253,.15);color:var(--accent2)}
+  .b-later{background:rgba(199,119,0,.15);color:var(--warn)}
+  .callout{border-radius:10px;padding:14px 16px;margin:14px 0;border-left:4px solid;font-size:14px}
+  .c-danger{background:rgba(200,16,46,.08);border-color:var(--danger)}
+  .c-warn{background:rgba(199,119,0,.08);border-color:var(--warn)}
+  .c-info{background:rgba(13,110,253,.08);border-color:var(--accent2)}
+  ul{margin:4px 0 12px;padding-left:20px}
+  li{margin:3px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+  .stat{background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .stat .v{font-size:16px;font-weight:700;margin-top:2px}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .foot{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}
+  .q{background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0}
+  .q b{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>DriveLab 🏎️</h1>
+    <p class="sub">Firmware open-source para transformar a placa <b>ODESC v4.2</b> + motor de hoverboard num <b>volante Direct Drive com Force Feedback</b>, com app Windows de configuração.</p>
+    <div class="chips">
+      <span class="chip">🔲 Placa única (só ODESC)</span>
+      <span class="chip">⚙️ Base SimpleFOC</span>
+      <span class="chip">🎯 MVP: só volante FFB</span>
+      <span class="chip">🧲 Encoder óptico Omron E6B2 (10k CPR)</span>
+      <span class="chip">🪟 App Windows (config)</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>📌 Visão geral</h2>
+    <p>O STM32F405 da ODESC executa o <b>controle FOC do motor</b> e ao mesmo tempo se apresenta ao PC como um <b>volante DirectInput com force feedback</b> — tudo numa placa só (mesma ideia do FFBeast, porém aberto e nosso). Um app Windows conversa por um canal USB privado para configurar, calibrar, ver telemetria e testar forças fora do jogo.</p>
+    <div class="grid2">
+      <div class="stat"><div class="k">Controlador</div><div class="v">ODESC v4.2 · STM32F405 + DRV8301</div></div>
+      <div class="stat"><div class="k">Motor</div><div class="v">Hub de hoverboard · 15 pares de polos</div></div>
+      <div class="stat"><div class="k">Sensor</div><div class="v">Encoder óptico Omron E6B2-CWZ6C · 2500 PPR (10.000 CPR)</div></div>
+      <div class="stat"><div class="k">Interface PC</div><div class="v">USB HID composto (jogo + app)</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>🧱 Arquitetura do firmware</h2>
+    <div class="scroll">
+<pre>┌─────────────────────────────────────────────────┐
+│  USB composto (STM32F405 OTG)                   │
+│  ├─ Interface 1: Joystick HID PID  → JOGOS      │
+│  └─ Interface 0: Vendor HID (64B)  → NOSSO APP  │
+├─────────────────────────────────────────────────┤
+│  Motor de efeitos FFB   (nosso código autoral)  │
+│  Constant · Ramp · Periodic · Spring · Damper   │
+│  Friction · Inertia · Envelope + soft-stop      │
+│  + damping + range de giro  →  setpoint torque  │
+├─────────────────────────────────────────────────┤
+│  Posição: encoder óptico ABZ Omron E6B2 (10kCPR)│
+│  → ângulo absoluto + velocidade + centro        │
+├─────────────────────────────────────────────────┤
+│  FOC (SimpleFOC): BLDCMotor + DRV8301           │
+│  + current sensing  →  gera torque no motor     │
+├─────────────────────────────────────────────────┤
+│  Config em flash (save/load)  ·  Segurança      │
+└─────────────────────────────────────────────────┘</pre>
+    </div>
+    <p class="muted">A camada FOC e a leitura de encoder vêm de bibliotecas maduras (SimpleFOC). Nosso trabalho autoral concentra-se no motor de efeitos FFB, no descriptor USB HID PID, no protocolo de configuração e no app Windows.</p>
+  </section>
+
+  <section>
+    <h2>🔌 Interface com o PC (protocolo)</h2>
+    <table>
+      <tr><th>Canal</th><th>Função</th></tr>
+      <tr><td><b>Interface Joystick (HID PID)</b></td><td>O volante FFB que os <b>jogos</b> enxergam (efeitos DirectInput padrão).</td></tr>
+      <tr><td><b>Interface Vendor (HID 64B)</b></td><td>Canal privado do <b>nosso app</b>: config, telemetria (posição/torque), controle direto e comandos.</td></tr>
+    </table>
+    <h3>O app Windows expõe</h3>
+    <table>
+      <tr><th>Aba</th><th>Conteúdo</th></tr>
+      <tr><td>Motor / Calibração</td><td>Pares de polos, encoder (CPR/direção), ganhos PI, botão calibrar</td></tr>
+      <tr><td>Feel</td><td>Range de giro, batente (soft-stop), damping, força total, ganhos por efeito, direção</td></tr>
+      <tr><td>Telemetria</td><td>Gráfico ao vivo de posição e torque</td></tr>
+      <tr><td>Teste (controle direto)</td><td>Sliders para comandar mola / força constante / periódica e <i>sentir</i> sem jogo</td></tr>
+      <tr><td>Firmware</td><td>Versão, salvar, reboot, atualização (DFU)</td></tr>
+    </table>
+    <p class="muted">Stack do app: <b>Avalonia (C#/.NET) + HidSharp</b> — C# familiar, tema Fluent escuro moderno, exe nativo leve.</p>
+    <div class="callout c-info">
+      🎨 <b>Visual inspirado no MOZA Pit House</b> (padrão de UX, com marca própria DriveLab): tema escuro + accent laranja, sidebar de ícones, <b>dashboard de cards de dispositivo</b> modulares. Hoje só o card do volante; arquitetura preparada pra adicionar <b>pedais</b> e outros dispositivos depois. Card do volante: ângulo ao vivo, presets de ângulo máximo (360…1800°), botão Center.
+    </div>
+    <div class="callout c-info">
+      🧩 <b>Settings orientado a schema:</b> cada parâmetro é declarado uma vez (id, tipo, faixa, unidade, aba, widget); firmware e app compartilham os IDs. O app <b>renderiza os controles a partir do schema</b> → adicionar parâmetros/abas no futuro é declarar campos, não reescrever UI. Estrutura em abas estilo Pit House (Basic / Advanced / Equalizer / Curve / Misc), com o MVP populando o subconjunto básico.
+    </div>
+  </section>
+
+  <section>
+    <h2>🛒 Lista de materiais (BOM)</h2>
+
+    <h3>✅ Já tenho</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Item</th><th>Status</th></tr>
+      <tr><td>Motor de hoverboard (hub, 15 pares de polos)</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Placa ODESC v4.2</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Ferro de solda</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Multímetro</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Fonte de notebook 12V 3A (para bring-up seguro M0–M2)</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Fonte 24V 30A 720W (para força real, M3+) — usar fusível 15–20A</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Encoder óptico Omron E6B2-CWZ6C (2500 PPR / 10.000 CPR, ABZ) — <code>cpr = 10000</code></td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td><b>Peças mecânicas</b> (suporte do motor, acoplamento do encoder, adaptador de volante) — de um projeto FFBeast anterior, hoje desmontado</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Brake resistor 2Ω 100W (RX24 aluminum) — <code>brake_resistance = 2</code></td><td><span class="badge b-buy">COMPRANDO</span></td></tr>
+    </table>
+    </div>
+
+    <h3>🛒 Falta comprar — essenciais pro bring-up</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Item</th><th>Especificação</th><th>Pra quê</th><th>~R$</th></tr>
+      <tr><td>Resistores de pull-up (A/B/Z)</td><td>~3× 2,2k–4,7k Ω (para saída open-collector do E6B2, puxar p/ 3,3V)</td><td>Ler o encoder óptico na ODESC</td><td>~5</td></tr>
+      <tr><td>Fusível DC + porta-fusível</td><td>~15–20A inline (protege a placa/fiação, não a fonte de 30A)</td><td>Proteção da linha DC</td><td>15–25</td></tr>
+      <tr><td>Chave / botão de emergência</td><td>E-stop ou chave 30A+</td><td>Cortar energia rápido</td><td>25–60</td></tr>
+      <tr><td>Fio de potência + terminais</td><td>12–14 AWG, terminais anel/ferrule, XT60/XT90, termorretrátil</td><td>Fiação motor/alimentação</td><td>55–90</td></tr>
+      <tr><td>Dissipador + cooler + pasta térmica</td><td>Alumínio + fan 30–40mm</td><td>Refrigeração da potência</td><td>50–85</td></tr>
+      <tr><td>ST-Link V2</td><td>Programador SWD</td><td>Gravar/recuperar firmware se o USB DFU falhar</td><td>25–40</td></tr>
+    </table>
+    </div>
+
+    <div class="callout c-info">
+      💡 <b>Mecânica resolvida:</b> as peças (suporte do motor, acoplamento do encoder, adaptador de volante) já existem de um build FFBeast anterior. O foco fica 100% no firmware.<br>
+      <b>Custo estimado do que falta comprar:</b> ~R$ 130–250 (brake resistor + pull-ups + fusível/e-stop + fiação + dissipador/cooler + ST-Link).
+    </div>
+  </section>
+
+  <section>
+    <h2>⚠️ Segurança — leia antes de ligar</h2>
+    <div class="callout c-danger">
+      <b>Brake resistor é OBRIGATÓRIO</b> antes de fechar a malha (closed loop). Ele absorve a energia da frenagem; sem ele há risco de sobretensão e dano à placa. Seu 2Ω 100W resolve com folga (<code>brake_resistance = 2</code>).
+    </div>
+    <div class="callout c-warn">
+      <b>Primeiro bring-up com corrente limitada.</b> Use a fonte de notebook <b>12V 3A</b> nos marcos M0–M2 — a baixa corrente funciona como "rodinhas de treinamento" (satura em vez de queimar). Só troque pela <b>24V 30A</b> no M3 (força real), com limites de corrente já configurados e subindo gradualmente. Um DD gera torque forte — o volante pode dar solavancos. Bancada firme, mão longe, e-stop acessível, força começa <b>desabilitada</b> e sobe gradual.
+    </div>
+    <div class="callout c-danger">
+      <b>Placa versão 24V:</b> nunca alimente acima de <b>~24V</b> — os capacitores são de baixa tensão e 36V/48V os destruiriam. Alvo definitivo: exatamente 24V.
+    </div>
+    <div class="callout c-info">
+      <b>Encoder Omron E6B2-CWZ6C:</b> saída <b>open-collector NPN</b> → precisa de <b>pull-ups nas linhas A/B/Z</b>. Alimente o encoder em 5V, mas puxe os pull-ups para <b>3,3V</b> (nunca 5V direto no GPIO da ODESC). É incremental → o firmware faz <b>reset de centro no boot</b> (ou busca o índice Z). Conecte sempre pelo <b>nome do pino</b>, nunca pela cor do fio.
+    </div>
+  </section>
+
+  <section>
+    <h2>🗺️ Roadmap (MVP) — dois trilhos</h2>
+    <p>Estratégia adaptada à viagem: começar pelo <b>app + simulador (sem hardware)</b> e depois o firmware. O ponto de partida compartilhado é o <b>contrato do protocolo (A0)</b>, do qual os dois lados dependem.</p>
+
+    <h3>🔗 A0 — Fundação compartilhada (fazer primeiro)</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Marco</th><th>Entrega verificável</th></tr>
+      <tr><td><b>A0</b></td><td>Contrato do protocolo USB HID definido: structs de report, campos de settings, telemetria, controle direto, versão/handshake. Vira um header compartilhado firmware↔app.</td></tr>
+    </table>
+    </div>
+
+    <h3>🪟 Trilho A — App + Simulador (sem hardware · durante a viagem)</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Marco</th><th>Entrega verificável</th></tr>
+      <tr><td><b>A1</b></td><td>Esqueleto do app C# .NET WPF + camada de transporte abstrata (<code>ITransport</code>) + conexão/descoberta</td></tr>
+      <tr><td><b>A2</b></td><td><code>SimulatorTransport</code>: firmware falso no PC (guarda settings, gera telemetria fake, modelo mola/damper virtual p/ controle direto)</td></tr>
+      <tr><td><b>A3</b></td><td>Telas de config (Motor/Calibração, Feel) lendo/escrevendo settings via protocolo, contra o simulador</td></tr>
+      <tr><td><b>A4</b></td><td>Telemetria ao vivo (gráfico posição/torque) + aba de teste (sliders de controle direto)</td></tr>
+      <tr><td><b>A5</b></td><td>Perfis/persistência, versão/handshake, tratamento de erros, polish → app completo e testável no PC</td></tr>
+    </table>
+    </div>
+
+    <h3>⚙️ Trilho B — Firmware + Integração (com hardware · na volta)</h3>
+    <div class="scroll">
+    <table>
+      <tr><th>Marco</th><th>Entrega verificável</th></tr>
+      <tr><td><b>B0</b></td><td>Toolchain PlatformIO + placa enumera USB / pisca LED</td></tr>
+      <tr><td><b>B1</b></td><td>Motor gira em malha aberta com SimpleFOC na ODESC</td></tr>
+      <tr><td><b>B2</b></td><td>Encoder E6B2 lendo + torque em malha fechada + brake resistor + limites de segurança</td></tr>
+      <tr><td><b>B3</b></td><td>Interface vendor HID com o <b>mesmo contrato A0</b> → app real conecta (troca <code>Simulator</code>→<code>Hid</code>), telemetria e controle direto reais</td></tr>
+      <tr><td><b>B4</b></td><td>Motor de efeitos FFB (constant, spring, damper, periodic) + batente + range de giro</td></tr>
+      <tr><td><b>B5</b></td><td>Descriptor DirectInput HID PID → Windows reconhece um volante FFB e passa no teste de FFB</td></tr>
+      <tr><td><b>B6</b></td><td>Integração completa app+firmware + persistência em flash</td></tr>
+      <tr><td><b>B7</b></td><td>Validação num jogo + tuning de feel (reusar config do FFBeast)</td></tr>
+    </table>
+    </div>
+    <p class="muted">O contrato A0 é versionado: se o firmware real exigir 1–2 ajustes, são mudanças pequenas e controladas — não retrabalho.</p>
+  </section>
+
+  <section>
+    <h2>✅ Hardware — tudo definido</h2>
+    <p class="muted">Todas as questões de hardware foram resolvidas. Próximo passo: escrever o <b>spec técnico</b> do firmware e o plano de implementação.</p>
+    <div class="q"><b>Alimentação:</b> placa 24V · fonte notebook 12V/3A p/ bring-up (M0–M2) · fonte 24V 30A 720W p/ força (M3+) · fusível 15–20A. Nunca &gt;24V.</div>
+    <div class="q"><b>Mecânica:</b> peças reaproveitadas de um build FFBeast anterior (desmontado). Sem fabricação nova.</div>
+    <div class="q"><b>A capturar na remontagem:</b> config afinada do FFBeast (pares de polos, CPR, limites de corrente, <code>brake_resistance</code>, direções, offset de calibração) para reuso no nosso firmware.</div>
+  </section>
+
+  <section>
+    <h2>🔗 Referências</h2>
+    <ul>
+      <li><a href="https://ffbeast.github.io/docs/en/wheel.html">FFBeast Wheel</a> — referência de produto comercial (placa única na ODESC)</li>
+      <li><a href="https://github.com/Ultrawipf/OpenFFBoard">OpenFFBoard</a> — pilha USB HID FFB open-source</li>
+      <li><a href="https://docs.simplefoc.com/">SimpleFOC</a> — base de FOC (roda na ODESC v4.2)</li>
+      <li><a href="https://github.com/foxxy05/ODESC-4.2-Documentation">ODESC 4.2 Documentation</a> — hardware/pinout</li>
+      <li><a href="https://diygamecontrollers.win/diy-direct-drive-steering-wheel/">DIY Direct Drive Wheel</a> — guia de montagem</li>
+    </ul>
+  </section>
+
+  <p class="foot">DriveLab · documento de projeto · gerado em 12/07/2026</p>
+
+</div>
+</body>
+</html>
