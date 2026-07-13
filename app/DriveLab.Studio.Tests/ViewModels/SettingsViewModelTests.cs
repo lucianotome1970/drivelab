@@ -32,4 +32,16 @@ public class SettingsViewModelTests
         // FakeTransport.ReadSettingAsync returns 900 for every field
         Assert.All(vm.BasicFields, f => Assert.Equal(900, f.Value));
     }
+
+    [Fact]
+    public async Task Fields_AutoLoad_When_Session_Connects()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingsViewModel(session);
+
+        await session.ConnectAsync(); // raises Connected -> auto-load
+
+        Assert.All(vm.BasicFields, f => Assert.Equal(900, f.Value));
+    }
 }

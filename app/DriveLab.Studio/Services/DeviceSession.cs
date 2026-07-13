@@ -22,6 +22,7 @@ public sealed class DeviceSession : IDisposable
     }
 
     public event EventHandler<DeviceState>? StateReceived;
+    public event EventHandler? Connected;
 
     public bool IsConnected => _transport.IsConnected;
     public FirmwareVersion FirmwareVersion => _transport.FirmwareVersion;
@@ -32,6 +33,7 @@ public sealed class DeviceSession : IDisposable
         // Streaming is currently a simulator capability; a future HidTransport
         // will expose an equivalent start/stop that this line will generalize to.
         (_transport as SimulatorTransport)?.StartStreaming();
+        Connected?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task DisconnectAsync()
