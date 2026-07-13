@@ -3,3 +3,5 @@ obj/
 *.user
 .vs/
 dist/
+.DS_Store
+app/img/
