@@ -54,4 +54,26 @@ public class SettingFieldViewModelTests
         await vm.WriteAsync();
         Assert.Null(transport.LastWrite);
     }
+
+    [Fact]
+    public void Integer_Setting_Is_Integer_And_Formats_Without_Decimals()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderCpr));
+
+        Assert.True(vm.IsInteger);
+        vm.Value = 12.81;
+        Assert.Equal("13", vm.ValueText); // "0" format rounds to nearest integer
+    }
+
+    [Fact]
+    public void Float_Setting_Is_Not_Integer()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.CurrentP));
+
+        Assert.False(vm.IsInteger);
+    }
 }

@@ -31,6 +31,7 @@ public class DashboardViewModelTests
     public async Task CenterCommand_Sends_ResetCenter()
     {
         var vm = New(out var transport);
+        await transport.ConnectAsync();
         await vm.CenterCommand.ExecuteAsync(null);
         Assert.Equal(DeviceCommand.ResetCenter, transport.LastCommand!.Value.cmd);
     }
@@ -39,10 +40,19 @@ public class DashboardViewModelTests
     public async Task SetMaxAngle_Writes_MotionRange_Setting()
     {
         var vm = New(out var transport);
+        await transport.ConnectAsync();
         await vm.SetMaxAngleCommand.ExecuteAsync("900");
 
         Assert.Equal(SettingId.MotionRange, transport.LastWrite!.Value.id);
         Assert.Equal(900, transport.LastWrite!.Value.value.AsDouble);
         Assert.Equal(900, vm.MotionRange);
+    }
+
+    [Fact]
+    public async Task Center_Does_Nothing_When_Disconnected()
+    {
+        var vm = New(out var transport); // not connected
+        await vm.CenterCommand.ExecuteAsync(null);
+        Assert.Null(transport.LastCommand);
     }
 }

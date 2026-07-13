@@ -16,6 +16,8 @@ public static class CompositionRoot
         {
             new("Dashboard", "\U0001F39B", new DashboardViewModel(session)),
             new("Ajustes", "⚙", new SettingsViewModel(session)),
+            new("Telemetria", "📈", new TelemetryViewModel(session)),
+            new("Teste", "🕹", new TestViewModel(session)),
         };
 
         return new MainWindowViewModel(session, connection, pages);

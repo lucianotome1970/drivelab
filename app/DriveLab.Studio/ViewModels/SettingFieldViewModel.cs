@@ -17,6 +17,8 @@ public partial class SettingFieldViewModel : ViewModelBase
     public double Min => _descriptor.Min;
     public double Max => _descriptor.Max;
     public string Unit => _descriptor.Unit;
+    public bool IsInteger => _descriptor.Type != SettingType.Float;
+    public string ValueText => IsInteger ? Value.ToString("0") : Value.ToString("0.##");
 
     public SettingFieldViewModel(DeviceSession session, SettingDescriptor descriptor)
     {
@@ -46,6 +48,7 @@ public partial class SettingFieldViewModel : ViewModelBase
 
     partial void OnValueChanged(double value)
     {
+        OnPropertyChanged(nameof(ValueText));
         if (!_loading)
             _ = WriteAsync();
     }
