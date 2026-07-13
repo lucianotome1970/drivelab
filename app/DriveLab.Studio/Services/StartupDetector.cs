@@ -17,7 +17,7 @@ public sealed class StartupDetector
     private readonly Func<Task<bool>> _probePedals;
     private readonly int _stepDelayMs;
 
-    public StartupDetector(Func<Task<bool>> probeBase, Func<Task<bool>> probePedals, int stepDelayMs = 500)
+    public StartupDetector(Func<Task<bool>> probeBase, Func<Task<bool>> probePedals, int stepDelayMs = 900)
     {
         _probeBase = probeBase;
         _probePedals = probePedals;
@@ -27,21 +27,24 @@ public sealed class StartupDetector
     public async Task<StartupResult> RunAsync(IProgress<StartupProgress> progress)
     {
         progress.Report(new StartupProgress(0.05, "Iniciando…"));
-        await DelayAsync();
+        await DelayAsync(_stepDelayMs / 2);
 
         progress.Report(new StartupProgress(0.15, "Procurando base…"));
         var baseConnected = await _probeBase();
-        await DelayAsync();
+        await DelayAsync(_stepDelayMs); // dwell: dá tempo de ver a busca da base
         progress.Report(new StartupProgress(0.5, baseConnected ? "Base conectada" : "Base não encontrada"));
+        await DelayAsync(_stepDelayMs / 3);
 
         progress.Report(new StartupProgress(0.6, "Procurando pedais…"));
         var pedalsConnected = await _probePedals();
-        await DelayAsync();
+        await DelayAsync(_stepDelayMs); // dwell: busca dos pedais
         progress.Report(new StartupProgress(0.9, pedalsConnected ? "Pedais conectados" : "Pedais não encontrados"));
+        await DelayAsync(_stepDelayMs / 3);
 
         progress.Report(new StartupProgress(1.0, "Pronto"));
+        await DelayAsync(_stepDelayMs / 2); // deixa "Pronto" visível antes de abrir o app
         return new StartupResult(baseConnected, pedalsConnected);
     }
 
-    private Task DelayAsync() => _stepDelayMs > 0 ? Task.Delay(_stepDelayMs) : Task.CompletedTask;
+    private static Task DelayAsync(int ms) => ms > 0 ? Task.Delay(ms) : Task.CompletedTask;
 }
