@@ -29,6 +29,7 @@ public class SettingFieldViewModelTests
     public async Task WriteAsync_Sends_Clamped_Value_To_Device()
     {
         var vm = New(out var transport);
+        await transport.ConnectAsync();
         vm.Value = 750;
         await vm.WriteAsync();
         Assert.Equal(SettingId.MotionRange, transport.LastWrite!.Value.id);
@@ -39,8 +40,18 @@ public class SettingFieldViewModelTests
     public async Task LoadAsync_Reads_Value_Without_Writing_Back()
     {
         var vm = New(out var transport);
+        await transport.ConnectAsync();
         await vm.LoadAsync();
         Assert.Equal(900, vm.Value);         // FakeTransport.ReadSettingAsync returns 900
         Assert.Null(transport.LastWrite);    // load must not trigger a write
+    }
+
+    [Fact]
+    public async Task WriteAsync_Does_Nothing_When_Disconnected()
+    {
+        var vm = New(out var transport); // transport NOT connected
+        vm.Value = 750;
+        await vm.WriteAsync();
+        Assert.Null(transport.LastWrite);
     }
 }

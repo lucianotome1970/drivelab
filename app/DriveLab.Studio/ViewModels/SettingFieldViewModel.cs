@@ -27,14 +27,22 @@ public partial class SettingFieldViewModel : ViewModelBase
 
     public async Task LoadAsync()
     {
+        if (!_session.IsConnected)
+            return;
+
         var value = await _session.ReadSettingAsync(_descriptor.Id);
         _loading = true;
         Value = value.AsDouble;
         _loading = false;
     }
 
-    public Task WriteAsync() =>
-        _session.WriteSettingAsync(_descriptor.Id, new SettingValue(_descriptor.Type, _descriptor.Clamp(Value)));
+    public Task WriteAsync()
+    {
+        if (!_session.IsConnected)
+            return Task.CompletedTask;
+
+        return _session.WriteSettingAsync(_descriptor.Id, new SettingValue(_descriptor.Type, _descriptor.Clamp(Value)));
+    }
 
     partial void OnValueChanged(double value)
     {
