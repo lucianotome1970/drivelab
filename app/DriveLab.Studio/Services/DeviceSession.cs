@@ -23,6 +23,7 @@ public sealed class DeviceSession : IDisposable
 
     public event EventHandler<DeviceState>? StateReceived;
     public event EventHandler? Connected;
+    public event EventHandler? Disconnected;
 
     /// <summary>
     /// Raised (on the UI thread) after a setting is written, so every view bound to
@@ -46,6 +47,7 @@ public sealed class DeviceSession : IDisposable
     {
         (_transport as SimulatorTransport)?.StopStreaming();
         await _transport.DisconnectAsync();
+        Disconnected?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task WriteSettingAsync(SettingId id, SettingValue value)

@@ -13,6 +13,8 @@ public partial class DashboardViewModel : ViewModelBase
     private readonly DeviceSession _session;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CenterCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SetMaxAngleCommand))]
     private bool _isConnected;
 
     [ObservableProperty]
@@ -29,23 +31,29 @@ public partial class DashboardViewModel : ViewModelBase
         _session = session;
         _session.StateReceived += OnState;
         _session.Connected += OnConnected;
+        _session.Disconnected += OnDisconnected;
         _session.SettingChanged += OnSettingChanged;
+        IsConnected = _session.IsConnected;
     }
 
     public override void Dispose()
     {
         _session.StateReceived -= OnState;
         _session.Connected -= OnConnected;
+        _session.Disconnected -= OnDisconnected;
         _session.SettingChanged -= OnSettingChanged;
         base.Dispose();
     }
 
     private async void OnConnected(object? sender, EventArgs e)
     {
+        IsConnected = true;
         // Mostra o valor real do dispositivo (não o default do VM).
         var value = await _session.ReadSettingAsync(SettingId.MotionRange);
         MotionRange = (int)value.AsDouble;
     }
+
+    private void OnDisconnected(object? sender, EventArgs e) => IsConnected = false;
 
     private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
     {
@@ -60,7 +68,7 @@ public partial class DashboardViewModel : ViewModelBase
         IsConnected = _session.IsConnected;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsConnected))]
     private Task CenterAsync()
     {
         if (!_session.IsConnected)
@@ -68,7 +76,7 @@ public partial class DashboardViewModel : ViewModelBase
         return _session.SendCommandAsync(DeviceCommand.ResetCenter);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsConnected))]
     private async Task SetMaxAngleAsync(string degrees)
     {
         if (!_session.IsConnected)

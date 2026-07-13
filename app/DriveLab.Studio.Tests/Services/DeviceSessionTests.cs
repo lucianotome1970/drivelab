@@ -24,6 +24,19 @@ public class DeviceSessionTests
     }
 
     [Fact]
+    public async Task DisconnectAsync_Raises_Disconnected()
+    {
+        var session = NewSession(out _);
+        await session.ConnectAsync();
+        var raised = false;
+        session.Disconnected += (_, _) => raised = true;
+
+        await session.DisconnectAsync();
+
+        Assert.True(raised);
+    }
+
+    [Fact]
     public async Task WriteSettingAsync_Raises_SettingChanged_With_Id_And_Value()
     {
         var session = NewSession(out _);

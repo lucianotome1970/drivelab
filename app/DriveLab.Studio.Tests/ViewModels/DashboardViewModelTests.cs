@@ -70,6 +70,25 @@ public class DashboardViewModelTests
     }
 
     [Fact]
+    public async Task Presets_And_Center_Disabled_Until_Connected()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new DashboardViewModel(session);
+
+        Assert.False(vm.SetMaxAngleCommand.CanExecute("900"));
+        Assert.False(vm.CenterCommand.CanExecute(null));
+
+        await session.ConnectAsync();
+        Assert.True(vm.SetMaxAngleCommand.CanExecute("900"));
+        Assert.True(vm.CenterCommand.CanExecute(null));
+
+        await session.DisconnectAsync();
+        Assert.False(vm.SetMaxAngleCommand.CanExecute("900"));
+        Assert.False(vm.CenterCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task MotionRange_Loads_From_Device_On_Connect()
     {
         var transport = new FakeTransport(); // ReadSettingAsync returns 900

@@ -70,6 +70,54 @@ public class SettingFieldViewModelTests
     }
 
     [Fact]
+    public void MotionRange_Exposes_Fixed_Presets()
+    {
+        var vm = New(out _);
+        Assert.True(vm.HasPresets);
+        Assert.Equal(new[] { 360, 540, 720, 900, 1080, 1440, 1800 }, vm.Presets);
+    }
+
+    [Fact]
+    public void NonPreset_Setting_Has_No_Presets()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.DamperStrength));
+        Assert.False(vm.HasPresets);
+        Assert.Empty(vm.Presets);
+    }
+
+    [Fact]
+    public async Task Presets_Disabled_Until_Connected()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.MotionRange));
+
+        Assert.False(vm.IsConnected);
+        Assert.False(vm.SelectPresetCommand.CanExecute("900"));
+
+        await session.ConnectAsync();
+        Assert.True(vm.IsConnected);
+        Assert.True(vm.SelectPresetCommand.CanExecute("900"));
+
+        await session.DisconnectAsync();
+        Assert.False(vm.IsConnected);
+        Assert.False(vm.SelectPresetCommand.CanExecute("900"));
+    }
+
+    [Fact]
+    public async Task SelectPreset_Sets_Value_And_Writes()
+    {
+        var vm = New(out var transport);
+        await transport.ConnectAsync();
+        vm.SelectPresetCommand.Execute("720");
+        Assert.Equal(720, vm.Value);
+        Assert.Equal(SettingId.MotionRange, transport.LastWrite!.Value.id);
+        Assert.Equal(720, transport.LastWrite!.Value.value.AsDouble);
+    }
+
+    [Fact]
     public void Integer_Setting_Is_Integer_And_Formats_Without_Decimals()
     {
         var transport = new FakeTransport();
