@@ -14,6 +14,9 @@ public sealed class SimulatorPedalTransport : IPedalTransport
     private int _periodMs;
     private volatile bool _streaming;
     private int _phase;
+    private readonly bool[] _calibrating = new bool[3];
+    private readonly ushort[] _calMin = new ushort[3];
+    private readonly ushort[] _calMax = new ushort[3];
 
     public bool IsConnected { get; private set; }
     public FirmwareVersion FirmwareVersion { get; } = new(0, 26, 7, 13);
@@ -60,15 +63,36 @@ public sealed class SimulatorPedalTransport : IPedalTransport
 
     public Task SendCommandAsync(PedalCommandId command, byte arg = 0)
     {
-        switch (command)
+        lock (_sync)
         {
-            case PedalCommandId.LoadDefaults:
-                lock (_sync) { SeedDefaults(); }
-                break;
-            case PedalCommandId.CalibrateStart:
-            case PedalCommandId.CalibrateStop:
-            case PedalCommandId.SaveToFlash:
-                break;
+            switch (command)
+            {
+                case PedalCommandId.LoadDefaults:
+                    SeedDefaults();
+                    break;
+                case PedalCommandId.CalibrateStart:
+                    if (arg < 3)
+                    {
+                        _calibrating[arg] = true;
+                        _calMin[arg] = ushort.MaxValue;
+                        _calMax[arg] = ushort.MinValue;
+                    }
+                    break;
+                case PedalCommandId.CalibrateStop:
+                    if (arg < 3 && _calibrating[arg])
+                    {
+                        _calibrating[arg] = false;
+                        var pedal = (PedalIndex)arg;
+                        var d = PedalSettingsSchema.Get(PedalSettingId.InputMin);
+                        _settings[(PedalSettingId.InputMin, pedal)] = new SettingValue(d.Type, _calMin[arg]);
+                        _settings[(PedalSettingId.InputMax, pedal)] = new SettingValue(d.Type, _calMax[arg]);
+                        ApplySetting(pedal, PedalSettingId.InputMin, _calMin[arg]);
+                        ApplySetting(pedal, PedalSettingId.InputMax, _calMax[arg]);
+                    }
+                    break;
+                case PedalCommandId.SaveToFlash:
+                    break;
+            }
         }
         return Task.CompletedTask;
     }
@@ -81,6 +105,7 @@ public sealed class SimulatorPedalTransport : IPedalTransport
             _pedals[0].SetRawInput(clutch);
             _pedals[1].SetRawInput(brake);
             _pedals[2].SetRawInput(throttle);
+            TrackCalibration();
         }
     }
 
@@ -94,6 +119,7 @@ public sealed class SimulatorPedalTransport : IPedalTransport
                 _phase++;
                 for (var i = 0; i < _pedals.Length; i++)
                     _pedals[i].SetRawInput(GenerateRaw(_phase + i * 40));
+                TrackCalibration();
             }
             state = BuildState();
         }
@@ -145,6 +171,17 @@ public sealed class SimulatorPedalTransport : IPedalTransport
                 if (id >= PedalSettingId.CurvePoint0 && id <= PedalSettingId.CurvePoint5)
                     p.CurvePoints[id - PedalSettingId.CurvePoint0] = value;
                 break;
+        }
+    }
+
+    private void TrackCalibration()
+    {
+        for (var i = 0; i < _pedals.Length; i++)
+        {
+            if (!_calibrating[i]) continue;
+            var raw = _pedals[i].RawInput;
+            if (raw < _calMin[i]) _calMin[i] = raw;
+            if (raw > _calMax[i]) _calMax[i] = raw;
         }
     }
 

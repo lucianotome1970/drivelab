@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
@@ -54,6 +55,10 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     [ObservableProperty] private bool _canEdit;
     [ObservableProperty] private double _currentInput01;
     [ObservableProperty] private double _currentOutput01;
+    [ObservableProperty] private int _inputMin;
+    [ObservableProperty] private int _inputMax = 4095;
+    [ObservableProperty] private int _loadCellScale = 1000;
+    [ObservableProperty] private bool _isCalibrating;
 
     private bool _loading;
 
@@ -117,6 +122,9 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
             var v = await _session.ReadSettingAsync(PedalSettingsSchema.CurvePointIds[i], Pedal);
             Points[i].SetQuiet(v.AsDouble);
         }
+        InputMin = (int)(await _session.ReadSettingAsync(PedalSettingId.InputMin, Pedal)).AsDouble;
+        InputMax = (int)(await _session.ReadSettingAsync(PedalSettingId.InputMax, Pedal)).AsDouble;
+        LoadCellScale = (int)(await _session.ReadSettingAsync(PedalSettingId.LoadCellScale, Pedal)).AsDouble;
         _loading = false;
         RebuildCurve();
     }
@@ -153,6 +161,31 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     partial void OnSensorTypeChanged(int value) => WriteScalar(PedalSettingId.SensorType, value);
     partial void OnInvertChanged(bool value) => WriteScalar(PedalSettingId.Invert, value ? 1 : 0);
     partial void OnSmoothChanged(double value) => WriteScalar(PedalSettingId.Smooth, value);
+    partial void OnInputMinChanged(int value) => WriteScalar(PedalSettingId.InputMin, value);
+    partial void OnInputMaxChanged(int value) => WriteScalar(PedalSettingId.InputMax, value);
+    partial void OnLoadCellScaleChanged(int value) => WriteScalar(PedalSettingId.LoadCellScale, value);
+
+    [RelayCommand]
+    private async Task CalibrateAsync()
+    {
+        if (!_session.IsConnected)
+            return;
+
+        if (!IsCalibrating)
+        {
+            IsCalibrating = true;
+            await _session.SendCommandAsync(PedalCommandId.CalibrateStart, (byte)Pedal);
+        }
+        else
+        {
+            IsCalibrating = false;
+            await _session.SendCommandAsync(PedalCommandId.CalibrateStop, (byte)Pedal);
+            _loading = true;
+            InputMin = (int)(await _session.ReadSettingAsync(PedalSettingId.InputMin, Pedal)).AsDouble;
+            InputMax = (int)(await _session.ReadSettingAsync(PedalSettingId.InputMax, Pedal)).AsDouble;
+            _loading = false;
+        }
+    }
 
     private void OnConnectionChanged(object? sender, EventArgs e) => CanEdit = _session.IsConnected;
 
@@ -176,6 +209,9 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
             case PedalSettingId.SensorType: SensorType = (int)e.Value.AsDouble; break;
             case PedalSettingId.Invert: Invert = e.Value.AsDouble != 0; break;
             case PedalSettingId.Smooth: Smooth = e.Value.AsDouble; break;
+            case PedalSettingId.InputMin: InputMin = (int)e.Value.AsDouble; break;
+            case PedalSettingId.InputMax: InputMax = (int)e.Value.AsDouble; break;
+            case PedalSettingId.LoadCellScale: LoadCellScale = (int)e.Value.AsDouble; break;
             default:
                 if (e.Id >= PedalSettingId.CurvePoint0 && e.Id <= PedalSettingId.CurvePoint5)
                 {

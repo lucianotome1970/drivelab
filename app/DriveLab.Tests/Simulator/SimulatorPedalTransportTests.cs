@@ -65,4 +65,22 @@ public class SimulatorPedalTransportTests
         var v = await t.ReadSettingAsync(PedalSettingId.Smooth, PedalIndex.Brake);
         Assert.Equal(0, v.AsDouble);
     }
+
+    [Fact]
+    public async Task Calibration_Captures_Observed_Min_Max()
+    {
+        var t = new SimulatorPedalTransport();
+        await t.ConnectAsync();
+
+        await t.SendCommandAsync(PedalCommandId.CalibrateStart, (byte)PedalIndex.Brake);
+        t.SetRawInputs(0, 300, 0);
+        t.SetRawInputs(0, 3800, 0);
+        t.SetRawInputs(0, 1500, 0);
+        await t.SendCommandAsync(PedalCommandId.CalibrateStop, (byte)PedalIndex.Brake);
+
+        var min = await t.ReadSettingAsync(PedalSettingId.InputMin, PedalIndex.Brake);
+        var max = await t.ReadSettingAsync(PedalSettingId.InputMax, PedalIndex.Brake);
+        Assert.Equal(300, min.AsDouble);
+        Assert.Equal(3800, max.AsDouble);
+    }
 }

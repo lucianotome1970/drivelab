@@ -69,11 +69,12 @@ public sealed partial class PedalsViewModel : ViewModelBase
     public PedalProfile ExportProfile() => new(
         Columns.Select(c => new PedalProfileColumn(
             c.SensorType,
-            0, 4095,
+            c.InputMin,
+            c.InputMax,
             c.Invert,
             (int)c.Smooth,
             c.Points.Select(p => p.Value).ToArray(),
-            1000)).ToArray());
+            c.LoadCellScale)).ToArray());
 
     public void ApplyProfile(PedalProfile profile)
     {
@@ -84,6 +85,9 @@ public sealed partial class PedalsViewModel : ViewModelBase
             col.SensorType = src.Sensor;
             col.Invert = src.Invert;
             col.Smooth = src.Smooth;
+            col.InputMin = src.InputMin;
+            col.InputMax = src.InputMax;
+            col.LoadCellScale = src.LoadCellScale;
             for (var p = 0; p < col.Points.Count && p < src.Curve.Length; p++)
                 col.Points[p].Value = src.Curve[p];
         }

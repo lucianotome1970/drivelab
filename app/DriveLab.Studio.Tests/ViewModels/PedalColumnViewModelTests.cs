@@ -83,4 +83,29 @@ public class PedalColumnViewModelTests
     {
         Assert.Contains(PedalCurvePresets.All, p => p.Name == "Linear");
     }
+
+    [Fact]
+    public void Calibrate_Toggles_And_Sends_Start_Then_Stop()
+    {
+        var (vm, t, s) = Make(connected: true);
+        vm.CalibrateCommand.Execute(null);
+        Assert.True(vm.IsCalibrating);
+        Assert.Equal(PedalCommandId.CalibrateStart, t.LastCommand!.Value.cmd);
+        Assert.Equal((byte)PedalIndex.Brake, t.LastCommand.Value.arg);
+
+        vm.CalibrateCommand.Execute(null);
+        Assert.False(vm.IsCalibrating);
+        Assert.Equal(PedalCommandId.CalibrateStop, t.LastCommand.Value.cmd);
+        s.Dispose();
+    }
+
+    [Fact]
+    public void InputMax_Edit_Writes_When_Connected()
+    {
+        var (vm, t, s) = Make(connected: true);
+        vm.InputMax = 3000;
+        Assert.Equal(PedalSettingId.InputMax, t.LastWrite!.Value.id);
+        Assert.Equal(3000, t.LastWrite.Value.value.AsDouble);
+        s.Dispose();
+    }
 }

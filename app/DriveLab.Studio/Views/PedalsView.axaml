@@ -43,6 +43,13 @@
                             <ComboBoxItem>Load cell</ComboBoxItem>
                         </ComboBox>
                     </StackPanel>
+
+                    <Button Content="Calibrar" Command="{Binding CalibrateCommand}" IsEnabled="{Binding CanEdit}"
+                            Classes.selected="{Binding IsCalibrating}" HorizontalAlignment="Stretch" />
+                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource DlMuted}"
+                               Text="{Binding InputMin, StringFormat='min {0}'}" />
+                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource DlMuted}"
+                               Text="{Binding InputMax, StringFormat='max {0}'}" />
                 </StackPanel>
             </Border>
         </DataTemplate>
