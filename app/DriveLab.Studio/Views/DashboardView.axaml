@@ -7,20 +7,34 @@
         <StackPanel Spacing="16">
             <TextBlock Text="Volante (ODESC)" Classes="h2" />
 
-            <!-- Gauge: a diameter needle rotating around the hub by the live steering angle -->
-            <Grid Width="220" Height="220" HorizontalAlignment="Center">
-                <Ellipse Width="220" Height="220" Stroke="{DynamicResource DlBorder}" StrokeThickness="2" Fill="{DynamicResource DlBackground}" />
-                <Rectangle Width="4" Height="170" Fill="{DynamicResource DlAccent}" RadiusX="2" RadiusY="2"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
-                    <Rectangle.RenderTransform>
-                        <RotateTransform Angle="{Binding AngleDegrees}" />
-                    </Rectangle.RenderTransform>
-                </Rectangle>
-                <Ellipse Width="16" Height="16" Fill="{DynamicResource DlAccent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding AngleDegrees, StringFormat={}{0:0}°}"
-                           Foreground="{DynamicResource DlText}" FontSize="26" FontWeight="Bold"
-                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6" />
+            <!-- Área de calibração: desenho de volante que gira com o ângulo lido -->
+            <Grid Width="240" Height="240" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <RotateTransform Angle="{Binding AngleDegrees}" />
+                </Grid.RenderTransform>
+                <!-- Aro -->
+                <Ellipse Width="212" Height="212" Stroke="{DynamicResource DlMuted}" StrokeThickness="16"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <!-- Raio horizontal (3 e 9 horas) -->
+                <Rectangle Width="156" Height="16" Fill="{DynamicResource DlMuted}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <!-- Raio inferior (6 horas) -->
+                <Rectangle Width="16" Height="60" Fill="{DynamicResource DlMuted}"
+                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,22" />
+                <!-- Cubo central -->
+                <Ellipse Width="64" Height="64" Fill="{DynamicResource DlCard}" Stroke="{DynamicResource DlBorder}"
+                         StrokeThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Ellipse Width="18" Height="18" Fill="{DynamicResource DlAccent}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <!-- Marcador central (listra laranja no topo do aro, como no volante real) -->
+                <Border Width="30" Height="16" Background="{DynamicResource DlAccent}" CornerRadius="4"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0" />
             </Grid>
+
+            <!-- Leitura de ângulo (não gira) -->
+            <TextBlock Text="{Binding AngleDegrees, StringFormat={}{0:0}°}"
+                       Foreground="{DynamicResource DlText}" FontSize="26" FontWeight="Bold"
+                       HorizontalAlignment="Center" />
 
             <!-- Presets (explicit buttons — robust, no item-template command binding) -->
             <TextBlock Text="Ângulo máximo" Classes="muted" />
