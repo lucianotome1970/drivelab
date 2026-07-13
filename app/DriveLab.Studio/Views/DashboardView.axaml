@@ -9,7 +9,7 @@
     </UserControl.Resources>
     <Border Classes="card" HorizontalAlignment="Left" VerticalAlignment="Top" Width="420">
         <StackPanel Spacing="16">
-            <TextBlock Text="Volante (ODESC)" Classes="h2" />
+            <TextBlock Text="Volante DriveLab" Classes="h2" />
 
             <!-- Área de calibração: imagem do volante DriveLab girando com o ângulo lido -->
             <Grid Width="240" Height="240" HorizontalAlignment="Center" ClipToBounds="False">
