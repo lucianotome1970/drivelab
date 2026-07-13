@@ -75,6 +75,9 @@
                     <Button Content="Salvar no controlador" Command="{Binding SaveToControllerCommand}" />
                 </StackPanel>
             </Grid>
+            <Border DockPanel.Dock="Bottom" Height="140" Margin="0,12,0,0">
+                <lvc:CartesianChart Series="{Binding CombinedSeries}" />
+            </Border>
             <ScrollViewer HorizontalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Columns}" ItemTemplate="{StaticResource PedalColumn}">
                     <ItemsControl.ItemsPanel>

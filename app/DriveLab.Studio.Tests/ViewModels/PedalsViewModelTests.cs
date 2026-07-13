@@ -86,4 +86,20 @@ public class PedalsViewModelTests
         Assert.Equal(50, vm.Columns[1].Points[5].Value);
         vm.Dispose();
     }
+
+    [Fact]
+    public async Task Telemetry_Appends_To_Combined_Samples()
+    {
+        var (vm, t, _) = Make();
+        await vm.ConnectCommand.ExecuteAsync(null);
+        t.Emit(new PedalState
+        {
+            Clutch = new PedalReading(0, 0),
+            Brake = new PedalReading(0, 32768),
+            Throttle = new PedalReading(0, 65535),
+        });
+        Assert.Single(vm.BrakeSamples);
+        Assert.Equal(3, vm.CombinedSeries.Length);
+        vm.Dispose();
+    }
 }

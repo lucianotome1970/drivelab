@@ -1,13 +1,19 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
+using LiveChartsCore;
+using LiveChartsCore.Defaults;
+using LiveChartsCore.SkiaSharpView;
 
 namespace DriveLab.Studio.ViewModels;
 
 public sealed partial class PedalsViewModel : ViewModelBase
 {
+    private const int MaxSamples = 240;
+
     private readonly PedalDeviceSession _session;
     private readonly IPedalProfileStorage _storage;
 
@@ -19,6 +25,11 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
     public IReadOnlyList<PedalColumnViewModel> Columns { get; }
     public IReadOnlyList<PedalCurvePreset> Presets => PedalCurvePresets.All;
+
+    public ObservableCollection<ObservableValue> ClutchSamples { get; } = new();
+    public ObservableCollection<ObservableValue> BrakeSamples { get; } = new();
+    public ObservableCollection<ObservableValue> ThrottleSamples { get; } = new();
+    public ISeries[] CombinedSeries { get; }
 
     public PedalsViewModel(PedalDeviceSession session, IPedalProfileStorage storage)
     {
@@ -32,12 +43,34 @@ public sealed partial class PedalsViewModel : ViewModelBase
             new(session, PedalIndex.Throttle, "Acelerador"),
         };
 
+        CombinedSeries = new ISeries[]
+        {
+            new LineSeries<ObservableValue> { Name = "Embreagem", Values = ClutchSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = "Freio", Values = BrakeSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = "Acelerador", Values = ThrottleSamples, GeometrySize = 0 },
+        };
+        _session.StateReceived += OnState;
+
         _isConnected = session.IsConnected;
         _session.Connected += OnConnectionChanged;
         _session.Disconnected += OnConnectionChanged;
     }
 
     private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
+
+    private void OnState(object? sender, PedalState state)
+    {
+        Append(ClutchSamples, state.Clutch.Output / 65535.0);
+        Append(BrakeSamples, state.Brake.Output / 65535.0);
+        Append(ThrottleSamples, state.Throttle.Output / 65535.0);
+    }
+
+    private static void Append(ObservableCollection<ObservableValue> series, double value)
+    {
+        series.Add(new ObservableValue(value));
+        if (series.Count > MaxSamples)
+            series.RemoveAt(0);
+    }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private async Task ConnectAsync()
@@ -95,6 +128,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
     public override void Dispose()
     {
+        _session.StateReceived -= OnState;
         _session.Connected -= OnConnectionChanged;
         _session.Disconnected -= OnConnectionChanged;
         foreach (var column in Columns)
