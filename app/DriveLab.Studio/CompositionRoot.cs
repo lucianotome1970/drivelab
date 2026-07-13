@@ -1,3 +1,4 @@
+using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
 using DriveLab.Hid;
 using DriveLab.Simulator;
@@ -8,6 +9,33 @@ namespace DriveLab.Studio;
 
 public static class CompositionRoot
 {
+    // Ajustes da base (força feedback). O ângulo total fica na página do Volante.
+    private static readonly SettingId[] WheelBaseSettings =
+    {
+        SettingId.TotalStrength,
+        SettingId.MaxTorqueLimit,
+        SettingId.SoftStopStrength,
+        SettingId.SoftStopRange,
+        SettingId.SpringStrength,
+        SettingId.DamperStrength,
+    };
+
+    // Ajustes técnicos (o restante de Advanced + Hardware).
+    private static readonly SettingId[] AdvancedSettings =
+    {
+        SettingId.StaticDamping,
+        SettingId.ForceDirection,
+        SettingId.PositionSmoothing,
+        SettingId.PowerLimit,
+        SettingId.BrakingLimit,
+        SettingId.EncoderDirection,
+        SettingId.EncoderCpr,
+        SettingId.PolePairs,
+        SettingId.CurrentP,
+        SettingId.CurrentI,
+        SettingId.CalibrationCurrent,
+    };
+
     public static MainWindowViewModel CreateMainWindowViewModel(ITransport? transport = null, bool simulatorMode = false)
     {
         transport ??= new SimulatorTransport();
@@ -16,8 +44,9 @@ public static class CompositionRoot
 
         var pages = new List<NavItem>
         {
-            new("Dashboard", "\U0001F39B", new DashboardViewModel(session)),
-            new("Ajustes", "⚙", new SettingsViewModel(session)),
+            new("Volante", "\U0001F39B", new DashboardViewModel(session)),
+            new("Base do Volante", "💪", new SettingsGroupViewModel(session, "Base do Volante", WheelBaseSettings)),
+            new("Avançado", "⚙", new SettingsGroupViewModel(session, "Avançado", AdvancedSettings)),
             new("Telemetria", "📈", new TelemetryViewModel(session)),
         };
 

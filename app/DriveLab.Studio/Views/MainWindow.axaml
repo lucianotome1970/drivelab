@@ -22,6 +22,8 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[1]}" />
                 <Button Classes="nav" Content="{Binding Pages[2].Icon}" ToolTip.Tip="{Binding Pages[2].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}" />
+                <Button Classes="nav" Content="{Binding Pages[3].Icon}" ToolTip.Tip="{Binding Pages[3].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}" />
             </StackPanel>
         </Border>
 

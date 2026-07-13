@@ -2,8 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:conv="using:DriveLab.Studio.Converters"
-             x:Class="DriveLab.Studio.Views.SettingsView"
-             x:DataType="vm:SettingsViewModel">
+             x:Class="DriveLab.Studio.Views.SettingsGroupView"
+             x:DataType="vm:SettingsGroupViewModel">
     <UserControl.Resources>
         <conv:IntEqualsConverter x:Key="IntEquals" />
         <DataTemplate x:Key="FieldRow" x:DataType="vm:SettingFieldViewModel">
@@ -33,26 +33,12 @@
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
-    <Border Classes="card">
+    <Border Classes="card" Width="520" HorizontalAlignment="Left" VerticalAlignment="Top">
         <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="Ajustes" Classes="h2" Margin="0,0,0,12" />
-            <TabControl>
-                <TabItem Header="Basic">
-                    <ScrollViewer>
-                        <ItemsControl ItemsSource="{Binding BasicFields}" ItemTemplate="{StaticResource FieldRow}" />
-                    </ScrollViewer>
-                </TabItem>
-                <TabItem Header="Advanced">
-                    <ScrollViewer>
-                        <ItemsControl ItemsSource="{Binding AdvancedFields}" ItemTemplate="{StaticResource FieldRow}" />
-                    </ScrollViewer>
-                </TabItem>
-                <TabItem Header="Hardware">
-                    <ScrollViewer>
-                        <ItemsControl ItemsSource="{Binding HardwareFields}" ItemTemplate="{StaticResource FieldRow}" />
-                    </ScrollViewer>
-                </TabItem>
-            </TabControl>
+            <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" Classes="h2" Margin="0,0,0,12" />
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
+            </ScrollViewer>
         </DockPanel>
     </Border>
 </UserControl>

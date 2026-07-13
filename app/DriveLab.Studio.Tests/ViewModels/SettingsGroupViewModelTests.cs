@@ -1,3 +1,4 @@
+using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
 using DriveLab.Studio.ViewModels;
@@ -5,22 +6,27 @@ using Xunit;
 
 namespace DriveLab.Studio.Tests.ViewModels;
 
-public class SettingsViewModelTests
+public class SettingsGroupViewModelTests
 {
-    private static SettingsViewModel New(out FakeTransport transport)
+    private static readonly SettingId[] Ids =
+    {
+        SettingId.TotalStrength, SettingId.MaxTorqueLimit, SettingId.DamperStrength,
+    };
+
+    private static SettingsGroupViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        return new SettingsViewModel(session);
+        return new SettingsGroupViewModel(session, "Base do Volante", Ids);
     }
 
     [Fact]
-    public void Fields_Are_Grouped_By_Tab()
+    public void Exposes_Title_And_A_Field_Per_Id()
     {
         var vm = New(out _);
-        Assert.Equal(6, vm.BasicFields.Count);
-        Assert.Equal(6, vm.AdvancedFields.Count);
-        Assert.Equal(6, vm.HardwareFields.Count);
+        Assert.Equal("Base do Volante", vm.Title);
+        Assert.Equal(3, vm.Fields.Count);
+        Assert.Equal("Força total", vm.Fields[0].DisplayName);
     }
 
     [Fact]
@@ -30,7 +36,7 @@ public class SettingsViewModelTests
         await transport.ConnectAsync();
         await vm.LoadAsync();
         // FakeTransport.ReadSettingAsync returns 900 for every field
-        Assert.All(vm.BasicFields, f => Assert.Equal(900, f.Value));
+        Assert.All(vm.Fields, f => Assert.Equal(900, f.Value));
     }
 
     [Fact]
@@ -38,10 +44,10 @@ public class SettingsViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingsViewModel(session);
+        var vm = new SettingsGroupViewModel(session, "Base do Volante", Ids);
 
         await session.ConnectAsync(); // raises Connected -> auto-load
 
-        Assert.All(vm.BasicFields, f => Assert.Equal(900, f.Value));
+        Assert.All(vm.Fields, f => Assert.Equal(900, f.Value));
     }
 }
