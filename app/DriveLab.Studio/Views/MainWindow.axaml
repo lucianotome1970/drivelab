@@ -23,8 +23,11 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[1]}">
                     <Image Source="avares://DriveLab.Studio/Assets/base.png" Width="26" Height="26" />
                 </Button>
-                <Button Classes="nav" Content="{Binding Pages[2].Icon}" ToolTip.Tip="{Binding Pages[2].Label}"
-                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}" />
+                <!-- Pedais: ícone próprio (pedais.png) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[2].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/pedais.png" Width="26" Height="26" />
+                </Button>
                 <Button Classes="nav" Content="{Binding Pages[3].Icon}" ToolTip.Tip="{Binding Pages[3].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}" />
             </StackPanel>
