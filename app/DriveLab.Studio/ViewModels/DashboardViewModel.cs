@@ -44,11 +44,18 @@ public partial class DashboardViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private Task CenterAsync() => _session.SendCommandAsync(DeviceCommand.ResetCenter);
+    private Task CenterAsync()
+    {
+        if (!_session.IsConnected)
+            return Task.CompletedTask;
+        return _session.SendCommandAsync(DeviceCommand.ResetCenter);
+    }
 
     [RelayCommand]
     private async Task SetMaxAngleAsync(string degrees)
     {
+        if (!_session.IsConnected)
+            return;
         var value = int.Parse(degrees, CultureInfo.InvariantCulture);
         await _session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, value));
         MotionRange = value;
