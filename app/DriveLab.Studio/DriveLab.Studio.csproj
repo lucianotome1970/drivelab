@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DriveLab.Core\DriveLab.Core.csproj" />
     <ProjectReference Include="..\DriveLab.Simulator\DriveLab.Simulator.csproj" />
+    <ProjectReference Include="..\DriveLab.Hid\DriveLab.Hid.csproj" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
