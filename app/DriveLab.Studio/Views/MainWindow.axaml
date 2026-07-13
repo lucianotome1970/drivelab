@@ -13,9 +13,11 @@
         <!-- Sidebar -->
         <Border Grid.Column="0" Background="{DynamicResource DlCard}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,1,0">
             <StackPanel Margin="0,16" Spacing="8" HorizontalAlignment="Center">
-                <Image Source="avares://DriveLab.Studio/Assets/logo.png" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,12" />
-                <Button Classes="nav" Content="{Binding Pages[0].Icon}" ToolTip.Tip="{Binding Pages[0].Label}"
-                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[0]}" />
+                <!-- O logo É o botão do Dashboard -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[0].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[0]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/logo.png" Width="30" Height="30" />
+                </Button>
                 <Button Classes="nav" Content="{Binding Pages[1].Icon}" ToolTip.Tip="{Binding Pages[1].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[1]}" />
                 <Button Classes="nav" Content="{Binding Pages[2].Icon}" ToolTip.Tip="{Binding Pages[2].Label}"
