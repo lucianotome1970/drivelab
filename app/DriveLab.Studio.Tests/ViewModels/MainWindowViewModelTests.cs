@@ -60,4 +60,12 @@ public class MainWindowViewModelTests
         var sim = new MainWindowViewModel(session, new ConnectionViewModel(session), pages, new TestViewModel(session), simulatorMode: true);
         Assert.True(sim.SimulatorMode);
     }
+
+    [Fact]
+    public void CompositionRoot_Includes_Pedals_Page()
+    {
+        var vm = DriveLab.Studio.CompositionRoot.CreateMainWindowViewModel();
+        Assert.Contains(vm.Pages, p => p.Label == "Pedais");
+        vm.Dispose();
+    }
 }

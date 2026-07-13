@@ -9,41 +9,52 @@ namespace DriveLab.Studio;
 
 public static class CompositionRoot
 {
-    // Todos os ajustes da base ficam numa página só ("Base do Volante").
-    // O ângulo total de giro fica na página do Volante.
-    private static readonly SettingId[] WheelBaseSettings =
+    // "Base do Volante" com abas (o ângulo total de giro fica na página do Volante).
+    private static readonly SettingsTabSpec[] WheelBaseTabs =
     {
-        // Força feedback
-        SettingId.TotalStrength,
-        SettingId.MaxTorqueLimit,
-        SettingId.SoftStopStrength,
-        SettingId.SoftStopRange,
-        SettingId.SpringStrength,
-        SettingId.DamperStrength,
-        // Técnicos
-        SettingId.StaticDamping,
-        SettingId.ForceDirection,
-        SettingId.PositionSmoothing,
-        SettingId.PowerLimit,
-        SettingId.BrakingLimit,
-        SettingId.EncoderDirection,
-        SettingId.EncoderCpr,
-        SettingId.PolePairs,
-        SettingId.CurrentP,
-        SettingId.CurrentI,
-        SettingId.CalibrationCurrent,
+        new("Basic", new[]
+        {
+            SettingId.TotalStrength,
+            SettingId.SoftStopStrength,
+            SettingId.SoftStopRange,
+            SettingId.SpringStrength,
+            SettingId.DamperStrength,
+        }),
+        new("Advanced", new[]
+        {
+            SettingId.StaticDamping,
+            SettingId.MaxTorqueLimit,
+            SettingId.ForceDirection,
+            SettingId.PositionSmoothing,
+            SettingId.PowerLimit,
+            SettingId.BrakingLimit,
+        }),
+        new("Hardware", new[]
+        {
+            SettingId.EncoderDirection,
+            SettingId.EncoderCpr,
+            SettingId.PolePairs,
+            SettingId.CurrentP,
+            SettingId.CurrentI,
+            SettingId.CalibrationCurrent,
+        }),
     };
 
     public static MainWindowViewModel CreateMainWindowViewModel(ITransport? transport = null, bool simulatorMode = false)
     {
         transport ??= new SimulatorTransport();
-        var session = new DeviceSession(transport, new AvaloniaUiDispatcher());
+        var dispatcher = new AvaloniaUiDispatcher();
+        var session = new DeviceSession(transport, dispatcher);
         var connection = new ConnectionViewModel(session);
+
+        var pedalSession = new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher);
+        var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
         var pages = new List<NavItem>
         {
             new("Volante", "\U0001F39B", new DashboardViewModel(session)),
-            new("Base do Volante", "base", new SettingsGroupViewModel(session, "Base do Volante", WheelBaseSettings)),
+            new("Base do Volante", "base", new SettingsPageViewModel(session, "Base do Volante", WheelBaseTabs)),
+            new("Pedais", "\U0001F9B6", pedals),
             new("Telemetria", "📈", new TelemetryViewModel(session)),
         };
 
