@@ -4,10 +4,5 @@
              xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
              x:Class="DriveLab.Studio.Views.TelemetryView"
              x:DataType="vm:TelemetryViewModel">
-    <Border Classes="card">
-        <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="Telemetria" Classes="h2" Margin="0,0,0,12" />
-            <lvc:CartesianChart Series="{Binding Series}" />
-        </DockPanel>
-    </Border>
+    <lvc:CartesianChart Series="{Binding Series}" MinHeight="320" />
 </UserControl>

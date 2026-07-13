@@ -28,8 +28,6 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}">
                     <Image Source="avares://DriveLab.Studio/Assets/pedais.png" Width="26" Height="26" />
                 </Button>
-                <Button Classes="nav" Content="{Binding Pages[3].Icon}" ToolTip.Tip="{Binding Pages[3].Label}"
-                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}" />
             </StackPanel>
         </Border>
 

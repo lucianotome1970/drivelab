@@ -1,53 +1,21 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
-             xmlns:conv="using:DriveLab.Studio.Converters"
              x:Class="DriveLab.Studio.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
-    <UserControl.Resources>
-        <conv:IntEqualsConverter x:Key="IntEquals" />
-        <DataTemplate x:Key="FieldRow" x:DataType="vm:SettingFieldViewModel">
-            <Grid ColumnDefinitions="190,*,86" Margin="0,7">
-                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
-
-                <!-- Slider contínuo (campos sem presets) -->
-                <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}"
-                        IsVisible="{Binding !HasPresets}" IsEnabled="{Binding IsConnected}"
-                        IsSnapToTickEnabled="{Binding IsInteger}" TickFrequency="1" Margin="10,0" VerticalAlignment="Center" />
-
-                <!-- Presets fixos (ex.: Ângulo total de giro) -->
-                <WrapPanel Grid.Column="1" IsVisible="{Binding HasPresets}" Margin="10,0" VerticalAlignment="Center">
-                    <Button Classes="chip" Content="360"  Command="{Binding SelectPresetCommand}" CommandParameter="360"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=360}" />
-                    <Button Classes="chip" Content="540"  Command="{Binding SelectPresetCommand}" CommandParameter="540"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=540}" />
-                    <Button Classes="chip" Content="720"  Command="{Binding SelectPresetCommand}" CommandParameter="720"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=720}" />
-                    <Button Classes="chip" Content="900"  Command="{Binding SelectPresetCommand}" CommandParameter="900"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=900}" />
-                    <Button Classes="chip" Content="1080" Command="{Binding SelectPresetCommand}" CommandParameter="1080" Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=1080}" />
-                    <Button Classes="chip" Content="1440" Command="{Binding SelectPresetCommand}" CommandParameter="1440" Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
-                    <Button Classes="chip" Content="1800" Command="{Binding SelectPresetCommand}" CommandParameter="1800" Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=1800}" />
-                </WrapPanel>
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="3">
-                    <TextBlock Text="{Binding ValueText}" Foreground="{DynamicResource DlMuted}" />
-                    <TextBlock Text="{Binding Unit}" Foreground="{DynamicResource DlMuted}" />
-                </StackPanel>
-            </Grid>
-        </DataTemplate>
-    </UserControl.Resources>
-    <Border Classes="card" Width="560" HorizontalAlignment="Left" VerticalAlignment="Top">
+    <Border Classes="card">
         <DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" Classes="h2" Margin="0,0,0,12" />
             <TabControl ItemsSource="{Binding Tabs}">
                 <TabControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:SettingsGroupViewModel">
-                        <TextBlock Text="{Binding Title}" />
+                    <DataTemplate x:DataType="vm:PageTab">
+                        <TextBlock Text="{Binding Header}" />
                     </DataTemplate>
                 </TabControl.ItemTemplate>
                 <TabControl.ContentTemplate>
-                    <DataTemplate x:DataType="vm:SettingsGroupViewModel">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <!-- Margem à direita afasta os campos da barra de rolagem -->
-                            <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" Margin="0,0,20,0" />
-                        </ScrollViewer>
+                    <DataTemplate x:DataType="vm:PageTab">
+                        <!-- ViewLocator renderiza o conteúdo da aba (settings ou gráfico) -->
+                        <ContentControl Content="{Binding Content}" />
                     </DataTemplate>
                 </TabControl.ContentTemplate>
             </TabControl>

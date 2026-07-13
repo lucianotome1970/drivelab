@@ -50,12 +50,17 @@ public static class CompositionRoot
         var pedalSession = new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher);
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
+        // Base do Volante: abas de settings + Telemetria como última aba.
+        var wheelBaseTabs = WheelBaseTabs
+            .Select(t => new PageTab(t.Header, new SettingsGroupViewModel(session, t.Header, t.Ids)))
+            .Append(new PageTab("Telemetria", new TelemetryViewModel(session)))
+            .ToList();
+
         var pages = new List<NavItem>
         {
             new("Volante", "\U0001F39B", new DashboardViewModel(session)),
-            new("Base do Volante", "base", new SettingsPageViewModel(session, "Base do Volante", WheelBaseTabs)),
+            new("Base do Volante", "base", new SettingsPageViewModel("Base do Volante", wheelBaseTabs)),
             new("Pedais", "\U0001F9B6", pedals),
-            new("Telemetria", "📈", new TelemetryViewModel(session)),
         };
 
         // Teste (controle direto de força) não é uma aba: abre num modal à parte,
