@@ -1,11 +1,26 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DriveLab.Studio.ViewModels"
         x:Class="DriveLab.Studio.Views.SplashWindow"
+        x:DataType="vm:SplashViewModel"
         Width="760" Height="507"
         SystemDecorations="None"
         CanResize="False"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen"
         Background="#0F1216">
-    <Image Source="avares://DriveLab.Studio/Assets/splash.png" Stretch="UniformToFill" />
+    <Grid>
+        <Image Source="avares://DriveLab.Studio/Assets/splash.png" Stretch="UniformToFill" />
+
+        <!-- Overlay: barra de progresso + status + versão, na faixa central-inferior -->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,300,0,0" Spacing="12" Width="240">
+            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
+                         Height="4" CornerRadius="2"
+                         Foreground="#FF8124" Background="#33FFFFFF" />
+            <TextBlock Text="{Binding Status}" Foreground="#D0D6DD" FontSize="12"
+                       HorizontalAlignment="Center" LetterSpacing="2" />
+            <TextBlock Text="{Binding VersionText}" Foreground="#6B7480" FontSize="10"
+                       HorizontalAlignment="Center" LetterSpacing="2" Margin="0,4,0,0" />
+        </StackPanel>
+    </Grid>
 </Window>

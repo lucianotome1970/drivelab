@@ -14,15 +14,17 @@ public partial class MainWindowViewModel : ViewModelBase
     public ConnectionViewModel Connection { get; }
     public IReadOnlyList<NavItem> Pages { get; }
     public TestViewModel Test { get; }
+    public bool SimulatorMode { get; }
     public object CurrentPage => SelectedPage.Page;
     public string Title => "DriveLab Studio";
 
-    public MainWindowViewModel(DeviceSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test)
+    public MainWindowViewModel(DeviceSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test, bool simulatorMode = false)
     {
         _session = session;
         Connection = connection;
         Pages = pages;
         Test = test;
+        SimulatorMode = simulatorMode;
         _selectedPage = pages[0];
     }
 

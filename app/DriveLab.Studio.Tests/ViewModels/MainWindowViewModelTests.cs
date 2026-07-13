@@ -47,4 +47,17 @@ public class MainWindowViewModelTests
         Assert.NotNull(vm.Connection);
         Assert.Equal("DriveLab Studio", vm.Title);
     }
+
+    [Fact]
+    public void SimulatorMode_Defaults_False_And_Can_Be_Set()
+    {
+        var session = new DeviceSession(new FakeTransport(), new ImmediateUiDispatcher());
+        var pages = new[] { new NavItem("Dashboard", "\U0001F39B", new DashboardViewModel(session)) };
+
+        var real = new MainWindowViewModel(session, new ConnectionViewModel(session), pages, new TestViewModel(session));
+        Assert.False(real.SimulatorMode);
+
+        var sim = new MainWindowViewModel(session, new ConnectionViewModel(session), pages, new TestViewModel(session), simulatorMode: true);
+        Assert.True(sim.SimulatorMode);
+    }
 }
