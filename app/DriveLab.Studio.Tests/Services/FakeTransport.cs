@@ -13,11 +13,14 @@ public sealed class FakeTransport : ITransport
 
     public int ConnectCalls { get; private set; }
     public int DisconnectCalls { get; private set; }
+
+    /// <summary>Quando false, simula hardware ausente: ConnectAsync não conecta.</summary>
+    public bool ConnectSucceeds { get; set; } = true;
     public DirectControl? LastControl { get; private set; }
     public (DeviceCommand cmd, byte arg)? LastCommand { get; private set; }
     public (SettingId id, SettingValue value)? LastWrite { get; private set; }
 
-    public Task ConnectAsync(CancellationToken ct = default) { ConnectCalls++; IsConnected = true; return Task.CompletedTask; }
+    public Task ConnectAsync(CancellationToken ct = default) { ConnectCalls++; IsConnected = ConnectSucceeds; return Task.CompletedTask; }
     public Task DisconnectAsync() { DisconnectCalls++; IsConnected = false; return Task.CompletedTask; }
     public Task WriteSettingAsync(SettingId id, SettingValue value) { LastWrite = (id, value); return Task.CompletedTask; }
     public Task<SettingValue> ReadSettingAsync(SettingId id) => Task.FromResult(new SettingValue(SettingType.UInt16, 900));

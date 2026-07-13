@@ -48,9 +48,16 @@ public partial class DashboardViewModel : ViewModelBase
     private async void OnConnected(object? sender, EventArgs e)
     {
         IsConnected = true;
-        // Mostra o valor real do dispositivo (não o default do VM).
-        var value = await _session.ReadSettingAsync(SettingId.MotionRange);
-        MotionRange = (int)value.AsDouble;
+        try
+        {
+            // Mostra o valor real do dispositivo (não o default do VM).
+            var value = await _session.ReadSettingAsync(SettingId.MotionRange);
+            MotionRange = (int)value.AsDouble;
+        }
+        catch
+        {
+            // Leitura pode falhar/expirar (ex.: dispositivo sumiu); não derruba o app.
+        }
     }
 
     private void OnDisconnected(object? sender, EventArgs e) => IsConnected = false;

@@ -24,6 +24,33 @@ public class DeviceSessionTests
     }
 
     [Fact]
+    public async Task ConnectAsync_Does_Not_Raise_Connected_When_Transport_Fails_To_Open()
+    {
+        var transport = new FakeTransport { ConnectSucceeds = false };
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var raised = false;
+        session.Connected += (_, _) => raised = true;
+
+        await session.ConnectAsync();
+
+        Assert.False(session.IsConnected);
+        Assert.False(raised); // sem hardware, não deve disparar Connected (evitaria leituras num canal fechado)
+    }
+
+    [Fact]
+    public async Task ConnectAsync_Raises_Connected_When_Transport_Opens()
+    {
+        var session = NewSession(out _);
+        var raised = false;
+        session.Connected += (_, _) => raised = true;
+
+        await session.ConnectAsync();
+
+        Assert.True(session.IsConnected);
+        Assert.True(raised);
+    }
+
+    [Fact]
     public async Task DisconnectAsync_Raises_Disconnected()
     {
         var session = NewSession(out _);

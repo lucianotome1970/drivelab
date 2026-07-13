@@ -21,7 +21,7 @@ public partial class ConnectionViewModel : ViewModelBase
     {
         await _session.ConnectAsync();
         IsConnected = _session.IsConnected;
-        StatusText = IsConnected ? "Conectado" : "Desconectado";
+        StatusText = IsConnected ? "Conectado" : "Nenhum dispositivo encontrado";
     }
 
     [RelayCommand]

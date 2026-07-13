@@ -37,6 +37,12 @@ public sealed class DeviceSession : IDisposable
     public async Task ConnectAsync()
     {
         await _transport.ConnectAsync();
+
+        // Se o transporte não abriu (ex.: hardware ausente no modo real), não dispara
+        // Connected — evita que views leiam settings num canal fechado (timeout/crash).
+        if (!_transport.IsConnected)
+            return;
+
         // Streaming is currently a simulator capability; a future HidTransport
         // will expose an equivalent start/stop that this line will generalize to.
         (_transport as SimulatorTransport)?.StartStreaming();
