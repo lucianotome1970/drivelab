@@ -9,20 +9,18 @@ namespace DriveLab.Studio;
 
 public static class CompositionRoot
 {
-    // Ajustes da base (força feedback). O ângulo total fica na página do Volante.
+    // Todos os ajustes da base ficam numa página só ("Base do Volante").
+    // O ângulo total de giro fica na página do Volante.
     private static readonly SettingId[] WheelBaseSettings =
     {
+        // Força feedback
         SettingId.TotalStrength,
         SettingId.MaxTorqueLimit,
         SettingId.SoftStopStrength,
         SettingId.SoftStopRange,
         SettingId.SpringStrength,
         SettingId.DamperStrength,
-    };
-
-    // Ajustes técnicos (o restante de Advanced + Hardware).
-    private static readonly SettingId[] AdvancedSettings =
-    {
+        // Técnicos
         SettingId.StaticDamping,
         SettingId.ForceDirection,
         SettingId.PositionSmoothing,
@@ -45,8 +43,7 @@ public static class CompositionRoot
         var pages = new List<NavItem>
         {
             new("Volante", "\U0001F39B", new DashboardViewModel(session)),
-            new("Base do Volante", "💪", new SettingsGroupViewModel(session, "Base do Volante", WheelBaseSettings)),
-            new("Avançado", "⚙", new SettingsGroupViewModel(session, "Avançado", AdvancedSettings)),
+            new("Base do Volante", "base", new SettingsGroupViewModel(session, "Base do Volante", WheelBaseSettings)),
             new("Telemetria", "📈", new TelemetryViewModel(session)),
         };
 
