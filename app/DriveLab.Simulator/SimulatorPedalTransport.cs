@@ -83,11 +83,14 @@ public sealed class SimulatorPedalTransport : IPedalTransport
                     {
                         _calibrating[arg] = false;
                         var pedal = (PedalIndex)arg;
-                        var d = PedalSettingsSchema.Get(PedalSettingId.InputMin);
-                        _settings[(PedalSettingId.InputMin, pedal)] = new SettingValue(d.Type, _calMin[arg]);
-                        _settings[(PedalSettingId.InputMax, pedal)] = new SettingValue(d.Type, _calMax[arg]);
-                        ApplySetting(pedal, PedalSettingId.InputMin, _calMin[arg]);
-                        ApplySetting(pedal, PedalSettingId.InputMax, _calMax[arg]);
+                        if (_calMax[arg] >= _calMin[arg])
+                        {
+                            var d = PedalSettingsSchema.Get(PedalSettingId.InputMin);
+                            _settings[(PedalSettingId.InputMin, pedal)] = new SettingValue(d.Type, _calMin[arg]);
+                            _settings[(PedalSettingId.InputMax, pedal)] = new SettingValue(d.Type, _calMax[arg]);
+                            ApplySetting(pedal, PedalSettingId.InputMin, _calMin[arg]);
+                            ApplySetting(pedal, PedalSettingId.InputMax, _calMax[arg]);
+                        }
                     }
                     break;
                 case PedalCommandId.SaveToFlash:

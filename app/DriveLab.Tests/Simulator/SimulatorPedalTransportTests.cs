@@ -83,4 +83,22 @@ public class SimulatorPedalTransportTests
         Assert.Equal(300, min.AsDouble);
         Assert.Equal(3800, max.AsDouble);
     }
+
+    [Fact]
+    public async Task CalibrateStop_With_No_Samples_Leaves_Prior_Min_Max()
+    {
+        var t = new SimulatorPedalTransport();
+        await t.ConnectAsync();
+
+        var priorMin = await t.ReadSettingAsync(PedalSettingId.InputMin, PedalIndex.Brake);
+        var priorMax = await t.ReadSettingAsync(PedalSettingId.InputMax, PedalIndex.Brake);
+
+        await t.SendCommandAsync(PedalCommandId.CalibrateStart, (byte)PedalIndex.Brake);
+        await t.SendCommandAsync(PedalCommandId.CalibrateStop, (byte)PedalIndex.Brake);
+
+        var min = await t.ReadSettingAsync(PedalSettingId.InputMin, PedalIndex.Brake);
+        var max = await t.ReadSettingAsync(PedalSettingId.InputMax, PedalIndex.Brake);
+        Assert.Equal(priorMin.AsDouble, min.AsDouble);
+        Assert.Equal(priorMax.AsDouble, max.AsDouble);
+    }
 }

@@ -13,7 +13,12 @@ public class PedalColumnViewModelTests
     {
         var t = new FakePedalTransport();
         var s = new PedalDeviceSession(t, new ImmediateUiDispatcher());
-        if (connected) s.ConnectAsync().GetAwaiter().GetResult();
+        if (connected)
+        {
+#pragma warning disable xUnit1031
+            s.ConnectAsync().GetAwaiter().GetResult();
+#pragma warning restore xUnit1031
+        }
         var vm = new PedalColumnViewModel(s, PedalIndex.Brake, "Freio");
         return (vm, t, s);
     }
@@ -54,7 +59,9 @@ public class PedalColumnViewModelTests
     {
         var (vm, _, s) = Make(connected: false);
         Assert.False(vm.CanEdit);
+#pragma warning disable xUnit1031
         s.ConnectAsync().GetAwaiter().GetResult();
+#pragma warning restore xUnit1031
         Assert.True(vm.CanEdit);
         s.Dispose();
     }

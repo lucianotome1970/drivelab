@@ -88,6 +88,15 @@ public class PedalsViewModelTests
     }
 
     [Fact]
+    public void SelectedPreset_Applies_To_All_Columns()
+    {
+        var (vm, _, _) = Make();
+        vm.SelectedPreset = new PedalCurvePreset("Zero", new double[] { 0, 0, 0, 0, 0, 0 });
+        Assert.All(vm.Columns, c => Assert.Equal(0, c.Points[5].Value));
+        vm.Dispose();
+    }
+
+    [Fact]
     public async Task Telemetry_Appends_To_Combined_Samples()
     {
         var (vm, t, _) = Make();
