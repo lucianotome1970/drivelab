@@ -13,6 +13,9 @@ namespace DriveLab.Hid;
 public sealed class HidTransport : ITransport, IDisposable
 {
     private readonly IHidChannel _channel;
+    private readonly object _pendingLock = new();
+    private readonly Dictionary<byte, TaskCompletionSource<SettingValue>> _pendingReads = new();
+    private static readonly TimeSpan DefaultReadTimeout = TimeSpan.FromMilliseconds(500);
 
     public HidTransport(IHidChannel channel)
     {
@@ -43,9 +46,28 @@ public sealed class HidTransport : ITransport, IDisposable
     public Task SendCommandAsync(DeviceCommand command, byte arg = 0) =>
         _channel.WriteAsync(Frame(ReportIds.Command, new CommandReport((byte)command, arg).ToBytes()));
 
-    // Settings are implemented in the next task.
-    public Task WriteSettingAsync(SettingId id, SettingValue value) => throw new NotImplementedException();
-    public Task<SettingValue> ReadSettingAsync(SettingId id) => throw new NotImplementedException();
+    public Task WriteSettingAsync(SettingId id, SettingValue value) =>
+        _channel.WriteAsync(Frame(ReportIds.SettingWrite, new SettingReport((byte)id, 0, value).ToBytes()));
+
+    public Task<SettingValue> ReadSettingAsync(SettingId id) => ReadSettingAsync(id, DefaultReadTimeout);
+
+    public async Task<SettingValue> ReadSettingAsync(SettingId id, TimeSpan timeout)
+    {
+        var tcs = new TaskCompletionSource<SettingValue>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_pendingLock) _pendingReads[(byte)id] = tcs;
+
+        await _channel.WriteAsync(Frame(ReportIds.SettingReadRequest, new SettingReadRequestReport((byte)id, 0).ToBytes()));
+
+        using var cts = new CancellationTokenSource(timeout);
+        using (cts.Token.Register(() =>
+        {
+            lock (_pendingLock) _pendingReads.Remove((byte)id);
+            tcs.TrySetException(new TimeoutException($"No SettingValue reply for field {(byte)id} within {timeout.TotalMilliseconds}ms"));
+        }))
+        {
+            return await tcs.Task;
+        }
+    }
 
     private void OnReport(object? sender, byte[] wire)
     {
@@ -59,6 +81,16 @@ public sealed class HidTransport : ITransport, IDisposable
             var state = DeviceState.Parse(payload);
             FirmwareVersion = state.Firmware;
             StateReceived?.Invoke(this, state);
+        }
+        else if (reportId == ReportIds.SettingValue)
+        {
+            var report = SettingReport.Parse(payload);
+            TaskCompletionSource<SettingValue>? tcs;
+            lock (_pendingLock)
+            {
+                _pendingReads.Remove(report.FieldId, out tcs);
+            }
+            tcs?.TrySetResult(report.Value);
         }
     }
 
