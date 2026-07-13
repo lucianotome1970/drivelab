@@ -11,7 +11,13 @@ public static class CompositionRoot
         var transport = new SimulatorTransport();
         var session = new DeviceSession(transport, new AvaloniaUiDispatcher());
         var connection = new ConnectionViewModel(session);
-        var dashboard = new DashboardViewModel(session);
-        return new MainWindowViewModel(connection, dashboard);
+
+        var pages = new List<NavItem>
+        {
+            new("Dashboard", "\U0001F39B", new DashboardViewModel(session)),
+            new("Ajustes", "⚙", new SettingsViewModel(session)),
+        };
+
+        return new MainWindowViewModel(session, connection, pages);
     }
 }

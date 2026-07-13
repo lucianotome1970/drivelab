@@ -9,7 +9,7 @@ namespace DriveLab.Studio.Services;
 /// App-facing facade over an <see cref="ITransport"/>. Marshals device telemetry
 /// onto the UI thread via <see cref="IUiDispatcher"/> so ViewModels can bind safely.
 /// </summary>
-public sealed class DeviceSession
+public sealed class DeviceSession : IDisposable
 {
     private readonly ITransport _transport;
     private readonly IUiDispatcher _dispatcher;
@@ -47,4 +47,10 @@ public sealed class DeviceSession
 
     private void OnTransportState(object? sender, DeviceState state) =>
         _dispatcher.Post(() => StateReceived?.Invoke(this, state));
+
+    public void Dispose()
+    {
+        _transport.StateReceived -= OnTransportState;
+        (_transport as SimulatorTransport)?.StopStreaming();
+    }
 }
