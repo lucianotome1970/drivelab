@@ -29,6 +29,7 @@ public sealed class SimulatorTransport : ITransport
                 _settings[descriptor.Id] = new SettingValue(descriptor.Type, descriptor.Default);
 
             ApplySettingsToWheel();
+            _wheel.ForceEnabled = Flags.HasFlag(DeviceFlags.ForceEnabled);
         }
         IsConnected = true;
         return Task.CompletedTask;
@@ -86,6 +87,10 @@ public sealed class SimulatorTransport : ITransport
                 }
                 break;
             case DeviceCommand.SetForceEnabled:
+                lock (_sync)
+                {
+                    _wheel.ForceEnabled = arg != 0;
+                }
                 Flags = arg != 0 ? Flags | DeviceFlags.ForceEnabled : Flags & ~DeviceFlags.ForceEnabled;
                 break;
             case DeviceCommand.Reboot:

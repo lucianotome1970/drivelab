@@ -17,7 +17,7 @@ public class MainWindowViewModelTests
             new NavItem("Dashboard", "\U0001F39B", first),
             new NavItem("Ajustes", "⚙", second),
         };
-        return new MainWindowViewModel(session, new ConnectionViewModel(session), pages);
+        return new MainWindowViewModel(session, new ConnectionViewModel(session), pages, new TestViewModel(session));
     }
 
     [Fact]

@@ -13,14 +13,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ConnectionViewModel Connection { get; }
     public IReadOnlyList<NavItem> Pages { get; }
+    public TestViewModel Test { get; }
     public object CurrentPage => SelectedPage.Page;
     public string Title => "DriveLab Studio";
 
-    public MainWindowViewModel(DeviceSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages)
+    public MainWindowViewModel(DeviceSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test)
     {
         _session = session;
         Connection = connection;
         Pages = pages;
+        Test = test;
         _selectedPage = pages[0];
     }
 
@@ -33,6 +35,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         foreach (var page in Pages)
             page.Page.Dispose();
+        Test.Dispose();
         _session.Dispose();
         base.Dispose();
     }

@@ -19,10 +19,13 @@ public static class CompositionRoot
             new("Dashboard", "\U0001F39B", new DashboardViewModel(session)),
             new("Ajustes", "⚙", new SettingsViewModel(session)),
             new("Telemetria", "📈", new TelemetryViewModel(session)),
-            new("Teste", "🕹", new TestViewModel(session)),
         };
 
-        return new MainWindowViewModel(session, connection, pages);
+        // Teste (controle direto de força) não é uma aba: abre num modal à parte,
+        // para o desenho do volante continuar visível ao fundo enquanto se ajusta a força.
+        var test = new TestViewModel(session);
+
+        return new MainWindowViewModel(session, connection, pages, test);
     }
 
     /// <summary>Builds a transport talking to real hardware over USB HID (used when a device is present).</summary>

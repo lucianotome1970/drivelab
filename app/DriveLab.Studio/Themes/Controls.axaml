@@ -31,6 +31,16 @@
         <Setter Property="Padding" Value="12,6" />
         <Setter Property="Margin" Value="0,0,6,6" />
     </Style>
+    <!-- Preset selecionado (ângulo máximo atual) -->
+    <Style Selector="Button.chip.selected">
+        <Setter Property="Background" Value="#FF8124" />
+        <Setter Property="Foreground" Value="#111111" />
+        <Setter Property="BorderBrush" Value="#FF8124" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.chip.selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FF8124" />
+    </Style>
 
     <!-- Section heading -->
     <Style Selector="TextBlock.h2">

@@ -18,8 +18,6 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[1]}" />
                 <Button Classes="nav" Content="{Binding Pages[2].Icon}" ToolTip.Tip="{Binding Pages[2].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}" />
-                <Button Classes="nav" Content="{Binding Pages[3].Icon}" ToolTip.Tip="{Binding Pages[3].Label}"
-                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}" />
             </StackPanel>
         </Border>
 
@@ -31,6 +29,7 @@
                     <TextBlock Grid.Column="0" Text="DriveLab Studio" Classes="h2" VerticalAlignment="Center" />
                     <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0" />
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button Content="🕹 Teste" Click="OpenTest_Click" ToolTip.Tip="Controle direto de força (janela separada)" />
                         <Button Classes="accent" Content="Conectar" Command="{Binding ConnectCommand}" IsVisible="{Binding !IsConnected}" />
                         <Button Content="Desconectar" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsConnected}" />
                     </StackPanel>

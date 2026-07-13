@@ -18,6 +18,12 @@ public sealed class VirtualWheel
     public double DamperGain { get; set; } = 1.0;
     public double TotalStrength01 { get; set; } = 1.0;
 
+    /// <summary>
+    /// Motor habilitado. Quando desligado, o volante não recebe torque nenhum
+    /// (fica parado no ângulo atual) — espelha o "força habilitada" do dispositivo.
+    /// </summary>
+    public bool ForceEnabled { get; set; } = true;
+
     public double AngleRad { get; private set; }
     public double VelocityRad { get; private set; }
 
@@ -38,6 +44,14 @@ public sealed class VirtualWheel
 
     public void Step(double dt)
     {
+        if (!ForceEnabled)
+        {
+            // Motor desligado: sem torque, sem velocidade. Segura o ângulo atual.
+            VelocityRad = 0;
+            _lastTorque = 0;
+            return;
+        }
+
         var halfRangeRad = HalfRangeRad();
         var position = halfRangeRad > 0 ? AngleRad / halfRangeRad : 0; // −1..+1
 

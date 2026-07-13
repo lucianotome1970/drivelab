@@ -1,16 +1,20 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:conv="using:DriveLab.Studio.Converters"
              x:Class="DriveLab.Studio.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
+    <UserControl.Resources>
+        <conv:IntEqualsConverter x:Key="IntEquals" />
+    </UserControl.Resources>
     <Border Classes="card" HorizontalAlignment="Left" VerticalAlignment="Top" Width="420">
         <StackPanel Spacing="16">
             <TextBlock Text="Volante (ODESC)" Classes="h2" />
 
             <!-- Área de calibração: imagem do volante DriveLab girando com o ângulo lido -->
-            <Grid Width="340" Height="300" HorizontalAlignment="Center" ClipToBounds="False">
-                <Image Source="avares://DriveLab.Studio/Assets/wheel.png" Width="300" Stretch="Uniform"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+            <Grid Width="240" Height="240" HorizontalAlignment="Center" ClipToBounds="False">
+                <Image Source="avares://DriveLab.Studio/Assets/wheel.png" Width="220" Stretch="Uniform"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
                     <Image.RenderTransform>
                         <RotateTransform Angle="{Binding AngleDegrees}" />
                     </Image.RenderTransform>
@@ -25,13 +29,13 @@
             <!-- Presets (explicit buttons — robust, no item-template command binding) -->
             <TextBlock Text="Ângulo máximo" Classes="muted" />
             <WrapPanel>
-                <Button Classes="chip" Content="360"  Command="{Binding SetMaxAngleCommand}" CommandParameter="360" />
-                <Button Classes="chip" Content="540"  Command="{Binding SetMaxAngleCommand}" CommandParameter="540" />
-                <Button Classes="chip" Content="720"  Command="{Binding SetMaxAngleCommand}" CommandParameter="720" />
-                <Button Classes="chip" Content="900"  Command="{Binding SetMaxAngleCommand}" CommandParameter="900" />
-                <Button Classes="chip" Content="1080" Command="{Binding SetMaxAngleCommand}" CommandParameter="1080" />
-                <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" />
-                <Button Classes="chip" Content="1800" Command="{Binding SetMaxAngleCommand}" CommandParameter="1800" />
+                <Button Classes="chip" Content="360"  Command="{Binding SetMaxAngleCommand}" CommandParameter="360"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=360}" />
+                <Button Classes="chip" Content="540"  Command="{Binding SetMaxAngleCommand}" CommandParameter="540"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=540}" />
+                <Button Classes="chip" Content="720"  Command="{Binding SetMaxAngleCommand}" CommandParameter="720"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=720}" />
+                <Button Classes="chip" Content="900"  Command="{Binding SetMaxAngleCommand}" CommandParameter="900"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=900}" />
+                <Button Classes="chip" Content="1080" Command="{Binding SetMaxAngleCommand}" CommandParameter="1080" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1080}" />
+                <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
+                <Button Classes="chip" Content="1800" Command="{Binding SetMaxAngleCommand}" CommandParameter="1800" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1800}" />
             </WrapPanel>
 
             <Button Classes="accent" Content="Center" Command="{Binding CenterCommand}" HorizontalAlignment="Left" />

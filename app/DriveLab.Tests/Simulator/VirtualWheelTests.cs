@@ -52,6 +52,38 @@ public class VirtualWheelTests
     }
 
     [Fact]
+    public void Force_Disabled_Stops_Wheel_And_Holds_Angle()
+    {
+        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        wheel.SetInputs(constant: 0.8, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
+        StepMany(wheel, 50);
+        Assert.True(Math.Abs(wheel.AngleRad) > 0, "wheel should have moved while force enabled");
+
+        // Desabilita a força: o volante deve parar (sem torque, sem velocidade) e segurar o ângulo.
+        wheel.ForceEnabled = false;
+        var angleAtDisable = wheel.AngleRad;
+        StepMany(wheel, 200);
+
+        Assert.Equal(0, wheel.VelocityRad);
+        Assert.Equal(angleAtDisable, wheel.AngleRad);
+        Assert.Equal(0, wheel.TorqueNormalized);
+    }
+
+    [Fact]
+    public void ResetCenter_Holds_At_Zero_While_Force_Disabled()
+    {
+        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        wheel.SetInputs(constant: 0.8, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
+        StepMany(wheel, 50);
+
+        wheel.ForceEnabled = false;
+        wheel.ResetCenter();
+        StepMany(wheel, 200);
+
+        Assert.Equal(0, wheel.AngleRad);
+    }
+
+    [Fact]
     public void Angle_Is_Clamped_To_Half_Range()
     {
         var wheel = new VirtualWheel { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
