@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             x:Class="DriveLab.Studio.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+    <Border Classes="card" HorizontalAlignment="Left" VerticalAlignment="Top" Width="420">
+        <StackPanel Spacing="16">
+            <TextBlock Text="Volante (ODESC)" Classes="h2" />
+
+            <!-- Gauge: a diameter needle rotating around the hub by the live steering angle -->
+            <Grid Width="220" Height="220" HorizontalAlignment="Center">
+                <Ellipse Width="220" Height="220" Stroke="{DynamicResource DlBorder}" StrokeThickness="2" Fill="{DynamicResource DlBackground}" />
+                <Rectangle Width="4" Height="170" Fill="{DynamicResource DlAccent}" RadiusX="2" RadiusY="2"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                    <Rectangle.RenderTransform>
+                        <RotateTransform Angle="{Binding AngleDegrees}" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+                <Ellipse Width="16" Height="16" Fill="{DynamicResource DlAccent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding AngleDegrees, StringFormat={}{0:0}°}"
+                           Foreground="{DynamicResource DlText}" FontSize="26" FontWeight="Bold"
+                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6" />
+            </Grid>
+
+            <!-- Presets (explicit buttons — robust, no item-template command binding) -->
+            <TextBlock Text="Ângulo máximo" Classes="muted" />
+            <WrapPanel>
+                <Button Classes="chip" Content="360"  Command="{Binding SetMaxAngleCommand}" CommandParameter="360" />
+                <Button Classes="chip" Content="540"  Command="{Binding SetMaxAngleCommand}" CommandParameter="540" />
+                <Button Classes="chip" Content="720"  Command="{Binding SetMaxAngleCommand}" CommandParameter="720" />
+                <Button Classes="chip" Content="900"  Command="{Binding SetMaxAngleCommand}" CommandParameter="900" />
+                <Button Classes="chip" Content="1080" Command="{Binding SetMaxAngleCommand}" CommandParameter="1080" />
+                <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" />
+                <Button Classes="chip" Content="1800" Command="{Binding SetMaxAngleCommand}" CommandParameter="1800" />
+            </WrapPanel>
+
+            <Button Classes="accent" Content="Center" Command="{Binding CenterCommand}" HorizontalAlignment="Left" />
+        </StackPanel>
+    </Border>
+</UserControl>
