@@ -28,12 +28,29 @@ public partial class DashboardViewModel : ViewModelBase
     {
         _session = session;
         _session.StateReceived += OnState;
+        _session.Connected += OnConnected;
+        _session.SettingChanged += OnSettingChanged;
     }
 
     public override void Dispose()
     {
         _session.StateReceived -= OnState;
+        _session.Connected -= OnConnected;
+        _session.SettingChanged -= OnSettingChanged;
         base.Dispose();
+    }
+
+    private async void OnConnected(object? sender, EventArgs e)
+    {
+        // Mostra o valor real do dispositivo (não o default do VM).
+        var value = await _session.ReadSettingAsync(SettingId.MotionRange);
+        MotionRange = (int)value.AsDouble;
+    }
+
+    private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
+    {
+        if (e.Id == SettingId.MotionRange)
+            MotionRange = (int)e.Value.AsDouble;
     }
 
     private void OnState(object? sender, DeviceState state)

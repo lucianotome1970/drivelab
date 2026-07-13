@@ -55,4 +55,29 @@ public class DashboardViewModelTests
         await vm.CenterCommand.ExecuteAsync(null);
         Assert.Null(transport.LastCommand);
     }
+
+    [Fact]
+    public async Task MotionRange_Syncs_When_Setting_Changed_Elsewhere()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new DashboardViewModel(session);
+
+        // Outra tela (ex.: Ajustes) grava o MotionRange no dispositivo.
+        await session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 540));
+
+        Assert.Equal(540, vm.MotionRange);
+    }
+
+    [Fact]
+    public async Task MotionRange_Loads_From_Device_On_Connect()
+    {
+        var transport = new FakeTransport(); // ReadSettingAsync returns 900
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new DashboardViewModel(session);
+
+        await session.ConnectAsync();
+
+        Assert.Equal(900, vm.MotionRange);
+    }
 }

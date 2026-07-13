@@ -38,6 +38,8 @@ public sealed class SettingsViewModel : ViewModelBase
     public override void Dispose()
     {
         _session.Connected -= OnConnected;
+        foreach (var field in BasicFields.Concat(AdvancedFields).Concat(HardwareFields))
+            field.Dispose();
         base.Dispose();
     }
 }

@@ -1,5 +1,6 @@
 using Xunit;
 using DriveLab.Core.Protocol;
+using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
 using DriveLab.Studio.Services;
 
@@ -20,6 +21,20 @@ public class DeviceSessionTests
         await session.ConnectAsync();
         Assert.True(session.IsConnected);
         Assert.Equal(1, transport.ConnectCalls);
+    }
+
+    [Fact]
+    public async Task WriteSettingAsync_Raises_SettingChanged_With_Id_And_Value()
+    {
+        var session = NewSession(out _);
+        SettingChangedEventArgs? got = null;
+        session.SettingChanged += (_, e) => got = e;
+
+        await session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 360));
+
+        Assert.NotNull(got);
+        Assert.Equal(SettingId.MotionRange, got!.Id);
+        Assert.Equal(360, got.Value.AsDouble);
     }
 
     [Fact]

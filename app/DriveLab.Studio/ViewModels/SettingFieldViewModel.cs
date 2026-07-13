@@ -25,6 +25,24 @@ public partial class SettingFieldViewModel : ViewModelBase
         _session = session;
         _descriptor = descriptor;
         _value = descriptor.Default;
+        _session.SettingChanged += OnSettingChanged;
+    }
+
+    private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
+    {
+        if (e.Id != _descriptor.Id)
+            return;
+
+        // Atualiza sem disparar WriteAsync de volta (evita eco/loop).
+        _loading = true;
+        Value = e.Value.AsDouble;
+        _loading = false;
+    }
+
+    public override void Dispose()
+    {
+        _session.SettingChanged -= OnSettingChanged;
+        base.Dispose();
     }
 
     public async Task LoadAsync()

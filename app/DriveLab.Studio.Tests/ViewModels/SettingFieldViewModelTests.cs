@@ -56,6 +56,20 @@ public class SettingFieldViewModelTests
     }
 
     [Fact]
+    public async Task Value_Syncs_When_Same_Setting_Changed_Elsewhere()
+    {
+        var vm = New(out var transport);
+        await transport.ConnectAsync();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        // recria vm sobre a mesma sessão para observar o evento
+        var field = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.MotionRange));
+
+        await session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 720));
+
+        Assert.Equal(720, field.Value);
+    }
+
+    [Fact]
     public void Integer_Setting_Is_Integer_And_Formats_Without_Decimals()
     {
         var transport = new FakeTransport();

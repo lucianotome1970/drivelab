@@ -24,6 +24,12 @@ public sealed class DeviceSession : IDisposable
     public event EventHandler<DeviceState>? StateReceived;
     public event EventHandler? Connected;
 
+    /// <summary>
+    /// Raised (on the UI thread) after a setting is written, so every view bound to
+    /// that setting stays in sync regardless of which view triggered the change.
+    /// </summary>
+    public event EventHandler<SettingChangedEventArgs>? SettingChanged;
+
     public bool IsConnected => _transport.IsConnected;
     public FirmwareVersion FirmwareVersion => _transport.FirmwareVersion;
 
@@ -42,7 +48,12 @@ public sealed class DeviceSession : IDisposable
         await _transport.DisconnectAsync();
     }
 
-    public Task WriteSettingAsync(SettingId id, SettingValue value) => _transport.WriteSettingAsync(id, value);
+    public async Task WriteSettingAsync(SettingId id, SettingValue value)
+    {
+        await _transport.WriteSettingAsync(id, value);
+        _dispatcher.Post(() => SettingChanged?.Invoke(this, new SettingChangedEventArgs(id, value)));
+    }
+
     public Task<SettingValue> ReadSettingAsync(SettingId id) => _transport.ReadSettingAsync(id);
     public Task SendDirectControlAsync(DirectControl control) => _transport.SendDirectControlAsync(control);
     public Task SendCommandAsync(DeviceCommand command, byte arg = 0) => _transport.SendCommandAsync(command, arg);
@@ -55,4 +66,17 @@ public sealed class DeviceSession : IDisposable
         _transport.StateReceived -= OnTransportState;
         (_transport as SimulatorTransport)?.StopStreaming();
     }
+}
+
+/// <summary>Payload for <see cref="DeviceSession.SettingChanged"/>.</summary>
+public sealed class SettingChangedEventArgs : EventArgs
+{
+    public SettingChangedEventArgs(SettingId id, SettingValue value)
+    {
+        Id = id;
+        Value = value;
+    }
+
+    public SettingId Id { get; }
+    public SettingValue Value { get; }
 }
