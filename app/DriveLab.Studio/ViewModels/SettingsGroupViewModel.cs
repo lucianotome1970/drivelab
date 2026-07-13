@@ -14,11 +14,20 @@ public sealed class SettingsGroupViewModel : ViewModelBase
     public string Title { get; }
     public IReadOnlyList<SettingFieldViewModel> Fields { get; }
 
+    /// <summary>Metade dos campos, para o layout em 2 colunas (estilo MOZA).</summary>
+    public IReadOnlyList<SettingFieldViewModel> LeftColumn { get; }
+    public IReadOnlyList<SettingFieldViewModel> RightColumn { get; }
+
     public SettingsGroupViewModel(DeviceSession session, string title, IEnumerable<SettingId> ids)
     {
         _session = session;
         Title = title;
         Fields = ids.Select(id => new SettingFieldViewModel(session, SettingsSchema.Get(id))).ToList();
+
+        var half = (Fields.Count + 1) / 2; // coluna esquerda leva o excedente
+        LeftColumn = Fields.Take(half).ToList();
+        RightColumn = Fields.Skip(half).ToList();
+
         _session.Connected += OnConnected;
     }
 

@@ -1,40 +1,54 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
-             xmlns:conv="using:DriveLab.Studio.Converters"
              x:Class="DriveLab.Studio.Views.SettingsGroupView"
              x:DataType="vm:SettingsGroupViewModel">
     <UserControl.Resources>
-        <conv:IntEqualsConverter x:Key="IntEquals" />
-        <DataTemplate x:Key="FieldRow" x:DataType="vm:SettingFieldViewModel">
-            <Grid ColumnDefinitions="190,*,86" Margin="0,7">
-                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
+        <DataTemplate x:Key="FieldBlock" x:DataType="vm:SettingFieldViewModel">
+            <StackPanel Spacing="7" Margin="0,10">
+                <!-- Label + caixa de valor -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{Binding DisplayName}" />
+                    <Border Grid.Column="1" Classes="valueBox">
+                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding ValueText}" />
+                            <TextBlock Text="{Binding Unit}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
-                <!-- Slider contínuo (campos sem presets) -->
-                <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}"
-                        IsVisible="{Binding !HasPresets}" IsEnabled="{Binding IsConnected}"
-                        IsSnapToTickEnabled="{Binding IsInteger}" TickFrequency="1" Margin="10,0" VerticalAlignment="Center" />
+                <!-- Mín · slider · Máx -->
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Min, StringFormat={}{0:0}}" Margin="0,0,10,0" />
+                    <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}"
+                            IsEnabled="{Binding IsConnected}" IsSnapToTickEnabled="{Binding IsInteger}"
+                            TickFrequency="1" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Classes="endLabel" Text="{Binding Max, StringFormat={}{0:0}}" Margin="10,0,0,0" />
+                </Grid>
 
-                <!-- Presets fixos (ex.: Ângulo total de giro) -->
-                <WrapPanel Grid.Column="1" IsVisible="{Binding HasPresets}" Margin="10,0" VerticalAlignment="Center">
-                    <Button Classes="chip" Content="360"  Command="{Binding SelectPresetCommand}" CommandParameter="360"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=360}" />
-                    <Button Classes="chip" Content="540"  Command="{Binding SelectPresetCommand}" CommandParameter="540"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=540}" />
-                    <Button Classes="chip" Content="720"  Command="{Binding SelectPresetCommand}" CommandParameter="720"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=720}" />
-                    <Button Classes="chip" Content="900"  Command="{Binding SelectPresetCommand}" CommandParameter="900"  Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=900}" />
-                    <Button Classes="chip" Content="1080" Command="{Binding SelectPresetCommand}" CommandParameter="1080" Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=1080}" />
-                    <Button Classes="chip" Content="1440" Command="{Binding SelectPresetCommand}" CommandParameter="1440" Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
-                    <Button Classes="chip" Content="1800" Command="{Binding SelectPresetCommand}" CommandParameter="1800" Classes.selected="{Binding Value, Converter={StaticResource IntEquals}, ConverterParameter=1800}" />
-                </WrapPanel>
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="3">
-                    <TextBlock Text="{Binding ValueText}" Foreground="{DynamicResource DlMuted}" />
-                    <TextBlock Text="{Binding Unit}" Foreground="{DynamicResource DlMuted}" />
-                </StackPanel>
-            </Grid>
+                <!-- Chips de preset -->
+                <ItemsControl ItemsSource="{Binding PresetOptions}" IsVisible="{Binding HasPresets}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PresetOptionViewModel">
+                            <Button Classes="chip" Content="{Binding Value}"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Command="{Binding SelectCommand}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </DataTemplate>
     </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <!-- Margem à direita afasta os campos da barra de rolagem -->
-        <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" Margin="4,4,20,4" MaxWidth="560" HorizontalAlignment="Left" />
+        <Grid ColumnDefinitions="*,28,*" Margin="4,4,20,4">
+            <ItemsControl Grid.Column="0" ItemsSource="{Binding LeftColumn}" ItemTemplate="{StaticResource FieldBlock}" />
+            <ItemsControl Grid.Column="2" ItemsSource="{Binding RightColumn}" ItemTemplate="{StaticResource FieldBlock}" />
+        </Grid>
     </ScrollViewer>
 </UserControl>

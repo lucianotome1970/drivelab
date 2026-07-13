@@ -82,7 +82,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.DamperStrength));
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderCpr));
         Assert.False(vm.HasPresets);
         Assert.Empty(vm.Presets);
     }

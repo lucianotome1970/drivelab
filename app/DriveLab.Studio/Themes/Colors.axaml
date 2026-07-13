@@ -13,4 +13,13 @@
     <SolidColorBrush x:Key="DlText" Color="{StaticResource DlTextColor}" />
     <SolidColorBrush x:Key="DlMuted" Color="{StaticResource DlMutedColor}" />
     <SolidColorBrush x:Key="DlBorder" Color="{StaticResource DlBorderColor}" />
+
+    <!-- Accent laranja do Fluent (sliders, aba selecionada, toggles) — estilo MOZA -->
+    <Color x:Key="SystemAccentColor">#FF6A00</Color>
+    <Color x:Key="SystemAccentColorLight1">#FF8124</Color>
+    <Color x:Key="SystemAccentColorLight2">#FF9A4D</Color>
+    <Color x:Key="SystemAccentColorLight3">#FFB27A</Color>
+    <Color x:Key="SystemAccentColorDark1">#E65F00</Color>
+    <Color x:Key="SystemAccentColorDark2">#CC5400</Color>
+    <Color x:Key="SystemAccentColorDark3">#B34900</Color>
 </ResourceDictionary>

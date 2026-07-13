@@ -1,4 +1,8 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Settings;
+using DriveLab.Core.Transport;
+using DriveLab.Studio.Services;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -9,22 +13,49 @@ public sealed record SettingsTabSpec(string Header, IReadOnlyList<SettingId> Ids
 public sealed record PageTab(string Header, ViewModelBase Content);
 
 /// <summary>
-/// Página com abas (ex.: "Base do Volante" → Basic / Advanced / Hardware / Telemetria).
-/// Cada aba tem seu próprio ViewModel/View; a página só as agrega e descarta.
+/// Página com abas (ex.: "Base do Volante" → Basic / Advanced / Hardware / Telemetria)
+/// e a barra inferior (Padrão / Salvar), no estilo MOZA.
 /// </summary>
-public sealed class SettingsPageViewModel : ViewModelBase
+public sealed partial class SettingsPageViewModel : ViewModelBase
 {
+    private readonly DeviceSession _session;
+
     public string Title { get; }
     public IReadOnlyList<PageTab> Tabs { get; }
 
-    public SettingsPageViewModel(string title, IEnumerable<PageTab> tabs)
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ResetDefaultsCommand))]
+    private bool _isConnected;
+
+    public SettingsPageViewModel(DeviceSession session, string title, IEnumerable<PageTab> tabs)
     {
+        _session = session;
         Title = title;
         Tabs = tabs.ToList();
+        _isConnected = session.IsConnected;
+        _session.Connected += OnConnectionChanged;
+        _session.Disconnected += OnConnectionChanged;
+    }
+
+    private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
+
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private Task SaveAsync() => _session.SendCommandAsync(DeviceCommand.SaveSettings);
+
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private void ResetDefaults()
+    {
+        foreach (var tab in Tabs)
+            if (tab.Content is SettingsGroupViewModel group)
+                foreach (var field in group.Fields)
+                    field.ResetToDefault();
     }
 
     public override void Dispose()
     {
+        _session.Connected -= OnConnectionChanged;
+        _session.Disconnected -= OnConnectionChanged;
         foreach (var tab in Tabs)
             tab.Content.Dispose();
         base.Dispose();

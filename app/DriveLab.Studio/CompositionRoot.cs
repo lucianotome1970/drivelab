@@ -59,7 +59,7 @@ public static class CompositionRoot
         var pages = new List<NavItem>
         {
             new("Volante", "\U0001F39B", new DashboardViewModel(session)),
-            new("Base do Volante", "base", new SettingsPageViewModel("Base do Volante", wheelBaseTabs)),
+            new("Base do Volante", "base", new SettingsPageViewModel(session, "Base do Volante", wheelBaseTabs)),
             new("Pedais", "\U0001F9B6", pedals),
         };
 

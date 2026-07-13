@@ -8,9 +8,6 @@ namespace DriveLab.Studio.ViewModels;
 
 public partial class SettingFieldViewModel : ViewModelBase
 {
-    // Presets fixos por setting (mesmos do Dashboard). Vazio => slider contínuo.
-    private static readonly int[] MotionRangePresets = { 360, 540, 720, 900, 1080, 1440, 1800 };
-
     private readonly DeviceSession _session;
     private readonly SettingDescriptor _descriptor;
     private bool _loading;
@@ -33,19 +30,43 @@ public partial class SettingFieldViewModel : ViewModelBase
     public IReadOnlyList<int> Presets { get; }
     public bool HasPresets => Presets.Count > 0;
 
+    /// <summary>Chips de preset (com estado selecionado/habilitado) para a UI.</summary>
+    public IReadOnlyList<PresetOptionViewModel> PresetOptions { get; }
+
     public SettingFieldViewModel(DeviceSession session, SettingDescriptor descriptor)
     {
         _session = session;
         _descriptor = descriptor;
         _value = descriptor.Default;
-        Presets = descriptor.Id == SettingId.MotionRange ? MotionRangePresets : Array.Empty<int>();
+        Presets = SettingPresets.For(descriptor.Id);
+        PresetOptions = Presets.Select(p => new PresetOptionViewModel(p, () => Value = p)).ToList();
         _isConnected = session.IsConnected;
+        foreach (var option in PresetOptions)
+            option.CanSelect = _isConnected;
+        UpdatePresetSelection();
+
         _session.SettingChanged += OnSettingChanged;
         _session.Connected += OnConnectionChanged;
         _session.Disconnected += OnConnectionChanged;
     }
 
     private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
+
+    partial void OnIsConnectedChanged(bool value)
+    {
+        foreach (var option in PresetOptions)
+            option.CanSelect = value;
+    }
+
+    private void UpdatePresetSelection()
+    {
+        var current = (int)Math.Round(Value);
+        foreach (var option in PresetOptions)
+            option.IsSelected = option.Value == current;
+    }
+
+    /// <summary>Volta o campo ao valor padrão do schema (grava se conectado).</summary>
+    public void ResetToDefault() => Value = _descriptor.Default;
 
     [RelayCommand(CanExecute = nameof(IsConnected))]
     private void SelectPreset(string value)
@@ -95,6 +116,7 @@ public partial class SettingFieldViewModel : ViewModelBase
     partial void OnValueChanged(double value)
     {
         OnPropertyChanged(nameof(ValueText));
+        UpdatePresetSelection();
         if (!_loading)
             _ = WriteAsync();
     }
