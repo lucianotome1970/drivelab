@@ -36,8 +36,12 @@ public partial class TestViewModel : ViewModelBase
     partial void OnPeriodicChanged(double value) => _ = SendAsync();
     partial void OnDamperChanged(double value) => _ = SendAsync();
 
-    partial void OnForceEnabledChanged(bool value) =>
+    partial void OnForceEnabledChanged(bool value)
+    {
+        if (!_session.IsConnected)
+            return;
         _ = _session.SendCommandAsync(DeviceCommand.SetForceEnabled, (byte)(value ? 1 : 0));
+    }
 
     private static short ToInt16(double normalized) =>
         (short)Math.Round(Math.Clamp(normalized, -1, 1) * 10000);

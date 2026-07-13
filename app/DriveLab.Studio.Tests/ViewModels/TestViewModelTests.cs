@@ -39,11 +39,20 @@ public class TestViewModelTests
     }
 
     [Fact]
-    public void ForceEnabled_Sends_SetForceEnabled_Command()
+    public async Task ForceEnabled_Sends_SetForceEnabled_Command()
     {
         var vm = New(out var transport);
+        await transport.ConnectAsync();
         vm.ForceEnabled = true;
         Assert.Equal(DeviceCommand.SetForceEnabled, transport.LastCommand!.Value.cmd);
         Assert.Equal(1, transport.LastCommand!.Value.arg);
+    }
+
+    [Fact]
+    public void ForceEnabled_Does_Nothing_When_Disconnected()
+    {
+        var vm = New(out var transport); // not connected
+        vm.ForceEnabled = true;
+        Assert.Null(transport.LastCommand);
     }
 }
