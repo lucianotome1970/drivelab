@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="DlBackgroundColor">#0F1216</Color>
+    <Color x:Key="DlCardColor">#171B21</Color>
+    <Color x:Key="DlAccentColor">#FF6A00</Color>
+    <Color x:Key="DlTextColor">#E7EBF0</Color>
+    <Color x:Key="DlMutedColor">#9AA4B0</Color>
+    <Color x:Key="DlBorderColor">#262C34</Color>
+
+    <SolidColorBrush x:Key="DlBackground" Color="{StaticResource DlBackgroundColor}" />
+    <SolidColorBrush x:Key="DlCard" Color="{StaticResource DlCardColor}" />
+    <SolidColorBrush x:Key="DlAccent" Color="{StaticResource DlAccentColor}" />
+    <SolidColorBrush x:Key="DlText" Color="{StaticResource DlTextColor}" />
+    <SolidColorBrush x:Key="DlMuted" Color="{StaticResource DlMutedColor}" />
+    <SolidColorBrush x:Key="DlBorder" Color="{StaticResource DlBorderColor}" />
+</ResourceDictionary>

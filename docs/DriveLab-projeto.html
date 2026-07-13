@@ -166,8 +166,9 @@
       <tr><td>Placa ODESC v4.2</td><td><span class="badge b-ok">TENHO</span></td></tr>
       <tr><td>Ferro de solda</td><td><span class="badge b-ok">TENHO</span></td></tr>
       <tr><td>Multímetro</td><td><span class="badge b-ok">TENHO</span></td></tr>
-      <tr><td>Fonte de notebook 12V 3A (para bring-up seguro M0–M2)</td><td><span class="badge b-ok">TENHO</span></td></tr>
-      <tr><td>Fonte 24V 30A 720W (para força real, M3+) — usar fusível 15–20A</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Fonte de notebook 12V 3A (bring-up ultra-seguro M0–M1)</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Fonte Dell Alienware 240W 19,5V 12,3A (workhorse de bancada M2–M6, do projeto FFBeast antigo)</td><td><span class="badge b-ok">TENHO</span></td></tr>
+      <tr><td>Fonte 24V 30A 720W (força/torque máximo, validação final) — usar fusível 15–20A</td><td><span class="badge b-ok">TENHO</span></td></tr>
       <tr><td>Encoder óptico Omron E6B2-CWZ6C (2500 PPR / 10.000 CPR, ABZ) — <code>cpr = 10000</code></td><td><span class="badge b-ok">TENHO</span></td></tr>
       <tr><td><b>Peças mecânicas</b> (suporte do motor, acoplamento do encoder, adaptador de volante) — de um projeto FFBeast anterior, hoje desmontado</td><td><span class="badge b-ok">TENHO</span></td></tr>
       <tr><td>Brake resistor 2Ω 100W (RX24 aluminum) — <code>brake_resistance = 2</code></td><td><span class="badge b-buy">COMPRANDO</span></td></tr>
@@ -199,7 +200,7 @@
       <b>Brake resistor é OBRIGATÓRIO</b> antes de fechar a malha (closed loop). Ele absorve a energia da frenagem; sem ele há risco de sobretensão e dano à placa. Seu 2Ω 100W resolve com folga (<code>brake_resistance = 2</code>).
     </div>
     <div class="callout c-warn">
-      <b>Primeiro bring-up com corrente limitada.</b> Use a fonte de notebook <b>12V 3A</b> nos marcos M0–M2 — a baixa corrente funciona como "rodinhas de treinamento" (satura em vez de queimar). Só troque pela <b>24V 30A</b> no M3 (força real), com limites de corrente já configurados e subindo gradualmente. Um DD gera torque forte — o volante pode dar solavancos. Bancada firme, mão longe, e-stop acessível, força começa <b>desabilitada</b> e sobe gradual.
+      <b>Progressão de fontes (3 níveis).</b> <b>M0–M1:</b> notebook <b>12V 3A</b> (rodinhas de treinamento — satura em vez de queimar). <b>M2–M6:</b> <b>Dell 19,5V 12,3A</b> (workhorse: realista mas controlada). <b>Validação final:</b> <b>24V 30A</b>, com limites de corrente configurados e subindo gradualmente. Nunca &gt;24V. Um DD gera torque forte — o volante pode dar solavancos. Bancada firme, mão longe, e-stop acessível, força começa <b>desabilitada</b> e sobe gradual.
     </div>
     <div class="callout c-danger">
       <b>Placa versão 24V:</b> nunca alimente acima de <b>~24V</b> — os capacitores são de baixa tensão e 36V/48V os destruiriam. Alvo definitivo: exatamente 24V.

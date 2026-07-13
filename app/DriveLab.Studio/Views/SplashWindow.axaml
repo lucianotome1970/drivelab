@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="DriveLab.Studio.Views.SplashWindow"
+        Width="760" Height="507"
+        SystemDecorations="None"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F1216">
+    <Image Source="avares://DriveLab.Studio/Assets/splash.png" Stretch="UniformToFill" />
+</Window>

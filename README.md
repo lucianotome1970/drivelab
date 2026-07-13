@@ -13,4 +13,9 @@ Volante Direct Drive open-source (firmware para ODESC v4.2 + app configurador).
 - `app/DriveLab.Tests` — testes.
 - `docs/` — spec e planos.
 
-> O executável (DriveLab Studio) é gerado no plano seguinte, via `scripts/publish-win.ps1`.
+## Gerar o executável Windows (DriveLab Studio)
+
+- Windows: `./scripts/publish-win.ps1`
+- macOS/Linux (cross-publish): `./scripts/publish-win.sh`
+
+Saída: `dist/win-x64/DriveLab.Studio.exe` (self-contained, single-file — não precisa de .NET instalado no PC alvo).

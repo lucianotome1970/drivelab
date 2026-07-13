@@ -1,0 +1,37 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DriveLab.Studio.ViewModels"
+        x:Class="DriveLab.Studio.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1040" Height="680"
+        Title="DriveLab Studio"
+        Background="{DynamicResource DlBackground}"
+        TransparencyLevelHint="None">
+    <Grid ColumnDefinitions="64,*">
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="{DynamicResource DlCard}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,1,0">
+            <StackPanel Margin="0,16" Spacing="8" HorizontalAlignment="Center">
+                <TextBlock Text="🏎️" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                <Button Classes="accent" Width="40" Height="40" Content="🎛" ToolTip.Tip="Dashboard" HorizontalContentAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Content -->
+        <Grid Grid.Column="1" RowDefinitions="Auto,*">
+            <!-- Top connection bar -->
+            <Border Grid.Row="0" Padding="20,14" Background="{DynamicResource DlBackground}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,Auto,Auto" DataContext="{Binding Connection}" x:DataType="vm:ConnectionViewModel">
+                    <TextBlock Grid.Column="0" Text="DriveLab Studio" Classes="h2" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button Classes="accent" Content="Conectar" Command="{Binding ConnectCommand}" IsVisible="{Binding !IsConnected}" />
+                        <Button Content="Desconectar" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsConnected}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Current page -->
+            <ContentControl Grid.Row="1" Margin="20" Content="{Binding CurrentPage}" />
+        </Grid>
+    </Grid>
+</Window>
