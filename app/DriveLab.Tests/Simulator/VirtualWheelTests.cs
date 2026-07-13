@@ -73,4 +73,29 @@ public class VirtualWheelTests
 
         Assert.Equal(10000, wheel.PositionNormalized);
     }
+
+    [Fact]
+    public void PositionNormalized_Is_Minus_10000_At_Negative_Limit()
+    {
+        var wheel = new VirtualWheel { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
+        wheel.SetInputs(constant: -1.0, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
+
+        StepMany(wheel, 2000);
+
+        var halfRangeRad = (90.0 / 2.0) * Math.PI / 180.0;
+        Assert.True(wheel.AngleRad >= -halfRangeRad - 1e-6);
+        Assert.Equal(-10000, wheel.PositionNormalized);
+    }
+
+    [Fact]
+    public void Telemetry_Getters_Report_Sane_Values_Under_Positive_Force()
+    {
+        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        wheel.SetInputs(constant: 0.5, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
+
+        StepMany(wheel, 50);
+
+        Assert.True(wheel.AngleDeciDeg > 0, "angle telemetry should be positive under positive constant force");
+        Assert.InRange((int)wheel.TorqueNormalized, -10000, 10000);
+    }
 }

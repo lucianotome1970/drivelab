@@ -7,11 +7,12 @@ namespace DriveLab.Simulator;
 
 public sealed class SimulatorTransport : ITransport
 {
+    private readonly object _sync = new();
     private readonly Dictionary<SettingId, SettingValue> _settings = new();
     private readonly VirtualWheel _wheel = new();
-    private DirectControl _control = new();
     private Timer? _timer;
     private int _periodMs;
+    private volatile bool _streaming;
 
     public bool IsConnected { get; private set; }
     public FirmwareVersion FirmwareVersion { get; } = new(0, 26, 7, 12);
@@ -21,11 +22,14 @@ public sealed class SimulatorTransport : ITransport
 
     public Task ConnectAsync(CancellationToken ct = default)
     {
-        _settings.Clear();
-        foreach (var descriptor in SettingsSchema.All)
-            _settings[descriptor.Id] = new SettingValue(descriptor.Type, descriptor.Default);
+        lock (_sync)
+        {
+            _settings.Clear();
+            foreach (var descriptor in SettingsSchema.All)
+                _settings[descriptor.Id] = new SettingValue(descriptor.Type, descriptor.Default);
 
-        ApplySettingsToWheel();
+            ApplySettingsToWheel();
+        }
         IsConnected = true;
         return Task.CompletedTask;
     }
@@ -39,24 +43,35 @@ public sealed class SimulatorTransport : ITransport
 
     public Task WriteSettingAsync(SettingId id, SettingValue value)
     {
-        var descriptor = SettingsSchema.Get(id);
-        var clamped = new SettingValue(descriptor.Type, descriptor.Clamp(value.AsDouble));
-        _settings[id] = clamped;
-        ApplySettingsToWheel();
+        lock (_sync)
+        {
+            var descriptor = SettingsSchema.Get(id);
+            var clamped = new SettingValue(descriptor.Type, descriptor.Clamp(value.AsDouble));
+            _settings[id] = clamped;
+            ApplySettingsToWheel();
+        }
         return Task.CompletedTask;
     }
 
-    public Task<SettingValue> ReadSettingAsync(SettingId id) => Task.FromResult(_settings[id]);
+    public Task<SettingValue> ReadSettingAsync(SettingId id)
+    {
+        lock (_sync)
+        {
+            return Task.FromResult(_settings[id]);
+        }
+    }
 
     public Task SendDirectControlAsync(DirectControl control)
     {
-        _control = control;
-        _wheel.SetInputs(
-            constant: control.ConstantForce / 10000.0,
-            spring: control.SpringForce / 10000.0,
-            periodic: control.PeriodicForce / 10000.0,
-            damper: control.DamperForce / 10000.0,
-            forceDrop01: control.ForceDrop / 100.0);
+        lock (_sync)
+        {
+            _wheel.SetInputs(
+                constant: control.ConstantForce / 10000.0,
+                spring: control.SpringForce / 10000.0,
+                periodic: control.PeriodicForce / 10000.0,
+                damper: control.DamperForce / 10000.0,
+                forceDrop01: control.ForceDrop / 100.0);
+        }
         return Task.CompletedTask;
     }
 
@@ -65,7 +80,10 @@ public sealed class SimulatorTransport : ITransport
         switch (command)
         {
             case DeviceCommand.ResetCenter:
-                _wheel.ResetCenter();
+                lock (_sync)
+                {
+                    _wheel.ResetCenter();
+                }
                 break;
             case DeviceCommand.SetForceEnabled:
                 Flags = arg != 0 ? Flags | DeviceFlags.ForceEnabled : Flags & ~DeviceFlags.ForceEnabled;
@@ -82,19 +100,30 @@ public sealed class SimulatorTransport : ITransport
 
     public void Step(double dt)
     {
-        _wheel.Step(dt);
-        StateReceived?.Invoke(this, BuildState());
+        DeviceState state;
+        lock (_sync)
+        {
+            _wheel.Step(dt);
+            state = BuildState();
+        }
+        StateReceived?.Invoke(this, state);
     }
 
     public void StartStreaming(int hz = 100)
     {
         StopStreaming();
         _periodMs = Math.Max(1, 1000 / hz);
-        _timer = new Timer(_ => Step(_periodMs / 1000.0), null, _periodMs, _periodMs);
+        _streaming = true;
+        _timer = new Timer(_ =>
+        {
+            if (!_streaming) return;
+            Step(_periodMs / 1000.0);
+        }, null, _periodMs, _periodMs);
     }
 
     public void StopStreaming()
     {
+        _streaming = false;
         _timer?.Dispose();
         _timer = null;
     }
