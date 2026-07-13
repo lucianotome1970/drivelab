@@ -4,6 +4,7 @@
         x:Class="DriveLab.Studio.Views.SplashWindow"
         x:DataType="vm:SplashViewModel"
         Width="760" Height="507"
+        Icon="avares://DriveLab.Studio/Assets/logo.png"
         SystemDecorations="None"
         CanResize="False"
         ShowInTaskbar="False"

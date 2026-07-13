@@ -6,13 +6,14 @@
         x:Name="Root"
         Width="1040" Height="680"
         Title="DriveLab Studio"
+        Icon="avares://DriveLab.Studio/Assets/logo.png"
         Background="{DynamicResource DlBackground}"
         TransparencyLevelHint="None">
     <Grid ColumnDefinitions="64,*">
         <!-- Sidebar -->
         <Border Grid.Column="0" Background="{DynamicResource DlCard}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,1,0">
             <StackPanel Margin="0,16" Spacing="8" HorizontalAlignment="Center">
-                <TextBlock Text="🏎️" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                <Image Source="avares://DriveLab.Studio/Assets/logo.png" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,12" />
                 <Button Classes="nav" Content="{Binding Pages[0].Icon}" ToolTip.Tip="{Binding Pages[0].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[0]}" />
                 <Button Classes="nav" Content="{Binding Pages[1].Icon}" ToolTip.Tip="{Binding Pages[1].Label}"
