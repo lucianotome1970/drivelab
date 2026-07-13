@@ -1,0 +1,45 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Card container -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource DlCard}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="20" />
+    </Style>
+
+    <!-- Accent (primary) button -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{DynamicResource DlAccent}" />
+        <Setter Property="Foreground" Value="#111111" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="14,8" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FF8124" />
+    </Style>
+
+    <!-- Preset chip button -->
+    <Style Selector="Button.chip">
+        <Setter Property="Background" Value="{DynamicResource DlBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource DlText}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Margin" Value="0,0,6,6" />
+    </Style>
+
+    <!-- Section heading -->
+    <Style Selector="TextBlock.h2">
+        <Setter Property="Foreground" Value="{DynamicResource DlText}" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{DynamicResource DlMuted}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+</Styles>
