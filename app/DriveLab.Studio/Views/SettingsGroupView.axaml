@@ -30,14 +30,17 @@
                 <ItemsControl ItemsSource="{Binding PresetOptions}" IsVisible="{Binding HasPresets}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel />
+                            <!-- Rows=1 espalha os chips igualmente pela largura da barra -->
+                            <UniformGrid Rows="1" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:PresetOptionViewModel">
                             <Button Classes="chip" Content="{Binding Value}"
                                     Classes.selected="{Binding IsSelected}"
-                                    Command="{Binding SelectCommand}" />
+                                    Command="{Binding SelectCommand}"
+                                    HorizontalAlignment="Center" Margin="3,8,3,0"
+                                    HorizontalContentAlignment="Center" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

@@ -22,4 +22,13 @@
     <Color x:Key="SystemAccentColorDark1">#E65F00</Color>
     <Color x:Key="SystemAccentColorDark2">#CC5400</Color>
     <Color x:Key="SystemAccentColorDark3">#B34900</Color>
+
+    <!-- Slider laranja (preenchimento + pegador) -->
+    <SolidColorBrush x:Key="SliderTrackValueFill" Color="#FF6A00" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#FF8124" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="#FF8124" />
+    <SolidColorBrush x:Key="SliderTrackValueFillDisabled" Color="#5A4020" />
+    <SolidColorBrush x:Key="SliderThumbBackground" Color="#FF6A00" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#FF8124" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#FF9A4D" />
 </ResourceDictionary>
