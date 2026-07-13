@@ -1,3 +1,4 @@
+using System.Threading;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
@@ -9,6 +10,8 @@ public sealed class SimulatorTransport : ITransport
     private readonly Dictionary<SettingId, SettingValue> _settings = new();
     private readonly VirtualWheel _wheel = new();
     private DirectControl _control = new();
+    private Timer? _timer;
+    private int _periodMs;
 
     public bool IsConnected { get; private set; }
     public FirmwareVersion FirmwareVersion { get; } = new(0, 26, 7, 12);
@@ -29,6 +32,7 @@ public sealed class SimulatorTransport : ITransport
 
     public Task DisconnectAsync()
     {
+        StopStreaming();
         IsConnected = false;
         return Task.CompletedTask;
     }
@@ -80,6 +84,19 @@ public sealed class SimulatorTransport : ITransport
     {
         _wheel.Step(dt);
         StateReceived?.Invoke(this, BuildState());
+    }
+
+    public void StartStreaming(int hz = 100)
+    {
+        StopStreaming();
+        _periodMs = Math.Max(1, 1000 / hz);
+        _timer = new Timer(_ => Step(_periodMs / 1000.0), null, _periodMs, _periodMs);
+    }
+
+    public void StopStreaming()
+    {
+        _timer?.Dispose();
+        _timer = null;
     }
 
     private void ApplySettingsToWheel()
