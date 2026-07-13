@@ -73,24 +73,32 @@ public sealed class HidTransport : ITransport, IDisposable
     {
         if (wire.Length < 1 + ReportConstants.ReportSize)
             return;
-        var reportId = wire[0];
-        var payload = wire.AsSpan(1, ReportConstants.ReportSize);
 
-        if (reportId == ReportIds.DeviceState)
+        try
         {
-            var state = DeviceState.Parse(payload);
-            FirmwareVersion = state.Firmware;
-            StateReceived?.Invoke(this, state);
-        }
-        else if (reportId == ReportIds.SettingValue)
-        {
-            var report = SettingReport.Parse(payload);
-            TaskCompletionSource<SettingValue>? tcs;
-            lock (_pendingLock)
+            var reportId = wire[0];
+            var payload = wire.AsSpan(1, ReportConstants.ReportSize);
+
+            if (reportId == ReportIds.DeviceState)
             {
-                _pendingReads.Remove(report.FieldId, out tcs);
+                var state = DeviceState.Parse(payload);
+                FirmwareVersion = state.Firmware;
+                StateReceived?.Invoke(this, state);
             }
-            tcs?.TrySetResult(report.Value);
+            else if (reportId == ReportIds.SettingValue)
+            {
+                var report = SettingReport.Parse(payload);
+                TaskCompletionSource<SettingValue>? tcs;
+                lock (_pendingLock)
+                {
+                    _pendingReads.Remove(report.FieldId, out tcs);
+                }
+                tcs?.TrySetResult(report.Value);
+            }
+        }
+        catch
+        {
+            // Drop malformed or corrupt reports rather than crash the read thread
         }
     }
 

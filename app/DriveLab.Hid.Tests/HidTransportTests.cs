@@ -66,4 +66,15 @@ public class HidTransportTests
         Assert.Equal(1234, got!.AngleDeciDeg);
         Assert.Equal(new FirmwareVersion(0, 1, 0, 0), t.FirmwareVersion);
     }
+
+    [Fact]
+    public void Malformed_Report_Does_Not_Throw()
+    {
+        var t = New(out var channel);
+        var wire = new byte[1 + 64];
+        wire[0] = ReportIds.SettingValue;
+        wire[1 + 2] = 0xFF; // invalid SettingType byte in the payload
+        var ex = Record.Exception(() => channel.Emit(wire));
+        Assert.Null(ex);
+    }
 }
