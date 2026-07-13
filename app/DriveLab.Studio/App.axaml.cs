@@ -19,11 +19,10 @@ public partial class App : Application
 
             DispatcherTimer.RunOnce(() =>
             {
-                var main = new MainWindow
-                {
-                    DataContext = CompositionRoot.CreateMainWindowViewModel()
-                };
+                var viewModel = CompositionRoot.CreateMainWindowViewModel();
+                var main = new MainWindow { DataContext = viewModel };
                 desktop.MainWindow = main;
+                desktop.Exit += (_, _) => viewModel.Dispose();
                 main.Show();
                 splash.Close();
             }, TimeSpan.FromSeconds(2.2));

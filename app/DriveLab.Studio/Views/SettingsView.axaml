@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             x:Class="DriveLab.Studio.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+    <UserControl.Resources>
+        <DataTemplate x:Key="FieldRow" x:DataType="vm:SettingFieldViewModel">
+            <Grid ColumnDefinitions="190,*,70" Margin="0,7">
+                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
+                <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" Margin="10,0" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat={}{0:0.##}}" Foreground="{DynamicResource DlMuted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+    <Border Classes="card">
+        <DockPanel>
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <TextBlock Grid.Column="0" Text="Ajustes" Classes="h2" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="accent" Content="Ler do dispositivo" Command="{Binding LoadCommand}" />
+            </Grid>
+            <TabControl>
+                <TabItem Header="Basic">
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding BasicFields}" ItemTemplate="{StaticResource FieldRow}" />
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Advanced">
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding AdvancedFields}" ItemTemplate="{StaticResource FieldRow}" />
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Hardware">
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding HardwareFields}" ItemTemplate="{StaticResource FieldRow}" />
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

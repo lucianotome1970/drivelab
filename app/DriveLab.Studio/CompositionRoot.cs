@@ -15,6 +15,7 @@ public static class CompositionRoot
         var pages = new List<NavItem>
         {
             new("Dashboard", "\U0001F39B", new DashboardViewModel(session)),
+            new("Ajustes", "⚙", new SettingsViewModel(session)),
         };
 
         return new MainWindowViewModel(session, connection, pages);
