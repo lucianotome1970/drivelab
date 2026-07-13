@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             x:Class="DriveLab.Studio.Views.TelemetryView"
+             x:DataType="vm:TelemetryViewModel">
+    <Border Classes="card">
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="Telemetria" Classes="h2" Margin="0,0,0,12" />
+            <lvc:CartesianChart Series="{Binding Series}" />
+        </DockPanel>
+    </Border>
+</UserControl>
