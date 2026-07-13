@@ -30,6 +30,12 @@ public partial class DashboardViewModel : ViewModelBase
         _session.StateReceived += OnState;
     }
 
+    public override void Dispose()
+    {
+        _session.StateReceived -= OnState;
+        base.Dispose();
+    }
+
     private void OnState(object? sender, DeviceState state)
     {
         AngleDegrees = state.AngleDeciDeg / 10.0;
