@@ -2,8 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:conv="using:DriveLab.Studio.Converters"
-             x:Class="DriveLab.Studio.Views.SettingsGroupView"
-             x:DataType="vm:SettingsGroupViewModel">
+             x:Class="DriveLab.Studio.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
     <UserControl.Resources>
         <conv:IntEqualsConverter x:Key="IntEquals" />
         <DataTemplate x:Key="FieldRow" x:DataType="vm:SettingFieldViewModel">
@@ -33,12 +33,24 @@
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
-    <Border Classes="card" Width="520" HorizontalAlignment="Left" VerticalAlignment="Top">
+    <Border Classes="card" Width="560" HorizontalAlignment="Left" VerticalAlignment="Top">
         <DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" Classes="h2" Margin="0,0,0,12" />
-            <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
-            </ScrollViewer>
+            <TabControl ItemsSource="{Binding Tabs}">
+                <TabControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SettingsGroupViewModel">
+                        <TextBlock Text="{Binding Title}" />
+                    </DataTemplate>
+                </TabControl.ItemTemplate>
+                <TabControl.ContentTemplate>
+                    <DataTemplate x:DataType="vm:SettingsGroupViewModel">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <!-- Margem à direita afasta os campos da barra de rolagem -->
+                            <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" Margin="0,0,20,0" />
+                        </ScrollViewer>
+                    </DataTemplate>
+                </TabControl.ContentTemplate>
+            </TabControl>
         </DockPanel>
     </Border>
 </UserControl>
