@@ -34,25 +34,27 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="140" />
+                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="120" />
 
-                    <!-- Pontos da curva (label · slider laranja · valueBox) -->
-                    <ItemsControl ItemsSource="{Binding Points}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:PedalCurvePointViewModel">
-                                <Grid ColumnDefinitions="44,*,Auto" Margin="0,2">
-                                    <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Label}" />
-                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Value}"
-                                            IsSnapToTickEnabled="True" TickFrequency="1"
-                                            VerticalAlignment="Center" Margin="8,0"
-                                            IsEnabled="{Binding $parent[ItemsControl].((vm:PedalColumnViewModel)DataContext).CanEdit}" />
-                                    <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
-                                        <TextBlock Text="{Binding Value, StringFormat={}{0:0}}" />
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <!-- Pontos da curva (ajuste fino) — recolhido por padrão para economizar altura -->
+                    <Expander Header="Pontos da curva" IsExpanded="False" HorizontalAlignment="Stretch">
+                        <ItemsControl ItemsSource="{Binding Points}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PedalCurvePointViewModel">
+                                    <Grid ColumnDefinitions="44,*,Auto" Margin="0,2">
+                                        <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Label}" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Value}"
+                                                IsSnapToTickEnabled="True" TickFrequency="1"
+                                                VerticalAlignment="Center" Margin="8,0"
+                                                IsEnabled="{Binding $parent[ItemsControl].((vm:PedalColumnViewModel)DataContext).CanEdit}" />
+                                        <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
+                                            <TextBlock Text="{Binding Value, StringFormat={}{0:0}}" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Expander>
 
                     <!-- Inverter (toggle laranja) -->
                     <Grid ColumnDefinitions="*,Auto">
