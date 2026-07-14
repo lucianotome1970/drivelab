@@ -1,32 +1,33 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.TestView"
              x:DataType="vm:TestViewModel">
     <Border Classes="card" Width="460" HorizontalAlignment="Left" VerticalAlignment="Top">
         <StackPanel Spacing="14">
-            <TextBlock Text="Teste — controle direto" Classes="h2" />
-            <TextBlock Text="Envia força direto ao dispositivo (fora do jogo). Conecte e habilite a força." Classes="muted" TextWrapping="Wrap" />
+            <TextBlock Text="{loc:Translate Test_Title}" Classes="h2" />
+            <TextBlock Text="{loc:Translate Test_Desc}" Classes="muted" TextWrapping="Wrap" />
 
-            <CheckBox Content="Força habilitada" IsChecked="{Binding ForceEnabled}" Foreground="{DynamicResource DlText}" />
+            <CheckBox Content="{loc:Translate Test_ForceEnabled}" IsChecked="{Binding ForceEnabled}" Foreground="{DynamicResource DlText}" />
 
             <Grid ColumnDefinitions="120,*,54">
-                <TextBlock Grid.Column="0" Text="Mola" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate Force_Spring}" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
                 <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Spring}" Margin="8,0" />
                 <TextBlock Grid.Column="2" Text="{Binding Spring, StringFormat={}{0:0.00}}" Foreground="{DynamicResource DlMuted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
             <Grid ColumnDefinitions="120,*,54">
-                <TextBlock Grid.Column="0" Text="Constante" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate Force_Constant}" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
                 <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Constant}" Margin="8,0" />
                 <TextBlock Grid.Column="2" Text="{Binding Constant, StringFormat={}{0:0.00}}" Foreground="{DynamicResource DlMuted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
             <Grid ColumnDefinitions="120,*,54">
-                <TextBlock Grid.Column="0" Text="Periódica" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate Force_Periodic}" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
                 <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Periodic}" Margin="8,0" />
                 <TextBlock Grid.Column="2" Text="{Binding Periodic, StringFormat={}{0:0.00}}" Foreground="{DynamicResource DlMuted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
             <Grid ColumnDefinitions="120,*,54">
-                <TextBlock Grid.Column="0" Text="Damper" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate Force_Damper}" Foreground="{DynamicResource DlText}" VerticalAlignment="Center" />
                 <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Damper}" Margin="8,0" />
                 <TextBlock Grid.Column="2" Text="{Binding Damper, StringFormat={}{0:0.00}}" Foreground="{DynamicResource DlMuted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>

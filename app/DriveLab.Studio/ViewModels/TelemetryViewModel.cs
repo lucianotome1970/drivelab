@@ -21,8 +21,8 @@ public sealed class TelemetryViewModel : ViewModelBase
         _session = session;
         Series = new ISeries[]
         {
-            new LineSeries<ObservableValue> { Name = "Posição %", Values = PositionSamples, GeometrySize = 0 },
-            new LineSeries<ObservableValue> { Name = "Torque %", Values = TorqueSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = Localization.LocalizationManager.Get("Telemetry_Position"), Values = PositionSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = Localization.LocalizationManager.Get("Telemetry_Torque"), Values = TorqueSamples, GeometrySize = 0 },
         };
         _session.StateReceived += OnState;
     }

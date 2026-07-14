@@ -5,6 +5,7 @@ using Xunit;
 
 namespace DriveLab.Studio.Tests.ViewModels;
 
+[Collection("Loc")]
 public class MainWindowViewModelTests
 {
     private static MainWindowViewModel New(out DashboardViewModel first, out DashboardViewModel second)
@@ -65,7 +66,7 @@ public class MainWindowViewModelTests
     public void CompositionRoot_Includes_Pedals_Page()
     {
         var vm = DriveLab.Studio.CompositionRoot.CreateMainWindowViewModel();
-        Assert.Contains(vm.Pages, p => p.Label == "Pedais");
+        Assert.Contains(vm.Pages, p => p.Label == DriveLab.Studio.Localization.LocalizationManager.Get("Nav_Pedals"));
         vm.Dispose();
     }
 }

@@ -5,6 +5,7 @@ using DriveLab.Hid.Simagic;
 using DriveLab.Simulator;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.ViewModels;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio;
 
@@ -52,14 +53,14 @@ public static class CompositionRoot
         var simagicReader = new SimagicHidSharpReader();
         // Rótulo genérico ao detectar (sem expor marca/modelo do dispositivo).
         var pedalSession = simagicReader.IsPresent()
-            ? new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, "Pedaleira detectada")
-            : new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, "Simulador");
+            ? new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, L.Get("Pedal_Source_Detected"))
+            : new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
         // Base do Volante: abas de settings + Telemetria como última aba.
         var wheelBaseTabs = WheelBaseTabs
-            .Select(t => new PageTab(t.Header, new SettingsGroupViewModel(session, t.Header, t.Ids)))
-            .Append(new PageTab("Telemetria", new TelemetryViewModel(session)))
+            .Select(t => new PageTab(L.Get($"Tab_{t.Header}"), new SettingsGroupViewModel(session, t.Header, t.Ids)))
+            .Append(new PageTab(L.Get("Tab_Telemetry"), new TelemetryViewModel(session)))
             .ToList();
 
         // Home (dash): card do volante + resumo ao vivo dos pedais, lado a lado.
@@ -67,9 +68,9 @@ public static class CompositionRoot
 
         var pages = new List<NavItem>
         {
-            new("Início", "\U0001F39B", home),
-            new("Base do Volante", "base", new SettingsPageViewModel(session, "Base do Volante", wheelBaseTabs)),
-            new("Pedais", "\U0001F9B6", pedals),
+            new(L.Get("Nav_Home"), "\U0001F39B", home),
+            new(L.Get("Nav_WheelBase"), "base", new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs)),
+            new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals),
         };
 
         // Teste (controle direto de força) não é uma aba: abre num modal à parte,

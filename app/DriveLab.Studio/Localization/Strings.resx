@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="Disconnect" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="Load" xml:space="preserve"><value>Load</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="SaveToController" xml:space="preserve"><value>Save to controller</value></data>
+  <data name="Default" xml:space="preserve"><value>Default</value></data>
+  <data name="Center" xml:space="preserve"><value>Center</value></data>
+
+  <data name="Nav_Home" xml:space="preserve"><value>Home</value></data>
+  <data name="Nav_WheelBase" xml:space="preserve"><value>Wheel Base</value></data>
+  <data name="Nav_Pedals" xml:space="preserve"><value>Pedals</value></data>
+
+  <data name="Wheel_Title" xml:space="preserve"><value>DriveLab Wheel</value></data>
+  <data name="Wheel_MaxAngle" xml:space="preserve"><value>Maximum angle</value></data>
+
+  <data name="Page_WheelBase" xml:space="preserve"><value>Wheel Base</value></data>
+  <data name="Tab_Basic" xml:space="preserve"><value>Basic</value></data>
+  <data name="Tab_Advanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Tab_Hardware" xml:space="preserve"><value>Hardware</value></data>
+  <data name="Tab_Telemetry" xml:space="preserve"><value>Telemetry</value></data>
+  <data name="Tab_Pedals" xml:space="preserve"><value>Pedals</value></data>
+  <data name="Tab_InputMonitor" xml:space="preserve"><value>Input monitor</value></data>
+
+  <data name="Test_Button" xml:space="preserve"><value>🕹 Test</value></data>
+  <data name="Test_Tooltip" xml:space="preserve"><value>Direct force control (separate window)</value></data>
+  <data name="Test_Title" xml:space="preserve"><value>Test — direct control</value></data>
+  <data name="Test_Desc" xml:space="preserve"><value>Sends force straight to the device (out of game). Connect and enable force.</value></data>
+  <data name="Test_ForceEnabled" xml:space="preserve"><value>Force enabled</value></data>
+  <data name="Force_Spring" xml:space="preserve"><value>Spring</value></data>
+  <data name="Force_Constant" xml:space="preserve"><value>Constant</value></data>
+  <data name="Force_Periodic" xml:space="preserve"><value>Periodic</value></data>
+  <data name="Force_Damper" xml:space="preserve"><value>Damper</value></data>
+
+  <data name="Status_Connected" xml:space="preserve"><value>Connected</value></data>
+  <data name="Status_Disconnected" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="Status_NoDevice" xml:space="preserve"><value>No device found</value></data>
+  <data name="Badge_Simulator" xml:space="preserve"><value>SIMULATOR</value></data>
+
+  <data name="Home_Pedals" xml:space="preserve"><value>Pedals</value></data>
+
+  <data name="Pedal_Clutch" xml:space="preserve"><value>Clutch</value></data>
+  <data name="Pedal_Brake" xml:space="preserve"><value>Brake</value></data>
+  <data name="Pedal_Throttle" xml:space="preserve"><value>Throttle</value></data>
+  <data name="Pedal_OutputCurves" xml:space="preserve"><value>Output curves</value></data>
+  <data name="Pedal_CurvePoints" xml:space="preserve"><value>Curve points</value></data>
+  <data name="Pedal_PreviewOnly" xml:space="preserve"><value>preview — not applied to this pedal</value></data>
+  <data name="Pedal_Invert" xml:space="preserve"><value>Invert</value></data>
+  <data name="Pedal_Sensor" xml:space="preserve"><value>Sensor</value></data>
+  <data name="Pedal_Smoothing" xml:space="preserve"><value>Smoothing</value></data>
+  <data name="Pedal_StartCalibration" xml:space="preserve"><value>Start calibration</value></data>
+  <data name="Pedal_StopCalibration" xml:space="preserve"><value>Stop calibration</value></data>
+  <data name="Pedal_Source_Simulator" xml:space="preserve"><value>Simulator</value></data>
+  <data name="Pedal_Source_Detected" xml:space="preserve"><value>Pedals detected</value></data>
+
+  <data name="Splash_Starting" xml:space="preserve"><value>Starting…</value></data>
+  <data name="Splash_SearchingBase" xml:space="preserve"><value>Searching for wheel base…</value></data>
+  <data name="Splash_BaseFound" xml:space="preserve"><value>Wheel base connected</value></data>
+  <data name="Splash_BaseNotFound" xml:space="preserve"><value>Wheel base not found</value></data>
+  <data name="Splash_SearchingPedals" xml:space="preserve"><value>Searching for pedals…</value></data>
+  <data name="Splash_PedalsFound" xml:space="preserve"><value>Pedals connected</value></data>
+  <data name="Splash_PedalsNotFound" xml:space="preserve"><value>Pedals not found</value></data>
+  <data name="Splash_Ready" xml:space="preserve"><value>Ready</value></data>
+
+  <data name="Telemetry_Position" xml:space="preserve"><value>Position %</value></data>
+  <data name="Telemetry_Torque" xml:space="preserve"><value>Torque %</value></data>
+
+  <data name="Setting_MotionRange" xml:space="preserve"><value>Total steering angle</value></data>
+  <data name="Setting_SoftStopRange" xml:space="preserve"><value>End-stop range</value></data>
+  <data name="Setting_SoftStopStrength" xml:space="preserve"><value>End-stop strength</value></data>
+  <data name="Setting_TotalStrength" xml:space="preserve"><value>Total force</value></data>
+  <data name="Setting_SpringStrength" xml:space="preserve"><value>Wheel spring</value></data>
+  <data name="Setting_DamperStrength" xml:space="preserve"><value>Wheel damper</value></data>
+  <data name="Setting_StaticDamping" xml:space="preserve"><value>Static damping</value></data>
+  <data name="Setting_MaxTorqueLimit" xml:space="preserve"><value>Torque limit</value></data>
+  <data name="Setting_ForceDirection" xml:space="preserve"><value>Force direction</value></data>
+  <data name="Setting_EncoderDirection" xml:space="preserve"><value>Encoder direction</value></data>
+  <data name="Setting_EncoderCpr" xml:space="preserve"><value>Encoder CPR</value></data>
+  <data name="Setting_PolePairs" xml:space="preserve"><value>Pole pairs</value></data>
+  <data name="Setting_CurrentP" xml:space="preserve"><value>P gain (current)</value></data>
+  <data name="Setting_CurrentI" xml:space="preserve"><value>I gain (current)</value></data>
+  <data name="Setting_CalibrationCurrent" xml:space="preserve"><value>Calibration current</value></data>
+  <data name="Setting_PositionSmoothing" xml:space="preserve"><value>Position smoothing</value></data>
+  <data name="Setting_PowerLimit" xml:space="preserve"><value>Power limit</value></data>
+  <data name="Setting_BrakingLimit" xml:space="preserve"><value>Braking limit</value></data>
+</root>

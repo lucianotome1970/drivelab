@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:DriveLab.Studio.ViewModels"
+        xmlns:loc="using:DriveLab.Studio.Localization"
         x:Class="DriveLab.Studio.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:Name="Root"
@@ -41,12 +42,12 @@
                         <!-- Badge de modo simulador (só quando iniciado com /simulator) -->
                         <Border IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}"
                                 Background="#FF8124" CornerRadius="999" Padding="10,3" VerticalAlignment="Center">
-                            <TextBlock Text="SIMULADOR" Foreground="#111111" FontSize="11" FontWeight="Bold" LetterSpacing="1" />
+                            <TextBlock Text="{loc:Translate Badge_Simulator}" Foreground="#111111" FontSize="11" FontWeight="Bold" LetterSpacing="1" />
                         </Border>
                     </StackPanel>
                     <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0" />
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                        <Button Content="🕹 Teste" Click="OpenTest_Click" ToolTip.Tip="Controle direto de força (janela separada)"
+                        <Button Content="{loc:Translate Test_Button}" Click="OpenTest_Click" ToolTip.Tip="{loc:Translate Test_Tooltip}"
                                 IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}" />
                         <Button Classes="accent" Content="Conectar" Command="{Binding ConnectCommand}" IsVisible="{Binding !IsConnected}" />
                         <Button Content="Desconectar" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsConnected}" />

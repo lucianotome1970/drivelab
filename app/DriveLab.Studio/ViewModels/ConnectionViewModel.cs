@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Studio.Services;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -12,7 +13,7 @@ public partial class ConnectionViewModel : ViewModelBase
     private bool _isConnected;
 
     [ObservableProperty]
-    private string _statusText = "Desconectado";
+    private string _statusText = L.Get("Status_Disconnected");
 
     public ConnectionViewModel(DeviceSession session) => _session = session;
 
@@ -21,7 +22,7 @@ public partial class ConnectionViewModel : ViewModelBase
     {
         await _session.ConnectAsync();
         IsConnected = _session.IsConnected;
-        StatusText = IsConnected ? "Conectado" : "Nenhum dispositivo encontrado";
+        StatusText = IsConnected ? L.Get("Status_Connected") : L.Get("Status_NoDevice");
     }
 
     [RelayCommand]
@@ -29,6 +30,6 @@ public partial class ConnectionViewModel : ViewModelBase
     {
         await _session.DisconnectAsync();
         IsConnected = _session.IsConnected;
-        StatusText = "Desconectado";
+        StatusText = L.Get("Status_Disconnected");
     }
 }

@@ -100,7 +100,7 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CalibrateLabel))]
     private bool _isCalibrating;
 
-    public string CalibrateLabel => IsCalibrating ? "Parar calibração" : "Iniciar calibração";
+    public string CalibrateLabel => Localization.LocalizationManager.Get(IsCalibrating ? "Pedal_StopCalibration" : "Pedal_StartCalibration");
 
     private bool _loading;
 

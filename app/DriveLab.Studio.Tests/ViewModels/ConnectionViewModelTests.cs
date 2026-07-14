@@ -1,10 +1,12 @@
 using Xunit;
+using DriveLab.Studio.Localization;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
 using DriveLab.Studio.ViewModels;
 
 namespace DriveLab.Studio.Tests.ViewModels;
 
+[Collection("Loc")]
 public class ConnectionViewModelTests
 {
     private static ConnectionViewModel New(out FakeTransport transport)
@@ -20,7 +22,7 @@ public class ConnectionViewModelTests
         var vm = New(out _);
         await vm.ConnectCommand.ExecuteAsync(null);
         Assert.True(vm.IsConnected);
-        Assert.Equal("Conectado", vm.StatusText);
+        Assert.Equal(LocalizationManager.Get("Status_Connected"), vm.StatusText);
     }
 
     [Fact]
@@ -30,6 +32,6 @@ public class ConnectionViewModelTests
         await vm.ConnectCommand.ExecuteAsync(null);
         await vm.DisconnectCommand.ExecuteAsync(null);
         Assert.False(vm.IsConnected);
-        Assert.Equal("Desconectado", vm.StatusText);
+        Assert.Equal(LocalizationManager.Get("Status_Disconnected"), vm.StatusText);
     }
 }

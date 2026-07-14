@@ -1,4 +1,5 @@
 using DriveLab.Core.Settings;
+using DriveLab.Studio.Localization;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
 using DriveLab.Studio.ViewModels;
@@ -6,6 +7,7 @@ using Xunit;
 
 namespace DriveLab.Studio.Tests.ViewModels;
 
+[Collection("Loc")]
 public class SettingFieldViewModelTests
 {
     private static SettingFieldViewModel New(out FakeTransport transport)
@@ -19,7 +21,7 @@ public class SettingFieldViewModelTests
     public void Exposes_Descriptor_Metadata_And_Default()
     {
         var vm = New(out _);
-        Assert.Equal("Ângulo total de giro", vm.DisplayName);
+        Assert.Equal(LocalizationManager.Get("Setting_MotionRange"), vm.DisplayName);
         Assert.Equal(90, vm.Min);
         Assert.Equal(2000, vm.Max);
         Assert.Equal(900, vm.Value);

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -19,7 +20,15 @@ public partial class SettingFieldViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SelectPresetCommand))]
     private bool _isConnected;
 
-    public string DisplayName => _descriptor.DisplayName;
+    public string DisplayName
+    {
+        get
+        {
+            var key = $"Setting_{_descriptor.Id}";
+            var text = L.Get(key);
+            return text == key ? _descriptor.DisplayName : text; // fallback: nome do schema
+        }
+    }
     public double Min => _descriptor.Min;
     public double Max => _descriptor.Max;
     public string Unit => _descriptor.Unit;

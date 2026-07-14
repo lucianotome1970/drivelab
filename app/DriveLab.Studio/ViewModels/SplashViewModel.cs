@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -9,7 +10,7 @@ public partial class SplashViewModel : ViewModelBase
     private double _progress;
 
     [ObservableProperty]
-    private string _status = "Iniciando…";
+    private string _status = L.Get("Splash_Starting");
 
     public string VersionText => "DRIVELAB APP · v1.0.0";
 }

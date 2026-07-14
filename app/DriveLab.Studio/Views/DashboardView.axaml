@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:conv="using:DriveLab.Studio.Converters"
+             xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
     <UserControl.Resources>
@@ -9,7 +10,7 @@
     </UserControl.Resources>
     <Border Classes="card">
         <StackPanel Spacing="16">
-            <TextBlock Text="Volante DriveLab" Classes="h2" />
+            <TextBlock Text="{loc:Translate Wheel_Title}" Classes="h2" />
 
             <!-- Área de calibração: imagem do volante DriveLab girando com o ângulo lido -->
             <Grid Width="240" Height="240" HorizontalAlignment="Center" ClipToBounds="False">
@@ -27,7 +28,7 @@
                        HorizontalAlignment="Center" />
 
             <!-- Presets (explicit buttons — robust, no item-template command binding) -->
-            <TextBlock Text="Ângulo máximo" Classes="muted" />
+            <TextBlock Text="{loc:Translate Wheel_MaxAngle}" Classes="muted" />
             <WrapPanel>
                 <Button Classes="chip" Content="360"  Command="{Binding SetMaxAngleCommand}" CommandParameter="360"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=360}" />
                 <Button Classes="chip" Content="540"  Command="{Binding SetMaxAngleCommand}" CommandParameter="540"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=540}" />
@@ -37,7 +38,7 @@
                 <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
             </WrapPanel>
 
-            <Button Classes="accent" Content="Center" Command="{Binding CenterCommand}" HorizontalAlignment="Left" />
+            <Button Classes="accent" Content="{loc:Translate Center}" Command="{Binding CenterCommand}" HorizontalAlignment="Left" />
         </StackPanel>
     </Border>
 </UserControl>

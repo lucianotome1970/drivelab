@@ -1,3 +1,5 @@
+using L = DriveLab.Studio.Localization.LocalizationManager;
+
 namespace DriveLab.Studio.Services;
 
 /// <summary>Um passo de progresso do splash: fração 0..1 e texto de status.</summary>
@@ -26,22 +28,22 @@ public sealed class StartupDetector
 
     public async Task<StartupResult> RunAsync(IProgress<StartupProgress> progress)
     {
-        progress.Report(new StartupProgress(0.05, "Iniciando…"));
+        progress.Report(new StartupProgress(0.05, L.Get("Splash_Starting")));
         await DelayAsync(_stepDelayMs / 2);
 
-        progress.Report(new StartupProgress(0.15, "Procurando base…"));
+        progress.Report(new StartupProgress(0.15, L.Get("Splash_SearchingBase")));
         var baseConnected = await _probeBase();
         await DelayAsync(_stepDelayMs); // dwell: dá tempo de ver a busca da base
-        progress.Report(new StartupProgress(0.5, baseConnected ? "Base conectada" : "Base não encontrada"));
+        progress.Report(new StartupProgress(0.5, L.Get(baseConnected ? "Splash_BaseFound" : "Splash_BaseNotFound")));
         await DelayAsync(_stepDelayMs / 3);
 
-        progress.Report(new StartupProgress(0.6, "Procurando pedais…"));
+        progress.Report(new StartupProgress(0.6, L.Get("Splash_SearchingPedals")));
         var pedalsConnected = await _probePedals();
         await DelayAsync(_stepDelayMs); // dwell: busca dos pedais
-        progress.Report(new StartupProgress(0.9, pedalsConnected ? "Pedais conectados" : "Pedais não encontrados"));
+        progress.Report(new StartupProgress(0.9, L.Get(pedalsConnected ? "Splash_PedalsFound" : "Splash_PedalsNotFound")));
         await DelayAsync(_stepDelayMs / 3);
 
-        progress.Report(new StartupProgress(1.0, "Pronto"));
+        progress.Report(new StartupProgress(1.0, L.Get("Splash_Ready")));
         await DelayAsync(_stepDelayMs / 2); // deixa "Pronto" visível antes de abrir o app
         return new StartupResult(baseConnected, pedalsConnected);
     }

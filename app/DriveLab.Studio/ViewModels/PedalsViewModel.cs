@@ -7,6 +7,7 @@ using DriveLab.Studio.Services;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -43,16 +44,16 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
         Columns = new List<PedalColumnViewModel>
         {
-            new(session, PedalIndex.Clutch, "Embreagem"),
-            new(session, PedalIndex.Brake, "Freio"),
-            new(session, PedalIndex.Throttle, "Acelerador"),
+            new(session, PedalIndex.Clutch, L.Get("Pedal_Clutch")),
+            new(session, PedalIndex.Brake, L.Get("Pedal_Brake")),
+            new(session, PedalIndex.Throttle, L.Get("Pedal_Throttle")),
         };
 
         CombinedSeries = new ISeries[]
         {
-            new LineSeries<ObservableValue> { Name = "Embreagem", Values = ClutchSamples, GeometrySize = 0 },
-            new LineSeries<ObservableValue> { Name = "Freio", Values = BrakeSamples, GeometrySize = 0 },
-            new LineSeries<ObservableValue> { Name = "Acelerador", Values = ThrottleSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = L.Get("Pedal_Clutch"), Values = ClutchSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = L.Get("Pedal_Brake"), Values = BrakeSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = L.Get("Pedal_Throttle"), Values = ThrottleSamples, GeometrySize = 0 },
         };
         _session.StateReceived += OnState;
 

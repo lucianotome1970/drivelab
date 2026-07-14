@@ -6,6 +6,7 @@ using Xunit;
 
 namespace DriveLab.Studio.Tests.ViewModels;
 
+[Collection("Loc")]
 public class SettingsGroupViewModelTests
 {
     private static readonly SettingId[] Ids =
@@ -26,7 +27,7 @@ public class SettingsGroupViewModelTests
         var vm = New(out _);
         Assert.Equal("Base do Volante", vm.Title);
         Assert.Equal(3, vm.Fields.Count);
-        Assert.Equal("Força total", vm.Fields[0].DisplayName);
+        Assert.Equal(DriveLab.Studio.Localization.LocalizationManager.Get("Setting_TotalStrength"), vm.Fields[0].DisplayName);
     }
 
     [Fact]

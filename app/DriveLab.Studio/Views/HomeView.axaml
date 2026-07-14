@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:views="using:DriveLab.Studio.Views"
+             xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.HomeView"
              x:DataType="vm:HomeViewModel">
     <ScrollViewer HorizontalScrollBarVisibility="Auto">
@@ -13,7 +14,7 @@
             <!-- Card resumo dos pedais (ao vivo) — mesmo tamanho do card do volante -->
             <Border Grid.Column="2" Classes="card">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="Pedais" Classes="h2" />
+                    <TextBlock Text="{loc:Translate Home_Pedals}" Classes="h2" />
                     <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="360" Stretch="Uniform"
                            HorizontalAlignment="Center" />
                     <ItemsControl ItemsSource="{Binding Pedals.Columns}">
