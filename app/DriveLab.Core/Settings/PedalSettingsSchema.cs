@@ -29,6 +29,8 @@ public static class PedalSettingsSchema
         new(PedalSettingId.CurvePoint4, "curve_point_4", "Ponto 80%", SettingType.UInt8, 0, 100, "%", 80),
         new(PedalSettingId.CurvePoint5, "curve_point_5", "Ponto 100%", SettingType.UInt8, 0, 100, "%", 100),
         new(PedalSettingId.LoadCellScale, "loadcell_scale", "Escala load cell", SettingType.UInt16, 1, 65535, "", 1000),
+        new(PedalSettingId.DeadzoneLow, "deadzone_low", "Deadzone baixo", SettingType.UInt8, 0, 100, "%", 0),
+        new(PedalSettingId.DeadzoneHigh, "deadzone_high", "Deadzone alto", SettingType.UInt8, 0, 100, "%", 100),
     };
 
     public static PedalSettingId[] CurvePointIds { get; } =

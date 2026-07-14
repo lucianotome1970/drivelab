@@ -18,13 +18,19 @@ public static class PedalCurve
         return y / 100.0;
     }
 
-    public static ushort ToOutput(ushort raw, ushort inputMin, ushort inputMax, bool invert, IReadOnlyList<double> pointsPercent)
+    public static ushort ToOutput(ushort raw, ushort inputMin, ushort inputMax, bool invert,
+        IReadOnlyList<double> pointsPercent, double deadLow = 0, double deadHigh = 100)
     {
         double norm = inputMax > inputMin
             ? Math.Clamp((double)(raw - inputMin) / (inputMax - inputMin), 0.0, 1.0)
             : 0.0;
         if (invert)
             norm = 1.0 - norm;
+
+        var lo = deadLow / 100.0;
+        var hi = deadHigh / 100.0;
+        norm = hi > lo ? Math.Clamp((norm - lo) / (hi - lo), 0.0, 1.0) : 0.0;
+
         var outp = Evaluate(pointsPercent, norm);
         return (ushort)Math.Round(Math.Clamp(outp, 0.0, 1.0) * 65535.0);
     }

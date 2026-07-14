@@ -59,6 +59,24 @@ public class PedalCurveTests
     }
 
     [Fact]
+    public void Deadzone_Clips_Low_And_High()
+    {
+        var linear = new double[] { 0, 20, 40, 60, 80, 100 };
+        Assert.Equal(0, PedalCurve.ToOutput(819, 0, 4095, false, linear, 20, 80));      // ~20% -> deadzone low
+        Assert.Equal(65535, PedalCurve.ToOutput(3276, 0, 4095, false, linear, 20, 80));  // ~80% -> deadzone high
+        Assert.InRange(PedalCurve.ToOutput(2048, 0, 4095, false, linear, 20, 80), 32000, 33500); // 50% raw = centro da zona -> ~50%
+        Assert.InRange(PedalCurve.ToOutput(1433, 0, 4095, false, linear, 20, 80), 15800, 17000); // 35% raw -> ~25% (distingue deadzone)
+    }
+
+    [Fact]
+    public void Deadzone_Default_Is_Identity()
+    {
+        var linear = new double[] { 0, 20, 40, 60, 80, 100 };
+        Assert.Equal(PedalCurve.ToOutput(2048, 0, 4095, false, linear),
+                     PedalCurve.ToOutput(2048, 0, 4095, false, linear, 0, 100));
+    }
+
+    [Fact]
     public void ToOutput_Degenerate_Range_Is_Zero()
     {
         Assert.Equal(0, PedalCurve.ToOutput(500, 1000, 1000, false, Linear));

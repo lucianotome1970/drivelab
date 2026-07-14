@@ -9,7 +9,7 @@ public class PedalSettingsSchemaTests
     {
         var ids = PedalSettingsSchema.All.Select(d => d.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
-        Assert.Equal(12, ids.Count);
+        Assert.Equal(14, ids.Count);
     }
 
     [Fact]

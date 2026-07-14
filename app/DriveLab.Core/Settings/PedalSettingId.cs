@@ -14,4 +14,6 @@ public enum PedalSettingId : byte
     CurvePoint4 = 9,
     CurvePoint5 = 10,
     LoadCellScale = 11,
+    DeadzoneLow = 12,
+    DeadzoneHigh = 13,
 }
