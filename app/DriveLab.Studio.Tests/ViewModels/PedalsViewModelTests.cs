@@ -26,13 +26,12 @@ public class PedalsViewModelTests
     }
 
     [Fact]
-    public void Has_Three_Columns_And_Presets()
+    public void Has_Three_Columns()
     {
         var (vm, _, _) = Make();
         Assert.Equal(3, vm.Columns.Count);
         Assert.Equal(PedalIndex.Clutch, vm.Columns[0].Pedal);
         Assert.Equal(PedalIndex.Throttle, vm.Columns[2].Pedal);
-        Assert.NotEmpty(vm.Presets);
         vm.Dispose();
     }
 
@@ -84,15 +83,6 @@ public class PedalsViewModelTests
         await vm.LoadPreferencesCommand.ExecuteAsync(null);
         Assert.Equal(0, vm.Columns[0].Points[5].Value);
         Assert.Equal(50, vm.Columns[1].Points[5].Value);
-        vm.Dispose();
-    }
-
-    [Fact]
-    public void SelectedPreset_Applies_To_All_Columns()
-    {
-        var (vm, _, _) = Make();
-        vm.SelectedPreset = new PedalCurvePreset("Zero", new double[] { 0, 0, 0, 0, 0, 0 });
-        Assert.All(vm.Columns, c => Assert.Equal(0, c.Points[5].Value));
         vm.Dispose();
     }
 

@@ -86,6 +86,35 @@ public class PedalColumnViewModelTests
     }
 
     [Fact]
+    public void SelectPreset_Applies_To_This_Column_And_Marks_Selected()
+    {
+        var (vm, _, s) = Make(connected: true);
+        var preset = new PedalCurvePreset("Zero", new double[] { 0, 0, 0, 0, 0, 0 });
+        vm.SelectPresetCommand.Execute(preset);
+        Assert.All(vm.Points, p => Assert.Equal(0, p.Value));
+        s.Dispose();
+    }
+
+    [Fact]
+    public void SelectPreset_Marks_Only_That_Option_Selected()
+    {
+        var (vm, _, s) = Make(connected: true);
+        var linear = vm.PresetOptions.First(o => o.Name == "Linear");
+        vm.SelectPresetCommand.Execute(linear.Preset);
+        Assert.True(linear.IsSelected);
+        Assert.All(vm.PresetOptions.Where(o => o.Name != "Linear"), o => Assert.False(o.IsSelected));
+        s.Dispose();
+    }
+
+    [Fact]
+    public void Column_Exposes_Preset_Options()
+    {
+        var (vm, _, s) = Make(connected: false);
+        Assert.Contains(vm.PresetOptions, o => o.Name == "Linear");
+        s.Dispose();
+    }
+
+    [Fact]
     public void Presets_Include_Linear()
     {
         Assert.Contains(PedalCurvePresets.All, p => p.Name == "Linear");

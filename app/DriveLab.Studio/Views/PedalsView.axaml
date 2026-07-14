@@ -8,16 +8,34 @@
     <UserControl.Resources>
         <conv:DoubleToDecimalConverter x:Key="DoubleToDecimal" />
         <DataTemplate x:Key="PedalColumn" x:DataType="vm:PedalColumnViewModel">
-            <Border Classes="card" Margin="6" Width="250">
-                <StackPanel Spacing="8">
+            <Border Classes="card" Margin="8" HorizontalAlignment="Stretch">
+                <StackPanel Spacing="10">
                     <TextBlock Text="{Binding Label}" Classes="h2" HorizontalAlignment="Center" />
 
-                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="180" />
+                    <TextBlock Text="Curvas de saída" Foreground="{DynamicResource DlMuted}" />
+                    <!-- Preset de curva por pedal (chips estilo Pit House) -->
+                    <ItemsControl ItemsSource="{Binding PresetOptions}" IsEnabled="{Binding CanEdit}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PedalPresetOption">
+                                <Button Classes="chip" Content="{Binding Name}"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Command="{Binding $parent[ItemsControl].((vm:PedalColumnViewModel)DataContext).SelectPresetCommand}"
+                                        CommandParameter="{Binding Preset}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="200" />
 
                     <ItemsControl ItemsSource="{Binding Points}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:PedalCurvePointViewModel">
-                                <Grid ColumnDefinitions="48,*" Margin="0,3">
+                                <Grid ColumnDefinitions="56,*" Margin="0,3">
                                     <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center"
                                                Foreground="{DynamicResource DlMuted}" />
                                     <NumericUpDown Grid.Column="1" Minimum="0" Maximum="100" Increment="1"
@@ -28,28 +46,39 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <CheckBox Content="Inverter" IsChecked="{Binding Invert}" IsEnabled="{Binding CanEdit}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Inverter" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource DlMuted}" />
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding Invert}" IsEnabled="{Binding CanEdit}"
+                                      OnContent="" OffContent="" />
+                    </Grid>
 
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Suavização" VerticalAlignment="Center" Foreground="{DynamicResource DlMuted}" />
-                        <Slider Width="120" Minimum="0" Maximum="100" Value="{Binding Smooth}" IsEnabled="{Binding CanEdit}" />
-                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Suavização" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Foreground="{DynamicResource DlMuted}" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Smooth}" IsEnabled="{Binding CanEdit}" />
+                    </Grid>
 
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Sensor" VerticalAlignment="Center" Foreground="{DynamicResource DlMuted}" />
-                        <ComboBox SelectedIndex="{Binding SensorType}" IsEnabled="{Binding CanEdit}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Sensor" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Foreground="{DynamicResource DlMuted}" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                  SelectedIndex="{Binding SensorType}" IsEnabled="{Binding CanEdit}">
                             <ComboBoxItem>Potenciômetro</ComboBoxItem>
                             <ComboBoxItem>Hall</ComboBoxItem>
                             <ComboBoxItem>Load cell</ComboBoxItem>
                         </ComboBox>
-                    </StackPanel>
+                    </Grid>
 
-                    <Button Content="Calibrar" Command="{Binding CalibrateCommand}" IsEnabled="{Binding CanEdit}"
-                            Classes.selected="{Binding IsCalibrating}" HorizontalAlignment="Stretch" />
-                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource DlMuted}"
-                               Text="{Binding InputMin, StringFormat='min {0}'}" />
-                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource DlMuted}"
-                               Text="{Binding InputMax, StringFormat='max {0}'}" />
+                    <Button Classes="accent" Command="{Binding CalibrateCommand}" IsEnabled="{Binding CanEdit}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            Content="{Binding CalibrateLabel}" />
+                    <Grid ColumnDefinitions="*,*">
+                        <TextBlock Grid.Column="0" HorizontalAlignment="Center" Foreground="{DynamicResource DlMuted}"
+                                   Text="{Binding InputMin, StringFormat='min {0}'}" />
+                        <TextBlock Grid.Column="1" HorizontalAlignment="Center" Foreground="{DynamicResource DlMuted}"
+                                   Text="{Binding InputMax, StringFormat='max {0}'}" />
+                    </Grid>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -60,15 +89,6 @@
             <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
                 <TextBlock Grid.Column="0" Text="Pedais" Classes="h2" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
-                              IsEnabled="{Binding IsConnected}"
-                              PlaceholderText="Preset de curva">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:PedalCurvePreset">
-                                <TextBlock Text="{Binding Name}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
                     <Button Content="Conectar" Command="{Binding ConnectCommand}" />
                     <Button Content="Desconectar" Command="{Binding DisconnectCommand}" />
                     <Button Content="Carregar" Command="{Binding LoadPreferencesCommand}" />
@@ -76,14 +96,14 @@
                     <Button Content="Salvar no controlador" Command="{Binding SaveToControllerCommand}" />
                 </StackPanel>
             </Grid>
-            <Border DockPanel.Dock="Bottom" Height="140" Margin="0,12,0,0">
+            <Border DockPanel.Dock="Bottom" Height="150" Margin="0,12,0,0">
                 <lvc:CartesianChart Series="{Binding CombinedSeries}" />
             </Border>
-            <ScrollViewer HorizontalScrollBarVisibility="Auto">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Columns}" ItemTemplate="{StaticResource PedalColumn}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
+                            <UniformGrid Columns="3" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>

@@ -1,6 +1,20 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace DriveLab.Studio.ViewModels;
 
 public sealed record PedalCurvePreset(string Name, double[] Points);
+
+/// <summary>Chip selecionável de preset (estilo Pit House): expõe o preset + estado de seleção.</summary>
+public sealed partial class PedalPresetOption : ObservableObject
+{
+    public PedalCurvePreset Preset { get; }
+    public string Name => Preset.Name;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public PedalPresetOption(PedalCurvePreset preset) => Preset = preset;
+}
 
 public static class PedalCurvePresets
 {

@@ -23,11 +23,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     private bool _isConnected;
 
-    [ObservableProperty]
-    private PedalCurvePreset? _selectedPreset;
-
     public IReadOnlyList<PedalColumnViewModel> Columns { get; }
-    public IReadOnlyList<PedalCurvePreset> Presets => PedalCurvePresets.All;
 
     public ObservableCollection<ObservableValue> ClutchSamples { get; } = new();
     public ObservableCollection<ObservableValue> BrakeSamples { get; } = new();
@@ -60,15 +56,6 @@ public sealed partial class PedalsViewModel : ViewModelBase
     }
 
     private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
-
-    partial void OnSelectedPresetChanged(PedalCurvePreset? value)
-    {
-        if (value is null)
-            return;
-
-        foreach (var column in Columns)
-            column.ApplyPreset(value);
-    }
 
     private void OnState(object? sender, PedalState state)
     {

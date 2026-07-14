@@ -58,13 +58,21 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     [ObservableProperty] private int _inputMin;
     [ObservableProperty] private int _inputMax = 4095;
     [ObservableProperty] private int _loadCellScale = 1000;
-    [ObservableProperty] private bool _isCalibrating;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalibrateLabel))]
+    private bool _isCalibrating;
+
+    public string CalibrateLabel => IsCalibrating ? "Parar calibração" : "Iniciar calibração";
 
     private bool _loading;
 
     public string Label { get; }
     public PedalIndex Pedal { get; }
     public IReadOnlyList<PedalCurvePointViewModel> Points { get; }
+
+    /// <summary>Presets de curva desta coluna, como chips selecionáveis (estilo Pit House).</summary>
+    public IReadOnlyList<PedalPresetOption> PresetOptions { get; }
 
     public ObservableCollection<ObservablePoint> CurveValues { get; } = new();
     public ObservableCollection<ObservablePoint> IdentityValues { get; } = new();
@@ -82,6 +90,8 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
             .Select((id, i) => new PedalCurvePointViewModel(
                 i, labels[i], PedalSettingsSchema.Get(id).Default, OnPointChanged))
             .ToList();
+
+        PresetOptions = PedalCurvePresets.All.Select(p => new PedalPresetOption(p)).ToList();
 
         IdentityValues.Add(new ObservablePoint(0, 0));
         IdentityValues.Add(new ObservablePoint(1, 1));
@@ -106,6 +116,14 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     {
         for (var i = 0; i < Points.Count && i < preset.Points.Length; i++)
             Points[i].Value = preset.Points[i]; // dispara write (se conectado) + rebuild
+    }
+
+    [RelayCommand]
+    private void SelectPreset(PedalCurvePreset preset)
+    {
+        foreach (var option in PresetOptions)
+            option.IsSelected = ReferenceEquals(option.Preset, preset);
+        ApplyPreset(preset);
     }
 
     public async Task LoadAsync()
