@@ -1,0 +1,7 @@
+namespace DriveLab.Core.Pedals;
+
+/// <summary>Formato do eixo de pedal do contrato: 12-bit (0..4095), como Simagic e o ADC do RP2040.</summary>
+public static class PedalAxis
+{
+    public const int Resolution12Bit = 4095;
+}

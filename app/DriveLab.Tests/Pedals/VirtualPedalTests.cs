@@ -1,6 +1,6 @@
-using DriveLab.Simulator;
+using DriveLab.Core.Pedals;
 
-namespace DriveLab.Tests.Simulator;
+namespace DriveLab.Tests.Pedals;
 
 public class VirtualPedalTests
 {
