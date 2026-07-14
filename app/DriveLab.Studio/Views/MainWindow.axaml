@@ -6,6 +6,7 @@
         x:DataType="vm:MainWindowViewModel"
         x:Name="Root"
         Width="1040" Height="680"
+        WindowState="Maximized"
         Title="DriveLab Studio"
         Icon="avares://DriveLab.Studio/Assets/logo.png"
         Background="{DynamicResource DlBackground}"
