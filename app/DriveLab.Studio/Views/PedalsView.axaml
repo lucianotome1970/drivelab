@@ -9,7 +9,8 @@
         <conv:IntEqualsConverter x:Key="IntEquals" />
 
         <DataTemplate x:Key="PedalColumn" x:DataType="vm:PedalColumnViewModel">
-            <Border Classes="card" Margin="8" HorizontalAlignment="Stretch">
+          <Grid ColumnDefinitions="*,Auto" Margin="6">
+            <Border Grid.Column="0" Classes="card" HorizontalAlignment="Stretch">
                 <StackPanel Spacing="12">
                     <TextBlock Text="{Binding Label}" Classes="h2" HorizontalAlignment="Center" />
 
@@ -96,6 +97,16 @@
                     </Grid>
                 </StackPanel>
             </Border>
+
+            <!-- Barra de progressão vertical (avanço do pedal ao vivo) -->
+            <Grid Grid.Column="1" RowDefinitions="*,Auto" Width="34" Margin="10,10,0,10">
+                <ProgressBar Grid.Row="0" Orientation="Vertical" Minimum="0" Maximum="100"
+                             Value="{Binding CurrentOutputPercent}"
+                             VerticalAlignment="Stretch" HorizontalAlignment="Center" Width="12" />
+                <TextBlock Grid.Row="1" Text="{Binding CurrentOutputPercent, StringFormat={}{0:0}%}"
+                           Classes="endLabel" HorizontalAlignment="Center" Margin="0,6,0,0" />
+            </Grid>
+          </Grid>
         </DataTemplate>
     </UserControl.Resources>
 

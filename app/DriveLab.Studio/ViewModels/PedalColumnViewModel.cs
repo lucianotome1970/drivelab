@@ -56,7 +56,13 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     [ObservableProperty] private double _smooth;
     [ObservableProperty] private bool _canEdit;
     [ObservableProperty] private double _currentInput01;
-    [ObservableProperty] private double _currentOutput01;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentOutputPercent))]
+    private double _currentOutput01;
+
+    /// <summary>Avanço do pedal (0–100) para a barra de progressão vertical.</summary>
+    public double CurrentOutputPercent => CurrentOutput01 * 100.0;
     [ObservableProperty] private int _inputMin;
     [ObservableProperty] private int _inputMax = 4095;
     [ObservableProperty] private int _loadCellScale = 1000;
