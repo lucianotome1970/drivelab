@@ -34,7 +34,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="140" />
+                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="180" />
                     <TextBlock Text="pré-visualização — não aplicada a este pedal" Classes="endLabel"
                                HorizontalAlignment="Center" IsVisible="{Binding CurvePreviewOnly}" />
 
@@ -113,22 +113,8 @@
     </UserControl.Resources>
 
     <Border Classes="card">
-        <DockPanel>
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <TextBlock Text="Pedais" Classes="h2" />
-                    <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <Button Content="Conectar" Command="{Binding ConnectCommand}" />
-                    <Button Content="Desconectar" Command="{Binding DisconnectCommand}" />
-                    <Button Content="Carregar" Command="{Binding LoadPreferencesCommand}" />
-                    <Button Content="Salvar" Command="{Binding SavePreferencesCommand}" />
-                    <Button Classes="accent" Content="Salvar no controlador" Command="{Binding SaveToControllerCommand}"
-                            IsEnabled="{Binding CanSaveToController}" />
-                </StackPanel>
-            </Grid>
-
+        <Grid>
+            <!-- Sem título: as abas ocupam o topo (a 1ª aba já é "Pedais") -->
             <TabControl>
                 <TabItem Header="Pedais">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -145,6 +131,17 @@
                     <lvc:CartesianChart Series="{Binding CombinedSeries}" />
                 </TabItem>
             </TabControl>
-        </DockPanel>
+
+            <!-- Ações sobrepostas à direita da faixa de abas -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
+                <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <Button Content="Conectar" Command="{Binding ConnectCommand}" />
+                <Button Content="Desconectar" Command="{Binding DisconnectCommand}" />
+                <Button Content="Carregar" Command="{Binding LoadPreferencesCommand}" />
+                <Button Content="Salvar" Command="{Binding SavePreferencesCommand}" />
+                <Button Classes="accent" Content="Salvar no controlador" Command="{Binding SaveToControllerCommand}"
+                        IsEnabled="{Binding CanSaveToController}" />
+            </StackPanel>
+        </Grid>
     </Border>
 </UserControl>
