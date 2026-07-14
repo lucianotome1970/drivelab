@@ -40,9 +40,9 @@
                     x:DataType="vm:HandbrakeViewModel">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{loc:Translate Home_Handbrake}" Classes="h2" />
-                    <!-- Mesma altura renderizada do card dos pedais (pedais-dlab.png 360w ≈ 240h)
-                         para o cabeçalho da imagem e a barra "Eixo" alinharem com as barras do pedal. -->
-                    <Image Source="avares://DriveLab.Studio/Assets/handbrake.png" Height="240" Stretch="Uniform"
+                    <!-- Mesma largura do card dos pedais (imagem equivalente, 1536x1024) para
+                         a imagem e a barra "Eixo" ficarem alinhadas com as barras do pedal. -->
+                    <Image Source="avares://DriveLab.Studio/Assets/handbrake.png" Width="360" Stretch="Uniform"
                            HorizontalAlignment="Center" />
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0" Text="{loc:Translate Handbrake_Axis}" Foreground="{DynamicResource DlText}" />
