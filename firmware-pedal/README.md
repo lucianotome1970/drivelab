@@ -1,6 +1,7 @@
 # DriveLab Firmware — Pedaleira (RP2040)
 
-Firmware da **pedaleira DriveLab** — placa **Raspberry Pi Pico (RP2040)**, o lado do dispositivo do contrato **P0**.
+Firmware da **pedaleira DriveLab** — placa **Waveshare RP2040-Zero** (RP2040, USB-C), o lado do dispositivo do contrato **P0**.
+(Funciona igual em qualquer RP2040; para o Pico padrão, troque `board = pico` no `platformio.ini`. LED onboard do Zero é WS2812/GP16 — o firmware não usa LED.)
 Design/decisões: [`../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-design.md`](../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-design.md).
 
 > Firmware **separado** do volante (que é ODESC/STM32 em `../firmware/`). Aqui é RP2040 + **arduino-pico** (core do Earle Philhower) + Adafruit_TinyUSB. Licença: MIT (é código nosso; TinyUSB é MIT).
@@ -43,11 +44,11 @@ Design/decisões: [`../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-d
 
 ### Pré-requisitos
 - **VS Code + extensão PlatformIO** (baixa o toolchain do arduino-pico sozinho na 1ª build).
-- **Raspberry Pi Pico** (RP2040) + cabo USB.
+- **Waveshare RP2040-Zero** (RP2040) + cabo **USB-C**.
 
 ### Passos
 1. Abra a pasta `firmware-pedal/` no VS Code (PlatformIO detecta o `platformio.ini`).
-2. **Entre no bootloader UF2:** segure o botão **BOOTSEL** do Pico **enquanto** o pluga na USB. Aparece a unidade **RPI-RP2**.
+2. **Entre no bootloader UF2:** no RP2040-Zero, segure o botão **BOOT** e dê um toque no **RESET** (ou segure **BOOT** enquanto pluga o USB-C). Aparece a unidade **RPI-RP2**.
 3. **Build**: ícone ✓ do PlatformIO (ou `pio run`). A 1ª vez baixa o core + TinyUSB (alguns minutos).
 4. **Upload**: ícone → do PlatformIO. O PlatformIO copia o `.uf2` para o Pico (que reinicia sozinho).
 5. **Ver o joystick:** no Windows, `Win+R` → `joy.cpl` → deve aparecer **"DriveLab Pedal"** → Propriedades → gire o pot e veja o eixo mexer.
@@ -61,7 +62,7 @@ Design/decisões: [`../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-d
 ### Se der problema (M1 não validado em hardware ainda)
 - **Build falha em `Adafruit_TinyUSB.h`** → confira que `build_flags = -DUSE_TINYUSB` está no `platformio.ini` (é o que ativa o stack TinyUSB no core do Philhower). Suspeito nº1 na 1ª build.
 - **Não aparece "DriveLab Pedal" / nome errado** → confira as chaves `board_build.arduino.earlephilhower.usb_*` (manufacturer/product/vid/pid). O Windows cacheia nomes por VID/PID; se trocar, pode precisar re-plugar em outra porta.
-- **Não aparece a unidade RPI-RP2** → segure o BOOTSEL ANTES de plugar.
+- **Não aparece a unidade RPI-RP2** → segure **BOOT** e toque **RESET** (ou segure BOOT ao plugar).
 - **Eixos "colados" no máximo** → ADC flutuando sem pot; ligue um potenciômetro (ou é o pino errado).
 
 > Quando o M1 passar, seguimos pro **M2** (canal vendor P0 → o app conecta e configura).
