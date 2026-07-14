@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DriveLab.Studio.Controls.PedalCurveEditor">
+    <Border Background="{DynamicResource DlBackground}" BorderBrush="{DynamicResource DlBorder}"
+            BorderThickness="1" CornerRadius="8">
+        <Canvas x:Name="Surface" ClipToBounds="True" Background="Transparent" />
+    </Border>
+</UserControl>

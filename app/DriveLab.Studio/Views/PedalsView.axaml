@@ -3,6 +3,7 @@
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:conv="using:DriveLab.Studio.Converters"
              xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             xmlns:controls="using:DriveLab.Studio.Controls"
              xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.PedalsView"
              x:DataType="vm:PedalsViewModel">
@@ -35,27 +36,15 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="180" />
+                    <controls:PedalCurveEditor Height="200"
+                        Points="{Binding Points}"
+                        DeadzoneLow="{Binding DeadzoneLow, Mode=TwoWay}"
+                        DeadzoneHigh="{Binding DeadzoneHigh, Mode=TwoWay}"
+                        LiveInput01="{Binding CurrentInput01}"
+                        LiveOutput01="{Binding CurrentOutput01}"
+                        EditEnabled="{Binding CanEdit}" />
                     <TextBlock Text="{loc:Translate Pedal_PreviewOnly}" Classes="endLabel"
                                HorizontalAlignment="Center" IsVisible="{Binding CurvePreviewOnly}" />
-
-                    <!-- Pontos da curva (label · slider laranja · valueBox) -->
-                    <ItemsControl ItemsSource="{Binding Points}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:PedalCurvePointViewModel">
-                                <Grid ColumnDefinitions="44,*,Auto" Margin="0,2">
-                                    <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Label}" />
-                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Value}"
-                                            IsSnapToTickEnabled="True" TickFrequency="1"
-                                            VerticalAlignment="Center" Margin="8,0"
-                                            IsEnabled="{Binding $parent[ItemsControl].((vm:PedalColumnViewModel)DataContext).CanEdit}" />
-                                    <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
-                                        <TextBlock Text="{Binding Value, StringFormat={}{0:0}}" />
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
 
                     <!-- Inverter (toggle laranja) -->
                     <Grid ColumnDefinitions="*,Auto">
