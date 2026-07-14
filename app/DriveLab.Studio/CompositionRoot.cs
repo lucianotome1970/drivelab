@@ -49,12 +49,16 @@ public static class CompositionRoot
         var session = new DeviceSession(transport, dispatcher);
         var connection = new ConnectionViewModel(session);
 
-        // Autodetecção: Simagic plugado → perfil P2000 (leitura); senão → simulador.
+        // Autodetecção (rótulo genérico, sem expor marca/modelo):
+        //  1) nossa pedaleira (P0, configurável) → 2) Simagic (leitura) → 3) simulador.
         var simagicReader = new SimagicHidSharpReader();
-        // Rótulo genérico ao detectar (sem expor marca/modelo do dispositivo).
-        var pedalSession = simagicReader.IsPresent()
-            ? new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, L.Get("Pedal_Source_Detected"))
-            : new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
+        PedalDeviceSession pedalSession;
+        if (HidPedalTransport.IsDevicePresent())
+            pedalSession = new PedalDeviceSession(new HidPedalTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
+        else if (simagicReader.IsPresent())
+            pedalSession = new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, L.Get("Pedal_Source_Detected"));
+        else
+            pedalSession = new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
         // Base do Volante: abas de settings + Telemetria como última aba.
