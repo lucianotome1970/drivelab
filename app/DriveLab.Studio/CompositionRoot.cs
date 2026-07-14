@@ -50,8 +50,9 @@ public static class CompositionRoot
 
         // Autodetecção: Simagic plugado → perfil P2000 (leitura); senão → simulador.
         var simagicReader = new SimagicHidSharpReader();
+        // Rótulo genérico ao detectar (sem expor marca/modelo do dispositivo).
         var pedalSession = simagicReader.IsPresent()
-            ? new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, "Simagic P2000 — leitura")
+            ? new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, "Pedaleira detectada")
             : new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, "Simulador");
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
