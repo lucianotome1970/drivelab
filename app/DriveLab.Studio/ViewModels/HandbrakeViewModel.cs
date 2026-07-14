@@ -15,7 +15,10 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     private readonly IHandbrakeProfileStorage _storage;
     private bool _loading;
 
-    [ObservableProperty] private bool _isConnected;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    private bool _isConnected;
     [ObservableProperty] private string _sourceLabel = "";
     [ObservableProperty] private bool _canEdit;
 
@@ -57,7 +60,17 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         _session.SettingChanged += OnSettingChanged;
     }
 
-    public Task ConnectAsync() => _session.ConnectAsync();
+    [RelayCommand(CanExecute = nameof(CanConnect))]
+    private async Task ConnectAsync()
+    {
+        await _session.ConnectAsync();
+        await LoadAsync();
+    }
+
+    private bool CanConnect() => !IsConnected;
+
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private Task DisconnectAsync() => _session.DisconnectAsync();
 
     public async Task LoadAsync()
     {
@@ -166,6 +179,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         _session.Connected -= OnConnectionChanged;
         _session.Disconnected -= OnConnectionChanged;
         _session.SettingChanged -= OnSettingChanged;
+        _session.Dispose();
         base.Dispose();
     }
 }

@@ -57,6 +57,12 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Conectar/desconectar -->
+                <WrapPanel>
+                    <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" />
+                    <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" />
+                </WrapPanel>
+
                 <!-- Calibração + salvar -->
                 <WrapPanel>
                     <Button Classes="chip" Content="{loc:Translate Handbrake_CalibrateStart}" Command="{Binding CalibrateStartCommand}" />

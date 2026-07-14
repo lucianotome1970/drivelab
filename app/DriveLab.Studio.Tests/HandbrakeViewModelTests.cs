@@ -25,7 +25,7 @@ public class HandbrakeViewModelTests
     public async Task State_Updates_Output_And_Button()
     {
         var vm = Make(out var t);
-        await vm.ConnectAsync();
+        await vm.ConnectCommand.ExecuteAsync(null);
         t.StopStreaming();
         t.SetRawInput(4095);
         t.Step();
@@ -43,7 +43,7 @@ public class HandbrakeViewModelTests
         Assert.Equal("100%", vm.Points[5].Label);
         Assert.False(vm.CanEdit);
 
-        await vm.ConnectAsync();
+        await vm.ConnectCommand.ExecuteAsync(null);
         Assert.True(vm.CanEdit);
         vm.Dispose();
     }
