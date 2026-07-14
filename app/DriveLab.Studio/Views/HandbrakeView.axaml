@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:conv="using:DriveLab.Studio.Converters"
+             xmlns:controls="using:DriveLab.Studio.Controls"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.HandbrakeView"
+             x:DataType="vm:HandbrakeViewModel">
+    <ScrollViewer>
+        <Border Classes="card" Margin="16" Padding="20">
+            <StackPanel Spacing="16" MaxWidth="460" HorizontalAlignment="Left">
+                <TextBlock Text="{loc:Translate Handbrake_Title}" Classes="h2" />
+                <Image Source="avares://DriveLab.Studio/Assets/handbrake.png" Width="220" Stretch="Uniform"
+                       HorizontalAlignment="Center" />
+
+                <!-- Leitura ao vivo do eixo -->
+                <TextBlock Text="{loc:Translate Handbrake_Axis}" Classes="muted" />
+                <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentOutput01}"
+                             Height="10" CornerRadius="5" Foreground="#FF6A00" Background="#22FFFFFF" />
+
+                <!-- Indicador do botão digital -->
+                <Border CornerRadius="6" Padding="10,4" HorizontalAlignment="Left"
+                        Background="{Binding ButtonActive, Converter={x:Static conv:BoolToBrushConverter.Instance}}">
+                    <TextBlock Text="{loc:Translate Handbrake_Button}" Foreground="#111111" FontWeight="Bold" />
+                </Border>
+
+                <!-- Tipo de sensor -->
+                <TextBlock Text="{loc:Translate Handbrake_Sensor}" Classes="muted" />
+                <ComboBox SelectedIndex="{Binding SensorType}">
+                    <ComboBoxItem Content="Potenciômetro" />
+                    <ComboBoxItem Content="Hall" />
+                    <ComboBoxItem Content="Load cell" />
+                </ComboBox>
+
+                <!-- Suavização + inverter -->
+                <TextBlock Text="{loc:Translate Handbrake_Smooth}" Classes="muted" />
+                <Slider Minimum="0" Maximum="100" Value="{Binding Smooth}" />
+                <CheckBox Content="{loc:Translate Handbrake_Invert}" IsChecked="{Binding Invert}" />
+
+                <!-- Curva + deadzone -->
+                <TextBlock Text="{loc:Translate Handbrake_Curve}" Classes="muted" />
+                <controls:PedalCurveEditor Height="220"
+                    Points="{Binding Points}"
+                    DeadzoneLow="{Binding DeadzoneLow, Mode=TwoWay}"
+                    DeadzoneHigh="{Binding DeadzoneHigh, Mode=TwoWay}"
+                    LiveInput01="{Binding CurrentInput01}"
+                    LiveOutput01="{Binding CurrentOutput01}"
+                    EditEnabled="{Binding CanEdit}" />
+
+                <!-- Bloco do botão digital -->
+                <Border Classes="card" Padding="14">
+                    <StackPanel Spacing="10">
+                        <CheckBox Content="{loc:Translate Handbrake_ButtonEnabled}" IsChecked="{Binding ButtonEnabled}" />
+                        <TextBlock Text="{loc:Translate Handbrake_ButtonThreshold}" Classes="muted" />
+                        <Slider Minimum="0" Maximum="100" Value="{Binding ButtonThreshold}" IsEnabled="{Binding ButtonEnabled}" />
+                        <TextBlock Text="{Binding ButtonThreshold, StringFormat={}{0}%}" Foreground="{DynamicResource DlMuted}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Calibração + salvar -->
+                <WrapPanel>
+                    <Button Classes="chip" Content="{loc:Translate Handbrake_CalibrateStart}" Command="{Binding CalibrateStartCommand}" />
+                    <Button Classes="chip" Content="{loc:Translate Handbrake_CalibrateStop}" Command="{Binding CalibrateStopCommand}" />
+                    <Button Classes="accent" Content="{loc:Translate Handbrake_Save}" Command="{Binding SaveCommand}" />
+                    <Button Classes="chip" Content="{loc:Translate Handbrake_LoadDefaults}" Command="{Binding LoadDefaultsCommand}" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+</UserControl>
