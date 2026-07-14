@@ -74,7 +74,7 @@ public class SettingFieldViewModelTests
     {
         var vm = New(out _);
         Assert.True(vm.HasPresets);
-        Assert.Equal(new[] { 360, 540, 720, 900, 1080, 1440, 1800 }, vm.Presets);
+        Assert.Equal(new[] { 360, 540, 720, 900, 1080, 1440 }, vm.Presets);
     }
 
     [Fact]

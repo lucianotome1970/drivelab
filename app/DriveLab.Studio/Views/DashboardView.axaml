@@ -35,7 +35,6 @@
                 <Button Classes="chip" Content="900"  Command="{Binding SetMaxAngleCommand}" CommandParameter="900"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=900}" />
                 <Button Classes="chip" Content="1080" Command="{Binding SetMaxAngleCommand}" CommandParameter="1080" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1080}" />
                 <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
-                <Button Classes="chip" Content="1800" Command="{Binding SetMaxAngleCommand}" CommandParameter="1800" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1800}" />
             </WrapPanel>
 
             <Button Classes="accent" Content="Center" Command="{Binding CenterCommand}" HorizontalAlignment="Left" />

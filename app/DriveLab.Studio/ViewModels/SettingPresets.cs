@@ -7,7 +7,7 @@ public static class SettingPresets
 {
     private static readonly Dictionary<SettingId, int[]> Map = new()
     {
-        [SettingId.MotionRange] = new[] { 360, 540, 720, 900, 1080, 1440, 1800 },
+        [SettingId.MotionRange] = new[] { 360, 540, 720, 900, 1080, 1440 },
         [SettingId.TotalStrength] = new[] { 30, 50, 70, 100 },
         [SettingId.MaxTorqueLimit] = new[] { 50, 80, 100 },
         [SettingId.SoftStopStrength] = new[] { 0, 50, 80, 100 },
