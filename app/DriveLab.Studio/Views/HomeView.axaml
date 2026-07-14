@@ -9,10 +9,12 @@
             <!-- Card do volante -->
             <views:DashboardView DataContext="{Binding Wheel}" Margin="0,0,16,16" />
 
-            <!-- Card resumo dos pedais (ao vivo) -->
-            <Border Classes="card" Width="320" VerticalAlignment="Top" Margin="0,0,16,16">
+            <!-- Card resumo dos pedais (ao vivo) — mesmo tamanho do card do volante -->
+            <Border Classes="card" Width="420" VerticalAlignment="Top" Margin="0,0,16,16">
                 <StackPanel Spacing="16">
                     <TextBlock Text="Pedais" Classes="h2" />
+                    <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="360" Stretch="Uniform"
+                           HorizontalAlignment="Center" />
                     <ItemsControl ItemsSource="{Binding Pedals.Columns}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:PedalColumnViewModel">
