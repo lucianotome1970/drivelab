@@ -16,6 +16,7 @@
   <data name="Nav_Home" xml:space="preserve"><value>Início</value></data>
   <data name="Nav_WheelBase" xml:space="preserve"><value>Base do Volante</value></data>
   <data name="Nav_Pedals" xml:space="preserve"><value>Pedais</value></data>
+  <data name="Nav_Handbrake" xml:space="preserve"><value>Freio de mão</value></data>
 
   <data name="Wheel_Title" xml:space="preserve"><value>Volante DriveLab</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Ângulo máximo</value></data>
@@ -94,4 +95,19 @@
   <data name="Setting_PositionSmoothing" xml:space="preserve"><value>Suavização de posição</value></data>
   <data name="Setting_PowerLimit" xml:space="preserve"><value>Limite de potência</value></data>
   <data name="Setting_BrakingLimit" xml:space="preserve"><value>Limite de frenagem</value></data>
+
+  <data name="Home_Handbrake" xml:space="preserve"><value>Freio de mão</value></data>
+  <data name="Handbrake_Title" xml:space="preserve"><value>Freio de mão</value></data>
+  <data name="Handbrake_Axis" xml:space="preserve"><value>Eixo</value></data>
+  <data name="Handbrake_Button" xml:space="preserve"><value>Botão</value></data>
+  <data name="Handbrake_Sensor" xml:space="preserve"><value>Tipo de sensor</value></data>
+  <data name="Handbrake_Smooth" xml:space="preserve"><value>Suavização</value></data>
+  <data name="Handbrake_Invert" xml:space="preserve"><value>Inverter</value></data>
+  <data name="Handbrake_Curve" xml:space="preserve"><value>Curva</value></data>
+  <data name="Handbrake_ButtonEnabled" xml:space="preserve"><value>Botão digital</value></data>
+  <data name="Handbrake_ButtonThreshold" xml:space="preserve"><value>Limiar do botão</value></data>
+  <data name="Handbrake_CalibrateStart" xml:space="preserve"><value>Calibrar: início</value></data>
+  <data name="Handbrake_CalibrateStop" xml:space="preserve"><value>Calibrar: fim</value></data>
+  <data name="Handbrake_Save" xml:space="preserve"><value>Salvar</value></data>
+  <data name="Handbrake_LoadDefaults" xml:space="preserve"><value>Padrões</value></data>
 </root>

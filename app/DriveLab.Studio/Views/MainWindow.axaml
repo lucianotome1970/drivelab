@@ -29,6 +29,11 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}">
                     <Image Source="avares://DriveLab.Studio/Assets/pedais.png" Width="26" Height="26" />
                 </Button>
+                <!-- Freio de mão: ícone próprio (handbrake_ico.png) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[3].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/handbrake_ico.png" Width="26" Height="26" />
+                </Button>
             </StackPanel>
         </Border>
 

@@ -61,6 +61,12 @@ public static class CompositionRoot
             pedalSession = new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
+        // Freio de mão: autodetecção 1) HID 0x0003 → 2) simulador (rótulo genérico).
+        // HID autodetect chega na Tarefa 12; por ora o simulador é sempre usado.
+        HandbrakeDeviceSession handbrakeSession =
+            new HandbrakeDeviceSession(new SimulatorHandbrakeTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
+        var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage());
+
         // Base do Volante: abas de settings + Telemetria como última aba.
         var wheelBaseTabs = WheelBaseTabs
             .Select(t => new PageTab(L.Get($"Tab_{t.Header}"), new SettingsGroupViewModel(session, t.Header, t.Ids)))
@@ -68,13 +74,14 @@ public static class CompositionRoot
             .ToList();
 
         // Home (dash): card do volante + resumo ao vivo dos pedais, lado a lado.
-        var home = new HomeViewModel(new DashboardViewModel(session), pedals);
+        var home = new HomeViewModel(new DashboardViewModel(session), pedals, handbrake);
 
         var pages = new List<NavItem>
         {
             new(L.Get("Nav_Home"), "\U0001F39B", home),
             new(L.Get("Nav_WheelBase"), "base", new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs)),
             new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals),
+            new(L.Get("Nav_Handbrake"), "handbrake", handbrake),
         };
 
         // Teste (controle direto de força) não é uma aba: abre num modal à parte,
