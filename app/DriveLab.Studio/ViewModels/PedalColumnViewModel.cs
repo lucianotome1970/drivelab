@@ -7,6 +7,8 @@ using DriveLab.Studio.Services;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using SkiaSharp;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -96,11 +98,24 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
         IdentityValues.Add(new ObservablePoint(0, 0));
         IdentityValues.Add(new ObservablePoint(1, 1));
 
+        var accent = new SKColor(0xFF, 0x6A, 0x00);
         CurveSeries = new ISeries[]
         {
-            new LineSeries<ObservablePoint> { Name = "Identidade", Values = IdentityValues, GeometrySize = 0, IsHoverable = false },
-            new LineSeries<ObservablePoint> { Name = "Curva", Values = CurveValues, GeometrySize = 0 },
-            new ScatterSeries<ObservablePoint> { Name = "Atual", Values = LiveValues, GeometrySize = 12 },
+            new LineSeries<ObservablePoint>
+            {
+                Name = "Identidade", Values = IdentityValues, GeometrySize = 0, IsHoverable = false,
+                Stroke = new SolidColorPaint(new SKColor(0x26, 0x2C, 0x34)) { StrokeThickness = 1 }, Fill = null,
+            },
+            new LineSeries<ObservablePoint>
+            {
+                Name = "Curva", Values = CurveValues, GeometrySize = 0,
+                Stroke = new SolidColorPaint(accent) { StrokeThickness = 3 }, Fill = null,
+            },
+            new ScatterSeries<ObservablePoint>
+            {
+                Name = "Atual", Values = LiveValues, GeometrySize = 13,
+                Fill = new SolidColorPaint(accent),
+            },
         };
 
         RebuildCurve();
@@ -125,6 +140,9 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
             option.IsSelected = ReferenceEquals(option.Preset, preset);
         ApplyPreset(preset);
     }
+
+    [RelayCommand]
+    private void SelectSensor(string type) => SensorType = int.Parse(type);
 
     public async Task LoadAsync()
     {

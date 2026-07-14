@@ -107,6 +107,15 @@ public class PedalColumnViewModelTests
     }
 
     [Fact]
+    public void SelectSensor_Sets_SensorType()
+    {
+        var (vm, _, s) = Make(connected: true);
+        vm.SelectSensorCommand.Execute("2");
+        Assert.Equal(2, vm.SensorType);
+        s.Dispose();
+    }
+
+    [Fact]
     public void Column_Exposes_Preset_Options()
     {
         var (vm, _, s) = Make(connected: false);
