@@ -3,11 +3,12 @@
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:views="using:DriveLab.Studio.Views"
              xmlns:loc="using:DriveLab.Studio.Localization"
+             xmlns:conv="using:DriveLab.Studio.Converters"
              x:Class="DriveLab.Studio.Views.HomeView"
              x:DataType="vm:HomeViewModel">
     <ScrollViewer HorizontalScrollBarVisibility="Auto">
-        <!-- Colunas iguais + linha Auto: os dois cards esticam para a mesma altura -->
-        <Grid ColumnDefinitions="420,16,420" RowDefinitions="Auto" HorizontalAlignment="Left" Margin="0,0,0,16">
+        <!-- Colunas iguais + linha Auto: os três cards esticam para a mesma altura -->
+        <Grid ColumnDefinitions="420,16,420,16,420" RowDefinitions="Auto" HorizontalAlignment="Left" Margin="0,0,0,16">
             <!-- Card do volante -->
             <views:DashboardView Grid.Column="0" DataContext="{Binding Wheel}" />
 
@@ -31,6 +32,26 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Card do freio de mão (ao vivo) -->
+            <Border Grid.Column="4" Classes="card" DataContext="{Binding Handbrake}"
+                    x:DataType="vm:HandbrakeViewModel">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{loc:Translate Home_Handbrake}" Classes="h2" />
+                    <Image Source="avares://DriveLab.Studio/Assets/handbrake.png" Width="200" Stretch="Uniform"
+                           HorizontalAlignment="Center" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:Translate Handbrake_Axis}" Foreground="{DynamicResource DlText}" />
+                        <TextBlock Grid.Column="1" Text="{Binding CurrentOutput01, StringFormat={}{0:P0}}" Foreground="{DynamicResource DlMuted}" />
+                    </Grid>
+                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentOutput01}"
+                                 Height="8" CornerRadius="4" Foreground="#FF6A00" Background="#22FFFFFF" />
+                    <Border CornerRadius="6" Padding="10,4" HorizontalAlignment="Left"
+                            Background="{Binding ButtonActive, Converter={x:Static conv:BoolToBrushConverter.Instance}}">
+                        <TextBlock Text="{loc:Translate Handbrake_Button}" Foreground="#111111" FontWeight="Bold" />
+                    </Border>
                 </StackPanel>
             </Border>
         </Grid>
