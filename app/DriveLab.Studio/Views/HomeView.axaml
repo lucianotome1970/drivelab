@@ -14,8 +14,8 @@
             <Border Grid.Column="2" Classes="card">
                 <StackPanel Spacing="16">
                     <TextBlock Text="Pedais" Classes="h2" />
-                    <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="240" MaxHeight="180"
-                           Stretch="Uniform" HorizontalAlignment="Center" />
+                    <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="360" Stretch="Uniform"
+                           HorizontalAlignment="Center" />
                     <ItemsControl ItemsSource="{Binding Pedals.Columns}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:PedalColumnViewModel">

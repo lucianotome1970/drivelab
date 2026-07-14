@@ -11,7 +11,7 @@
         <DataTemplate x:Key="PedalColumn" x:DataType="vm:PedalColumnViewModel">
           <Grid ColumnDefinitions="*,Auto" Margin="6">
             <Border Grid.Column="0" Classes="card" HorizontalAlignment="Stretch">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="8">
                     <TextBlock Text="{Binding Label}" Classes="h2" HorizontalAlignment="Center" />
 
                     <!-- Curvas de saída (chips estilo Pit House) -->
@@ -34,7 +34,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="200" />
+                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="140" />
 
                     <!-- Pontos da curva (label · slider laranja · valueBox) -->
                     <ItemsControl ItemsSource="{Binding Points}">
