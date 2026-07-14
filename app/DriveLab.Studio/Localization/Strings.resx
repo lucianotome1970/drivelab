@@ -16,6 +16,7 @@
   <data name="Nav_Home" xml:space="preserve"><value>Home</value></data>
   <data name="Nav_WheelBase" xml:space="preserve"><value>Wheel Base</value></data>
   <data name="Nav_Pedals" xml:space="preserve"><value>Pedals</value></data>
+  <data name="Nav_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
 
   <data name="Wheel_Title" xml:space="preserve"><value>DriveLab Wheel</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Maximum angle</value></data>
@@ -94,4 +95,19 @@
   <data name="Setting_PositionSmoothing" xml:space="preserve"><value>Position smoothing</value></data>
   <data name="Setting_PowerLimit" xml:space="preserve"><value>Power limit</value></data>
   <data name="Setting_BrakingLimit" xml:space="preserve"><value>Braking limit</value></data>
+
+  <data name="Home_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
+  <data name="Handbrake_Title" xml:space="preserve"><value>Handbrake</value></data>
+  <data name="Handbrake_Axis" xml:space="preserve"><value>Axis</value></data>
+  <data name="Handbrake_Button" xml:space="preserve"><value>Button</value></data>
+  <data name="Handbrake_Sensor" xml:space="preserve"><value>Sensor type</value></data>
+  <data name="Handbrake_Smooth" xml:space="preserve"><value>Smoothing</value></data>
+  <data name="Handbrake_Invert" xml:space="preserve"><value>Invert</value></data>
+  <data name="Handbrake_Curve" xml:space="preserve"><value>Curve</value></data>
+  <data name="Handbrake_ButtonEnabled" xml:space="preserve"><value>Digital button</value></data>
+  <data name="Handbrake_ButtonThreshold" xml:space="preserve"><value>Button threshold</value></data>
+  <data name="Handbrake_CalibrateStart" xml:space="preserve"><value>Calibrate: start</value></data>
+  <data name="Handbrake_CalibrateStop" xml:space="preserve"><value>Calibrate: stop</value></data>
+  <data name="Handbrake_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Handbrake_LoadDefaults" xml:space="preserve"><value>Defaults</value></data>
 </root>
