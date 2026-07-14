@@ -7,6 +7,13 @@ namespace DriveLab.Tests.Simulator;
 public class SimulatorPedalTransportTests
 {
     [Fact]
+    public void SupportsConfig_Is_True()
+    {
+        var t = new SimulatorPedalTransport();
+        Assert.True(t.SupportsConfig);
+    }
+
+    [Fact]
     public async Task Connect_Seeds_Defaults()
     {
         var t = new SimulatorPedalTransport();
@@ -43,6 +50,7 @@ public class SimulatorPedalTransportTests
     {
         var t = new SimulatorPedalTransport();
         await t.ConnectAsync();
+        t.StopStreaming(); // controle manual: sem timer sobrescrevendo os raws
         PedalState? received = null;
         t.StateReceived += (_, s) => received = s;
 
@@ -71,6 +79,7 @@ public class SimulatorPedalTransportTests
     {
         var t = new SimulatorPedalTransport();
         await t.ConnectAsync();
+        t.StopStreaming(); // controle manual da calibração
 
         await t.SendCommandAsync(PedalCommandId.CalibrateStart, (byte)PedalIndex.Brake);
         t.SetRawInputs(0, 300, 0);
@@ -89,6 +98,7 @@ public class SimulatorPedalTransportTests
     {
         var t = new SimulatorPedalTransport();
         await t.ConnectAsync();
+        t.StopStreaming();
 
         var priorMin = await t.ReadSettingAsync(PedalSettingId.InputMin, PedalIndex.Brake);
         var priorMax = await t.ReadSettingAsync(PedalSettingId.InputMax, PedalIndex.Brake);

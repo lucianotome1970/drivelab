@@ -8,6 +8,10 @@ public interface IPedalTransport
     bool IsConnected { get; }
     FirmwareVersion FirmwareVersion { get; }
 
+    /// <summary>True quando o app pode configurar o dispositivo (nossos pedais/simulador);
+    /// false para fontes read-only (ex.: Simagic — só leitura).</summary>
+    bool SupportsConfig { get; }
+
     /// <summary>Raised when new pedal telemetry is available. MAY fire on a background thread.</summary>
     event EventHandler<PedalState>? StateReceived;
 

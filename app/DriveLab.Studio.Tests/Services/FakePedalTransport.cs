@@ -7,6 +7,7 @@ namespace DriveLab.Studio.Tests.Services;
 public sealed class FakePedalTransport : IPedalTransport
 {
     public bool IsConnected { get; private set; }
+    public bool SupportsConfig { get; set; } = true;
     public FirmwareVersion FirmwareVersion { get; } = new(0, 1, 0, 0);
     public event EventHandler<PedalState>? StateReceived;
 
