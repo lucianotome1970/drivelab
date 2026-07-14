@@ -166,10 +166,13 @@
                         <ItemsControl ItemsSource="{Binding Columns}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PedalColumnViewModel">
-                                    <Grid ColumnDefinitions="120,*,64" Margin="0,4">
+                                    <Grid ColumnDefinitions="110,*,56,120" Margin="0,4">
                                         <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="fieldLabel" VerticalAlignment="Center" />
                                         <ProgressBar Grid.Column="1" Minimum="0" Maximum="4095" Value="{Binding RawLive}" Margin="8,0" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="2" Text="{Binding RawLive}" Classes="endLabel" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3" Text="{Binding CalRange}" Classes="endLabel"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   IsVisible="{Binding Capturing}" />
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

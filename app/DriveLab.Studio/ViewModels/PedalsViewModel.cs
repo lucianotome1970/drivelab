@@ -99,11 +99,18 @@ public sealed partial class PedalsViewModel : ViewModelBase
     [ObservableProperty] private bool _isCalibrating;
 
     [RelayCommand] private void OpenCalibration() => IsCalibrating = true;
-    [RelayCommand] private void CloseCalibration() => IsCalibrating = false;
+
+    [RelayCommand]
+    private void CloseCalibration()
+    {
+        foreach (var c in Columns) c.EndCapture();
+        IsCalibrating = false;
+    }
 
     [RelayCommand]
     private async Task StartCalibration()
     {
+        foreach (var c in Columns) c.BeginCapture();
         foreach (PedalIndex p in Enum.GetValues<PedalIndex>())
             await _session.SendCommandAsync(PedalCommandId.CalibrateStart, (byte)p);
     }
@@ -111,6 +118,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
     [RelayCommand]
     private async Task FinishCalibration()
     {
+        foreach (var c in Columns) c.EndCapture();
         foreach (PedalIndex p in Enum.GetValues<PedalIndex>())
             await _session.SendCommandAsync(PedalCommandId.CalibrateStop, (byte)p);
         foreach (var c in Columns)

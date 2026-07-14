@@ -96,6 +96,30 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     /// <summary>Valor cru ao vivo (0–4095) para o modal de calibração.</summary>
     public int RawLive => (int)Math.Round(CurrentInput01 * 4095.0);
 
+    /// <summary>Min/max cru observado durante a captura de calibração (mostra o "ponto de calibragem").</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalRange))]
+    private int _calMin;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalRange))]
+    private int _calMax;
+
+    [ObservableProperty] private bool _capturing;
+
+    public string CalRange => $"{CalMin} – {CalMax}";
+
+    /// <summary>Começa a acumular o min/max cru (chamado no Start da calibração).</summary>
+    public void BeginCapture()
+    {
+        CalMin = 4095; // sentinela: o 1º sample de telemetria define o min real
+        CalMax = 0;
+        Capturing = true;
+    }
+
+    /// <summary>Para de acumular (chamado no Finish/Fechar).</summary>
+    public void EndCapture() => Capturing = false;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CalibrateLabel))]
     private bool _isCalibrating;
@@ -278,6 +302,11 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
         var reading = state[Pedal];
         CurrentInput01 = reading.RawInput / 4095.0;
         CurrentOutput01 = reading.Output / 65535.0;
+        if (Capturing)
+        {
+            if (reading.RawInput < CalMin) CalMin = reading.RawInput;
+            if (reading.RawInput > CalMax) CalMax = reading.RawInput;
+        }
         LiveValues.Clear();
         LiveValues.Add(new ObservablePoint(CurrentInput01, CurrentOutput01));
     }

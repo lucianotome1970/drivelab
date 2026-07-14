@@ -168,6 +168,23 @@ public class PedalColumnViewModelTests
     }
 
     [Fact]
+    public void Capture_Tracks_Cal_Min_Max()
+    {
+        var t = new FakePedalTransport();
+        var s = new PedalDeviceSession(t, new ImmediateUiDispatcher());
+        var vm = new PedalColumnViewModel(s, PedalIndex.Brake, "Freio");
+        vm.BeginCapture();
+        t.Emit(new PedalState { Brake = new PedalReading(300, 0) });
+        t.Emit(new PedalState { Brake = new PedalReading(3800, 0) });
+        t.Emit(new PedalState { Brake = new PedalReading(1500, 0) });
+        Assert.Equal(300, vm.CalMin);
+        Assert.Equal(3800, vm.CalMax);
+        vm.EndCapture();
+        Assert.False(vm.Capturing);
+        s.Dispose();
+    }
+
+    [Fact]
     public void Throttle_Column_Is_Not_Brake()
     {
         var t = new FakePedalTransport();
