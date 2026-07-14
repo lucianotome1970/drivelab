@@ -146,6 +146,38 @@ public class PedalColumnViewModelTests
     }
 
     [Fact]
+    public void Deadzone_Edit_Writes_When_Connected()
+    {
+        var (vm, t, s) = Make(connected: true);
+        vm.DeadzoneLow = 8;
+        Assert.Equal(PedalSettingId.DeadzoneLow, t.LastWrite!.Value.id);
+        Assert.Equal(8, t.LastWrite.Value.value.AsDouble);
+        s.Dispose();
+    }
+
+    [Fact]
+    public void Brake_Force_Kg_From_Input_And_Max()
+    {
+        var t = new FakePedalTransport();
+        var s = new PedalDeviceSession(t, new ImmediateUiDispatcher());
+        var vm = new PedalColumnViewModel(s, PedalIndex.Brake, "Freio") { LoadCellMaxKg = 100 };
+        t.Emit(new PedalState { Brake = new PedalReading(2048, 30000) }); // input ~50%
+        Assert.True(vm.IsBrake);
+        Assert.InRange(vm.CurrentForceKg, 49, 51);
+        s.Dispose();
+    }
+
+    [Fact]
+    public void Throttle_Column_Is_Not_Brake()
+    {
+        var t = new FakePedalTransport();
+        var s = new PedalDeviceSession(t, new ImmediateUiDispatcher());
+        var vm = new PedalColumnViewModel(s, PedalIndex.Throttle, "Acelerador");
+        Assert.False(vm.IsBrake);
+        s.Dispose();
+    }
+
+    [Fact]
     public void Presets_Include_Linear()
     {
         Assert.Contains(PedalCurvePresets.All, p => p.Name == "Linear");

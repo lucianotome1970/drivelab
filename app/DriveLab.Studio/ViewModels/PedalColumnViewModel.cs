@@ -55,10 +55,17 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     [ObservableProperty] private bool _invert;
     [ObservableProperty] private double _smooth;
     [ObservableProperty] private bool _canEdit;
-    [ObservableProperty] private double _currentInput01;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentForceKg))]
+    [NotifyPropertyChangedFor(nameof(BrakeReadout))]
+    [NotifyPropertyChangedFor(nameof(ForceMaxed))]
+    [NotifyPropertyChangedFor(nameof(RawLive))]
+    private double _currentInput01;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentOutputPercent))]
+    [NotifyPropertyChangedFor(nameof(BrakeReadout))]
     private double _currentOutput01;
 
     /// <summary>Avanço do pedal (0–100) para a barra de progressão vertical.</summary>
@@ -66,6 +73,28 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     [ObservableProperty] private int _inputMin;
     [ObservableProperty] private int _inputMax = 4095;
     [ObservableProperty] private int _loadCellScale = 1000;
+    [ObservableProperty] private int _deadzoneLow;
+    [ObservableProperty] private int _deadzoneHigh = 100;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentForceKg))]
+    [NotifyPropertyChangedFor(nameof(BrakeReadout))]
+    private int _loadCellMaxKg = 100;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BrakeReadout))]
+    private bool _brakeUnitKg;
+
+    /// <summary>Freio: exibe força em KG e o seletor de fundo de escala.</summary>
+    public bool IsBrake => Pedal == PedalIndex.Brake;
+
+    /// <summary>Força física (input cru × fundo de escala) — separada da posição do eixo.</summary>
+    public double CurrentForceKg => CurrentInput01 * LoadCellMaxKg;
+    public bool ForceMaxed => CurrentInput01 >= 0.99;
+    public string BrakeReadout => BrakeUnitKg ? $"{CurrentForceKg:0} kg" : $"{CurrentOutput01 * 100:0}%";
+
+    /// <summary>Valor cru ao vivo (0–4095) para o modal de calibração.</summary>
+    public int RawLive => (int)Math.Round(CurrentInput01 * 4095.0);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CalibrateLabel))]
@@ -173,6 +202,8 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
         InputMin = (int)(await _session.ReadSettingAsync(PedalSettingId.InputMin, Pedal)).AsDouble;
         InputMax = (int)(await _session.ReadSettingAsync(PedalSettingId.InputMax, Pedal)).AsDouble;
         LoadCellScale = (int)(await _session.ReadSettingAsync(PedalSettingId.LoadCellScale, Pedal)).AsDouble;
+        DeadzoneLow = (int)(await _session.ReadSettingAsync(PedalSettingId.DeadzoneLow, Pedal)).AsDouble;
+        DeadzoneHigh = (int)(await _session.ReadSettingAsync(PedalSettingId.DeadzoneHigh, Pedal)).AsDouble;
         _loading = false;
         RebuildCurve();
     }
@@ -212,6 +243,11 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     partial void OnInputMinChanged(int value) => WriteScalar(PedalSettingId.InputMin, value);
     partial void OnInputMaxChanged(int value) => WriteScalar(PedalSettingId.InputMax, value);
     partial void OnLoadCellScaleChanged(int value) => WriteScalar(PedalSettingId.LoadCellScale, value);
+    partial void OnDeadzoneLowChanged(int value) => WriteScalar(PedalSettingId.DeadzoneLow, value);
+    partial void OnDeadzoneHighChanged(int value) => WriteScalar(PedalSettingId.DeadzoneHigh, value);
+
+    [RelayCommand] private void SetBrakeUnit(string kg) => BrakeUnitKg = kg == "kg";
+    [RelayCommand] private void SetLoadCellMax(string kg) => LoadCellMaxKg = int.Parse(kg);
 
     [RelayCommand]
     private async Task CalibrateAsync()
@@ -260,6 +296,8 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
             case PedalSettingId.InputMin: InputMin = (int)e.Value.AsDouble; break;
             case PedalSettingId.InputMax: InputMax = (int)e.Value.AsDouble; break;
             case PedalSettingId.LoadCellScale: LoadCellScale = (int)e.Value.AsDouble; break;
+            case PedalSettingId.DeadzoneLow: DeadzoneLow = (int)e.Value.AsDouble; break;
+            case PedalSettingId.DeadzoneHigh: DeadzoneHigh = (int)e.Value.AsDouble; break;
             default:
                 if (e.Id >= PedalSettingId.CurvePoint0 && e.Id <= PedalSettingId.CurvePoint5)
                 {
