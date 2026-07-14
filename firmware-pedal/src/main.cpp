@@ -1,4 +1,4 @@
-// DriveLab Firmware — Pedaleira (RP2040) — M2: HID Joystick + canal vendor P0
+// DriveLab Firmware — Pedaleira (RP2040) — M4: Joystick + P0 + load cell (HX711) + flash
 // Aparece como "DriveLab Pedal" (3 eixos 12-bit) E responde o protocolo P0:
 //   - telemetria PedalState (0x20)  in
 //   - SettingWrite (0x14) / SettingReadRequest (0x15) / Command (0x02)  out
@@ -7,11 +7,13 @@
 //
 // ESTADO: escrito SEM placa (não validado em hardware). Suspeitos nº1 na bancada:
 //   (a) o plumbing dos OUTPUT reports do TinyUSB (setReportCallback) — ver onSetReport;
-//   (b) o report descriptor vendor. Ver README (seção M2).
-// Ainda: settings em RAM (flash = M4); load cell/HX711 = M3 (aqui só ADC analógico).
+//   (b) o report descriptor vendor. Ver README.
+// Inclui: ADC (pot/hall) + HX711 (load cell, M3) + persistência em flash (M4).
 // Contrato: docs/superpowers/specs/2026-07-13-drivelab-pedals-p0-design.md
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
+#include <HX711.h>
+#include <EEPROM.h>
 
 // ===================== Constantes do contrato P0 (espelham DriveLab.Core) =====================
 static const uint8_t RID_JOYSTICK    = 0x01;
@@ -47,7 +49,14 @@ static double   g_smoothed[3] = { 0, 0, 0 };
 static bool     g_cal[3] = { false, false, false };
 static uint16_t g_calMin[3], g_calMax[3];
 
-static const uint8_t kAdcPin[3] = { A0, A1, A2 };  // GP26/GP27/GP28
+static const uint8_t kAdcPin[3] = { A0, A1, A2 };  // GP26/GP27/GP28 (pot/hall)
+
+// --- Load cell (HX711) por pedal, quando sensor_type == 2. Pinos digitais (DT/SCK). ---
+static const uint8_t kHxDT[3]  = { 2, 4, 6 };  // GP2/GP4/GP6 (dados)
+static const uint8_t kHxSCK[3] = { 3, 5, 7 };  // GP3/GP5/GP7 (clock)
+static HX711  g_hx[3];
+static long   g_hxLast[3]   = { 0, 0, 0 };     // última leitura crua (24-bit)
+static long   g_hxOffset[3] = { 0, 0, 0 };     // tara (offset de repouso)
 
 // ===================== HID report descriptor: Joystick + vendor P0 =====================
 static uint8_t const kHidReport[] = {
@@ -169,6 +178,40 @@ static void sendSettingValue(uint8_t field, uint8_t index) {
 
 static void seedDefaults() { for (int i = 0; i < 3; i++) g_cfg[i] = PedalCfg(); }
 
+// ===================== M3: leitura do sensor (ADC ou HX711) =====================
+// Retorna raw 0..4095 independente do tipo de sensor; o pipeline normaliza depois.
+static uint16_t readSensorRaw(int p) {
+  if (g_cfg[p].sensorType == 2) {  // LoadCell (HX711)
+    if (g_hx[p].is_ready()) g_hxLast[p] = g_hx[p].read();  // não bloqueia se não estiver pronto
+    long v = g_hxLast[p] - g_hxOffset[p];
+    long sc = g_cfg[p].loadCellScale < 1 ? 1 : (long)g_cfg[p].loadCellScale;
+    long out = v / sc;
+    if (out < 0) out = 0;
+    if (out > 4095) out = 4095;
+    return (uint16_t)out;
+  }
+  return (uint16_t)analogRead(kAdcPin[p]);  // Pot/Hall
+}
+
+// ===================== M4: persistência em flash (EEPROM emulada) =====================
+static const uint32_t FLASH_MAGIC = 0x444C5031;  // "DLP1"
+
+static void saveToFlash() {
+  int addr = 0;
+  EEPROM.put(addr, FLASH_MAGIC); addr += sizeof(FLASH_MAGIC);
+  for (int p = 0; p < 3; p++) { EEPROM.put(addr, g_cfg[p]); addr += sizeof(PedalCfg); }
+  EEPROM.commit();
+}
+
+// Carrega da flash se houver config válida. Retorna false se vazio (usar defaults).
+static bool loadFromFlash() {
+  int addr = 0;
+  uint32_t magic; EEPROM.get(addr, magic); addr += sizeof(magic);
+  if (magic != FLASH_MAGIC) return false;
+  for (int p = 0; p < 3; p++) { EEPROM.get(addr, g_cfg[p]); addr += sizeof(PedalCfg); }
+  return true;
+}
+
 // ===================== OUTPUT reports (host -> device) =====================
 // ATENÇÃO (bancada): confirmar como o Adafruit_TinyUSB entrega OUTPUT reports.
 // Aqui assumimos: report_id = ID do report; buffer = payload (sem o ID). Se vier diferente
@@ -194,7 +237,7 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
         g_cal[arg] = false;
         if (g_calMax[arg] >= g_calMin[arg]) { g_cfg[arg].inputMin = g_calMin[arg]; g_cfg[arg].inputMax = g_calMax[arg]; }
       }
-      // CMD_SAVE = no-op até o M4 (flash).
+      else if (cmd == CMD_SAVE) { saveToFlash(); }  // M4: persiste a config atual
       break;
     }
   }
@@ -204,7 +247,16 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
-  seedDefaults();
+
+  // M4: carrega a config salva na flash; se vazia, usa defaults.
+  EEPROM.begin(256);
+  if (!loadFromFlash()) seedDefaults();
+
+  // M3: inicializa os HX711 (pinos); a leitura só ocorre p/ pedais sensor_type==LoadCell.
+  for (int p = 0; p < 3; p++) {
+    g_hx[p].begin(kHxDT[p], kHxSCK[p]);
+    if (g_cfg[p].sensorType == 2 && g_hx[p].is_ready()) g_hxOffset[p] = g_hx[p].read();  // tara
+  }
 
   g_hid.setReportDescriptor(kHidReport, sizeof(kHidReport));
   g_hid.setReportCallback(nullptr, onSetReport);  // (get_cb, set_cb)
@@ -212,7 +264,7 @@ void setup() {
 
   const unsigned long t0 = millis();
   while (!TinyUSBDevice.mounted() && (millis() - t0) < 3000) delay(10);
-  Serial.println("=== DriveLab Pedaleira — M2 (HID Joystick + vendor P0) ===");
+  Serial.println("=== DriveLab Pedaleira — M4 (Joystick + P0 + HX711 + flash) ===");
 }
 
 static unsigned long g_lastTelem = 0;
@@ -220,9 +272,9 @@ static unsigned long g_lastTelem = 0;
 void loop() {
   if (!g_hid.ready()) { delay(1); return; }
 
-  // 1) ler sensores (M2: só ADC analógico; HX711/load cell no M3)
+  // 1) ler sensores (ADC pot/hall OU HX711 load cell, por sensor_type)
   for (int p = 0; p < 3; p++) {
-    g_raw[p] = analogRead(kAdcPin[p]);            // 0..4095
+    g_raw[p] = readSensorRaw(p);                  // 0..4095
     if (g_cal[p]) {
       if (g_raw[p] < g_calMin[p]) g_calMin[p] = g_raw[p];
       if (g_raw[p] > g_calMax[p]) g_calMax[p] = g_raw[p];

@@ -6,19 +6,19 @@ Design/decisões: [`../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-d
 
 > Firmware **separado** do volante (que é ODESC/STM32 em `../firmware/`). Aqui é RP2040 + **arduino-pico** (core do Earle Philhower) + Adafruit_TinyUSB. Licença: MIT (é código nosso; TinyUSB é MIT).
 
-> **Status:** M0 (bring-up) feito → **M1 (HID Joystick) e M2 (canal vendor P0) escritos, aguardando validação na placa** (o Pico ainda não está em mãos).
+> **Status:** M0→M4 **escritos, aguardando validação na placa** (o RP2040-Zero ainda não está em mãos). Falta só o M5 (validação/polimento).
 
 ---
 
-## Marco atual: M2 — HID Joystick + canal vendor P0
+## Marco atual: M4 — Joystick + P0 + load cell (HX711) + flash
 
-**Objetivo:** além do joystick (M1), o Pico responde o **protocolo P0** na mesma interface HID — o **DriveLab Studio conecta, lê/grava settings e recebe telemetria** (`PedalState`). O app já tem o lado dele pronto (`HidPedalTransport` + autodetecção por VID/PID `0x1209:0x0002`).
+**Objetivo:** firmware funcional completo (menos validação): joystick + **protocolo P0** + **load cell** + **config permanente em flash**. O **DriveLab Studio conecta, lê/grava settings e recebe telemetria**; a config sobrevive ao desligar e é carregada no boot. O app já tem o lado dele pronto (`HidPedalTransport` + autodetecção por VID/PID `0x1209:0x0002`).
 
-### O que o M2 faz
-- Joystick 3 eixos 12-bit (do M1) — agora alimentado pelo **pipeline** (normaliza→deadzone→curva→suaviza).
-- Reports vendor P0: telemetria `0x20`, `SettingWrite 0x14`/`ReadRequest 0x15`/`Command 0x02` (out), `SettingValue 0x16` (in).
-- Settings **em RAM** (persistência em flash = **M4**), calibração min/max (`CalibrateStart/Stop`).
-- Só **ADC analógico** (pot/hall); **load cell/HX711 = M3**.
+### O que já está escrito (M1–M4)
+- **M1** Joystick 3 eixos 12-bit — alimentado pelo **pipeline** (normaliza→deadzone→curva→suaviza).
+- **M2** Reports vendor P0: telemetria `0x20`, `SettingWrite 0x14`/`ReadRequest 0x15`/`Command 0x02` (out), `SettingValue 0x16` (in); calibração min/max.
+- **M3** **Load cell (HX711)** por `sensor_type==2`: pinos DT/SCK por pedal = **GP2/3, GP4/5, GP6/7** (embreagem/freio/acelerador); leitura não-bloqueante (`is_ready`) + tara no boot. Pot/Hall continuam no ADC (GP26/27/28).
+- **M4** **Flash** (EEPROM emulada): `SaveToFlash` grava; no boot carrega a config salva (magic "DLP1"); senão usa defaults. → a config fica **por dispositivo** e o app a carrega ao conectar.
 
 ### ⚠️ Escrito SEM placa — o que conferir primeiro na bancada
 1. **OUTPUT reports do TinyUSB** (o `onSetReport`): é o **suspeito nº1**. Confirmar a assinatura/entrega do `setReportCallback` do Adafruit_TinyUSB — se o `report_id` vem separado e o `buffer` é o payload (assumido), ou se o ID vem em `buffer[0]`. Se o app grava setting e nada muda, é aqui.
@@ -69,9 +69,7 @@ Design/decisões: [`../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-d
 
 ---
 
-## Próximos marcos (resumo)
-- **M3** — **load cell/HX711** por `sensor_type` (o pipeline analógico já está no M2).
-- **M4** — **persistência em flash** (`SaveToFlash`/boot carrega a config; EEPROM emulada) → config sobrevive ao desligar e o app a carrega ao conectar.
-- **M5** — polimento + validação num sim.
+## Próximo marco
+- **M5** — validação na bancada (M0→M4) + polimento (ajustar o plumbing do TinyUSB, pinos, e testar num sim). É onde os "escrito sem placa" viram "funciona".
 
 Detalhes no design.
