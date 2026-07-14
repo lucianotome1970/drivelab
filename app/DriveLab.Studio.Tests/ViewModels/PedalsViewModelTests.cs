@@ -57,6 +57,22 @@ public class PedalsViewModelTests
     }
 
     [Fact]
+    public async Task Calibration_Start_Finish_Sends_Commands()
+    {
+        var (vm, t, _) = Make();
+        await vm.ConnectCommand.ExecuteAsync(null);
+        vm.OpenCalibrationCommand.Execute(null);
+        Assert.True(vm.IsCalibrating);
+        await vm.StartCalibrationCommand.ExecuteAsync(null);
+        Assert.Equal(PedalCommandId.CalibrateStart, t.LastCommand!.Value.cmd);
+        await vm.FinishCalibrationCommand.ExecuteAsync(null);
+        Assert.Equal(PedalCommandId.CalibrateStop, t.LastCommand.Value.cmd);
+        vm.CloseCalibrationCommand.Execute(null);
+        Assert.False(vm.IsCalibrating);
+        vm.Dispose();
+    }
+
+    [Fact]
     public void Has_Three_Columns()
     {
         var (vm, _, _) = Make();

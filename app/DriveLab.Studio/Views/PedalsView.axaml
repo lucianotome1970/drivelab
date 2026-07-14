@@ -104,10 +104,7 @@
                                 Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=2}" />
                     </UniformGrid>
 
-                    <!-- Calibração -->
-                    <Button Classes="accent" Command="{Binding CalibrateCommand}" IsEnabled="{Binding CanEdit}"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                            Content="{Binding CalibrateLabel}" />
+                    <!-- Min/max calibrado (a calibração agora é o modal único no topo) -->
                     <Grid ColumnDefinitions="*,*">
                         <TextBlock Grid.Column="0" Classes="endLabel" HorizontalAlignment="Center"
                                    Text="{Binding InputMin, StringFormat='min {0}'}" />
@@ -154,11 +151,37 @@
                 <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" />
                 <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" />
+                <Button Content="{loc:Translate Pedal_Calibrate}" Command="{Binding OpenCalibrationCommand}" />
                 <Button Content="{loc:Translate Load}" Command="{Binding LoadPreferencesCommand}" />
                 <Button Content="{loc:Translate Save}" Command="{Binding SavePreferencesCommand}" />
                 <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}"
                         IsEnabled="{Binding CanSaveToController}" />
             </StackPanel>
+
+            <!-- Overlay de calibração: raw ao vivo dos 3 pedais -->
+            <Border IsVisible="{Binding IsCalibrating}" Background="#CC000000">
+                <Border Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="460">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="{loc:Translate Pedal_Calibration}" Classes="h2" />
+                        <ItemsControl ItemsSource="{Binding Columns}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PedalColumnViewModel">
+                                    <Grid ColumnDefinitions="120,*,64" Margin="0,4">
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="fieldLabel" VerticalAlignment="Center" />
+                                        <ProgressBar Grid.Column="1" Minimum="0" Maximum="4095" Value="{Binding RawLive}" Margin="8,0" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding RawLive}" Classes="endLabel" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                            <Button Content="{loc:Translate Start}" Command="{Binding StartCalibrationCommand}" />
+                            <Button Classes="accent" Content="{loc:Translate Finish}" Command="{Binding FinishCalibrationCommand}" />
+                            <Button Content="{loc:Translate Close}" Command="{Binding CloseCalibrationCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

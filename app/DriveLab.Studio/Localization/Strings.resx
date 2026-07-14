@@ -56,6 +56,11 @@
   <data name="Pedal_Smoothing" xml:space="preserve"><value>Smoothing</value></data>
   <data name="Pedal_StartCalibration" xml:space="preserve"><value>Start calibration</value></data>
   <data name="Pedal_StopCalibration" xml:space="preserve"><value>Stop calibration</value></data>
+  <data name="Pedal_Calibrate" xml:space="preserve"><value>Calibrate</value></data>
+  <data name="Pedal_Calibration" xml:space="preserve"><value>Calibration</value></data>
+  <data name="Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Finish" xml:space="preserve"><value>Finish</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
   <data name="Pedal_Source_Simulator" xml:space="preserve"><value>Simulator</value></data>
   <data name="Pedal_Source_Detected" xml:space="preserve"><value>Pedals detected</value></data>
 

@@ -96,6 +96,27 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
     private bool CanSave() => IsConnected && _session.SupportsConfig;
 
+    [ObservableProperty] private bool _isCalibrating;
+
+    [RelayCommand] private void OpenCalibration() => IsCalibrating = true;
+    [RelayCommand] private void CloseCalibration() => IsCalibrating = false;
+
+    [RelayCommand]
+    private async Task StartCalibration()
+    {
+        foreach (PedalIndex p in Enum.GetValues<PedalIndex>())
+            await _session.SendCommandAsync(PedalCommandId.CalibrateStart, (byte)p);
+    }
+
+    [RelayCommand]
+    private async Task FinishCalibration()
+    {
+        foreach (PedalIndex p in Enum.GetValues<PedalIndex>())
+            await _session.SendCommandAsync(PedalCommandId.CalibrateStop, (byte)p);
+        foreach (var c in Columns)
+            await c.LoadAsync();
+    }
+
     [RelayCommand]
     private Task SavePreferencesAsync() => _storage.SaveAsync(ExportProfile());
 
