@@ -7,7 +7,7 @@
     <UserControl.Resources>
         <conv:IntEqualsConverter x:Key="IntEquals" />
     </UserControl.Resources>
-    <Border Classes="card" HorizontalAlignment="Left" VerticalAlignment="Top" Width="420">
+    <Border Classes="card">
         <StackPanel Spacing="16">
             <TextBlock Text="Volante DriveLab" Classes="h2" />
 

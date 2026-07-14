@@ -4,13 +4,14 @@
              xmlns:views="using:DriveLab.Studio.Views"
              x:Class="DriveLab.Studio.Views.HomeView"
              x:DataType="vm:HomeViewModel">
-    <ScrollViewer>
-        <WrapPanel>
+    <ScrollViewer HorizontalScrollBarVisibility="Auto">
+        <!-- Colunas iguais + linha Auto: os dois cards esticam para a mesma altura -->
+        <Grid ColumnDefinitions="420,16,420" RowDefinitions="Auto" HorizontalAlignment="Left" Margin="0,0,0,16">
             <!-- Card do volante -->
-            <views:DashboardView DataContext="{Binding Wheel}" Margin="0,0,16,16" />
+            <views:DashboardView Grid.Column="0" DataContext="{Binding Wheel}" />
 
             <!-- Card resumo dos pedais (ao vivo) — mesmo tamanho do card do volante -->
-            <Border Classes="card" Width="420" VerticalAlignment="Top" Margin="0,0,16,16">
+            <Border Grid.Column="2" Classes="card">
                 <StackPanel Spacing="16">
                     <TextBlock Text="Pedais" Classes="h2" />
                     <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="360" Stretch="Uniform"
@@ -31,6 +32,6 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
-        </WrapPanel>
+        </Grid>
     </ScrollViewer>
 </UserControl>
