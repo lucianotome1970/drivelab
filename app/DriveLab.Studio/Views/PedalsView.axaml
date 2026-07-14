@@ -3,6 +3,7 @@
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:conv="using:DriveLab.Studio.Converters"
              xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.PedalsView"
              x:DataType="vm:PedalsViewModel">
     <UserControl.Resources>
@@ -15,7 +16,7 @@
                     <TextBlock Text="{Binding Label}" Classes="h2" HorizontalAlignment="Center" />
 
                     <!-- Curvas de saída (chips estilo Pit House) -->
-                    <TextBlock Text="Curvas de saída" Classes="muted" />
+                    <TextBlock Text="{loc:Translate Pedal_OutputCurves}" Classes="muted" />
                     <ItemsControl ItemsSource="{Binding PresetOptions}" IsEnabled="{Binding CanEdit}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -35,7 +36,7 @@
                     </ItemsControl>
 
                     <lvc:CartesianChart Series="{Binding CurveSeries}" Height="180" />
-                    <TextBlock Text="pré-visualização — não aplicada a este pedal" Classes="endLabel"
+                    <TextBlock Text="{loc:Translate Pedal_PreviewOnly}" Classes="endLabel"
                                HorizontalAlignment="Center" IsVisible="{Binding CurvePreviewOnly}" />
 
                     <!-- Pontos da curva (label · slider laranja · valueBox) -->
@@ -58,14 +59,14 @@
 
                     <!-- Inverter (toggle laranja) -->
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Classes="fieldLabel" Text="Inverter" />
+                        <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Pedal_Invert}" />
                         <ToggleSwitch Grid.Column="1" IsChecked="{Binding Invert}" IsEnabled="{Binding CanEdit}"
                                       OnContent="" OffContent="" />
                     </Grid>
 
                     <!-- Suavização -->
                     <Grid ColumnDefinitions="Auto,*,Auto">
-                        <TextBlock Grid.Column="0" Classes="fieldLabel" Text="Suavização" Margin="0,0,10,0" />
+                        <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Pedal_Smoothing}" Margin="0,0,10,0" />
                         <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Smooth}" IsEnabled="{Binding CanEdit}"
                                 VerticalAlignment="Center" />
                         <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
@@ -73,8 +74,35 @@
                         </Border>
                     </Grid>
 
+                    <!-- Freio: força em % / KG + fundo de escala -->
+                    <StackPanel IsVisible="{Binding IsBrake}" Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{Binding BrakeReadout}" />
+                            <Border Grid.Column="1" Classes="valueBox" IsVisible="{Binding ForceMaxed}"
+                                    Background="{DynamicResource DlAccent}">
+                                <TextBlock Text="Force 100%" Foreground="#111111" />
+                            </Border>
+                        </Grid>
+                        <UniformGrid Rows="1">
+                            <Button Classes="chip" Content="%" Command="{Binding SetBrakeUnitCommand}" CommandParameter="pct"
+                                    Classes.selected="{Binding !BrakeUnitKg}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0" />
+                            <Button Classes="chip" Content="KG" Command="{Binding SetBrakeUnitCommand}" CommandParameter="kg"
+                                    Classes.selected="{Binding BrakeUnitKg}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0" />
+                        </UniformGrid>
+                        <UniformGrid Rows="1">
+                            <Button Classes="chip" Content="50kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="50"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=50}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,2,0" />
+                            <Button Classes="chip" Content="80kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="80"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=80}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0" />
+                            <Button Classes="chip" Content="100kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="100"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=100}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0" />
+                            <Button Classes="chip" Content="120kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="120"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=120}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,0,0" />
+                        </UniformGrid>
+                    </StackPanel>
+
                     <!-- Sensor (chips) -->
-                    <TextBlock Classes="muted" Text="Sensor" IsVisible="{Binding ShowSensor}" />
+                    <TextBlock Classes="muted" Text="{loc:Translate Pedal_Sensor}" IsVisible="{Binding ShowSensor}" />
                     <UniformGrid Rows="1" IsEnabled="{Binding CanEdit}" IsVisible="{Binding ShowSensor}">
                         <Button Classes="chip" Content="Pot" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
                                 Command="{Binding SelectSensorCommand}" CommandParameter="0"
@@ -116,7 +144,7 @@
         <Grid>
             <!-- Sem título: as abas ocupam o topo (a 1ª aba já é "Pedais") -->
             <TabControl>
-                <TabItem Header="Pedais">
+                <TabItem Header="{loc:Translate Tab_Pedals}">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding Columns}" ItemTemplate="{StaticResource PedalColumn}">
                             <ItemsControl.ItemsPanel>
@@ -127,7 +155,7 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem Header="Monitor de entrada">
+                <TabItem Header="{loc:Translate Tab_InputMonitor}">
                     <lvc:CartesianChart Series="{Binding CombinedSeries}" />
                 </TabItem>
             </TabControl>
@@ -135,11 +163,11 @@
             <!-- Ações sobrepostas à direita da faixa de abas -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
                 <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <Button Content="Conectar" Command="{Binding ConnectCommand}" />
-                <Button Content="Desconectar" Command="{Binding DisconnectCommand}" />
-                <Button Content="Carregar" Command="{Binding LoadPreferencesCommand}" />
-                <Button Content="Salvar" Command="{Binding SavePreferencesCommand}" />
-                <Button Classes="accent" Content="Salvar no controlador" Command="{Binding SaveToControllerCommand}"
+                <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" />
+                <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" />
+                <Button Content="{loc:Translate Load}" Command="{Binding LoadPreferencesCommand}" />
+                <Button Content="{loc:Translate Save}" Command="{Binding SavePreferencesCommand}" />
+                <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}"
                         IsEnabled="{Binding CanSaveToController}" />
             </StackPanel>
         </Grid>

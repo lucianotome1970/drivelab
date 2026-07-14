@@ -45,6 +45,18 @@ public class PedalsViewModelTests
     }
 
     [Fact]
+    public void Profile_RoundTrips_Kg_Settings()
+    {
+        var (vm, _, _) = Make();
+        vm.Columns[1].LoadCellMaxKg = 120;
+        vm.Columns[1].BrakeUnitKg = true;
+        var p = vm.ExportProfile();
+        Assert.Equal(120, p.Columns[1].LoadCellMaxKg);
+        Assert.True(p.Columns[1].BrakeUnitKg);
+        vm.Dispose();
+    }
+
+    [Fact]
     public void Has_Three_Columns()
     {
         var (vm, _, _) = Make();

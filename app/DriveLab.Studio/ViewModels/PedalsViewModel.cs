@@ -114,7 +114,9 @@ public sealed partial class PedalsViewModel : ViewModelBase
             c.Invert,
             (int)c.Smooth,
             c.Points.Select(p => p.Value).ToArray(),
-            c.LoadCellScale)).ToArray());
+            c.LoadCellScale,
+            c.LoadCellMaxKg,
+            c.BrakeUnitKg)).ToArray());
 
     public void ApplyProfile(PedalProfile profile)
     {
@@ -128,6 +130,8 @@ public sealed partial class PedalsViewModel : ViewModelBase
             col.InputMin = src.InputMin;
             col.InputMax = src.InputMax;
             col.LoadCellScale = src.LoadCellScale;
+            col.LoadCellMaxKg = src.LoadCellMaxKg;
+            col.BrakeUnitKg = src.BrakeUnitKg;
             for (var p = 0; p < col.Points.Count && p < src.Curve.Length; p++)
                 col.Points[p].Value = src.Curve[p];
         }
