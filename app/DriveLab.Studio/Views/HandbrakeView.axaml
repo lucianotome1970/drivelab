@@ -6,71 +6,95 @@
              xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.HandbrakeView"
              x:DataType="vm:HandbrakeViewModel">
-    <ScrollViewer>
-        <Border Classes="card" Margin="16" Padding="20">
-            <StackPanel Spacing="16" MaxWidth="460" HorizontalAlignment="Left">
-                <TextBlock Text="{loc:Translate Handbrake_Title}" Classes="h2" />
-                <Image Source="avares://DriveLab.Studio/Assets/handbrake.png" Width="220" Stretch="Uniform"
-                       HorizontalAlignment="Center" />
+    <UserControl.Resources>
+        <conv:IntEqualsConverter x:Key="IntEquals" />
+    </UserControl.Resources>
 
-                <!-- Leitura ao vivo do eixo -->
-                <TextBlock Text="{loc:Translate Handbrake_Axis}" Classes="muted" />
-                <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentOutput01}"
-                             Height="10" CornerRadius="5" Foreground="#FF6A00" Background="#22FFFFFF" />
+    <Border Classes="card">
+        <Grid>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <!-- Eixo único: uma coluna de config no mesmo estilo das colunas dos pedais -->
+                <Border Classes="card" HorizontalAlignment="Left" MaxWidth="520" Margin="6,40,6,6">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="{loc:Translate Handbrake_Title}" Classes="h2" HorizontalAlignment="Center" />
 
-                <!-- Indicador do botão digital -->
-                <Border CornerRadius="6" Padding="10,4" HorizontalAlignment="Left"
-                        Background="{Binding ButtonActive, Converter={x:Static conv:BoolToBrushConverter.Instance}}">
-                    <TextBlock Text="{loc:Translate Handbrake_Button}" Foreground="#111111" FontWeight="Bold" />
-                </Border>
+                        <!-- Curva + deadzone -->
+                        <TextBlock Text="{loc:Translate Handbrake_Curve}" Classes="muted" />
+                        <controls:PedalCurveEditor Height="200"
+                            Points="{Binding Points}"
+                            DeadzoneLow="{Binding DeadzoneLow, Mode=TwoWay}"
+                            DeadzoneHigh="{Binding DeadzoneHigh, Mode=TwoWay}"
+                            LiveInput01="{Binding CurrentInput01}"
+                            LiveOutput01="{Binding CurrentOutput01}"
+                            EditEnabled="{Binding CanEdit}" />
 
-                <!-- Tipo de sensor -->
-                <TextBlock Text="{loc:Translate Handbrake_Sensor}" Classes="muted" />
-                <ComboBox SelectedIndex="{Binding SensorType}">
-                    <ComboBoxItem Content="Potenciômetro" />
-                    <ComboBoxItem Content="Hall" />
-                    <ComboBoxItem Content="Load cell" />
-                </ComboBox>
+                        <!-- Inverter -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_Invert}" />
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Invert}" IsEnabled="{Binding CanEdit}"
+                                          OnContent="" OffContent="" />
+                        </Grid>
 
-                <!-- Suavização + inverter -->
-                <TextBlock Text="{loc:Translate Handbrake_Smooth}" Classes="muted" />
-                <Slider Minimum="0" Maximum="100" Value="{Binding Smooth}" />
-                <CheckBox Content="{loc:Translate Handbrake_Invert}" IsChecked="{Binding Invert}" />
+                        <!-- Suavização -->
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_Smooth}" Margin="0,0,10,0" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Smooth}" IsEnabled="{Binding CanEdit}"
+                                    VerticalAlignment="Center" />
+                            <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
+                                <TextBlock Text="{Binding Smooth, StringFormat={}{0:0}}" />
+                            </Border>
+                        </Grid>
 
-                <!-- Curva + deadzone -->
-                <TextBlock Text="{loc:Translate Handbrake_Curve}" Classes="muted" />
-                <controls:PedalCurveEditor Height="220"
-                    Points="{Binding Points}"
-                    DeadzoneLow="{Binding DeadzoneLow, Mode=TwoWay}"
-                    DeadzoneHigh="{Binding DeadzoneHigh, Mode=TwoWay}"
-                    LiveInput01="{Binding CurrentInput01}"
-                    LiveOutput01="{Binding CurrentOutput01}"
-                    EditEnabled="{Binding CanEdit}" />
+                        <!-- Tipo de sensor (chips, como nos pedais) -->
+                        <TextBlock Classes="muted" Text="{loc:Translate Handbrake_Sensor}" />
+                        <UniformGrid Rows="1" IsEnabled="{Binding CanEdit}">
+                            <Button Classes="chip" Content="Pot" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
+                                    Command="{Binding SelectSensorCommand}" CommandParameter="0"
+                                    Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=0}" />
+                            <Button Classes="chip" Content="Hall" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0"
+                                    Command="{Binding SelectSensorCommand}" CommandParameter="1"
+                                    Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=1}" />
+                            <Button Classes="chip" Content="Load cell" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                                    Command="{Binding SelectSensorCommand}" CommandParameter="2"
+                                    Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=2}" />
+                        </UniformGrid>
 
-                <!-- Bloco do botão digital -->
-                <Border Classes="card" Padding="14">
-                    <StackPanel Spacing="10">
-                        <CheckBox Content="{loc:Translate Handbrake_ButtonEnabled}" IsChecked="{Binding ButtonEnabled}" />
-                        <TextBlock Text="{loc:Translate Handbrake_ButtonThreshold}" Classes="muted" />
-                        <Slider Minimum="0" Maximum="100" Value="{Binding ButtonThreshold}" IsEnabled="{Binding ButtonEnabled}" />
-                        <TextBlock Text="{Binding ButtonThreshold, StringFormat={}{0}%}" Foreground="{DynamicResource DlMuted}" />
+                        <!-- Botão digital: habilita + limiar (configuração, não indicador ao vivo) -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_ButtonEnabled}" />
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ButtonEnabled}" IsEnabled="{Binding CanEdit}"
+                                          OnContent="" OffContent="" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_ButtonThreshold}" Margin="0,0,10,0" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding ButtonThreshold}"
+                                    IsEnabled="{Binding ButtonEnabled}" VerticalAlignment="Center" />
+                            <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
+                                <TextBlock Text="{Binding ButtonThreshold, StringFormat={}{0:0}%}" />
+                            </Border>
+                        </Grid>
+
+                        <!-- Min/max calibrado -->
+                        <Grid ColumnDefinitions="*,*">
+                            <TextBlock Grid.Column="0" Classes="endLabel" HorizontalAlignment="Center"
+                                       Text="{Binding InputMin, StringFormat='min {0}'}" />
+                            <TextBlock Grid.Column="1" Classes="endLabel" HorizontalAlignment="Center"
+                                       Text="{Binding InputMax, StringFormat='max {0}'}" />
+                        </Grid>
                     </StackPanel>
                 </Border>
+            </ScrollViewer>
 
-                <!-- Conectar/desconectar -->
-                <WrapPanel>
-                    <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" />
-                    <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" />
-                </WrapPanel>
-
-                <!-- Calibração + salvar -->
-                <WrapPanel>
-                    <Button Classes="chip" Content="{loc:Translate Handbrake_CalibrateStart}" Command="{Binding CalibrateStartCommand}" />
-                    <Button Classes="chip" Content="{loc:Translate Handbrake_CalibrateStop}" Command="{Binding CalibrateStopCommand}" />
-                    <Button Classes="accent" Content="{loc:Translate Handbrake_Save}" Command="{Binding SaveCommand}" />
-                    <Button Classes="chip" Content="{loc:Translate Handbrake_LoadDefaults}" Command="{Binding LoadDefaultsCommand}" />
-                </WrapPanel>
+            <!-- Ações no topo à direita (como na janela dos pedais) -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
+                <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" />
+                <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" />
+                <Button Content="{loc:Translate Handbrake_CalibrateStart}" Command="{Binding CalibrateStartCommand}" />
+                <Button Content="{loc:Translate Handbrake_CalibrateStop}" Command="{Binding CalibrateStopCommand}" />
+                <Button Content="{loc:Translate Handbrake_LoadDefaults}" Command="{Binding LoadDefaultsCommand}" />
+                <Button Classes="accent" Content="{loc:Translate Handbrake_Save}" Command="{Binding SaveCommand}" />
             </StackPanel>
-        </Border>
-    </ScrollViewer>
+        </Grid>
+    </Border>
 </UserControl>

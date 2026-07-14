@@ -136,6 +136,9 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     [RelayCommand]
     private Task LoadDefaults() => _session.SendCommandAsync(PedalCommandId.LoadDefaults);
 
+    [RelayCommand]
+    private void SelectSensor(string type) => SensorType = int.Parse(type);
+
     private void OnConnectionChanged(object? sender, EventArgs e)
     {
         IsConnected = _session.IsConnected;
