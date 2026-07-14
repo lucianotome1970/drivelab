@@ -62,9 +62,11 @@ public static class CompositionRoot
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
         // Freio de mão: autodetecção 1) HID 0x0003 → 2) simulador (rótulo genérico).
-        // HID autodetect chega na Tarefa 12; por ora o simulador é sempre usado.
-        HandbrakeDeviceSession handbrakeSession =
-            new HandbrakeDeviceSession(new SimulatorHandbrakeTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
+        HandbrakeDeviceSession handbrakeSession;
+        if (HidHandbrakeTransport.IsDevicePresent())
+            handbrakeSession = new HandbrakeDeviceSession(new HidHandbrakeTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
+        else
+            handbrakeSession = new HandbrakeDeviceSession(new SimulatorHandbrakeTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
         var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage());
 
         // Base do Volante: abas de settings + Telemetria como última aba.
