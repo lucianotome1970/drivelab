@@ -43,17 +43,33 @@ DriveLab M0 vivo, tick = 1
 
 ---
 
-## Próximo: M0.5 — USB/FFB (o de-risco principal) ⚠️
+## M0.5 — USB/FFB (o de-risco principal) ⚠️ — RASCUNHO pronto p/ iterar
 
-Provar a decisão **B2** no F405: fazer o volante **enumerar como dispositivo Force Feedback** no Windows, reusando a pilha FFB pronta.
+Provar a decisão **B2** no F405: **enumerar como dispositivo Force Feedback** (volante DirectInput) no Windows, reusando a pilha FFB pronta. **Sem motor** ainda.
 
-**Ainda não scaffoldado** — a integração é manual/pioneira (melhor fazer juntos, ao vivo). O que envolve:
-1. Adicionar as libs (LGPL): **`Levi--G/USBLibrarySTM32`** (shim USB) + **`YukMingLaw/ArduinoJoystickWithFFBLibrary`** (cérebro FFB PID). Provavelmente via `lib_deps` (git) + possíveis ajustes manuais (o shim/lib são AVR-origin; pode exigir cópia de arquivos).
-2. **Desligar** o USB CDC do core (tirar `USBD_USE_CDC`) — o USB passa a ser o da lib de FFB.
-3. Configurar: clock 48 MHz (PLL48CLK), **desabilitar VBUS sensing**, e **prioridade da IRQ USB abaixo** do timer (importa quando o SimpleFOC entrar).
-4. Gravar e verificar no Windows: *Painel de Controle → Dispositivos de Jogo → Propriedades → aba Force Feedback / Testar*.
+> **É um primeiro rascunho, escrito sem placa** (`src/m05/main.cpp`). A combinação shim + lib de FFB no F405 nunca foi publicada — **espere iterar**. Não é garantido compilar/rodar de primeira.
 
-Se o shim não rodar no F405, os fallbacks já estão mapeados (B1: TinyUSB próprio; ou 2-MCU). Ver o design §2.
+### Como gravar o M0.5
+```bash
+pio run -e m05 -t upload      # ou selecione o env "m05" na barra do PlatformIO
+```
+As libs (`USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`) são baixadas via `lib_deps` (git) na primeira build. O `env:m05` **não** usa `USBD_USE_CDC` (o USB passa a ser o do shim).
+
+### Verificação (M0.5 ✅)
+Windows → *Painel de Controle → Dispositivos e Impressoras → (o dispositivo) → Configurações do controle de jogo → Propriedades*:
+- Aparece um **eixo de direção se movendo sozinho** (o sketch varre o steering) → **enumerou + eixo ok**.
+- Aba/botão de **Force Feedback / Testar** presente → o descriptor PID subiu.
+
+### Pontos de incerteza a resolver na bancada (por ordem de risco)
+1. **Compilação das libs juntas** — o shim e a lib de FFB são AVR-origin; pode faltar/conflitar algum símbolo. Se não compilar, mande o erro — ajustamos (talvez copiar arquivos, não só `lib_deps`).
+2. **Nome do header do shim** (`#include <USBLibrarySTM32.h>`) — verificar o header real do repo.
+3. **`getUSBPID()` numa ISR** — na versão AVR roda dentro da ISR de USB; no rascunho chamamos em `loop()`. Se os efeitos não registrarem no teste de FFB, precisa hookar no callback/ISR de USB do shim.
+4. **Clock/USB** — 48 MHz (PLL48CLK); **desabilitar VBUS sensing** se bus-powered; o gotcha do cristal HSE (ver M0).
+5. **F405 não é oficialmente testado** pelo shim (só F401/F411, mesma família OTG_FS).
+
+Se travar de vez, os fallbacks já estão mapeados (**B1**: TinyUSB + PID próprio MIT; ou **2-MCU**: AVR 32u4 + STM32). Ver design §2.
+
+*(A prioridade da IRQ USB abaixo do timer do FOC só importa a partir do M1, quando o SimpleFOC entrar.)*
 
 ---
 
