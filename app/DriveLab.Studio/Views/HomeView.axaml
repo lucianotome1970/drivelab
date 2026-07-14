@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:views="using:DriveLab.Studio.Views"
+             x:Class="DriveLab.Studio.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+    <ScrollViewer>
+        <WrapPanel>
+            <!-- Card do volante -->
+            <views:DashboardView DataContext="{Binding Wheel}" Margin="0,0,16,16" />
+
+            <!-- Card resumo dos pedais (ao vivo) -->
+            <Border Classes="card" Width="320" VerticalAlignment="Top" Margin="0,0,16,16">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Pedais" Classes="h2" />
+                    <ItemsControl ItemsSource="{Binding Pedals.Columns}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PedalColumnViewModel">
+                                <StackPanel Spacing="6" Margin="0,6">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="{DynamicResource DlText}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding CurrentOutput01, StringFormat={}{0:P0}}" Foreground="{DynamicResource DlMuted}" />
+                                    </Grid>
+                                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentOutput01}"
+                                                 Height="8" CornerRadius="4" Foreground="#FF6A00" Background="#22FFFFFF" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+    </ScrollViewer>
+</UserControl>
