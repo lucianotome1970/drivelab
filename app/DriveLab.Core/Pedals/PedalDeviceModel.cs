@@ -85,6 +85,8 @@ public sealed class PedalDeviceModel
             case PedalSettingId.Invert: p.Invert = value != 0; break;
             case PedalSettingId.Smooth: p.Smooth = (byte)value; break;
             case PedalSettingId.LoadCellScale: p.LoadCellScale = (ushort)value; break;
+            case PedalSettingId.DeadzoneLow: p.DeadzoneLow = (byte)value; break;
+            case PedalSettingId.DeadzoneHigh: p.DeadzoneHigh = (byte)value; break;
             default:
                 if (id >= PedalSettingId.CurvePoint0 && id <= PedalSettingId.CurvePoint5)
                     p.CurvePoints[id - PedalSettingId.CurvePoint0] = value;

@@ -11,6 +11,8 @@ public sealed class VirtualPedal
     public bool Invert { get; set; }
     public byte Smooth { get; set; }
     public ushort LoadCellScale { get; set; } = 1000;
+    public byte DeadzoneLow { get; set; }
+    public byte DeadzoneHigh { get; set; } = 100;
     public double[] CurvePoints { get; } = { 0, 20, 40, 60, 80, 100 };
 
     private double _smoothed;
@@ -21,7 +23,7 @@ public sealed class VirtualPedal
     public void SetRawInput(ushort raw)
     {
         RawInput = raw;
-        var target = PedalCurve.ToOutput(raw, InputMin, InputMax, Invert, CurvePoints);
+        var target = PedalCurve.ToOutput(raw, InputMin, InputMax, Invert, CurvePoints, DeadzoneLow, DeadzoneHigh);
         var alpha = Math.Clamp(Smooth / 100.0, 0.0, 0.95);
         _smoothed = _smoothed * alpha + target * (1.0 - alpha);
         Output = (ushort)Math.Round(_smoothed);

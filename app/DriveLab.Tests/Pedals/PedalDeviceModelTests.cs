@@ -60,6 +60,16 @@ public class PedalDeviceModelTests
     }
 
     [Fact]
+    public void Deadzone_Setting_Affects_Output()
+    {
+        var m = Seeded();
+        m.WriteSetting(PedalSettingId.DeadzoneLow, PedalIndex.Throttle, new SettingValue(SettingType.UInt8, 50));
+        m.SetRawInputs(0, 0, 1024); // ~25% do curso, abaixo do deadzone low 50%
+        var s = m.BuildState(new FirmwareVersion(0, 1, 0, 0), 0);
+        Assert.Equal((ushort)0, s.Throttle.Output);
+    }
+
+    [Fact]
     public void LoadDefaults_Resets()
     {
         var m = Seeded();
