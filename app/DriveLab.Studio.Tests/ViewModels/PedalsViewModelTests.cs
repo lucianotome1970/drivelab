@@ -26,6 +26,25 @@ public class PedalsViewModelTests
     }
 
     [Fact]
+    public void ReadOnly_Source_Cannot_Save_And_Exposes_Label()
+    {
+        var t = new FakePedalTransport { SupportsConfig = false };
+        var s = new PedalDeviceSession(t, new ImmediateUiDispatcher(), "Simagic P2000 — leitura");
+        var vm = new PedalsViewModel(s, new FakeStorage());
+        Assert.False(vm.CanSaveToController);
+        Assert.Equal("Simagic P2000 — leitura", vm.SourceLabel);
+        vm.Dispose();
+    }
+
+    [Fact]
+    public void ConfigurableSource_Can_Save()
+    {
+        var (vm, _, _) = Make();
+        Assert.True(vm.CanSaveToController);
+        vm.Dispose();
+    }
+
+    [Fact]
     public void Has_Three_Columns()
     {
         var (vm, _, _) = Make();

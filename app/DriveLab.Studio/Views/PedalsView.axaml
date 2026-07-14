@@ -34,27 +34,27 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="120" />
+                    <lvc:CartesianChart Series="{Binding CurveSeries}" Height="140" />
+                    <TextBlock Text="pré-visualização — não aplicada a este pedal" Classes="endLabel"
+                               HorizontalAlignment="Center" IsVisible="{Binding CurvePreviewOnly}" />
 
-                    <!-- Pontos da curva (ajuste fino) — recolhido por padrão para economizar altura -->
-                    <Expander Header="Pontos da curva" IsExpanded="False" HorizontalAlignment="Stretch">
-                        <ItemsControl ItemsSource="{Binding Points}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:PedalCurvePointViewModel">
-                                    <Grid ColumnDefinitions="44,*,Auto" Margin="0,2">
-                                        <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Label}" />
-                                        <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Value}"
-                                                IsSnapToTickEnabled="True" TickFrequency="1"
-                                                VerticalAlignment="Center" Margin="8,0"
-                                                IsEnabled="{Binding $parent[ItemsControl].((vm:PedalColumnViewModel)DataContext).CanEdit}" />
-                                        <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
-                                            <TextBlock Text="{Binding Value, StringFormat={}{0:0}}" />
-                                        </Border>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Expander>
+                    <!-- Pontos da curva (label · slider laranja · valueBox) -->
+                    <ItemsControl ItemsSource="{Binding Points}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PedalCurvePointViewModel">
+                                <Grid ColumnDefinitions="44,*,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Label}" />
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Value}"
+                                            IsSnapToTickEnabled="True" TickFrequency="1"
+                                            VerticalAlignment="Center" Margin="8,0"
+                                            IsEnabled="{Binding $parent[ItemsControl].((vm:PedalColumnViewModel)DataContext).CanEdit}" />
+                                    <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
+                                        <TextBlock Text="{Binding Value, StringFormat={}{0:0}}" />
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                     <!-- Inverter (toggle laranja) -->
                     <Grid ColumnDefinitions="*,Auto">
@@ -74,8 +74,8 @@
                     </Grid>
 
                     <!-- Sensor (chips) -->
-                    <TextBlock Classes="muted" Text="Sensor" />
-                    <UniformGrid Rows="1" IsEnabled="{Binding CanEdit}">
+                    <TextBlock Classes="muted" Text="Sensor" IsVisible="{Binding ShowSensor}" />
+                    <UniformGrid Rows="1" IsEnabled="{Binding CanEdit}" IsVisible="{Binding ShowSensor}">
                         <Button Classes="chip" Content="Pot" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
                                 Command="{Binding SelectSensorCommand}" CommandParameter="0"
                                 Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=0}" />
@@ -115,13 +115,17 @@
     <Border Classes="card">
         <DockPanel>
             <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-                <TextBlock Grid.Column="0" Text="Pedais" Classes="h2" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="Pedais" Classes="h2" />
+                    <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" />
+                </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                     <Button Content="Conectar" Command="{Binding ConnectCommand}" />
                     <Button Content="Desconectar" Command="{Binding DisconnectCommand}" />
                     <Button Content="Carregar" Command="{Binding LoadPreferencesCommand}" />
                     <Button Content="Salvar" Command="{Binding SavePreferencesCommand}" />
-                    <Button Classes="accent" Content="Salvar no controlador" Command="{Binding SaveToControllerCommand}" />
+                    <Button Classes="accent" Content="Salvar no controlador" Command="{Binding SaveToControllerCommand}"
+                            IsEnabled="{Binding CanSaveToController}" />
                 </StackPanel>
             </Grid>
 

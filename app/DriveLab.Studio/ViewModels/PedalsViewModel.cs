@@ -25,6 +25,12 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
     public IReadOnlyList<PedalColumnViewModel> Columns { get; }
 
+    /// <summary>Rótulo da fonte ativa (ex.: "Simulador" / "Simagic P2000 — leitura").</summary>
+    public string SourceLabel => _session.SourceLabel;
+
+    /// <summary>Falso para fonte read-only (Simagic): "Salvar no controlador" fica desabilitado.</summary>
+    public bool CanSaveToController => _session.SupportsConfig;
+
     public ObservableCollection<ObservableValue> ClutchSamples { get; } = new();
     public ObservableCollection<ObservableValue> BrakeSamples { get; } = new();
     public ObservableCollection<ObservableValue> ThrottleSamples { get; } = new();
@@ -84,8 +90,10 @@ public sealed partial class PedalsViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(IsConnected))]
     private Task DisconnectAsync() => _session.DisconnectAsync();
 
-    [RelayCommand(CanExecute = nameof(IsConnected))]
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private Task SaveToControllerAsync() => _session.SendCommandAsync(PedalCommandId.SaveToFlash);
+
+    private bool CanSave() => IsConnected && _session.SupportsConfig;
 
     [RelayCommand]
     private Task SavePreferencesAsync() => _storage.SaveAsync(ExportProfile());

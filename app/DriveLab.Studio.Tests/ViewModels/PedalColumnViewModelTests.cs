@@ -124,6 +124,28 @@ public class PedalColumnViewModelTests
     }
 
     [Fact]
+    public void ConfigurableSource_Shows_Sensor_And_Not_Preview()
+    {
+        var t = new FakePedalTransport { SupportsConfig = true };
+        var s = new PedalDeviceSession(t, new ImmediateUiDispatcher(), "Simulador");
+        var vm = new PedalColumnViewModel(s, PedalIndex.Brake, "Freio");
+        Assert.True(vm.ShowSensor);
+        Assert.False(vm.CurvePreviewOnly);
+        s.Dispose();
+    }
+
+    [Fact]
+    public void ReadOnlySource_Hides_Sensor_And_Marks_Preview()
+    {
+        var t = new FakePedalTransport { SupportsConfig = false };
+        var s = new PedalDeviceSession(t, new ImmediateUiDispatcher(), "Simagic P2000 — leitura");
+        var vm = new PedalColumnViewModel(s, PedalIndex.Brake, "Freio");
+        Assert.False(vm.ShowSensor);
+        Assert.True(vm.CurvePreviewOnly);
+        s.Dispose();
+    }
+
+    [Fact]
     public void Presets_Include_Linear()
     {
         Assert.Contains(PedalCurvePresets.All, p => p.Name == "Linear");

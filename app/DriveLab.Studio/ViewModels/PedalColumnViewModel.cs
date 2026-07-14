@@ -82,6 +82,12 @@ public sealed partial class PedalColumnViewModel : ViewModelBase
     /// <summary>Presets de curva desta coluna, como chips selecionáveis (estilo Pit House).</summary>
     public IReadOnlyList<PedalPresetOption> PresetOptions { get; }
 
+    /// <summary>Tipo de sensor só faz sentido em fonte configurável (nossos pedais); oculto p/ read-only (Simagic).</summary>
+    public bool ShowSensor => _session.SupportsConfig;
+
+    /// <summary>Em fonte read-only, a curva editada é só pré-visualização (não vai ao dispositivo).</summary>
+    public bool CurvePreviewOnly => !_session.SupportsConfig;
+
     public ObservableCollection<ObservablePoint> CurveValues { get; } = new();
     public ObservableCollection<ObservablePoint> IdentityValues { get; } = new();
     public ObservableCollection<ObservablePoint> LiveValues { get; } = new();

@@ -1,7 +1,6 @@
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
-using DriveLab.Simulator;
 
 namespace DriveLab.Studio.Services;
 
@@ -11,10 +10,11 @@ public sealed class PedalDeviceSession : IDisposable
     private readonly IPedalTransport _transport;
     private readonly IUiDispatcher _dispatcher;
 
-    public PedalDeviceSession(IPedalTransport transport, IUiDispatcher dispatcher)
+    public PedalDeviceSession(IPedalTransport transport, IUiDispatcher dispatcher, string sourceLabel = "Simulador")
     {
         _transport = transport;
         _dispatcher = dispatcher;
+        SourceLabel = sourceLabel;
         _transport.StateReceived += OnTransportState;
     }
 
@@ -24,18 +24,19 @@ public sealed class PedalDeviceSession : IDisposable
     public event EventHandler<PedalSettingChangedEventArgs>? SettingChanged;
 
     public bool IsConnected => _transport.IsConnected;
+    public bool SupportsConfig => _transport.SupportsConfig;
+    public string SourceLabel { get; }
     public FirmwareVersion FirmwareVersion => _transport.FirmwareVersion;
 
     public async Task ConnectAsync()
     {
+        // O transporte cuida do seu próprio streaming/leitura no ConnectAsync.
         await _transport.ConnectAsync();
-        (_transport as SimulatorPedalTransport)?.StartStreaming();
         Connected?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task DisconnectAsync()
     {
-        (_transport as SimulatorPedalTransport)?.StopStreaming();
         await _transport.DisconnectAsync();
         Disconnected?.Invoke(this, EventArgs.Empty);
     }
@@ -58,7 +59,7 @@ public sealed class PedalDeviceSession : IDisposable
     public void Dispose()
     {
         _transport.StateReceived -= OnTransportState;
-        (_transport as SimulatorPedalTransport)?.StopStreaming();
+        _ = _transport.DisconnectAsync(); // para timer/leitura do transporte
     }
 }
 

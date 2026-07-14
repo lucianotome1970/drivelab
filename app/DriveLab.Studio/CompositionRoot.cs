@@ -1,6 +1,7 @@
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
 using DriveLab.Hid;
+using DriveLab.Hid.Simagic;
 using DriveLab.Simulator;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.ViewModels;
@@ -47,7 +48,11 @@ public static class CompositionRoot
         var session = new DeviceSession(transport, dispatcher);
         var connection = new ConnectionViewModel(session);
 
-        var pedalSession = new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher);
+        // Autodetecção: Simagic plugado → perfil P2000 (leitura); senão → simulador.
+        var simagicReader = new SimagicHidSharpReader();
+        var pedalSession = simagicReader.IsPresent()
+            ? new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, "Simagic P2000 — leitura")
+            : new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, "Simulador");
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
 
         // Base do Volante: abas de settings + Telemetria como última aba.
