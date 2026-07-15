@@ -133,4 +133,13 @@
   <data name="Handbrake_CalibrateStop" xml:space="preserve"><value>Calibrar: fim</value></data>
   <data name="Handbrake_Save" xml:space="preserve"><value>Salvar</value></data>
   <data name="Handbrake_LoadDefaults" xml:space="preserve"><value>Padrões</value></data>
+
+  <data name="Monitor_Title" xml:space="preserve"><value>Monitor</value></data>
+  <data name="Monitor_BusVoltage" xml:space="preserve"><value>Tensão do barramento</value></data>
+  <data name="Monitor_MotorCurrent" xml:space="preserve"><value>Corrente do motor</value></data>
+  <data name="Monitor_FetTemp" xml:space="preserve"><value>Temperatura FET</value></data>
+  <data name="Monitor_MotorTemp" xml:space="preserve"><value>Temperatura do motor</value></data>
+  <data name="Monitor_McuTemp" xml:space="preserve"><value>Temperatura do MCU</value></data>
+  <data name="Monitor_DegC" xml:space="preserve"><value>°C</value></data>
+  <data name="Monitor_NoSensor" xml:space="preserve"><value>—</value></data>
 </root>
