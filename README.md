@@ -5,7 +5,7 @@
 <h1 align="center">DriveLab</h1>
 
 <p align="center"><b>Open-source Direct-Drive sim-racing wheel</b><br/>
-Custom firmware for the ODESC v4.2 + a cross-platform configurator app, built to feel like MOZA Pit House.</p>
+Custom firmware for the ODESC v4.2 + a cross-platform configurator app.</p>
 
 <p align="center">
   <a href="https://discord.gg/Xp2pGm5wj"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
@@ -18,6 +18,35 @@ Custom firmware for the ODESC v4.2 + a cross-platform configurator app, built to
 <p align="center">
   <a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a> &nbsp;·&nbsp; <a href="https://discord.gg/Xp2pGm5wj">💬 Discord</a>
 </p>
+
+---
+
+## 📸 Screenshots
+
+<p align="center"><img src="docs/screenshots/home.png" width="860" alt="Home / Painel inicial"></p>
+
+**Home** — overview dashboard: the Wheel, Base, Pedals and Handbrake cards with live values (wheel angle, base force, live pedal bars) plus steering-rotation presets and the **Center** button.
+<br/>🇧🇷 *Painel inicial: cartões do Volante, Base, Pedais e Freio de mão com valores ao vivo (ângulo do volante, força da base, barras dos pedais) + presets de rotação e o botão **Center**.*
+
+<p align="center"><img src="docs/screenshots/wheelbase-basic.png" width="860" alt="Wheel Base — Basic / Base do Volante — Básico"></p>
+
+**Wheel Base → Basic** — everyday force-feedback tuning: total force, soft-stop force/range, wheel spring and damper, each with a slider and quick presets.
+<br/>🇧🇷 *Base do Volante → Básico: ajuste de FFB do dia a dia — força total, força/range do batente, mola e damper do volante, cada um com slider e presets rápidos.*
+
+<p align="center"><img src="docs/screenshots/wheelbase-hardware.png" width="860" alt="Wheel Base — Hardware & telemetry / Hardware e telemetria"></p>
+
+**Wheel Base → Hardware** — the read-only **telemetry monitor** (bus voltage, motor current, FET/motor/MCU temperatures) sits above the hardware setup: encoder direction/CPR, **encoder type** (quadrature E6B2 or magnetic SPI AS5047), current-loop P/I gains and calibration current.
+<br/>🇧🇷 *Base do Volante → Hardware: o **monitor de telemetria** (tensão do barramento, corrente do motor, temperaturas FET/motor/MCU) fica acima da configuração de hardware — direção/CPR do encoder, **tipo de encoder** (quadratura E6B2 ou SPI magnético AS5047), ganhos P/I da malha de corrente e corrente de calibração.*
+
+<p align="center"><img src="docs/screenshots/pedals.png" width="860" alt="Pedals / Pedais"></p>
+
+**Pedals** — per-pedal output curves (Linear / S-Curve / Fast / Slow) with a draggable curve editor, invert, smoothing and sensor type (pot / hall / load cell); the brake adds a load-cell target in % or kg. Live input bars on the right.
+<br/>🇧🇷 *Pedais: curvas de saída por pedal (Linear / S-Curve / Fast / Slow) com editor de curva arrastável, inverter, suavização e tipo de sensor (pot / hall / load cell); o freio adiciona alvo de load cell em % ou kg. Barras de entrada ao vivo à direita.*
+
+<p align="center"><img src="docs/screenshots/wheel.png" width="860" alt="Wheel / Volante"></p>
+
+**Wheel** — customize the rim button **LED colors** and configure the paddles: number of paddles, per-paddle function (shift / clutch / free / button), combined vs independent clutch, digital vs progressive engagement, and bite point.
+<br/>🇧🇷 *Volante: personalize as **cores dos LEDs** dos botões do aro e configure as pás — número de pás, função por pá (marcha / embreagem / livre / botão), embreagem combinada vs independente, acionamento digital vs progressivo, e bite point.*
 
 ---
 
@@ -37,7 +66,7 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 ### Features
 
 **App (DriveLab Studio)**
-- MOZA-Pit-House-style UI: **Wheel Base**, **Pedals**, **Handbrake**, and **Wheel** (rim/LEDs) modules.
+- Clean, modern UI with **Wheel Base**, **Pedals**, **Handbrake**, and **Wheel** (rim/LEDs) modules.
 - Live **settings** grouped in tabs (Basic / Advanced / Hardware) — total force, damper, spring, soft-stop, torque & power limits, encoder config, current loop, etc. Auto-load on connect, auto-save on change.
 - **Telemetry monitor** in the Hardware tab: bus voltage + FET/motor/MCU temperatures + motor current, with ok/warning/critical thresholds.
 - **Two encoder types supported** — you choose which one you built: incremental **quadrature** (Omron E6B2) or absolute **magnetic SPI** (AS5047). Absolute keeps its zero across power cycles.
@@ -45,7 +74,7 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 - Bilingual (English / Portuguese), auto-detected from the OS.
 
 **Firmware**
-- Enumerates as a **DirectInput FFB wheel** — games send force feedback to it exactly like they would to a Fanatec/MOZA, no plugin needed.
+- Enumerates as a **DirectInput FFB wheel** — games send force feedback to it exactly like they would to any commercial wheel, no plugin needed.
 - **SimpleFOC** field-oriented control of the hub motor.
 - Multi-stage safety: brake resistor, current/torque limits, soft-stop, over-voltage cutoff.
 - Companion firmware for **pedals** and **handbrake** modules (RP2040 + HX711 load cell).
@@ -155,7 +184,7 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 ### Recursos
 
 **App (DriveLab Studio)**
-- Interface no estilo Pit House: módulos **Base do Volante**, **Pedais**, **Freio de mão** e **Volante** (aro/LEDs).
+- Interface limpa e moderna com os módulos **Base do Volante**, **Pedais**, **Freio de mão** e **Volante** (aro/LEDs).
 - **Ajustes** ao vivo em abas (Básico / Avançado / Hardware) — força total, damper, mola, soft-stop, limites de torque e potência, config do encoder, malha de corrente, etc. Carrega ao conectar, salva ao alterar.
 - **Monitor de telemetria** na aba Hardware: tensão do barramento + temperaturas FET/motor/MCU + corrente do motor, com limiares ok/alerta/crítico.
 - **Dois tipos de encoder suportados** — você escolhe qual construiu: **quadratura** incremental (Omron E6B2) ou **SPI magnético** absoluto (AS5047). O absoluto mantém o zero mesmo desligando.
@@ -163,7 +192,7 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 - Bilíngue (Português / Inglês), detectado automaticamente pelo sistema.
 
 **Firmware**
-- Se apresenta como **volante FFB DirectInput** — os jogos mandam force feedback pra ele igualzinho a uma Fanatec/MOZA, sem plugin.
+- Se apresenta como **volante FFB DirectInput** — os jogos mandam force feedback pra ele igualzinho a qualquer volante comercial, sem plugin.
 - Controle **SimpleFOC** (orientado a campo) do motor.
 - Segurança em múltiplos estágios: brake resistor, limites de corrente/torque, soft-stop, corte por sobretensão.
 - Firmwares companheiros para os módulos de **pedais** e **freio de mão** (RP2040 + célula de carga HX711).
