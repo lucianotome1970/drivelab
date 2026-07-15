@@ -22,6 +22,7 @@ public static class SettingsSchema
         new(SettingId.PositionSmoothing, "position_smoothing", "Suavização de posição", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
         new(SettingId.PowerLimit, "power_limit", "Limite de potência", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 100),
         new(SettingId.BrakingLimit, "braking_limit", "Limite de frenagem", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 100),
+        new(SettingId.EncoderType, "encoder_type", "Tipo de encoder", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0),
     };
 
     private static readonly Dictionary<byte, SettingDescriptor> ById =
