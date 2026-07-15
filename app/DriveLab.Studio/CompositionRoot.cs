@@ -79,12 +79,15 @@ public static class CompositionRoot
         // dos pedais e do freio de mão, lado a lado. Base usa a MESMA sessão do volante.
         var home = new HomeViewModel(new DashboardViewModel(session), pedals, handbrake, new BaseViewModel(session));
 
+        var wheel = new WheelViewModel(new JsonWheelProfileStorage());
+
         var pages = new List<NavItem>
         {
             new(L.Get("Nav_Home"), "\U0001F39B", home),
             new(L.Get("Nav_WheelBase"), "base", new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs)),
             new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals),
             new(L.Get("Nav_Handbrake"), "handbrake", handbrake),
+            new(L.Get("Nav_Wheel"), "wheel", wheel),
         };
 
         // Teste (controle direto de força) não é uma aba: abre num modal à parte,

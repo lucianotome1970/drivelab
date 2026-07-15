@@ -17,9 +17,26 @@
   <data name="Nav_WheelBase" xml:space="preserve"><value>Wheel Base</value></data>
   <data name="Nav_Pedals" xml:space="preserve"><value>Pedals</value></data>
   <data name="Nav_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
+  <data name="Nav_Wheel" xml:space="preserve"><value>Wheel</value></data>
 
   <data name="Wheel_Title" xml:space="preserve"><value>DriveLab Wheel</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Maximum angle</value></data>
+  <data name="Wheel_Leds" xml:space="preserve"><value>Button lighting</value></data>
+  <data name="Wheel_Paddles" xml:space="preserve"><value>Paddles</value></data>
+  <data name="Wheel_PaddleCount" xml:space="preserve"><value>Paddle count</value></data>
+  <data name="Wheel_ShiftDown" xml:space="preserve"><value>Shift down</value></data>
+  <data name="Wheel_ShiftUp" xml:space="preserve"><value>Shift up</value></data>
+  <data name="Wheel_Function" xml:space="preserve"><value>Function</value></data>
+  <data name="Wheel_Mode" xml:space="preserve"><value>Mode</value></data>
+  <data name="Wheel_Actuation" xml:space="preserve"><value>Actuation</value></data>
+  <data name="Wheel_BitePoint" xml:space="preserve"><value>Bite point</value></data>
+  <data name="Wheel_Clutch" xml:space="preserve"><value>Clutch</value></data>
+  <data name="Wheel_Free" xml:space="preserve"><value>Free</value></data>
+  <data name="Wheel_Button" xml:space="preserve"><value>Button</value></data>
+  <data name="Wheel_Combined" xml:space="preserve"><value>Combined</value></data>
+  <data name="Wheel_Independent" xml:space="preserve"><value>Independent</value></data>
+  <data name="Wheel_Digital" xml:space="preserve"><value>Digital</value></data>
+  <data name="Wheel_Progression" xml:space="preserve"><value>Progression</value></data>
 
   <data name="Page_WheelBase" xml:space="preserve"><value>Wheel Base</value></data>
   <data name="Tab_Basic" xml:space="preserve"><value>Basic</value></data>
