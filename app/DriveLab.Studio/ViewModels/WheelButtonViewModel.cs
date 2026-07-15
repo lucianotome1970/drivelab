@@ -7,7 +7,7 @@ namespace DriveLab.Studio.ViewModels;
 public partial class WheelButtonViewModel : ObservableObject
 {
     public const double CanvasSize = 480;
-    public const double MarkerRadius = 18;
+    public const double MarkerRadius = 11;
 
     public string Name { get; }
     public double X { get; }

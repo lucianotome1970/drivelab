@@ -30,7 +30,7 @@
                             </ItemsControl.Styles>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:WheelButtonViewModel">
-                                    <Button Width="36" Height="36" CornerRadius="18" Padding="0"
+                                    <Button Width="22" Height="22" CornerRadius="11" Padding="0"
                                             Command="{Binding $parent[ItemsControl].((vm:WheelViewModel)DataContext).SelectButtonCommand}"
                                             CommandParameter="{Binding}"
                                             Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
