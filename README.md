@@ -60,6 +60,27 @@ Custom firmware for the ODESC v4.2 + a cross-platform configurator app.</p>
 
 ---
 
+## ⚙️ The motor / O motor
+
+The direct-drive actuator is a **cheap hoverboard hub motor**. Buy a spare 6.5" hoverboard wheel, strip the tire, and mount the bare hub to your rig — the machined face is where the wheel adapter bolts on.
+
+🇧🇷 *O atuador direct-drive é um **hub motor de hoverboard barato**. Compre uma roda de hoverboard 6,5", tire o pneu e monte o hub nu na sua estrutura — a face usinada é onde o adaptador do volante parafusa.*
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/screenshots/motor-hoverboard-wheel.jpg" width="100%" alt="Hoverboard wheel" /><br/>
+<b>As bought</b> — a 6.5" hoverboard wheel (3 phase wires + hall sensor). · <em>Como vem — roda de hoverboard 6,5" (3 fios de fase + sensor hall).</em>
+</td>
+<td width="50%" valign="top">
+<img src="docs/screenshots/motor-hub-bare.webp" width="100%" alt="Bare hub motor" /><br/>
+<b>Tire removed</b> — the bare hub motor: mounting face + axle, ready for the build. · <em>Sem o pneu — o hub motor nu: face de fixação + eixo, pronto pra montar.</em>
+</td>
+</tr>
+</table>
+
+---
+
 ## 🔌 Base board / Placa base
 
 The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class controller** — the firmware is the same for all of them. Two proven, interchangeable options (both **F405, 8–56 V, native USB**):
