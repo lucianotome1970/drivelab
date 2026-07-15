@@ -29,7 +29,7 @@ DriveLab turns cheap, widely-available parts — an **ODESC v4.2** motor control
 
 It is a fully open alternative to closed solutions like FFBeast, with two halves:
 
-- **DriveLab Studio** — a desktop app (.NET 8 / Avalonia) to configure and monitor the wheel, styled after MOZA's Pit House. Runs on Windows, and on macOS/Linux for development.
+- **DriveLab Studio** — a desktop app (.NET 8 / Avalonia) to configure and monitor the wheel. Runs on Windows, and on macOS/Linux for development.
 - **DriveLab Firmware** — firmware for the ODESC v4.2 board that enumerates as a standard DirectInput force-feedback wheel and drives the motor with [SimpleFOC](https://simplefoc.com).
 
 > ⚠️ **Status: in active development.** The app is functional (with a hardware simulator you can use today, no board required). The firmware is in bring-up. See the [Roadmap](#roadmap).
@@ -147,7 +147,7 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 
 É uma alternativa totalmente aberta a soluções fechadas como o FFBeast, com duas metades:
 
-- **DriveLab Studio** — um app desktop (.NET 8 / Avalonia) para configurar e monitorar o volante, com a cara do Pit House da MOZA. Roda no Windows, e no macOS/Linux para desenvolvimento.
+- **DriveLab Studio** — um app desktop (.NET 8 / Avalonia) para configurar e monitorar o volante. Roda no Windows, e no macOS/Linux para desenvolvimento.
 - **DriveLab Firmware** — firmware para a placa ODESC v4.2 que se apresenta como um volante DirectInput de force feedback padrão e aciona o motor com [SimpleFOC](https://simplefoc.com).
 
 > ⚠️ **Status: em desenvolvimento ativo.** O app já funciona (com um simulador de hardware que você usa hoje, sem placa). O firmware está em bring-up. Veja o [Roadmap](#roadmap-1).
