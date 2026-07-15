@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab Firmware
+//  main.cpp (pedal) — Firmware da pedaleira (RP2040): Joystick 3 eixos + protocolo P0 + load cell HX711.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 // DriveLab Firmware — Pedaleira (RP2040) — M4: Joystick + P0 + load cell (HX711) + flash
 // Aparece como "DriveLab Pedal" (3 eixos 12-bit) E responde o protocolo P0:
 //   - telemetria PedalState (0x20)  in

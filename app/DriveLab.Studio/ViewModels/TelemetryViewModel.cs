@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  TelemetryViewModel.cs — VM da tela de telemetria: séries de posição e torque para os gráficos.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Collections.ObjectModel;
 using DriveLab.Core.Protocol;
 using DriveLab.Studio.Services;

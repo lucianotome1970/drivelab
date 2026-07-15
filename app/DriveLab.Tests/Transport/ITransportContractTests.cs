@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  ITransportContractTests.cs — Testes do contrato ITransport e valores de DeviceCommand.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Transport;
 
 namespace DriveLab.Tests.Transport;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  StartupDetector.cs — Roda a sequência de detecção de módulos (base e pedais) exibida no splash.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.Services;

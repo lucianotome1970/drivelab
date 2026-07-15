@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  ConnectionViewModel.cs — VM do estado de conexão da base, reagindo a eventos manuais e de auto-conexão.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  CalMarkerMarginConverterTests.cs — Testes de CalMarkerMarginConverter (posição do marcador de calibração).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using Avalonia;
 using DriveLab.Studio.Converters;

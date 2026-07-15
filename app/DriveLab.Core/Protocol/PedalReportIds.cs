@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalReportIds.cs — IDs de report HID usados pela pedaleira (estado, comando, settings).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 public static class PedalReportIds

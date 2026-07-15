@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalState.cs — Estado de telemetria dos 3 pedais (clutch/brake/throttle) com leitura por índice.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Buffers.Binary;
 using DriveLab.Core.Settings;
 

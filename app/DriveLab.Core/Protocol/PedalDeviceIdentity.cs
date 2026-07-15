@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalDeviceIdentity.cs — Identidade USB (VID/PID/versão de protocolo) da pedaleira DriveLab.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 /// <summary>USB identity da pedaleira DriveLab. VID/PID de teste do pid.codes (volante = 0x0001).

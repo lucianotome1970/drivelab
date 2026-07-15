@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  FirmwareVersionTests.cs — Testes de round-trip do FirmwareVersion.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 
 namespace DriveLab.Tests.Protocol;

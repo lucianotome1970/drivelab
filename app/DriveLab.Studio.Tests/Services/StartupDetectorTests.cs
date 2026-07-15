@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  StartupDetectorTests.cs — Testes de StartupDetector (progresso e resultado da varredura de módulos).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Studio.Services;
 using Xunit;
 

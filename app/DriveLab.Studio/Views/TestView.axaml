@@ -1,3 +1,9 @@
+<!-- ============================================================================
+     DriveLab
+     TestView.axaml — Painel de teste de força: habilita força e ajusta spring/constant/periodic/damper.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"

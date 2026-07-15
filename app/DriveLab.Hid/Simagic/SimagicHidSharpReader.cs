@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SimagicHidSharpReader.cs — Leitura real do HID Simagic via HidSharp (Windows).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Threading;
 using HidSharp;
 

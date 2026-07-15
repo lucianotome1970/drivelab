@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  ImmediateUiDispatcherTests.cs — Testes de ImmediateUiDispatcher (execução síncrona do Post).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Xunit;
 using DriveLab.Studio.Services;
 

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  FirmwareVersion.cs — Versão de firmware (release type, major, minor, patch) com serialização de/para bytes.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 public readonly record struct FirmwareVersion(byte ReleaseType, byte Major, byte Minor, byte Patch)

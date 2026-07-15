@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalCurve.cs — Avaliação da curva/pipeline oficial de um pedal (contrato P0), espelhada no firmware.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Settings;
 
 /// <summary>

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  JsonWheelProfileStorage.cs — Persiste o perfil do volante em JSON local, com enums gravados como texto.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;

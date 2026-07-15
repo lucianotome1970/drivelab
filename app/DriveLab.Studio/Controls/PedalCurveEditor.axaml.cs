@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalCurveEditor.axaml.cs — Code-behind do editor de curva de pedal: desenha e arrasta os 6 pontos e os handles de deadzone.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;

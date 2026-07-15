@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  IntEqualsConverter.cs — Compara um inteiro com o parâmetro do converter; destaca o preset de ângulo selecionado.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using Avalonia.Data.Converters;
 

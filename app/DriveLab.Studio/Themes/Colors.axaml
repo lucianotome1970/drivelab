@@ -1,3 +1,9 @@
+<!-- ============================================================================
+     DriveLab
+     Colors.axaml — Paleta de cores e brushes do tema escuro (accent laranja) do Studio.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Color x:Key="DlBackgroundColor">#0F1216</Color>

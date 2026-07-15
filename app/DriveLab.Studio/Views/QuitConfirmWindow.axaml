@@ -1,3 +1,9 @@
+<!-- ============================================================================
+     DriveLab
+     QuitConfirmWindow.axaml — Diálogo modal de confirmação para sair do app.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="using:DriveLab.Studio.Localization"

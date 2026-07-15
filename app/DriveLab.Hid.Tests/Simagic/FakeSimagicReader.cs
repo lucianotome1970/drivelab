@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  FakeSimagicReader.cs — Fake de ISimagicHidReader para testes.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Hid.Simagic;
 
 namespace DriveLab.Hid.Tests.Simagic;

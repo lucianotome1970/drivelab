@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalDeviceSessionTests.cs — Testes de PedalDeviceSession (conexão, gravação de settings, estado).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Xunit;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;

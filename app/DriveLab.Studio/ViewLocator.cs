@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  ViewLocator.cs — Localiza a View correspondente a um ViewModel por convenção de nomes/namespace.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using DriveLab.Studio.ViewModels;

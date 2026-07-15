@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  IPedalTransport.cs — Contrato de transporte da pedaleira: conexão, telemetria e settings por pedal via HID.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 

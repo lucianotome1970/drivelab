@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalSettingsSchema.cs — Schema (descritores) dos settings de pedal: chave, faixa, unidade e valor default.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Settings;
 
 public sealed record PedalSettingDescriptor(

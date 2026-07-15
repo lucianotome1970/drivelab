@@ -1,3 +1,9 @@
+<!-- ============================================================================
+     DriveLab
+     TestWindow.axaml — Janela modal de teste de força que hospeda a TestView.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:DriveLab.Studio.Views"

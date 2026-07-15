@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  CalMarkerMarginConverter.cs — Posiciona o marcador de valor máximo atingido na barra de calibração.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;

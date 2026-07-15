@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  DeviceSession.cs — Fachada sobre um ITransport que marshala telemetria do dispositivo para a thread de UI.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;

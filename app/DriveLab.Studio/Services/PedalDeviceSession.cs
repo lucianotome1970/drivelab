@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalDeviceSession.cs — Fachada sobre um IPedalTransport que marshala telemetria dos pedais para a thread de UI.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;

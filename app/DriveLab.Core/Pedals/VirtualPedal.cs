@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  VirtualPedal.cs — Modelo device-side de um pedal: pipeline P0 (normaliza, inverte, curva, suaviza).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Settings;
 
 namespace DriveLab.Core.Pedals;

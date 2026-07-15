@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  JsonPedalProfileStorage.cs — Persiste o perfil dos pedais em JSON local, em caminho fixo do usuário.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.IO;
 using System.Text.Json;
 

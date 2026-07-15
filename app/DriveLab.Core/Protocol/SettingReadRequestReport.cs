@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SettingReadRequestReport.cs — Report de pedido de leitura de setting (FieldId + Index) serializado para bytes.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 public sealed class SettingReadRequestReport

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  BaseViewModelTests.cs — Testes de BaseViewModel (força total: leitura, escrita e sincronização).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Xunit;
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;

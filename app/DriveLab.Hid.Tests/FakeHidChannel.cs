@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  FakeHidChannel.cs — Fake de IHidChannel para testes, registrando writes e permitindo emitir reports simulados.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Hid;
 
 namespace DriveLab.Hid.Tests;

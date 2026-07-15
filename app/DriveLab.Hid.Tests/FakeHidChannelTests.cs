@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  FakeHidChannelTests.cs — Testes de FakeHidChannel (open/write/emit).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Xunit;
 
 namespace DriveLab.Hid.Tests;

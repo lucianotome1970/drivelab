@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  ReportIds.cs — IDs de report HID usados pelo volante (estado, comando, controle direto, settings).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 public static class ReportIds

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  CommandLineTests.cs — Testes de detecção do flag --simulator na linha de comando.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Studio;
 using Xunit;
 

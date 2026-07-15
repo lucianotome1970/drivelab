@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  EnumEqualsConverter.cs — Compara um valor de enum com o parâmetro do converter, usado em chips selecionáveis.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  ITransport.cs — Contrato de transporte do volante: conexão, telemetria de estado e envio de comandos via HID.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 

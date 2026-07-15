@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HardwareTabViewModel.cs — VM da aba Hardware: painel de monitor de telemetria acima dos settings de hardware.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
 

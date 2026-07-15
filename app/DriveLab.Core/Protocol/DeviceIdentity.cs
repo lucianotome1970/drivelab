@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  DeviceIdentity.cs — Identidade USB (VID/PID/versão de protocolo) do dispositivo DriveLab (volante).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 /// <summary>USB identity of the DriveLab device. VID/PID are pid.codes test values (dev placeholder).</summary>

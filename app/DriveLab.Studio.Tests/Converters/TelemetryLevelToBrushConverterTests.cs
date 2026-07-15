@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  TelemetryLevelToBrushConverterTests.cs — Testes de TelemetryLevelToBrushConverter (cor por nível de telemetria).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using Avalonia.Media;
 using DriveLab.Studio.Converters;

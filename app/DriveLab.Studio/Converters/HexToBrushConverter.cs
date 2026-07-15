@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HexToBrushConverter.cs — Converte uma cor hexadecimal (#RRGGBB) em um SolidColorBrush.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;

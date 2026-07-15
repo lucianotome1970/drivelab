@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  QuitConfirmWindow.axaml.cs — Code-behind de QuitConfirmWindow: confirma ou cancela o fechamento do app.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 

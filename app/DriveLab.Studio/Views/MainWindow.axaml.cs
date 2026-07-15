@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  MainWindow.axaml.cs — Code-behind de MainWindow: fecha o app com confirmação e abre a janela de teste de força.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;

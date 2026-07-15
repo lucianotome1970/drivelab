@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PaddleEnums.cs — Enums de função, modo e acionamento das pás de embreagem (mock).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Studio.ViewModels;
 
 /// <summary>Função da pá de baixo (mock — não vai ao firmware).</summary>

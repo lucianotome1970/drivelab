@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  WheelView.axaml.cs — Code-behind de WheelView: simula pressionamento de botões/pás no modo simulador.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Avalonia.Controls;
 using Avalonia.Input;
 using DriveLab.Studio.ViewModels;

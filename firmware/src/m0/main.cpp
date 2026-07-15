@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab Firmware
+//  main.cpp (m0) — Firmware de bring-up M0: só serial/USB, sem motor.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+// ============================================================================
+
 // DriveLab Firmware — M0 (bring-up)
 // Alvo: ODESC v4.2 (STM32F405). Framework: Arduino (STM32duino).
 //

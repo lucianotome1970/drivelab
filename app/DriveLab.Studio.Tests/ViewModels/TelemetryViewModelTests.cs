@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  TelemetryViewModelTests.cs — Testes de TelemetryViewModel (amostras de posição e torque).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  TestViewModelTests.cs — Testes de TestViewModel (envio de força direta e habilitação de força).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Transport;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;

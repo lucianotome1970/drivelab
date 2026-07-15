@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SettingFieldViewModel.cs — VM de um campo de setting: valor, presets e leitura/gravação no dispositivo.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

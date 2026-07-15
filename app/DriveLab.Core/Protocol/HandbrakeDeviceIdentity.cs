@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HandbrakeDeviceIdentity.cs — Identidade USB (VID/PID/versão de protocolo) do freio de mão DriveLab.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 /// <summary>USB identity do freio de mão DriveLab. VID/PID de teste do pid.codes

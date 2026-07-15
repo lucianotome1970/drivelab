@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  WheelViewModel.cs — VM da tela do volante (mock): cores de LED por botão e configuração de pás.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HandbrakeDeviceSession.cs — Fachada sobre IHandbrakeTransport que marshala telemetria do freio de mão p/ a thread de UI.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;

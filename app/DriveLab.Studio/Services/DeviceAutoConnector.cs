@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  DeviceAutoConnector.cs — Conecta/desconecta a base automaticamente via polling de presença USB.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;

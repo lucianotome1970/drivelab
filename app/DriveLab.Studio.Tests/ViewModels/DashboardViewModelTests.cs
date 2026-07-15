@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  DashboardViewModelTests.cs — Testes de DashboardViewModel (telemetria, centralização, faixa de movimento).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Xunit;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;

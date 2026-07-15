@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HidTransport.cs — Transporte HID real do volante DriveLab: enquadra payloads A0 e despacha reports por Report ID.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  DeviceState.cs — Estado de telemetria do volante (firmware, flags, posição, ângulo, torque, temperaturas) serializado para bytes.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Buffers.Binary;
 
 namespace DriveLab.Core.Protocol;

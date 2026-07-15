@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalCurvePreset.cs — Presets de curva de pedal (nome + pontos) e chip de seleção estilo Pit House.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace DriveLab.Studio.ViewModels;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  CommandReport.cs — Report de comando (CommandId + Arg) serializado para bytes do protocolo USB.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Core.Protocol;
 
 public sealed class CommandReport

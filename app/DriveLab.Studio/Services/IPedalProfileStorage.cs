@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  IPedalProfileStorage.cs — Contrato e registro (record) de persistência do perfil dos pedais.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Studio.Services;
 
 public sealed record PedalProfileColumn(

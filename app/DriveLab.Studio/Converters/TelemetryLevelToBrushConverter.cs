@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  TelemetryLevelToBrushConverter.cs — Converte um TelemetryLevel em um IBrush (verde/âmbar/vermelho).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;

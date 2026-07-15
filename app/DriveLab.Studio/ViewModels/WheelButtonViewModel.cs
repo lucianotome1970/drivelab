@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  WheelButtonViewModel.cs — VM de um controle do volante no mock: posição, diâmetro e cor de LED.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace DriveLab.Studio.ViewModels;

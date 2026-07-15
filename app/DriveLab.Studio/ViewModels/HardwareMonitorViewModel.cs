@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HardwareMonitorViewModel.cs — VM do monitor de telemetria de hardware (tensão, corrente e temperaturas).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DriveLab.Core.Protocol;

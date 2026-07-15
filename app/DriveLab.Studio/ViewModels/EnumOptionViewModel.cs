@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  EnumOptionViewModel.cs — Chip de opção (enum) selecionável abaixo de um slider.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 

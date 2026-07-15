@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  DeviceSessionConnectedTests.cs — Testes do evento Connected de DeviceSession.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
 using Xunit;

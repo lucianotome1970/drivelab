@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HandbrakeDeviceModel.cs — Motor device-side do freio de mão: eixo único (pipeline P0) mais botão digital com histerese.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Pedals;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;

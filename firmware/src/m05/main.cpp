@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab Firmware
+//  main.cpp (m05) — Rascunho M0.5: enumeração USB HID FFB (de-risco), sem motor.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+// ============================================================================
+
 // DriveLab Firmware — M0.5 (USB/FFB enumeration de-risk)
 // Alvo: ODESC v4.2 (STM32F405). Framework: Arduino (STM32duino).
 //

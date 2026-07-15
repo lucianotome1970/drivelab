@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  VirtualWheel.cs — Modelo físico simplificado do volante (mola, damper, inércia) usado pelo simulador.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Simulator;
 
 public sealed class VirtualWheel

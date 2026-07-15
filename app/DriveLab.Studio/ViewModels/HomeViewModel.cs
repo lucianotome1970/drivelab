@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HomeViewModel.cs — VM da página inicial: agrega os cards do Volante e o resumo dos Pedais.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 namespace DriveLab.Studio.ViewModels;
 
 /// <summary>

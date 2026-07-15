@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HandbrakeViewModel.cs — VM do freio de mão: eixo único e botão digital, espelhando PedalColumnViewModel.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Protocol;

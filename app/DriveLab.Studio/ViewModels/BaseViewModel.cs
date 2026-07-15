@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  BaseViewModel.cs — VM do card da base no dashboard: controle único de força total (TotalStrength).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DriveLab.Core.Settings;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SettingFieldViewModelTests.cs — Testes de SettingFieldViewModel (leitura/escrita, presets, opções de enum).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Localization;
 using DriveLab.Studio.Services;

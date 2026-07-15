@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalColumnViewModelTests.cs — Testes de PedalColumnViewModel (curva, calibração, presets e telemetria por pedal).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SimulatorStreamingTests.cs — Testes de streaming (start/stop) do SimulatorTransport.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Simulator;
 

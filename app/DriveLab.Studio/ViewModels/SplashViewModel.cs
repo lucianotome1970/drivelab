@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SplashViewModel.cs — VM da tela de splash: progresso e status da detecção de módulos.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using L = DriveLab.Studio.Localization.LocalizationManager;
 

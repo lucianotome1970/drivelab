@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  Program.cs — Ferramenta de dev: inspeciona/despeja relatórios HID p/ depurar o protocolo.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Diagnostics;
 using System.Text;
 using HidSharp;

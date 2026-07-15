@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  JsonHandbrakeProfileStorage.cs — Persiste o perfil do freio de mão em JSON local, em caminho fixo do usuário.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.IO;
 using System.Text.Json;
 

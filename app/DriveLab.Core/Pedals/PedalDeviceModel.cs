@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalDeviceModel.cs — Motor device-side dos 3 pedais: settings por pedal, calibração e montagem do PedalState.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 

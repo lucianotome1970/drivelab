@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab Firmware
+//  main.cpp (handbrake) — Firmware do freio de mão (RP2040): Joystick 1 eixo+botão + protocolo P0 + HX711.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 // DriveLab Firmware — Freio de mão (RP2040) — M5: Joystick (1 eixo + 1 botão) + P0 + load cell (HX711) + flash
 // Aparece como "DriveLab Handbrake" (1 eixo Rx 12-bit + 1 botão) E responde o protocolo P0:
 //   - telemetria PedalState (0x20)  in   (eixo no slot Clutch; botão no bit0 de Flags — HandbrakeFlags.ButtonPressed)

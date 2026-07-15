@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  LocalizationManagerTests.cs — Testes de LocalizationManager (troca de idioma e chaves ausentes).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using DriveLab.Studio.Localization;
 using Xunit;

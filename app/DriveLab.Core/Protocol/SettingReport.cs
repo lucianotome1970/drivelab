@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SettingReport.cs — Report de leitura/escrita de um setting (FieldId, Index, valor tipado) serializado para bytes.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Settings;
 
 namespace DriveLab.Core.Protocol;

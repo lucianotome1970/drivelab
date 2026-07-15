@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SettingsGroupViewModel.cs — VM de uma página de settings para um conjunto curado de campos, carregados do dispositivo.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
 

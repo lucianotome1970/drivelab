@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  MainWindowViewModelTests.cs — Testes de MainWindowViewModel (navegação entre páginas, modo simulador).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
 using DriveLab.Studio.ViewModels;

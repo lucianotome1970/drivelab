@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  BoolToBrushConverters.cs — Converte bool em IBrush (true/false), usado p/ estado de botões digitais (freio de mão).
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;

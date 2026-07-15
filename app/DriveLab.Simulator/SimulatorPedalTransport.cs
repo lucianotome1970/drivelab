@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SimulatorPedalTransport.cs — Transporte simulado de pedaleira: gera telemetria sintética (clutch/brake/throttle) sem hardware.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Threading;
 using DriveLab.Core.Pedals;
 using DriveLab.Core.Protocol;

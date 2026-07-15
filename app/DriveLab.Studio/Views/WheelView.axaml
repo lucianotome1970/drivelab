@@ -1,3 +1,9 @@
+<!-- ============================================================================
+     DriveLab
+     WheelView.axaml — Tela do volante: LEDs/cores dos botões e configuração das pás (contagem, função, modo, atuação).
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"

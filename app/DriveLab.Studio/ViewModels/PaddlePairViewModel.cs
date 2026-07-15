@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PaddlePairViewModel.cs — VM do par de pás de baixo (embreagem/livre/botão), mock persistido em JSON local.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

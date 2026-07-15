@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  Program.cs — Ponto de entrada: detecta idioma do sistema e inicia o Avalonia com lifetime desktop clássico.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Avalonia;
 using DriveLab.Studio.Localization;
 

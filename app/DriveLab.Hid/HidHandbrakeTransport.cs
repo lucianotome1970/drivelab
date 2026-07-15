@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  HidHandbrakeTransport.cs — Transporte HID real do freio de mão DriveLab (RP2040), espelha HidPedalTransport.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;

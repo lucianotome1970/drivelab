@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  SmokeTest.cs — Teste de fumaça: ViewModelBase pode ser usada como base.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using DriveLab.Studio.ViewModels;
 using Xunit;
 

@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  App.axaml.cs — Code-behind do App: exibe o splash, detecta dispositivos e inicializa a janela principal.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;

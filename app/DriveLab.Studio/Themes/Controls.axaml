@@ -1,3 +1,9 @@
+<!-- ============================================================================
+     DriveLab
+     Controls.axaml — Estilos compartilhados dos controles (card, botões chip/accent, labels) do Studio.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- Card container -->

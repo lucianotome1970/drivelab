@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  PedalColumnViewModel.cs — VM de uma coluna de pedal: pontos da curva, calibração e configurações do eixo.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

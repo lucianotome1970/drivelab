@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  TestViewModel.cs — VM da aba de teste: envia forças (mola, constante, periódica, damper) ao dispositivo.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Transport;

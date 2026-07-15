@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  DirectControl.cs — Report de controle direto de forças (spring/constant/periodic/damper) serializado para bytes.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 using System.Buffers.Binary;
 
 namespace DriveLab.Core.Protocol;
