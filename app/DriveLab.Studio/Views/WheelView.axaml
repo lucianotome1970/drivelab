@@ -5,6 +5,37 @@
              xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.WheelView"
              x:DataType="vm:WheelViewModel">
+    <UserControl.Styles>
+        <!-- Marcador de LED: apagado = esmaecido; aceso (IsPressed) = cor cheia + destaque -->
+        <Style Selector="Border.led">
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        </Style>
+        <Style Selector="Border.led.pressed">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="scale(1.35)" />
+        </Style>
+        <Style Selector="Border.led.selected">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+
+        <!-- Caixa de pá: acende (IsPressed) na cor de acento -->
+        <Style Selector="Border.paddle">
+            <Setter Property="Background" Value="{DynamicResource DlCard}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="10" />
+        </Style>
+        <Style Selector="Border.paddle.pressed">
+            <Setter Property="Background" Value="#FF9F0A" />
+            <Setter Property="BorderBrush" Value="#FF9F0A" />
+        </Style>
+    </UserControl.Styles>
+
     <Border Classes="card">
         <Grid>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
@@ -28,19 +59,16 @@
                                             <Setter Property="Canvas.Left" Value="{Binding Left}" />
                                             <Setter Property="Canvas.Top" Value="{Binding Top}" />
                                         </Style>
-                                        <Style Selector="Button.selected">
-                                            <Setter Property="BorderThickness" Value="3" />
-                                        </Style>
                                     </ItemsControl.Styles>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:WheelButtonViewModel">
-                                            <Button Width="22" Height="22" CornerRadius="11" Padding="0"
-                                                    Command="{Binding $parent[ItemsControl].((vm:WheelViewModel)DataContext).SelectButtonCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
-                                                    BorderBrush="White" BorderThickness="0"
+                                            <Border Classes="led"
+                                                    Classes.pressed="{Binding IsPressed}"
                                                     Classes.selected="{Binding IsSelected}"
-                                                    ToolTip.Tip="{Binding Name}" />
+                                                    Width="{Binding Diameter}" Height="{Binding Diameter}" CornerRadius="999"
+                                                    Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
+                                                    ToolTip.Tip="{Binding Name}"
+                                                    PointerPressed="OnMarkerPressed" PointerReleased="OnControlReleased" />
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -77,17 +105,39 @@
                                         Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=4}" />
                             </UniformGrid>
 
-                            <!-- Par de cima: marcha (fixo) -->
+                            <!-- Par de cima: marcha (pressionável) -->
                             <Grid ColumnDefinitions="*,*">
-                                <Border Grid.Column="0" Classes="card" Margin="0,0,4,0" Padding="10">
+                                <Border Grid.Column="0" Classes="paddle" Margin="0,0,4,0"
+                                        DataContext="{Binding Paddles[0]}" x:DataType="vm:WheelButtonViewModel"
+                                        Classes.pressed="{Binding IsPressed}"
+                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
                                     <TextBlock Text="{loc:Translate Wheel_ShiftDown}" HorizontalAlignment="Center" />
                                 </Border>
-                                <Border Grid.Column="1" Classes="card" Margin="4,0,0,0" Padding="10">
+                                <Border Grid.Column="1" Classes="paddle" Margin="4,0,0,0"
+                                        DataContext="{Binding Paddles[1]}" x:DataType="vm:WheelButtonViewModel"
+                                        Classes.pressed="{Binding IsPressed}"
+                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
                                     <TextBlock Text="{loc:Translate Wheel_ShiftUp}" HorizontalAlignment="Center" />
                                 </Border>
                             </Grid>
 
-                            <!-- Par de baixo (só quando 4 pás) -->
+                            <!-- Par de baixo: pás de embreagem (pressionáveis) — só quando 4 pás -->
+                            <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowBottomPair}">
+                                <Border Grid.Column="0" Classes="paddle" Margin="0,0,4,0"
+                                        DataContext="{Binding Paddles[2]}" x:DataType="vm:WheelButtonViewModel"
+                                        Classes.pressed="{Binding IsPressed}"
+                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
+                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" HorizontalAlignment="Center" />
+                                </Border>
+                                <Border Grid.Column="1" Classes="paddle" Margin="4,0,0,0"
+                                        DataContext="{Binding Paddles[3]}" x:DataType="vm:WheelButtonViewModel"
+                                        Classes.pressed="{Binding IsPressed}"
+                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
+                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" HorizontalAlignment="Center" />
+                                </Border>
+                            </Grid>
+
+                            <!-- Config do par de baixo (só quando 4 pás) -->
                             <StackPanel Spacing="10" IsVisible="{Binding ShowBottomPair}">
                                 <StackPanel Spacing="10" DataContext="{Binding BottomPair}"
                                             x:DataType="vm:PaddlePairViewModel">
