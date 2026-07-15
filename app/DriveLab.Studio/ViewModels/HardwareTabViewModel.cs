@@ -20,7 +20,7 @@ public sealed class HardwareTabViewModel : SettingsGroupViewModel
 {
     public HardwareMonitorViewModel Monitor { get; }
 
-    public HardwareTabViewModel(DeviceSession session, string title, IEnumerable<SettingId> ids)
+    public HardwareTabViewModel(DeviceSession session, string title, IEnumerable<BaseSettingId> ids)
         : base(session, title, ids)
     {
         Monitor = new HardwareMonitorViewModel(session);

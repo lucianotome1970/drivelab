@@ -40,7 +40,7 @@ public class DashboardViewModelTests
         var vm = New(out var transport);
         await transport.ConnectAsync();
         await vm.CenterCommand.ExecuteAsync(null);
-        Assert.Equal(DeviceCommand.ResetCenter, transport.LastCommand!.Value.cmd);
+        Assert.Equal(BaseCommand.ResetCenter, transport.LastCommand!.Value.cmd);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class DashboardViewModelTests
         await transport.ConnectAsync();
         await vm.SetMaxAngleCommand.ExecuteAsync("900");
 
-        Assert.Equal(SettingId.MotionRange, transport.LastWrite!.Value.id);
+        Assert.Equal(BaseSettingId.MotionRange, transport.LastWrite!.Value.id);
         Assert.Equal(900, transport.LastWrite!.Value.value.AsDouble);
         Assert.Equal(900, vm.MotionRange);
     }
@@ -71,7 +71,7 @@ public class DashboardViewModelTests
         var vm = new DashboardViewModel(session);
 
         // Outra tela (ex.: Ajustes) grava o MotionRange no dispositivo.
-        await session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 540));
+        await session.WriteSettingAsync(BaseSettingId.MotionRange, new SettingValue(SettingType.UInt16, 540));
 
         Assert.Equal(540, vm.MotionRange);
     }

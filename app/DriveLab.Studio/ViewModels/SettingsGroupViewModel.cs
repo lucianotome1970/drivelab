@@ -25,11 +25,11 @@ public class SettingsGroupViewModel : ViewModelBase
     public IReadOnlyList<SettingFieldViewModel> LeftColumn { get; }
     public IReadOnlyList<SettingFieldViewModel> RightColumn { get; }
 
-    public SettingsGroupViewModel(DeviceSession session, string title, IEnumerable<SettingId> ids)
+    public SettingsGroupViewModel(DeviceSession session, string title, IEnumerable<BaseSettingId> ids)
     {
         _session = session;
         Title = title;
-        Fields = ids.Select(id => new SettingFieldViewModel(session, SettingsSchema.Get(id))).ToList();
+        Fields = ids.Select(id => new SettingFieldViewModel(session, BaseSettingsSchema.Get(id))).ToList();
 
         var half = (Fields.Count + 1) / 2; // coluna esquerda leva o excedente
         LeftColumn = Fields.Take(half).ToList();

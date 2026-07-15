@@ -13,7 +13,7 @@ using DriveLab.Studio.Services;
 namespace DriveLab.Studio.ViewModels;
 
 /// <summary>Card da base no dashboard: um único controle de força total
-/// (<see cref="SettingId.TotalStrength"/>). Envolve o MESMO <see cref="DeviceSession"/> do
+/// (<see cref="BaseSettingId.TotalStrength"/>). Envolve o MESMO <see cref="DeviceSession"/> do
 /// volante — lê o valor ao conectar e grava ao alterar (espelha o padrão do
 /// <see cref="DashboardViewModel"/> p/ MotionRange). Não descarta a sessão (compartilhada).</summary>
 public partial class BaseViewModel : ViewModelBase
@@ -43,7 +43,7 @@ public partial class BaseViewModel : ViewModelBase
         {
             // Mostra o valor real do dispositivo (não o default do VM).
             _loading = true;
-            var value = await _session.ReadSettingAsync(SettingId.TotalStrength);
+            var value = await _session.ReadSettingAsync(BaseSettingId.TotalStrength);
             TotalStrength = (int)value.AsDouble;
         }
         catch
@@ -60,7 +60,7 @@ public partial class BaseViewModel : ViewModelBase
 
     private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
     {
-        if (e.Id != SettingId.TotalStrength)
+        if (e.Id != BaseSettingId.TotalStrength)
             return;
         _loading = true;
         TotalStrength = (int)e.Value.AsDouble;
@@ -71,9 +71,9 @@ public partial class BaseViewModel : ViewModelBase
     {
         if (_loading || !_session.IsConnected)
             return;
-        var d = SettingsSchema.Get(SettingId.TotalStrength);
+        var d = BaseSettingsSchema.Get(BaseSettingId.TotalStrength);
         var clamped = (int)Math.Clamp(value, d.Min, d.Max);
-        _ = _session.WriteSettingAsync(SettingId.TotalStrength, new SettingValue(d.Type, clamped));
+        _ = _session.WriteSettingAsync(BaseSettingId.TotalStrength, new SettingValue(d.Type, clamped));
     }
 
     public override void Dispose()

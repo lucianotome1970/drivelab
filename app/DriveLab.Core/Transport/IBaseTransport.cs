@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  ITransport.cs — Contrato de transporte do volante: conexão, telemetria de estado e envio de comandos via HID.
+//  IBaseTransport.cs — Contrato de transporte do volante: conexão, telemetria de estado e envio de comandos via HID.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -10,7 +10,7 @@ using DriveLab.Core.Settings;
 
 namespace DriveLab.Core.Transport;
 
-public interface ITransport
+public interface IBaseTransport
 {
     bool IsConnected { get; }
     FirmwareVersion FirmwareVersion { get; }
@@ -25,8 +25,8 @@ public interface ITransport
 
     Task ConnectAsync(CancellationToken ct = default);
     Task DisconnectAsync();
-    Task WriteSettingAsync(SettingId id, SettingValue value);
-    Task<SettingValue> ReadSettingAsync(SettingId id);
+    Task WriteSettingAsync(BaseSettingId id, SettingValue value);
+    Task<SettingValue> ReadSettingAsync(BaseSettingId id);
     Task SendDirectControlAsync(BaseDirectControl control);
-    Task SendCommandAsync(DeviceCommand command, byte arg = 0);
+    Task SendCommandAsync(BaseCommand command, byte arg = 0);
 }

@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DeviceSession.cs — Fachada sobre um ITransport que marshala telemetria do dispositivo para a thread de UI.
+//  DeviceSession.cs — Fachada sobre um IBaseTransport que marshala telemetria do dispositivo para a thread de UI.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -13,15 +13,15 @@ using DriveLab.Simulator;
 namespace DriveLab.Studio.Services;
 
 /// <summary>
-/// App-facing facade over an <see cref="ITransport"/>. Marshals device telemetry
+/// App-facing facade over an <see cref="IBaseTransport"/>. Marshals device telemetry
 /// onto the UI thread via <see cref="IUiDispatcher"/> so ViewModels can bind safely.
 /// </summary>
 public sealed class DeviceSession : IDisposable
 {
-    private readonly ITransport _transport;
+    private readonly IBaseTransport _transport;
     private readonly IUiDispatcher _dispatcher;
 
-    public DeviceSession(ITransport transport, IUiDispatcher dispatcher)
+    public DeviceSession(IBaseTransport transport, IUiDispatcher dispatcher)
     {
         _transport = transport;
         _dispatcher = dispatcher;
@@ -63,15 +63,15 @@ public sealed class DeviceSession : IDisposable
         Disconnected?.Invoke(this, EventArgs.Empty);
     }
 
-    public async Task WriteSettingAsync(SettingId id, SettingValue value)
+    public async Task WriteSettingAsync(BaseSettingId id, SettingValue value)
     {
         await _transport.WriteSettingAsync(id, value);
         _dispatcher.Post(() => SettingChanged?.Invoke(this, new SettingChangedEventArgs(id, value)));
     }
 
-    public Task<SettingValue> ReadSettingAsync(SettingId id) => _transport.ReadSettingAsync(id);
+    public Task<SettingValue> ReadSettingAsync(BaseSettingId id) => _transport.ReadSettingAsync(id);
     public Task SendDirectControlAsync(BaseDirectControl control) => _transport.SendDirectControlAsync(control);
-    public Task SendCommandAsync(DeviceCommand command, byte arg = 0) => _transport.SendCommandAsync(command, arg);
+    public Task SendCommandAsync(BaseCommand command, byte arg = 0) => _transport.SendCommandAsync(command, arg);
 
     private void OnTransportState(object? sender, BaseState state) =>
         _dispatcher.Post(() => StateReceived?.Invoke(this, state));
@@ -86,12 +86,12 @@ public sealed class DeviceSession : IDisposable
 /// <summary>Payload for <see cref="DeviceSession.SettingChanged"/>.</summary>
 public sealed class SettingChangedEventArgs : EventArgs
 {
-    public SettingChangedEventArgs(SettingId id, SettingValue value)
+    public SettingChangedEventArgs(BaseSettingId id, SettingValue value)
     {
         Id = id;
         Value = value;
     }
 
-    public SettingId Id { get; }
+    public BaseSettingId Id { get; }
     public SettingValue Value { get; }
 }

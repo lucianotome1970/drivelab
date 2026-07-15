@@ -13,12 +13,12 @@ using HidSharp;
 namespace DriveLab.Hid;
 
 /// <summary>
-/// Real <see cref="ITransport"/> over USB HID. Frames A0 payloads with their HID Report ID
+/// Real <see cref="IBaseTransport"/> over USB HID. Frames A0 payloads with their HID Report ID
 /// and sends them through an <see cref="IHidChannel"/>. Incoming reports are dispatched by
 /// report id. StateReceived is raised on the channel's read thread; consumers (DeviceSession)
 /// marshal it to the UI thread.
 /// </summary>
-public sealed class HidTransport : ITransport, IDisposable
+public sealed class HidTransport : IBaseTransport, IDisposable
 {
     private readonly IHidChannel _channel;
     private readonly object _pendingLock = new();
@@ -67,15 +67,15 @@ public sealed class HidTransport : ITransport, IDisposable
     public Task SendDirectControlAsync(BaseDirectControl control) =>
         _channel.WriteAsync(Frame(BaseReportIds.DirectControl, control.ToBytes()));
 
-    public Task SendCommandAsync(DeviceCommand command, byte arg = 0) =>
+    public Task SendCommandAsync(BaseCommand command, byte arg = 0) =>
         _channel.WriteAsync(Frame(BaseReportIds.Command, new CommandReport((byte)command, arg).ToBytes()));
 
-    public Task WriteSettingAsync(SettingId id, SettingValue value) =>
+    public Task WriteSettingAsync(BaseSettingId id, SettingValue value) =>
         _channel.WriteAsync(Frame(BaseReportIds.SettingWrite, new SettingReport((byte)id, 0, value).ToBytes()));
 
-    public Task<SettingValue> ReadSettingAsync(SettingId id) => ReadSettingAsync(id, DefaultReadTimeout);
+    public Task<SettingValue> ReadSettingAsync(BaseSettingId id) => ReadSettingAsync(id, DefaultReadTimeout);
 
-    public async Task<SettingValue> ReadSettingAsync(SettingId id, TimeSpan timeout)
+    public async Task<SettingValue> ReadSettingAsync(BaseSettingId id, TimeSpan timeout)
     {
         var tcs = new TaskCompletionSource<SettingValue>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_pendingLock) _pendingReads[(byte)id] = tcs;

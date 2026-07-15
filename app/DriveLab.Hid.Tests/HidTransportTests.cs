@@ -54,9 +54,9 @@ public class HidTransportTests
     {
         var t = New(out var channel);
         await t.ConnectAsync();
-        await t.SendCommandAsync(DeviceCommand.ResetCenter, 0);
+        await t.SendCommandAsync(BaseCommand.ResetCenter, 0);
         Assert.Equal(BaseReportIds.Command, channel.LastWrite![0]);
-        Assert.Equal((byte)DeviceCommand.ResetCenter, channel.LastWrite![1]);
+        Assert.Equal((byte)BaseCommand.ResetCenter, channel.LastWrite![1]);
     }
 
     [Fact]

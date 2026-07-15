@@ -57,7 +57,7 @@ public partial class App : Application
             // Falha na detecção não deve travar o app no splash: segue para abri-lo.
         }
 
-        ITransport? transport = simulatorMode ? null : CompositionRoot.CreateHidTransport();
+        IBaseTransport? transport = simulatorMode ? null : CompositionRoot.CreateHidTransport();
         var viewModel = CompositionRoot.CreateMainWindowViewModel(transport, simulatorMode);
         var main = new MainWindow { DataContext = viewModel };
         desktop.MainWindow = main;

@@ -23,34 +23,34 @@ public static class CompositionRoot
     {
         new("Basic", new[]
         {
-            SettingId.TotalStrength,
-            SettingId.SoftStopStrength,
-            SettingId.SoftStopRange,
-            SettingId.SpringStrength,
-            SettingId.DamperStrength,
+            BaseSettingId.TotalStrength,
+            BaseSettingId.SoftStopStrength,
+            BaseSettingId.SoftStopRange,
+            BaseSettingId.SpringStrength,
+            BaseSettingId.DamperStrength,
         }),
         new("Advanced", new[]
         {
-            SettingId.StaticDamping,
-            SettingId.MaxTorqueLimit,
-            SettingId.ForceDirection,
-            SettingId.PositionSmoothing,
-            SettingId.PowerLimit,
-            SettingId.BrakingLimit,
+            BaseSettingId.StaticDamping,
+            BaseSettingId.MaxTorqueLimit,
+            BaseSettingId.ForceDirection,
+            BaseSettingId.PositionSmoothing,
+            BaseSettingId.PowerLimit,
+            BaseSettingId.BrakingLimit,
         }),
         new("Hardware", new[]
         {
-            SettingId.EncoderDirection,
-            SettingId.EncoderCpr,
-            SettingId.EncoderType,
-            SettingId.PolePairs,
-            SettingId.CurrentP,
-            SettingId.CurrentI,
-            SettingId.CalibrationCurrent,
+            BaseSettingId.EncoderDirection,
+            BaseSettingId.EncoderCpr,
+            BaseSettingId.EncoderType,
+            BaseSettingId.PolePairs,
+            BaseSettingId.CurrentP,
+            BaseSettingId.CurrentI,
+            BaseSettingId.CalibrationCurrent,
         }),
     };
 
-    public static MainWindowViewModel CreateMainWindowViewModel(ITransport? transport = null, bool simulatorMode = false)
+    public static MainWindowViewModel CreateMainWindowViewModel(IBaseTransport? transport = null, bool simulatorMode = false)
     {
         transport ??= new SimulatorTransport();
         var dispatcher = new AvaloniaUiDispatcher();
@@ -149,7 +149,7 @@ public static class CompositionRoot
     }
 
     /// <summary>Builds a transport talking to real hardware over USB HID (used when a device is present).</summary>
-    public static ITransport CreateHidTransport() => new HidTransport(new HidSharpChannel());
+    public static IBaseTransport CreateHidTransport() => new HidTransport(new HidSharpChannel());
 
     /// <summary>
     /// True when the app was launched with a simulator flag (/simulator, --simulator, -simulator).

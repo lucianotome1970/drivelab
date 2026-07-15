@@ -28,13 +28,13 @@ public class HidTransportSettingsTests
         var t = new HidTransport(channel);
         await t.ConnectAsync();
 
-        await t.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 900));
+        await t.WriteSettingAsync(BaseSettingId.MotionRange, new SettingValue(SettingType.UInt16, 900));
 
         Assert.Equal(BaseReportIds.SettingWrite, channel.LastWrite![0]);
         var payload = new byte[64];
         Array.Copy(channel.LastWrite!, 1, payload, 0, 64);
         var report = SettingReport.Parse(payload);
-        Assert.Equal((byte)SettingId.MotionRange, report.FieldId);
+        Assert.Equal((byte)BaseSettingId.MotionRange, report.FieldId);
         Assert.Equal(900, report.Value.AsDouble);
     }
 
@@ -45,10 +45,10 @@ public class HidTransportSettingsTests
         var t = new HidTransport(channel);
         await t.ConnectAsync();
 
-        var readTask = t.ReadSettingAsync(SettingId.EncoderCpr);
+        var readTask = t.ReadSettingAsync(BaseSettingId.EncoderCpr);
 
         // firmware would answer with a SettingValue report for the same field
-        var reply = new SettingReport((byte)SettingId.EncoderCpr, 0, new SettingValue(SettingType.UInt16, 10000)).ToBytes();
+        var reply = new SettingReport((byte)BaseSettingId.EncoderCpr, 0, new SettingValue(SettingType.UInt16, 10000)).ToBytes();
         channel.Emit(Wire(BaseReportIds.SettingValue, reply));
 
         var value = await readTask;
@@ -66,6 +66,6 @@ public class HidTransportSettingsTests
         var t = new HidTransport(channel);
         await t.ConnectAsync();
 
-        await Assert.ThrowsAsync<TimeoutException>(() => t.ReadSettingAsync(SettingId.PolePairs, TimeSpan.FromMilliseconds(50)));
+        await Assert.ThrowsAsync<TimeoutException>(() => t.ReadSettingAsync(BaseSettingId.PolePairs, TimeSpan.FromMilliseconds(50)));
     }
 }

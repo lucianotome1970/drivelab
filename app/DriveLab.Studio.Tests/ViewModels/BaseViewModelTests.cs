@@ -30,7 +30,7 @@ public class BaseViewModelTests
 
         vm.TotalStrength = 60;
 
-        Assert.Equal(SettingId.TotalStrength, transport.LastWrite!.Value.id);
+        Assert.Equal(BaseSettingId.TotalStrength, transport.LastWrite!.Value.id);
         Assert.Equal(60, transport.LastWrite!.Value.value.AsDouble);
         Assert.Equal(SettingType.UInt8, transport.LastWrite!.Value.value.Type);
     }
@@ -66,7 +66,7 @@ public class BaseViewModelTests
         var vm = new BaseViewModel(session);
 
         // Outra tela (ex.: Base do Volante) grava o TotalStrength no dispositivo.
-        await session.WriteSettingAsync(SettingId.TotalStrength, new SettingValue(SettingType.UInt8, 40));
+        await session.WriteSettingAsync(BaseSettingId.TotalStrength, new SettingValue(SettingType.UInt8, 40));
 
         Assert.Equal(40, vm.TotalStrength);
     }

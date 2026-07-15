@@ -8,7 +8,7 @@
 namespace DriveLab.Core.Settings;
 
 public sealed record SettingDescriptor(
-    SettingId Id,
+    BaseSettingId Id,
     string Key,
     string DisplayName,
     SettingType Type,

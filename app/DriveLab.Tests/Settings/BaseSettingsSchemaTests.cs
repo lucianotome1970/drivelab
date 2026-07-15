@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  SettingsSchemaTests.cs — Testes do schema de configurações do volante.
+//  BaseSettingsSchemaTests.cs — Testes do schema de configurações do volante.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -9,19 +9,19 @@ using DriveLab.Core.Settings;
 
 namespace DriveLab.Tests.Settings;
 
-public class SettingsSchemaTests
+public class BaseSettingsSchemaTests
 {
     [Fact]
     public void All_Descriptors_Have_Unique_Ids()
     {
-        var ids = SettingsSchema.All.Select(d => d.Id).ToList();
+        var ids = BaseSettingsSchema.All.Select(d => d.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
     }
 
     [Fact]
     public void MotionRange_Has_Expected_Metadata()
     {
-        var descriptor = SettingsSchema.Get(SettingId.MotionRange);
+        var descriptor = BaseSettingsSchema.Get(BaseSettingId.MotionRange);
         Assert.Equal(SettingType.UInt16, descriptor.Type);
         Assert.Equal(90, descriptor.Min);
         Assert.Equal(2000, descriptor.Max);
@@ -32,7 +32,7 @@ public class SettingsSchemaTests
     [Fact]
     public void Clamp_Limits_To_Range()
     {
-        var descriptor = SettingsSchema.Get(SettingId.TotalStrength);
+        var descriptor = BaseSettingsSchema.Get(BaseSettingId.TotalStrength);
         Assert.Equal(0, descriptor.Clamp(-50));
         Assert.Equal(100, descriptor.Clamp(250));
         Assert.Equal(60, descriptor.Clamp(60));
@@ -41,20 +41,20 @@ public class SettingsSchemaTests
     [Fact]
     public void TryGet_By_FieldId_Finds_Descriptor()
     {
-        Assert.True(SettingsSchema.TryGet((byte)SettingId.PolePairs, out var descriptor));
-        Assert.Equal(SettingId.PolePairs, descriptor.Id);
+        Assert.True(BaseSettingsSchema.TryGet((byte)BaseSettingId.PolePairs, out var descriptor));
+        Assert.Equal(BaseSettingId.PolePairs, descriptor.Id);
     }
 
     [Fact]
     public void TryGet_Unknown_FieldId_Returns_False()
     {
-        Assert.False(SettingsSchema.TryGet(250, out _));
+        Assert.False(BaseSettingsSchema.TryGet(250, out _));
     }
 
     [Fact]
     public void EncoderType_Has_Expected_Metadata()
     {
-        var d = SettingsSchema.Get(SettingId.EncoderType);
+        var d = BaseSettingsSchema.Get(BaseSettingId.EncoderType);
         Assert.Equal(SettingType.UInt8, d.Type);
         Assert.Equal(0, d.Min);
         Assert.Equal(1, d.Max);

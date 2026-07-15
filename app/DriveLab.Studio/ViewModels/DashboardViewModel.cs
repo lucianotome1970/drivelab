@@ -58,7 +58,7 @@ public partial class DashboardViewModel : ViewModelBase
         try
         {
             // Mostra o valor real do dispositivo (não o default do VM).
-            var value = await _session.ReadSettingAsync(SettingId.MotionRange);
+            var value = await _session.ReadSettingAsync(BaseSettingId.MotionRange);
             MotionRange = (int)value.AsDouble;
         }
         catch
@@ -71,7 +71,7 @@ public partial class DashboardViewModel : ViewModelBase
 
     private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
     {
-        if (e.Id == SettingId.MotionRange)
+        if (e.Id == BaseSettingId.MotionRange)
             MotionRange = (int)e.Value.AsDouble;
     }
 
@@ -87,7 +87,7 @@ public partial class DashboardViewModel : ViewModelBase
     {
         if (!_session.IsConnected)
             return Task.CompletedTask;
-        return _session.SendCommandAsync(DeviceCommand.ResetCenter);
+        return _session.SendCommandAsync(BaseCommand.ResetCenter);
     }
 
     [RelayCommand(CanExecute = nameof(IsConnected))]
@@ -96,7 +96,7 @@ public partial class DashboardViewModel : ViewModelBase
         if (!_session.IsConnected)
             return;
         var value = int.Parse(degrees, CultureInfo.InvariantCulture);
-        await _session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, value));
+        await _session.WriteSettingAsync(BaseSettingId.MotionRange, new SettingValue(SettingType.UInt16, value));
         MotionRange = value;
     }
 }

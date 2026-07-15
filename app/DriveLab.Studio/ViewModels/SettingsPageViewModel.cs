@@ -14,7 +14,7 @@ using DriveLab.Studio.Services;
 namespace DriveLab.Studio.ViewModels;
 
 /// <summary>Especificação de uma aba de settings: cabeçalho + settings que ela contém.</summary>
-public sealed record SettingsTabSpec(string Header, IReadOnlyList<SettingId> Ids);
+public sealed record SettingsTabSpec(string Header, IReadOnlyList<BaseSettingId> Ids);
 
 /// <summary>Uma aba da página: cabeçalho + conteúdo (renderizado pelo ViewLocator).</summary>
 public sealed record PageTab(string Header, ViewModelBase Content);
@@ -48,7 +48,7 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
 
     [RelayCommand(CanExecute = nameof(IsConnected))]
-    private Task SaveAsync() => _session.SendCommandAsync(DeviceCommand.SaveSettings);
+    private Task SaveAsync() => _session.SendCommandAsync(BaseCommand.SaveSettings);
 
     [RelayCommand(CanExecute = nameof(IsConnected))]
     private void ResetDefaults()

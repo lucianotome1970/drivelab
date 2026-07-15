@@ -51,7 +51,7 @@ public class TestViewModelTests
         var vm = New(out var transport);
         await transport.ConnectAsync();
         vm.ForceEnabled = true;
-        Assert.Equal(DeviceCommand.SetForceEnabled, transport.LastCommand!.Value.cmd);
+        Assert.Equal(BaseCommand.SetForceEnabled, transport.LastCommand!.Value.cmd);
         Assert.Equal(1, transport.LastCommand!.Value.arg);
     }
 

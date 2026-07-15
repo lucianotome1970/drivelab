@@ -16,9 +16,9 @@ namespace DriveLab.Studio.Tests.ViewModels;
 [Collection("Loc")]
 public class SettingsGroupViewModelTests
 {
-    private static readonly SettingId[] Ids =
+    private static readonly BaseSettingId[] Ids =
     {
-        SettingId.TotalStrength, SettingId.MaxTorqueLimit, SettingId.DamperStrength,
+        BaseSettingId.TotalStrength, BaseSettingId.MaxTorqueLimit, BaseSettingId.DamperStrength,
     };
 
     private static SettingsGroupViewModel New(out FakeTransport transport)

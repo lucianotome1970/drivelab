@@ -12,10 +12,10 @@ using DriveLab.Core.Transport;
 
 namespace DriveLab.Simulator;
 
-public sealed class SimulatorTransport : ITransport
+public sealed class SimulatorTransport : IBaseTransport
 {
     private readonly object _sync = new();
-    private readonly Dictionary<SettingId, SettingValue> _settings = new();
+    private readonly Dictionary<BaseSettingId, SettingValue> _settings = new();
     private readonly VirtualWheel _wheel = new();
     private Timer? _timer;
     private int _periodMs;
@@ -32,7 +32,7 @@ public sealed class SimulatorTransport : ITransport
         lock (_sync)
         {
             _settings.Clear();
-            foreach (var descriptor in SettingsSchema.All)
+            foreach (var descriptor in BaseSettingsSchema.All)
                 _settings[descriptor.Id] = new SettingValue(descriptor.Type, descriptor.Default);
 
             ApplySettingsToWheel();
@@ -49,11 +49,11 @@ public sealed class SimulatorTransport : ITransport
         return Task.CompletedTask;
     }
 
-    public Task WriteSettingAsync(SettingId id, SettingValue value)
+    public Task WriteSettingAsync(BaseSettingId id, SettingValue value)
     {
         lock (_sync)
         {
-            var descriptor = SettingsSchema.Get(id);
+            var descriptor = BaseSettingsSchema.Get(id);
             var clamped = new SettingValue(descriptor.Type, descriptor.Clamp(value.AsDouble));
             _settings[id] = clamped;
             ApplySettingsToWheel();
@@ -61,7 +61,7 @@ public sealed class SimulatorTransport : ITransport
         return Task.CompletedTask;
     }
 
-    public Task<SettingValue> ReadSettingAsync(SettingId id)
+    public Task<SettingValue> ReadSettingAsync(BaseSettingId id)
     {
         lock (_sync)
         {
@@ -83,28 +83,28 @@ public sealed class SimulatorTransport : ITransport
         return Task.CompletedTask;
     }
 
-    public Task SendCommandAsync(DeviceCommand command, byte arg = 0)
+    public Task SendCommandAsync(BaseCommand command, byte arg = 0)
     {
         switch (command)
         {
-            case DeviceCommand.ResetCenter:
+            case BaseCommand.ResetCenter:
                 lock (_sync)
                 {
                     _wheel.ResetCenter();
                 }
                 break;
-            case DeviceCommand.SetForceEnabled:
+            case BaseCommand.SetForceEnabled:
                 lock (_sync)
                 {
                     _wheel.ForceEnabled = arg != 0;
                 }
                 Flags = arg != 0 ? Flags | BaseFlags.ForceEnabled : Flags & ~BaseFlags.ForceEnabled;
                 break;
-            case DeviceCommand.Reboot:
+            case BaseCommand.Reboot:
                 return ConnectAsync();
-            case DeviceCommand.SaveSettings:
-            case DeviceCommand.EnterDfu:
-            case DeviceCommand.Calibrate:
+            case BaseCommand.SaveSettings:
+            case BaseCommand.EnterDfu:
+            case BaseCommand.Calibrate:
                 break;
         }
         return Task.CompletedTask;
@@ -142,10 +142,10 @@ public sealed class SimulatorTransport : ITransport
 
     private void ApplySettingsToWheel()
     {
-        _wheel.MotionRangeDeg = _settings[SettingId.MotionRange].AsDouble;
-        _wheel.SpringGain = _settings[SettingId.SpringStrength].AsDouble / 100.0;
-        _wheel.DamperGain = Math.Max(_settings[SettingId.DamperStrength].AsDouble / 100.0, 0.01);
-        _wheel.TotalStrength01 = _settings[SettingId.TotalStrength].AsDouble / 100.0;
+        _wheel.MotionRangeDeg = _settings[BaseSettingId.MotionRange].AsDouble;
+        _wheel.SpringGain = _settings[BaseSettingId.SpringStrength].AsDouble / 100.0;
+        _wheel.DamperGain = Math.Max(_settings[BaseSettingId.DamperStrength].AsDouble / 100.0, 0.01);
+        _wheel.TotalStrength01 = _settings[BaseSettingId.TotalStrength].AsDouble / 100.0;
     }
 
     private BaseState BuildState() => new()

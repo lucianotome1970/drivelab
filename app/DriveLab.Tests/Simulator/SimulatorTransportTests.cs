@@ -27,7 +27,7 @@ public class SimulatorTransportTests
         var transport = await ConnectedAsync();
 
         Assert.True(transport.IsConnected);
-        var value = await transport.ReadSettingAsync(SettingId.MotionRange);
+        var value = await transport.ReadSettingAsync(BaseSettingId.MotionRange);
         Assert.Equal(900, value.AsDouble);
     }
 
@@ -36,8 +36,8 @@ public class SimulatorTransportTests
     {
         var transport = await ConnectedAsync();
 
-        await transport.WriteSettingAsync(SettingId.TotalStrength, new SettingValue(SettingType.UInt8, 250));
-        var value = await transport.ReadSettingAsync(SettingId.TotalStrength);
+        await transport.WriteSettingAsync(BaseSettingId.TotalStrength, new SettingValue(SettingType.UInt8, 250));
+        var value = await transport.ReadSettingAsync(BaseSettingId.TotalStrength);
 
         Assert.Equal(100, value.AsDouble); // clamped to max
     }
@@ -59,7 +59,7 @@ public class SimulatorTransportTests
     public async Task DirectControl_Then_Step_Moves_Reported_Position()
     {
         var transport = await ConnectedAsync();
-        await transport.SendCommandAsync(DeviceCommand.SetForceEnabled, 1);
+        await transport.SendCommandAsync(BaseCommand.SetForceEnabled, 1);
         await transport.SendDirectControlAsync(new BaseDirectControl { ConstantForce = 5000 });
 
         BaseState? last = null;
@@ -93,7 +93,7 @@ public class SimulatorTransportTests
         await transport.SendDirectControlAsync(new BaseDirectControl { ConstantForce = 5000 });
         for (var i = 0; i < 50; i++) transport.Step(0.01);
 
-        await transport.SendCommandAsync(DeviceCommand.ResetCenter);
+        await transport.SendCommandAsync(BaseCommand.ResetCenter);
 
         BaseState? last = null;
         transport.StateReceived += (_, state) => last = state;

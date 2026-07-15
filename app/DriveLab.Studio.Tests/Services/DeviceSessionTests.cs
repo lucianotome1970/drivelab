@@ -77,10 +77,10 @@ public class DeviceSessionTests
         SettingChangedEventArgs? got = null;
         session.SettingChanged += (_, e) => got = e;
 
-        await session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 360));
+        await session.WriteSettingAsync(BaseSettingId.MotionRange, new SettingValue(SettingType.UInt16, 360));
 
         Assert.NotNull(got);
-        Assert.Equal(SettingId.MotionRange, got!.Id);
+        Assert.Equal(BaseSettingId.MotionRange, got!.Id);
         Assert.Equal(360, got.Value.AsDouble);
     }
 
@@ -101,8 +101,8 @@ public class DeviceSessionTests
     public async Task SendCommandAsync_Passes_Through()
     {
         var session = NewSession(out var transport);
-        await session.SendCommandAsync(DeviceCommand.ResetCenter);
-        Assert.Equal(DeviceCommand.ResetCenter, transport.LastCommand!.Value.cmd);
+        await session.SendCommandAsync(BaseCommand.ResetCenter);
+        Assert.Equal(BaseCommand.ResetCenter, transport.LastCommand!.Value.cmd);
     }
 
     [Fact]

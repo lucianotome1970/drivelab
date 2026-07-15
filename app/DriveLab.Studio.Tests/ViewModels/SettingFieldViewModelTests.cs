@@ -21,7 +21,7 @@ public class SettingFieldViewModelTests
     {
         transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        return new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.MotionRange));
+        return new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.MotionRange));
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class SettingFieldViewModelTests
         await transport.ConnectAsync();
         vm.Value = 750;
         await vm.WriteAsync();
-        Assert.Equal(SettingId.MotionRange, transport.LastWrite!.Value.id);
+        Assert.Equal(BaseSettingId.MotionRange, transport.LastWrite!.Value.id);
         Assert.Equal(750, transport.LastWrite!.Value.value.AsDouble);
     }
 
@@ -71,9 +71,9 @@ public class SettingFieldViewModelTests
         await transport.ConnectAsync();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
         // recria vm sobre a mesma sessão para observar o evento
-        var field = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.MotionRange));
+        var field = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.MotionRange));
 
-        await session.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 720));
+        await session.WriteSettingAsync(BaseSettingId.MotionRange, new SettingValue(SettingType.UInt16, 720));
 
         Assert.Equal(720, field.Value);
     }
@@ -91,7 +91,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderCpr));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
         Assert.False(vm.HasPresets);
         Assert.Empty(vm.Presets);
     }
@@ -101,7 +101,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.MotionRange));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.MotionRange));
 
         Assert.False(vm.IsConnected);
         Assert.False(vm.SelectPresetCommand.CanExecute("900"));
@@ -122,7 +122,7 @@ public class SettingFieldViewModelTests
         await transport.ConnectAsync();
         vm.SelectPresetCommand.Execute("720");
         Assert.Equal(720, vm.Value);
-        Assert.Equal(SettingId.MotionRange, transport.LastWrite!.Value.id);
+        Assert.Equal(BaseSettingId.MotionRange, transport.LastWrite!.Value.id);
         Assert.Equal(720, transport.LastWrite!.Value.value.AsDouble);
     }
 
@@ -131,7 +131,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderCpr));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
 
         Assert.True(vm.IsInteger);
         vm.Value = 12.81;
@@ -143,7 +143,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.CurrentP));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.CurrentP));
 
         Assert.False(vm.IsInteger);
     }
@@ -153,7 +153,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderType));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderType));
 
         Assert.True(vm.HasOptions);
         Assert.Equal(2, vm.Options.Count);
@@ -167,13 +167,13 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderType));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderType));
 
         await transport.ConnectAsync();
         vm.Options[1].SelectCommand.Execute(null);
         Assert.Equal(1, vm.Value);
         await vm.WriteAsync();
-        Assert.Equal(SettingId.EncoderType, transport.LastWrite!.Value.id);
+        Assert.Equal(BaseSettingId.EncoderType, transport.LastWrite!.Value.id);
         Assert.Equal(1, transport.LastWrite!.Value.value.AsDouble);
     }
 
@@ -182,7 +182,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderType));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderType));
 
         Assert.False(vm.IsConnected);
         Assert.False(vm.Options[0].SelectCommand.CanExecute(null));

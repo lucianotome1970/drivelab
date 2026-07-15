@@ -47,7 +47,7 @@ public partial class TestViewModel : ViewModelBase
     {
         if (!_session.IsConnected)
             return;
-        _ = _session.SendCommandAsync(DeviceCommand.SetForceEnabled, (byte)(value ? 1 : 0));
+        _ = _session.SendCommandAsync(BaseCommand.SetForceEnabled, (byte)(value ? 1 : 0));
     }
 
     private static short ToInt16(double normalized) =>
