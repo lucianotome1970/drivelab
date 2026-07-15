@@ -149,7 +149,7 @@ public sealed class SimulatorTransport : ITransport
         AngleDeciDeg = _wheel.AngleDeciDeg,
         Torque = _wheel.TorqueNormalized,
         MotorCurrentMa = (short)(_wheel.TorqueNormalized / 2),
-        TemperatureC = 32,
+        FetTempC = 32,
         ErrorCode = 0,
     };
 }

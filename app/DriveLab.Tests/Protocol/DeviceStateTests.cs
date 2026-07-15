@@ -22,8 +22,11 @@ public class DeviceStateTests
             AngleDeciDeg = 1350,
             Torque = 9000,
             MotorCurrentMa = -1500,
-            TemperatureC = 37,
+            FetTempC = 41,
             ErrorCode = 0,
+            BusVoltageMv = 23950,
+            MotorTempC = 55,
+            McuTempC = -128,
         };
 
         var parsed = DeviceState.Parse(state.ToBytes());
@@ -34,8 +37,11 @@ public class DeviceStateTests
         Assert.Equal(state.AngleDeciDeg, parsed.AngleDeciDeg);
         Assert.Equal(state.Torque, parsed.Torque);
         Assert.Equal(state.MotorCurrentMa, parsed.MotorCurrentMa);
-        Assert.Equal(state.TemperatureC, parsed.TemperatureC);
+        Assert.Equal(state.FetTempC, parsed.FetTempC);
         Assert.Equal(state.ErrorCode, parsed.ErrorCode);
+        Assert.Equal((ushort)23950, parsed.BusVoltageMv);
+        Assert.Equal(55, parsed.MotorTempC);
+        Assert.Equal(-128, parsed.McuTempC);
     }
 
     [Fact]
