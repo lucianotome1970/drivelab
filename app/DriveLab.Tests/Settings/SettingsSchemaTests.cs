@@ -43,4 +43,15 @@ public class SettingsSchemaTests
     {
         Assert.False(SettingsSchema.TryGet(250, out _));
     }
+
+    [Fact]
+    public void EncoderType_Has_Expected_Metadata()
+    {
+        var d = SettingsSchema.Get(SettingId.EncoderType);
+        Assert.Equal(SettingType.UInt8, d.Type);
+        Assert.Equal(0, d.Min);
+        Assert.Equal(1, d.Max);
+        Assert.Equal(0, d.Default);
+        Assert.Equal(SettingTab.Hardware, d.Tab);
+    }
 }

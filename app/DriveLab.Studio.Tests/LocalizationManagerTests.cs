@@ -15,6 +15,8 @@ public class LocalizationManagerTests
         Assert.Equal("Connect", LocalizationManager.Get("Connect"));
         Assert.Equal("Wheel Base", LocalizationManager.Get("Nav_WheelBase"));
         Assert.Equal("Total force", LocalizationManager.Get("Setting_TotalStrength"));
+        Assert.Equal("Quadrature (E6B2)", LocalizationManager.Get("Setting_EncoderType_Quadrature"));
+        Assert.Equal("Magnetic SPI (AS5047)", LocalizationManager.Get("Setting_EncoderType_MagneticSPI"));
     }
 
     [Fact]
@@ -25,6 +27,8 @@ public class LocalizationManagerTests
         Assert.Equal("Conectar", LocalizationManager.Get("Connect"));
         Assert.Equal("Base do Volante", LocalizationManager.Get("Nav_WheelBase"));
         Assert.Equal("Força total", LocalizationManager.Get("Setting_TotalStrength"));
+        Assert.Equal("Quadratura (E6B2)", LocalizationManager.Get("Setting_EncoderType_Quadrature"));
+        Assert.Equal("SPI magnético (AS5047)", LocalizationManager.Get("Setting_EncoderType_MagneticSPI"));
     }
 
     [Fact]

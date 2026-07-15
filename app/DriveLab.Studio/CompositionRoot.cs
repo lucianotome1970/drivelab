@@ -35,6 +35,7 @@ public static class CompositionRoot
         {
             SettingId.EncoderDirection,
             SettingId.EncoderCpr,
+            SettingId.EncoderType,
             SettingId.PolePairs,
             SettingId.CurrentP,
             SettingId.CurrentI,

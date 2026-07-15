@@ -115,6 +115,9 @@
   <data name="Setting_PositionSmoothing" xml:space="preserve"><value>Position smoothing</value></data>
   <data name="Setting_PowerLimit" xml:space="preserve"><value>Power limit</value></data>
   <data name="Setting_BrakingLimit" xml:space="preserve"><value>Braking limit</value></data>
+  <data name="Setting_EncoderType" xml:space="preserve"><value>Encoder type</value></data>
+  <data name="Setting_EncoderType_Quadrature" xml:space="preserve"><value>Quadrature (E6B2)</value></data>
+  <data name="Setting_EncoderType_MagneticSPI" xml:space="preserve"><value>Magnetic SPI (AS5047)</value></data>
 
   <data name="Home_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
   <data name="Handbrake_Title" xml:space="preserve"><value>Handbrake</value></data>

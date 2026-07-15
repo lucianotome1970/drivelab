@@ -42,6 +42,10 @@ public partial class SettingFieldViewModel : ViewModelBase
     /// <summary>Chips de preset (com estado selecionado/habilitado) para a UI.</summary>
     public IReadOnlyList<PresetOptionViewModel> PresetOptions { get; }
 
+    /// <summary>Chips de opção (enum) rotulados, ex.: tipo de encoder; vazio quando o campo não é enum.</summary>
+    public IReadOnlyList<EnumOptionViewModel> Options { get; }
+    public bool HasOptions => Options.Count > 0;
+
     public SettingFieldViewModel(DeviceSession session, SettingDescriptor descriptor)
     {
         _session = session;
@@ -49,10 +53,16 @@ public partial class SettingFieldViewModel : ViewModelBase
         _value = descriptor.Default;
         Presets = SettingPresets.For(descriptor.Id);
         PresetOptions = Presets.Select(p => new PresetOptionViewModel(p, () => Value = p)).ToList();
+        Options = SettingOptions.For(descriptor.Id)
+            .Select(spec => new EnumOptionViewModel(spec.Value, L.Get(spec.LabelKey), () => Value = spec.Value))
+            .ToList();
         _isConnected = session.IsConnected;
         foreach (var option in PresetOptions)
             option.CanSelect = _isConnected;
+        foreach (var option in Options)
+            option.CanSelect = _isConnected;
         UpdatePresetSelection();
+        UpdateOptionSelection();
 
         _session.SettingChanged += OnSettingChanged;
         _session.Connected += OnConnectionChanged;
@@ -65,12 +75,21 @@ public partial class SettingFieldViewModel : ViewModelBase
     {
         foreach (var option in PresetOptions)
             option.CanSelect = value;
+        foreach (var option in Options)
+            option.CanSelect = value;
     }
 
     private void UpdatePresetSelection()
     {
         var current = (int)Math.Round(Value);
         foreach (var option in PresetOptions)
+            option.IsSelected = option.Value == current;
+    }
+
+    private void UpdateOptionSelection()
+    {
+        var current = (int)Math.Round(Value);
+        foreach (var option in Options)
             option.IsSelected = option.Value == current;
     }
 
@@ -126,6 +145,7 @@ public partial class SettingFieldViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(ValueText));
         UpdatePresetSelection();
+        UpdateOptionSelection();
         if (!_loading)
             _ = WriteAsync();
     }

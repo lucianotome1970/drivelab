@@ -140,4 +140,52 @@ public class SettingFieldViewModelTests
 
         Assert.False(vm.IsInteger);
     }
+
+    [Fact]
+    public void EncoderType_Is_Enum_With_Two_Options()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderType));
+
+        Assert.True(vm.HasOptions);
+        Assert.Equal(2, vm.Options.Count);
+        Assert.Equal(0, vm.Options[0].Value);
+        Assert.Equal(1, vm.Options[1].Value);
+        Assert.All(vm.Options, o => Assert.False(string.IsNullOrWhiteSpace(o.Label)));
+    }
+
+    [Fact]
+    public async Task Selecting_Option_Sets_Value_And_Writes_When_Connected()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderType));
+
+        await transport.ConnectAsync();
+        vm.Options[1].SelectCommand.Execute(null);
+        Assert.Equal(1, vm.Value);
+        await vm.WriteAsync();
+        Assert.Equal(SettingId.EncoderType, transport.LastWrite!.Value.id);
+        Assert.Equal(1, transport.LastWrite!.Value.value.AsDouble);
+    }
+
+    [Fact]
+    public async Task Options_Disabled_Until_Connected()
+    {
+        var transport = new FakeTransport();
+        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, SettingsSchema.Get(SettingId.EncoderType));
+
+        Assert.False(vm.IsConnected);
+        Assert.False(vm.Options[0].SelectCommand.CanExecute(null));
+
+        await session.ConnectAsync();
+        Assert.True(vm.IsConnected);
+        Assert.True(vm.Options[0].SelectCommand.CanExecute(null));
+
+        await session.DisconnectAsync();
+        Assert.False(vm.IsConnected);
+        Assert.False(vm.Options[0].SelectCommand.CanExecute(null));
+    }
 }

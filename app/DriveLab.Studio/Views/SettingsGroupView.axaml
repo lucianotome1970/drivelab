@@ -18,13 +18,31 @@
                 </Grid>
 
                 <!-- Mín · slider · Máx -->
-                <Grid ColumnDefinitions="Auto,*,Auto">
+                <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !HasOptions}">
                     <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Min, StringFormat={}{0:0}}" Margin="0,0,10,0" />
                     <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}"
                             IsEnabled="{Binding IsConnected}" IsSnapToTickEnabled="{Binding IsInteger}"
                             TickFrequency="1" VerticalAlignment="Center" />
                     <TextBlock Grid.Column="2" Classes="endLabel" Text="{Binding Max, StringFormat={}{0:0}}" Margin="10,0,0,0" />
                 </Grid>
+
+                <!-- Chips de opção (enum) -->
+                <ItemsControl ItemsSource="{Binding Options}" IsVisible="{Binding HasOptions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EnumOptionViewModel">
+                            <Button Classes="chip" Content="{Binding Label}"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Command="{Binding SelectCommand}"
+                                    HorizontalAlignment="Center" Margin="3,8,3,0"
+                                    HorizontalContentAlignment="Center" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <!-- Chips de preset -->
                 <ItemsControl ItemsSource="{Binding PresetOptions}" IsVisible="{Binding HasPresets}">

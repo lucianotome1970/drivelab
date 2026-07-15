@@ -20,4 +20,5 @@ public enum SettingId : byte
     PositionSmoothing = 15,
     PowerLimit = 16,
     BrakingLimit = 17,
+    EncoderType = 18,
 }
