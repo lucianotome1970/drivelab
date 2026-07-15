@@ -43,7 +43,7 @@ public class HidTransportTests
         await t.ConnectAsync();
         await t.SendDirectControlAsync(new BaseDirectControl { ConstantForce = 5000 });
 
-        Assert.Equal(BaseReportIds.BaseDirectControl, channel.LastWrite![0]);
+        Assert.Equal(BaseReportIds.DirectControl, channel.LastWrite![0]);
         // payload starts at byte 1; BaseDirectControl.ConstantForce is at payload offset 2..3 (int16 LE 5000 = 0x88,0x13)
         Assert.Equal(0x88, channel.LastWrite![1 + 2]);
         Assert.Equal(0x13, channel.LastWrite![1 + 3]);
@@ -67,7 +67,7 @@ public class HidTransportTests
         t.StateReceived += (_, s) => got = s;
 
         var payload = new BaseState { AngleDeciDeg = 1234, Firmware = new FirmwareVersion(0, 1, 0, 0) }.ToBytes();
-        channel.Emit(Wire(BaseReportIds.BaseState, payload));
+        channel.Emit(Wire(BaseReportIds.DeviceState, payload));
 
         Assert.NotNull(got);
         Assert.Equal(1234, got!.AngleDeciDeg);

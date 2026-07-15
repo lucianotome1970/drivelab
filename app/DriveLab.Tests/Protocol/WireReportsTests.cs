@@ -16,7 +16,7 @@ public class WireReportsTests
     [Fact]
     public void ReportIds_And_Identity_Have_Expected_Values()
     {
-        Assert.Equal(0x01, BaseReportIds.BaseState);
+        Assert.Equal(0x01, BaseReportIds.DeviceState);
         Assert.Equal(0x14, BaseReportIds.SettingWrite);
         Assert.Equal(0x16, BaseReportIds.SettingValue);
         Assert.Equal(0x1209, BaseDeviceIdentity.VendorId);

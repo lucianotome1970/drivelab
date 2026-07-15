@@ -65,7 +65,7 @@ public sealed class HidTransport : ITransport, IDisposable
     }
 
     public Task SendDirectControlAsync(BaseDirectControl control) =>
-        _channel.WriteAsync(Frame(BaseReportIds.BaseDirectControl, control.ToBytes()));
+        _channel.WriteAsync(Frame(BaseReportIds.DirectControl, control.ToBytes()));
 
     public Task SendCommandAsync(DeviceCommand command, byte arg = 0) =>
         _channel.WriteAsync(Frame(BaseReportIds.Command, new CommandReport((byte)command, arg).ToBytes()));
@@ -103,7 +103,7 @@ public sealed class HidTransport : ITransport, IDisposable
             var reportId = wire[0];
             var payload = wire.AsSpan(1, ReportConstants.ReportSize);
 
-            if (reportId == BaseReportIds.BaseState)
+            if (reportId == BaseReportIds.DeviceState)
             {
                 var state = BaseState.Parse(payload);
                 FirmwareVersion = state.Firmware;
