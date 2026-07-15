@@ -13,7 +13,7 @@ public class ConnectionViewModelTests
     {
         transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        return new ConnectionViewModel(session);
+        return new ConnectionViewModel(session, new ImmediateUiDispatcher());
     }
 
     [Fact]

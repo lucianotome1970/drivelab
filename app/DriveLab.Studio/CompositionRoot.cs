@@ -47,7 +47,16 @@ public static class CompositionRoot
         transport ??= new SimulatorTransport();
         var dispatcher = new AvaloniaUiDispatcher();
         var session = new DeviceSession(transport, dispatcher);
-        var connection = new ConnectionViewModel(session);
+        var connection = new ConnectionViewModel(session, dispatcher);
+
+        // Modo real: conexão automática (hotplug) — sem botão Conectar. Detecta o cabo USB da
+        // base (VID/PID) e conecta/desconecta sozinho. No simulador a conexão é manual (botão).
+        DeviceAutoConnector? autoConnector = null;
+        if (!simulatorMode)
+        {
+            autoConnector = new DeviceAutoConnector(session, HidTransport.IsDevicePresent);
+            autoConnector.Start();
+        }
 
         // Autodetecção (rótulo genérico, sem expor marca/modelo):
         //  1) nossa pedaleira (P0, configurável) → 2) Simagic (leitura) → 3) simulador.
@@ -94,7 +103,7 @@ public static class CompositionRoot
         // para o desenho do volante continuar visível ao fundo enquanto se ajusta a força.
         var test = new TestViewModel(session);
 
-        return new MainWindowViewModel(session, connection, pages, test, simulatorMode);
+        return new MainWindowViewModel(session, connection, pages, test, simulatorMode, autoConnector);
     }
 
     /// <summary>Builds a transport talking to real hardware over USB HID (used when a device is present).</summary>

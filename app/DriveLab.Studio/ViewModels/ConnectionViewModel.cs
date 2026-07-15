@@ -1,3 +1,4 @@
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Studio.Services;
@@ -5,9 +6,13 @@ using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
+/// <summary>Estado da conexão da base no topo. Reage aos eventos da <see cref="DeviceSession"/>
+/// (marshalados p/ a UI), então tanto o clique manual (simulador) quanto a conexão automática
+/// (<see cref="DeviceAutoConnector"/>, modo real) atualizam o status.</summary>
 public partial class ConnectionViewModel : ViewModelBase
 {
     private readonly DeviceSession _session;
+    private readonly IUiDispatcher _dispatcher;
 
     [ObservableProperty]
     private bool _isConnected;
@@ -15,21 +20,35 @@ public partial class ConnectionViewModel : ViewModelBase
     [ObservableProperty]
     private string _statusText = L.Get("Status_Disconnected");
 
-    public ConnectionViewModel(DeviceSession session) => _session = session;
-
-    [RelayCommand]
-    private async Task ConnectAsync()
+    public ConnectionViewModel(DeviceSession session, IUiDispatcher dispatcher)
     {
-        await _session.ConnectAsync();
-        IsConnected = _session.IsConnected;
-        StatusText = IsConnected ? L.Get("Status_Connected") : L.Get("Status_NoDevice");
+        _session = session;
+        _dispatcher = dispatcher;
+        _session.Connected += OnConnectionChanged;
+        _session.Disconnected += OnConnectionChanged;
+        _isConnected = _session.IsConnected;
+        _statusText = _isConnected ? L.Get("Status_Connected") : L.Get("Status_Disconnected");
     }
 
-    [RelayCommand]
-    private async Task DisconnectAsync()
+    private void OnConnectionChanged(object? sender, EventArgs e) => _dispatcher.Post(Refresh);
+
+    private void Refresh()
     {
-        await _session.DisconnectAsync();
         IsConnected = _session.IsConnected;
-        StatusText = L.Get("Status_Disconnected");
+        StatusText = IsConnected ? L.Get("Status_Connected") : L.Get("Status_Disconnected");
+    }
+
+    // Comandos manuais — usados só no modo simulador (no modo real a conexão é automática).
+    [RelayCommand]
+    private Task ConnectAsync() => _session.ConnectAsync();
+
+    [RelayCommand]
+    private Task DisconnectAsync() => _session.DisconnectAsync();
+
+    public override void Dispose()
+    {
+        _session.Connected -= OnConnectionChanged;
+        _session.Disconnected -= OnConnectionChanged;
+        base.Dispose();
     }
 }

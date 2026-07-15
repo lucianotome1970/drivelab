@@ -18,7 +18,7 @@ public class MainWindowViewModelTests
             new NavItem("Dashboard", "\U0001F39B", first),
             new NavItem("Ajustes", "⚙", second),
         };
-        return new MainWindowViewModel(session, new ConnectionViewModel(session), pages, new TestViewModel(session));
+        return new MainWindowViewModel(session, new ConnectionViewModel(session, new ImmediateUiDispatcher()), pages, new TestViewModel(session));
     }
 
     [Fact]
@@ -55,10 +55,10 @@ public class MainWindowViewModelTests
         var session = new DeviceSession(new FakeTransport(), new ImmediateUiDispatcher());
         var pages = new[] { new NavItem("Dashboard", "\U0001F39B", new DashboardViewModel(session)) };
 
-        var real = new MainWindowViewModel(session, new ConnectionViewModel(session), pages, new TestViewModel(session));
+        var real = new MainWindowViewModel(session, new ConnectionViewModel(session, new ImmediateUiDispatcher()), pages, new TestViewModel(session));
         Assert.False(real.SimulatorMode);
 
-        var sim = new MainWindowViewModel(session, new ConnectionViewModel(session), pages, new TestViewModel(session), simulatorMode: true);
+        var sim = new MainWindowViewModel(session, new ConnectionViewModel(session, new ImmediateUiDispatcher()), pages, new TestViewModel(session), simulatorMode: true);
         Assert.True(sim.SimulatorMode);
     }
 

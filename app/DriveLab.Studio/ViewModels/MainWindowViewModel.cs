@@ -7,6 +7,7 @@ namespace DriveLab.Studio.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly DeviceSession _session;
+    private readonly IDisposable? _autoConnector;
 
     [ObservableProperty]
     private NavItem _selectedPage;
@@ -18,13 +19,14 @@ public partial class MainWindowViewModel : ViewModelBase
     public object CurrentPage => SelectedPage.Page;
     public string Title => "DriveLab Studio";
 
-    public MainWindowViewModel(DeviceSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test, bool simulatorMode = false)
+    public MainWindowViewModel(DeviceSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test, bool simulatorMode = false, IDisposable? autoConnector = null)
     {
         _session = session;
         Connection = connection;
         Pages = pages;
         Test = test;
         SimulatorMode = simulatorMode;
+        _autoConnector = autoConnector;
         _selectedPage = pages[0];
     }
 
@@ -35,6 +37,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public override void Dispose()
     {
+        _autoConnector?.Dispose();
+        Connection.Dispose();
         foreach (var page in Pages)
             page.Page.Dispose();
         Test.Dispose();

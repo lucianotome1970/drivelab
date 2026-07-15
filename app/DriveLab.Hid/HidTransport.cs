@@ -1,6 +1,7 @@
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
+using HidSharp;
 
 namespace DriveLab.Hid;
 
@@ -27,6 +28,22 @@ public sealed class HidTransport : ITransport, IDisposable
     public FirmwareVersion FirmwareVersion { get; private set; }
 
     public event EventHandler<DeviceState>? StateReceived;
+
+    /// <summary>Varre o HID pelo VID/PID da base (autodetecção/hotplug). No macOS 26 o HidSharp
+    /// não enumera (retorna false); no Windows funciona.</summary>
+    public static bool IsDevicePresent()
+    {
+        try
+        {
+            return DeviceList.Local
+                .GetHidDevices(DeviceIdentity.VendorId, DeviceIdentity.ProductId)
+                .Any();
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
