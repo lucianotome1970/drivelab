@@ -45,6 +45,10 @@ public partial class WheelViewModel : ViewModelBase
             new("MENU",  0.75, 0.45, "#FF9F0A"),
             new("ESC",   0.75, 0.51, "#32ADE6"),
         };
+
+        // Carrega o perfil salvo no arranque (config persiste entre execuções, como MOZA).
+        // Fire-and-forget: LoadAsync tolera arquivo ausente (mantém os defaults acima).
+        _ = LoadCommand.ExecuteAsync(null);
     }
 
     [RelayCommand]
