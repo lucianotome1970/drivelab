@@ -26,6 +26,9 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
     public IReadOnlyList<PedalColumnViewModel> Columns { get; }
 
+    /// <summary>Só no simulador aparecem os botões Conectar/Desconectar (no real é automático).</summary>
+    public bool IsSimulator { get; }
+
     /// <summary>Rótulo da fonte ativa (ex.: "Simulador" / "Simagic P2000 — leitura").</summary>
     public string SourceLabel => _session.SourceLabel;
 
@@ -37,10 +40,11 @@ public sealed partial class PedalsViewModel : ViewModelBase
     public ObservableCollection<ObservableValue> ThrottleSamples { get; } = new();
     public ISeries[] CombinedSeries { get; }
 
-    public PedalsViewModel(PedalDeviceSession session, IPedalProfileStorage storage)
+    public PedalsViewModel(PedalDeviceSession session, IPedalProfileStorage storage, bool simulatorMode = false)
     {
         _session = session;
         _storage = storage;
+        IsSimulator = simulatorMode;
 
         Columns = new List<PedalColumnViewModel>
         {

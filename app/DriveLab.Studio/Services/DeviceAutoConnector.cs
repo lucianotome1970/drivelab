@@ -4,27 +4,37 @@ using System.Threading.Tasks;
 
 namespace DriveLab.Studio.Services;
 
-/// <summary>Conexão automática (modo real): faz polling da presença do dispositivo (cabo USB)
-/// e conecta/desconecta a <see cref="DeviceSession"/> sozinho — sem botão Conectar. Quando o
-/// firmware não enumera ainda, a presença é sempre falsa e ele apenas aguarda. Um tick por vez
-/// (guarda <c>_busy</c>) para não sobrepor conexões.</summary>
+/// <summary>Conexão automática (modo real): faz polling da presença do dispositivo (cabo USB) e
+/// conecta/desconecta sozinho — sem botão Conectar. Agnóstico de sessão: recebe as ações por
+/// delegates (serve base, pedais e freio de mão). O connect/disconnect roda na thread de UI
+/// (via <see cref="IUiDispatcher"/>) para os eventos de conexão atualizarem VMs com segurança.
+/// Quando o firmware ainda não enumera, a presença é falsa e ele só aguarda. Um tick por vez.</summary>
 public sealed class DeviceAutoConnector : IDisposable
 {
-    private readonly DeviceSession _session;
+    private readonly Func<bool> _isConnected;
+    private readonly Func<Task> _connect;
+    private readonly Func<Task> _disconnect;
     private readonly Func<bool> _isPresent;
+    private readonly IUiDispatcher _dispatcher;
     private Timer? _timer;
     private volatile bool _busy;
 
-    public DeviceAutoConnector(DeviceSession session, Func<bool> isPresent)
+    public DeviceAutoConnector(
+        Func<bool> isConnected, Func<Task> connect, Func<Task> disconnect,
+        Func<bool> isPresent, IUiDispatcher dispatcher)
     {
-        _session = session;
+        _isConnected = isConnected;
+        _connect = connect;
+        _disconnect = disconnect;
         _isPresent = isPresent;
+        _dispatcher = dispatcher;
     }
 
     public void Start(int periodMs = 1000)
     {
         _timer?.Dispose();
-        _timer = new Timer(async _ => await PollOnceAsync(), null, 0, periodMs);
+        // Poll na thread do timer; a ação (connect/disconnect) é marshalada p/ a UI.
+        _timer = new Timer(_ => _dispatcher.Post(async () => await PollOnceAsync()), null, 0, periodMs);
     }
 
     /// <summary>Um passo do polling: conecta se o dispositivo apareceu, desconecta se sumiu.</summary>
@@ -39,10 +49,10 @@ public sealed class DeviceAutoConnector : IDisposable
             try { present = _isPresent(); }
             catch { present = false; }
 
-            if (present && !_session.IsConnected)
-                await _session.ConnectAsync();
-            else if (!present && _session.IsConnected)
-                await _session.DisconnectAsync();
+            if (present && !_isConnected())
+                await _connect();
+            else if (!present && _isConnected())
+                await _disconnect();
         }
         catch
         {

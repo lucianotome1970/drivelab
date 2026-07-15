@@ -12,7 +12,9 @@ public class DeviceAutoConnectorTests
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
         var present = false;
-        using var ac = new DeviceAutoConnector(session, () => present);
+        using var ac = new DeviceAutoConnector(
+            () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
+            () => present, new ImmediateUiDispatcher());
 
         await ac.PollOnceAsync();
         Assert.False(session.IsConnected);   // ausente → não conecta
@@ -35,7 +37,9 @@ public class DeviceAutoConnectorTests
     {
         var transport = new FakeTransport();
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
-        using var ac = new DeviceAutoConnector(session, () => throw new System.Exception("HID falhou"));
+        using var ac = new DeviceAutoConnector(
+            () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
+            () => throw new System.Exception("HID falhou"), new ImmediateUiDispatcher());
 
         await ac.PollOnceAsync(); // não lança; trata como ausente
         Assert.False(session.IsConnected);

@@ -49,34 +49,57 @@ public static class CompositionRoot
         var session = new DeviceSession(transport, dispatcher);
         var connection = new ConnectionViewModel(session, dispatcher);
 
-        // Modo real: conexão automática (hotplug) — sem botão Conectar. Detecta o cabo USB da
-        // base (VID/PID) e conecta/desconecta sozinho. No simulador a conexão é manual (botão).
-        DeviceAutoConnector? autoConnector = null;
-        if (!simulatorMode)
-        {
-            autoConnector = new DeviceAutoConnector(session, HidTransport.IsDevicePresent);
-            autoConnector.Start();
-        }
+        // Conexão: no SIMULADOR é manual (botão Conectar); no REAL é automática (hotplug USB) para
+        // TODOS os dispositivos — o DeviceAutoConnector faz polling da presença e conecta/desconecta.
+        var autoConnectors = new List<IDisposable>();
 
-        // Autodetecção (rótulo genérico, sem expor marca/modelo):
-        //  1) nossa pedaleira (P0, configurável) → 2) Simagic (leitura) → 3) simulador.
+        // Base (topo): o transporte já vem por modo do App (simulador vs HID). Real → auto-connect.
+        if (!simulatorMode)
+            autoConnectors.Add(StartAutoConnect(
+                () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
+                HidTransport.IsDevicePresent, dispatcher));
+
+        // Pedais: simulador → simulador; real → nossa pedaleira P0 (ou Simagic, leitura) + hotplug.
         var simagicReader = new SimagicHidSharpReader();
         PedalDeviceSession pedalSession;
-        if (HidPedalTransport.IsDevicePresent())
-            pedalSession = new PedalDeviceSession(new HidPedalTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
-        else if (simagicReader.IsPresent())
-            pedalSession = new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, L.Get("Pedal_Source_Detected"));
-        else
+        Func<bool>? pedalPresent = null;
+        if (simulatorMode)
             pedalSession = new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
-        var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage());
-
-        // Freio de mão: autodetecção 1) HID 0x0003 → 2) simulador (rótulo genérico).
-        HandbrakeDeviceSession handbrakeSession;
-        if (HidHandbrakeTransport.IsDevicePresent())
-            handbrakeSession = new HandbrakeDeviceSession(new HidHandbrakeTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
+        else if (simagicReader.IsPresent() && !HidPedalTransport.IsDevicePresent())
+        {
+            pedalSession = new PedalDeviceSession(new SimagicPedalTransport(simagicReader), dispatcher, L.Get("Pedal_Source_Detected"));
+            pedalPresent = simagicReader.IsPresent;
+        }
         else
+        {
+            pedalSession = new PedalDeviceSession(new HidPedalTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
+            pedalPresent = HidPedalTransport.IsDevicePresent;
+        }
+        var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage(), simulatorMode);
+        if (pedalPresent is not null)
+            autoConnectors.Add(StartAutoConnect(
+                () => pedals.IsConnected,
+                () => pedals.ConnectCommand.ExecuteAsync(null),
+                () => pedals.DisconnectCommand.ExecuteAsync(null),
+                pedalPresent, dispatcher));
+
+        // Freio de mão: simulador → simulador; real → HID 0x0003 + hotplug.
+        HandbrakeDeviceSession handbrakeSession;
+        Func<bool>? handbrakePresent = null;
+        if (simulatorMode)
             handbrakeSession = new HandbrakeDeviceSession(new SimulatorHandbrakeTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
-        var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage());
+        else
+        {
+            handbrakeSession = new HandbrakeDeviceSession(new HidHandbrakeTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
+            handbrakePresent = HidHandbrakeTransport.IsDevicePresent;
+        }
+        var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage(), simulatorMode);
+        if (handbrakePresent is not null)
+            autoConnectors.Add(StartAutoConnect(
+                () => handbrake.IsConnected,
+                () => handbrake.ConnectCommand.ExecuteAsync(null),
+                () => handbrake.DisconnectCommand.ExecuteAsync(null),
+                handbrakePresent, dispatcher));
 
         // Base do Volante: abas de settings + Telemetria como última aba.
         var wheelBaseTabs = WheelBaseTabs
@@ -103,7 +126,16 @@ public static class CompositionRoot
         // para o desenho do volante continuar visível ao fundo enquanto se ajusta a força.
         var test = new TestViewModel(session);
 
-        return new MainWindowViewModel(session, connection, pages, test, simulatorMode, autoConnector);
+        return new MainWindowViewModel(session, connection, pages, test, simulatorMode, autoConnectors);
+    }
+
+    private static DeviceAutoConnector StartAutoConnect(
+        Func<bool> isConnected, Func<Task> connect, Func<Task> disconnect,
+        Func<bool> isPresent, IUiDispatcher dispatcher)
+    {
+        var connector = new DeviceAutoConnector(isConnected, connect, disconnect, isPresent, dispatcher);
+        connector.Start();
+        return connector;
     }
 
     /// <summary>Builds a transport talking to real hardware over USB HID (used when a device is present).</summary>

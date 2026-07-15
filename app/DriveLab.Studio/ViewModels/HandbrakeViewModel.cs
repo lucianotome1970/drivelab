@@ -22,6 +22,9 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     [ObservableProperty] private string _sourceLabel = "";
     [ObservableProperty] private bool _canEdit;
 
+    /// <summary>Só no simulador aparecem os botões Conectar/Desconectar (no real é automático).</summary>
+    public bool IsSimulator { get; }
+
     [ObservableProperty] private double _currentInput01;
     [ObservableProperty] private double _currentOutput01;
 
@@ -40,10 +43,11 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
 
     public IReadOnlyList<PedalCurvePointViewModel> Points { get; }
 
-    public HandbrakeViewModel(HandbrakeDeviceSession session, IHandbrakeProfileStorage storage)
+    public HandbrakeViewModel(HandbrakeDeviceSession session, IHandbrakeProfileStorage storage, bool simulatorMode = false)
     {
         _session = session;
         _storage = storage;
+        IsSimulator = simulatorMode;
         SourceLabel = session.SourceLabel;
 
         var labels = new[] { "0%", "20%", "40%", "60%", "80%", "100%" };

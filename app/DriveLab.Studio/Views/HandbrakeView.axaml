@@ -88,8 +88,9 @@
             <!-- Ações no topo à direita (como na janela dos pedais) -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
                 <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" />
-                <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" />
+                <!-- Conectar/Desconectar só no simulador; no real a conexão é automática (hotplug USB). -->
+                <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
+                <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
                 <Button Content="{loc:Translate Handbrake_CalibrateStart}" Command="{Binding CalibrateStartCommand}" />
                 <Button Content="{loc:Translate Handbrake_CalibrateStop}" Command="{Binding CalibrateStopCommand}" />
                 <Button Content="{loc:Translate Handbrake_LoadDefaults}" Command="{Binding LoadDefaultsCommand}" />
