@@ -2,7 +2,7 @@
 
 Firmware da **pedaleira DriveLab** — placa **Waveshare RP2040-Zero** (RP2040, USB-C), o lado do dispositivo do contrato **P0**.
 (Funciona igual em qualquer RP2040; para o Pico padrão, troque `board = pico` no `platformio.ini`. LED onboard do Zero é WS2812/GP16 — o firmware não usa LED.)
-Design/decisões: [`../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-design.md`](../docs/superpowers/specs/2026-07-14-pedal-firmware-rp2040-design.md).
+Design/decisões: mantidas nas notas internas de projeto (não versionadas no repo público).
 
 > Firmware **separado** do volante (que é ODESC/STM32 em `../firmware/`). Aqui é RP2040 + **arduino-pico** (core do Earle Philhower) + Adafruit_TinyUSB. Licença: MIT (é código nosso; TinyUSB é MIT).
 

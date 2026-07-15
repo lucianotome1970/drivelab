@@ -16,7 +16,7 @@
 //   (a) o plumbing dos OUTPUT reports do TinyUSB (setReportCallback) — ver onSetReport;
 //   (b) o report descriptor vendor. Ver README.
 // Inclui: ADC (pot/hall) + HX711 (load cell, M3) + persistência em flash (M4).
-// Contrato: docs/superpowers/specs/2026-07-13-drivelab-pedals-p0-design.md
+// Contrato: protocolo P0 (notas internas de projeto)
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
 #include <HX711.h>

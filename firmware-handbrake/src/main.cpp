@@ -19,7 +19,7 @@
 //   (a) o plumbing dos OUTPUT reports do TinyUSB (setReportCallback) — ver onSetReport;
 //   (b) o report descriptor vendor e o novo layout do Joystick (1 eixo 16-bit + 1 bit de botão + 7 padding).
 // Ver checklist de bancada no README.
-// Contrato: docs/superpowers/specs/2026-07-14-handbrake-module-design.md
+// Contrato: protocolo P0 (notas internas de projeto)
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
 #include <HX711.h>

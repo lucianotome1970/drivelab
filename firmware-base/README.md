@@ -2,7 +2,7 @@
 
 Firmware da **base** (wheelbase) DriveLab — **ODESC v4.2 (STM32F405)** + motor direct-drive.
 *(O firmware do aro/volante — botões, LEDs, pás — seria o `firmware-wheel/`, ainda não iniciado.)*
-Design/decisões: [`../docs/superpowers/specs/2026-07-13-drivelab-firmware-trilho-b-design.md`](../docs/superpowers/specs/2026-07-13-drivelab-firmware-trilho-b-design.md).
+Design/decisões: mantidas nas notas internas de projeto (não versionadas no repo público).
 
 > **Licença:** este firmware será **LGPL** a partir do M0.5 (quando adicionarmos as libs de FFB LGPL — `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`). O app DriveLab Studio e as libs .NET seguem MIT. O código atual (M0) é nosso; a mudança de licença acontece ao integrar as libs.
 

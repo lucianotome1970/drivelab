@@ -2,7 +2,7 @@
 
 Firmware do **freio de mão DriveLab** — placa **Waveshare RP2040-Zero** (RP2040, USB-C).
 (Funciona igual em qualquer RP2040; para o Pico padrão, troque `board = pico` no `platformio.ini`. LED onboard do Zero é WS2812/GP16 — o firmware não usa LED.)
-Design/decisões: [`../docs/superpowers/specs/2026-07-14-handbrake-module-design.md`](../docs/superpowers/specs/2026-07-14-handbrake-module-design.md).
+Design/decisões: mantidas nas notas internas de projeto (não versionadas no repo público).
 
 > Firmware **separado** do volante (ODESC/STM32 em `../firmware/`) e da pedaleira (`../firmware-pedal/`). Aqui é RP2040 + **arduino-pico** (core do Earle Philhower) + Adafruit_TinyUSB. Licença: MIT (é código nosso; TinyUSB é MIT).
 
