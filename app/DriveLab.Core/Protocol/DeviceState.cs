@@ -10,8 +10,11 @@ public sealed class DeviceState
     public short AngleDeciDeg { get; set; }
     public short Torque { get; set; }
     public short MotorCurrentMa { get; set; }
-    public sbyte TemperatureC { get; set; }
+    public sbyte FetTempC { get; set; }
     public byte ErrorCode { get; set; }
+    public ushort BusVoltageMv { get; set; }
+    public sbyte MotorTempC { get; set; }
+    public sbyte McuTempC { get; set; }
 
     public byte[] ToBytes()
     {
@@ -23,8 +26,11 @@ public sealed class DeviceState
         BinaryPrimitives.WriteInt16LittleEndian(span.Slice(7, 2), AngleDeciDeg);
         BinaryPrimitives.WriteInt16LittleEndian(span.Slice(9, 2), Torque);
         BinaryPrimitives.WriteInt16LittleEndian(span.Slice(11, 2), MotorCurrentMa);
-        span[13] = (byte)TemperatureC;
+        span[13] = (byte)FetTempC;
         span[14] = ErrorCode;
+        BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(15, 2), BusVoltageMv);
+        span[17] = (byte)MotorTempC;
+        span[18] = (byte)McuTempC;
         return buffer;
     }
 
@@ -36,7 +42,10 @@ public sealed class DeviceState
         AngleDeciDeg = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(7, 2)),
         Torque = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(9, 2)),
         MotorCurrentMa = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(11, 2)),
-        TemperatureC = (sbyte)src[13],
+        FetTempC = (sbyte)src[13],
         ErrorCode = src[14],
+        BusVoltageMv = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(15, 2)),
+        MotorTempC = (sbyte)src[17],
+        McuTempC = (sbyte)src[18],
     };
 }

@@ -104,7 +104,9 @@ public static class CompositionRoot
 
         // Base do Volante: abas de settings + Telemetria como última aba.
         var wheelBaseTabs = WheelBaseTabs
-            .Select(t => new PageTab(L.Get($"Tab_{t.Header}"), new SettingsGroupViewModel(session, t.Header, t.Ids)))
+            .Select(t => new PageTab(L.Get($"Tab_{t.Header}"), t.Header == "Hardware"
+                ? new HardwareTabViewModel(session, t.Header, t.Ids)
+                : new SettingsGroupViewModel(session, t.Header, t.Ids)))
             .Append(new PageTab(L.Get("Tab_Telemetry"), new TelemetryViewModel(session)))
             .ToList();
 
