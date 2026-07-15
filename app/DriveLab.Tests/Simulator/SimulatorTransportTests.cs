@@ -46,13 +46,13 @@ public class SimulatorTransportTests
     public async Task Streaming_Step_Raises_StateReceived()
     {
         var transport = await ConnectedAsync();
-        DeviceState? received = null;
+        BaseState? received = null;
         transport.StateReceived += (_, state) => received = state;
 
         transport.Step(0.01);
 
         Assert.NotNull(received);
-        Assert.True(received!.Flags.HasFlag(DeviceFlags.UsingSimulator));
+        Assert.True(received!.Flags.HasFlag(BaseFlags.UsingSimulator));
     }
 
     [Fact]
@@ -60,9 +60,9 @@ public class SimulatorTransportTests
     {
         var transport = await ConnectedAsync();
         await transport.SendCommandAsync(DeviceCommand.SetForceEnabled, 1);
-        await transport.SendDirectControlAsync(new DirectControl { ConstantForce = 5000 });
+        await transport.SendDirectControlAsync(new BaseDirectControl { ConstantForce = 5000 });
 
-        DeviceState? last = null;
+        BaseState? last = null;
         transport.StateReceived += (_, state) => last = state;
         for (var i = 0; i < 50; i++) transport.Step(0.01);
 
@@ -74,7 +74,7 @@ public class SimulatorTransportTests
     public async Task BuildState_Includes_Synthetic_Telemetry()
     {
         var transport = await ConnectedAsync();
-        DeviceState? received = null;
+        BaseState? received = null;
         transport.StateReceived += (_, state) => received = state;
 
         transport.Step(0.01);
@@ -90,12 +90,12 @@ public class SimulatorTransportTests
     public async Task ResetCenter_Command_Recenters()
     {
         var transport = await ConnectedAsync();
-        await transport.SendDirectControlAsync(new DirectControl { ConstantForce = 5000 });
+        await transport.SendDirectControlAsync(new BaseDirectControl { ConstantForce = 5000 });
         for (var i = 0; i < 50; i++) transport.Step(0.01);
 
         await transport.SendCommandAsync(DeviceCommand.ResetCenter);
 
-        DeviceState? last = null;
+        BaseState? last = null;
         transport.StateReceived += (_, state) => last = state;
         transport.Step(0.0);
         Assert.Equal(0, last!.Position);

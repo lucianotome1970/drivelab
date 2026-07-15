@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DeviceState.cs — Estado de telemetria do volante (firmware, flags, posição, ângulo, torque, temperaturas) serializado para bytes.
+//  BaseState.cs — Estado de telemetria do volante (firmware, flags, posição, ângulo, torque, temperaturas) serializado para bytes.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -9,10 +9,10 @@ using System.Buffers.Binary;
 
 namespace DriveLab.Core.Protocol;
 
-public sealed class DeviceState
+public sealed class BaseState
 {
     public FirmwareVersion Firmware { get; set; }
-    public DeviceFlags Flags { get; set; }
+    public BaseFlags Flags { get; set; }
     public short Position { get; set; }
     public short AngleDeciDeg { get; set; }
     public short Torque { get; set; }
@@ -41,10 +41,10 @@ public sealed class DeviceState
         return buffer;
     }
 
-    public static DeviceState Parse(ReadOnlySpan<byte> src) => new()
+    public static BaseState Parse(ReadOnlySpan<byte> src) => new()
     {
         Firmware = FirmwareVersion.Parse(src.Slice(0, 4)),
-        Flags = (DeviceFlags)src[4],
+        Flags = (BaseFlags)src[4],
         Position = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(5, 2)),
         AngleDeciDeg = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(7, 2)),
         Torque = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(9, 2)),

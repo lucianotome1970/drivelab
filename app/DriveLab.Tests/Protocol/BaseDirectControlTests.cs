@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DirectControlTests.cs — Testes de round-trip do DirectControl.
+//  BaseDirectControlTests.cs — Testes de round-trip do BaseDirectControl.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -9,18 +9,18 @@ using DriveLab.Core.Protocol;
 
 namespace DriveLab.Tests.Protocol;
 
-public class DirectControlTests
+public class BaseDirectControlTests
 {
     [Fact]
     public void ToBytes_Has_ReportSize_Length()
     {
-        Assert.Equal(ReportConstants.ReportSize, new DirectControl().ToBytes().Length);
+        Assert.Equal(ReportConstants.ReportSize, new BaseDirectControl().ToBytes().Length);
     }
 
     [Fact]
     public void ToBytes_Then_Parse_RoundTrips()
     {
-        var control = new DirectControl
+        var control = new BaseDirectControl
         {
             SpringForce = -3000,
             ConstantForce = 5000,
@@ -29,7 +29,7 @@ public class DirectControlTests
             ForceDrop = 40,
         };
 
-        var parsed = DirectControl.Parse(control.ToBytes());
+        var parsed = BaseDirectControl.Parse(control.ToBytes());
 
         Assert.Equal(control.SpringForce, parsed.SpringForce);
         Assert.Equal(control.ConstantForce, parsed.ConstantForce);

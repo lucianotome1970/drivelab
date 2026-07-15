@@ -75,7 +75,7 @@ public partial class DashboardViewModel : ViewModelBase
             MotionRange = (int)e.Value.AsDouble;
     }
 
-    private void OnState(object? sender, DeviceState state)
+    private void OnState(object? sender, BaseState state)
     {
         AngleDegrees = state.AngleDeciDeg / 10.0;
         PositionPercent = state.Position / 100.0;

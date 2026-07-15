@@ -26,7 +26,7 @@ public class TelemetryViewModelTests
     public void State_Appends_Normalized_Position_And_Torque()
     {
         var vm = New(out var transport);
-        transport.Emit(new DeviceState { Position = 5000, Torque = 9000 });
+        transport.Emit(new BaseState { Position = 5000, Torque = 9000 });
 
         Assert.Single(vm.PositionSamples);
         Assert.Single(vm.TorqueSamples);
@@ -39,7 +39,7 @@ public class TelemetryViewModelTests
     {
         var vm = New(out var transport);
         for (var i = 0; i < 300; i++)
-            transport.Emit(new DeviceState { Position = 100, Torque = 100 });
+            transport.Emit(new BaseState { Position = 100, Torque = 100 });
 
         Assert.Equal(240, vm.PositionSamples.Count);
         Assert.Equal(240, vm.TorqueSamples.Count);
@@ -49,11 +49,11 @@ public class TelemetryViewModelTests
     public void Dispose_Stops_Appending()
     {
         var vm = New(out var transport);
-        transport.Emit(new DeviceState { Position = 100 });
+        transport.Emit(new BaseState { Position = 100 });
         Assert.Single(vm.PositionSamples);
 
         vm.Dispose();
-        transport.Emit(new DeviceState { Position = 200 });
+        transport.Emit(new BaseState { Position = 200 });
         Assert.Single(vm.PositionSamples); // unchanged after dispose
     }
 

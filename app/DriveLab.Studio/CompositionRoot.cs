@@ -171,6 +171,6 @@ public static class CompositionRoot
 
     // STUB: firmware em bring-up (M0), a base ainda não enumera por USB de forma estável.
     // Quando enumerar, trocar por:
-    //   DeviceList.Local.GetHidDevices(DeviceIdentity.VendorId, DeviceIdentity.ProductId).Any()
+    //   DeviceList.Local.GetHidDevices(BaseDeviceIdentity.VendorId, BaseDeviceIdentity.ProductId).Any()
     private static bool ProbeBaseHardware() => false;
 }

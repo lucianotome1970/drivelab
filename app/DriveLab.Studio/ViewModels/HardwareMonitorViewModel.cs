@@ -41,7 +41,7 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         base.Dispose();
     }
 
-    private void OnState(object? sender, DeviceState s)
+    private void OnState(object? sender, BaseState s)
     {
         BusVoltageText = (s.BusVoltageMv / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " V";
         MotorCurrentText = (s.MotorCurrentMa / 1000.0).ToString("0.00", CultureInfo.InvariantCulture) + " A";

@@ -21,12 +21,12 @@ public interface ITransport
     /// subscribed to it. Handlers must marshal to their own thread (e.g. a UI dispatcher)
     /// if they need to touch thread-affine state.
     /// </summary>
-    event EventHandler<DeviceState>? StateReceived;
+    event EventHandler<BaseState>? StateReceived;
 
     Task ConnectAsync(CancellationToken ct = default);
     Task DisconnectAsync();
     Task WriteSettingAsync(SettingId id, SettingValue value);
     Task<SettingValue> ReadSettingAsync(SettingId id);
-    Task SendDirectControlAsync(DirectControl control);
+    Task SendDirectControlAsync(BaseDirectControl control);
     Task SendCommandAsync(DeviceCommand command, byte arg = 0);
 }

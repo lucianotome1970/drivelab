@@ -88,10 +88,10 @@ public class DeviceSessionTests
     public void StateReceived_Is_Re_Raised_Through_Dispatcher()
     {
         var session = NewSession(out var transport);
-        DeviceState? got = null;
+        BaseState? got = null;
         session.StateReceived += (_, s) => got = s;
 
-        transport.Emit(new DeviceState { AngleDeciDeg = 1234 });
+        transport.Emit(new BaseState { AngleDeciDeg = 1234 });
 
         Assert.NotNull(got);
         Assert.Equal(1234, got!.AngleDeciDeg);

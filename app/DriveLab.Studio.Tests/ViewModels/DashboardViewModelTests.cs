@@ -28,7 +28,7 @@ public class DashboardViewModelTests
     public void Telemetry_Updates_AngleDegrees_And_PositionPercent()
     {
         var vm = New(out var transport);
-        transport.Emit(new DeviceState { AngleDeciDeg = 2700, Position = 5000 });
+        transport.Emit(new BaseState { AngleDeciDeg = 2700, Position = 5000 });
 
         Assert.Equal(270.0, vm.AngleDegrees, precision: 3);   // 2700 deci-deg = 270°
         Assert.Equal(50.0, vm.PositionPercent, precision: 3);  // 5000/10000 = 50%

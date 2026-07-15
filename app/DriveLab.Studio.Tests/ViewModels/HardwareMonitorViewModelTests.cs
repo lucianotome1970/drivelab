@@ -26,7 +26,7 @@ public class HardwareMonitorViewModelTests
     public void Formats_Voltage_Current_And_Temps()
     {
         var (vm, t) = Make();
-        t.Emit(new DeviceState { BusVoltageMv = 24000, MotorCurrentMa = 1500, FetTempC = 42, MotorTempC = 55, McuTempC = 45 });
+        t.Emit(new BaseState { BusVoltageMv = 24000, MotorCurrentMa = 1500, FetTempC = 42, MotorTempC = 55, McuTempC = 45 });
         Assert.Equal("24.0 V", vm.BusVoltageText);
         Assert.Equal("1.50 A", vm.MotorCurrentText);
         Assert.Equal("42 °C", vm.FetTempText);
@@ -36,7 +36,7 @@ public class HardwareMonitorViewModelTests
     public void Sentinel_Temperature_Shows_No_Sensor()
     {
         var (vm, t) = Make();
-        t.Emit(new DeviceState { MotorTempC = -128 });
+        t.Emit(new BaseState { MotorTempC = -128 });
         Assert.Equal("—", vm.MotorTempText);
     }
 
@@ -44,7 +44,7 @@ public class HardwareMonitorViewModelTests
     public void Classifies_Levels_By_Threshold()
     {
         var (vm, t) = Make();
-        t.Emit(new DeviceState { BusVoltageMv = 24000, FetTempC = 85 });
+        t.Emit(new BaseState { BusVoltageMv = 24000, FetTempC = 85 });
         Assert.Equal(TelemetryLevel.Ok, vm.BusVoltageLevel);
         Assert.Equal(TelemetryLevel.Critical, vm.FetTempLevel);
     }
@@ -63,7 +63,7 @@ public class HardwareMonitorViewModelTests
     public void Voltage_Level_Boundaries(int mv, TelemetryLevel expected)
     {
         var (vm, t) = Make();
-        t.Emit(new DeviceState { BusVoltageMv = (ushort)mv });
+        t.Emit(new BaseState { BusVoltageMv = (ushort)mv });
         Assert.Equal(expected, vm.BusVoltageLevel);
     }
 
@@ -76,7 +76,7 @@ public class HardwareMonitorViewModelTests
     public void Temperature_Level_Boundaries(sbyte c, TelemetryLevel expected)
     {
         var (vm, t) = Make();
-        t.Emit(new DeviceState { FetTempC = c });
+        t.Emit(new BaseState { FetTempC = c });
         Assert.Equal(expected, vm.FetTempLevel);
     }
 }

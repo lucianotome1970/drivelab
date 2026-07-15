@@ -22,11 +22,11 @@ public class DashboardViewModelDisposeTests
         var session = new DeviceSession(transport, new ImmediateUiDispatcher());
         var vm = new DashboardViewModel(session);
 
-        transport.Emit(new DeviceState { AngleDeciDeg = 100 });
+        transport.Emit(new BaseState { AngleDeciDeg = 100 });
         Assert.Equal(10.0, vm.AngleDegrees);
 
         vm.Dispose();
-        transport.Emit(new DeviceState { AngleDeciDeg = 2000 });
+        transport.Emit(new BaseState { AngleDeciDeg = 2000 });
         Assert.Equal(10.0, vm.AngleDegrees); // unchanged after dispose
     }
 }

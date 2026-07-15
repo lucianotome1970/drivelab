@@ -28,7 +28,7 @@ public sealed class DeviceSession : IDisposable
         _transport.StateReceived += OnTransportState;
     }
 
-    public event EventHandler<DeviceState>? StateReceived;
+    public event EventHandler<BaseState>? StateReceived;
     public event EventHandler? Connected;
     public event EventHandler? Disconnected;
 
@@ -70,10 +70,10 @@ public sealed class DeviceSession : IDisposable
     }
 
     public Task<SettingValue> ReadSettingAsync(SettingId id) => _transport.ReadSettingAsync(id);
-    public Task SendDirectControlAsync(DirectControl control) => _transport.SendDirectControlAsync(control);
+    public Task SendDirectControlAsync(BaseDirectControl control) => _transport.SendDirectControlAsync(control);
     public Task SendCommandAsync(DeviceCommand command, byte arg = 0) => _transport.SendCommandAsync(command, arg);
 
-    private void OnTransportState(object? sender, DeviceState state) =>
+    private void OnTransportState(object? sender, BaseState state) =>
         _dispatcher.Post(() => StateReceived?.Invoke(this, state));
 
     public void Dispose()

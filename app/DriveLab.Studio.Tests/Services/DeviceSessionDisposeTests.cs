@@ -21,11 +21,11 @@ public class DeviceSessionDisposeTests
         var count = 0;
         session.StateReceived += (_, _) => count++;
 
-        transport.Emit(new DeviceState());
+        transport.Emit(new BaseState());
         Assert.Equal(1, count);
 
         session.Dispose();
-        transport.Emit(new DeviceState());
+        transport.Emit(new BaseState());
         Assert.Equal(1, count); // no further events after dispose
     }
 }

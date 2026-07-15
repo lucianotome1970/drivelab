@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DeviceStateTests.cs — Testes de round-trip do DeviceState.
+//  BaseStateTests.cs — Testes de round-trip do BaseState.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -9,22 +9,22 @@ using DriveLab.Core.Protocol;
 
 namespace DriveLab.Tests.Protocol;
 
-public class DeviceStateTests
+public class BaseStateTests
 {
     [Fact]
     public void ToBytes_Has_ReportSize_Length()
     {
-        var state = new DeviceState();
+        var state = new BaseState();
         Assert.Equal(ReportConstants.ReportSize, state.ToBytes().Length);
     }
 
     [Fact]
     public void ToBytes_Then_Parse_RoundTrips_All_Fields()
     {
-        var state = new DeviceState
+        var state = new BaseState
         {
             Firmware = new FirmwareVersion(0, 26, 7, 12),
-            Flags = DeviceFlags.ForceEnabled | DeviceFlags.UsingSimulator,
+            Flags = BaseFlags.ForceEnabled | BaseFlags.UsingSimulator,
             Position = -4200,
             AngleDeciDeg = 1350,
             Torque = 9000,
@@ -36,7 +36,7 @@ public class DeviceStateTests
             McuTempC = -128,
         };
 
-        var parsed = DeviceState.Parse(state.ToBytes());
+        var parsed = BaseState.Parse(state.ToBytes());
 
         Assert.Equal(state.Firmware, parsed.Firmware);
         Assert.Equal(state.Flags, parsed.Flags);
@@ -54,8 +54,8 @@ public class DeviceStateTests
     [Fact]
     public void Negative_Int16_Fields_Survive_RoundTrip()
     {
-        var state = new DeviceState { Position = -10000, Torque = -10000 };
-        var parsed = DeviceState.Parse(state.ToBytes());
+        var state = new BaseState { Position = -10000, Torque = -10000 };
+        var parsed = BaseState.Parse(state.ToBytes());
         Assert.Equal(-10000, parsed.Position);
         Assert.Equal(-10000, parsed.Torque);
     }
@@ -64,8 +64,8 @@ public class DeviceStateTests
     public void BusVoltage_Above_Int16Max_Survives_RoundTrip()
     {
         // Guards the u16 signedness path: values > 32767 must not wrap negative.
-        var state = new DeviceState { BusVoltageMv = 65535 };
-        var parsed = DeviceState.Parse(state.ToBytes());
+        var state = new BaseState { BusVoltageMv = 65535 };
+        var parsed = BaseState.Parse(state.ToBytes());
         Assert.Equal((ushort)65535, parsed.BusVoltageMv);
     }
 }

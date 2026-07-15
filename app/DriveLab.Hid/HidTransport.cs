@@ -34,7 +34,7 @@ public sealed class HidTransport : ITransport, IDisposable
     public bool IsConnected { get; private set; }
     public FirmwareVersion FirmwareVersion { get; private set; }
 
-    public event EventHandler<DeviceState>? StateReceived;
+    public event EventHandler<BaseState>? StateReceived;
 
     /// <summary>Varre o HID pelo VID/PID da base (autodetecção/hotplug). No macOS 26 o HidSharp
     /// não enumera (retorna false); no Windows funciona.</summary>
@@ -43,7 +43,7 @@ public sealed class HidTransport : ITransport, IDisposable
         try
         {
             return DeviceList.Local
-                .GetHidDevices(DeviceIdentity.VendorId, DeviceIdentity.ProductId)
+                .GetHidDevices(BaseDeviceIdentity.VendorId, BaseDeviceIdentity.ProductId)
                 .Any();
         }
         catch
@@ -54,7 +54,7 @@ public sealed class HidTransport : ITransport, IDisposable
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
-        IsConnected = await _channel.OpenAsync(DeviceIdentity.VendorId, DeviceIdentity.ProductId);
+        IsConnected = await _channel.OpenAsync(BaseDeviceIdentity.VendorId, BaseDeviceIdentity.ProductId);
     }
 
     public Task DisconnectAsync()
@@ -64,14 +64,14 @@ public sealed class HidTransport : ITransport, IDisposable
         return Task.CompletedTask;
     }
 
-    public Task SendDirectControlAsync(DirectControl control) =>
-        _channel.WriteAsync(Frame(ReportIds.DirectControl, control.ToBytes()));
+    public Task SendDirectControlAsync(BaseDirectControl control) =>
+        _channel.WriteAsync(Frame(BaseReportIds.BaseDirectControl, control.ToBytes()));
 
     public Task SendCommandAsync(DeviceCommand command, byte arg = 0) =>
-        _channel.WriteAsync(Frame(ReportIds.Command, new CommandReport((byte)command, arg).ToBytes()));
+        _channel.WriteAsync(Frame(BaseReportIds.Command, new CommandReport((byte)command, arg).ToBytes()));
 
     public Task WriteSettingAsync(SettingId id, SettingValue value) =>
-        _channel.WriteAsync(Frame(ReportIds.SettingWrite, new SettingReport((byte)id, 0, value).ToBytes()));
+        _channel.WriteAsync(Frame(BaseReportIds.SettingWrite, new SettingReport((byte)id, 0, value).ToBytes()));
 
     public Task<SettingValue> ReadSettingAsync(SettingId id) => ReadSettingAsync(id, DefaultReadTimeout);
 
@@ -80,7 +80,7 @@ public sealed class HidTransport : ITransport, IDisposable
         var tcs = new TaskCompletionSource<SettingValue>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_pendingLock) _pendingReads[(byte)id] = tcs;
 
-        await _channel.WriteAsync(Frame(ReportIds.SettingReadRequest, new SettingReadRequestReport((byte)id, 0).ToBytes()));
+        await _channel.WriteAsync(Frame(BaseReportIds.SettingReadRequest, new SettingReadRequestReport((byte)id, 0).ToBytes()));
 
         using var cts = new CancellationTokenSource(timeout);
         using (cts.Token.Register(() =>
@@ -103,13 +103,13 @@ public sealed class HidTransport : ITransport, IDisposable
             var reportId = wire[0];
             var payload = wire.AsSpan(1, ReportConstants.ReportSize);
 
-            if (reportId == ReportIds.DeviceState)
+            if (reportId == BaseReportIds.BaseState)
             {
-                var state = DeviceState.Parse(payload);
+                var state = BaseState.Parse(payload);
                 FirmwareVersion = state.Firmware;
                 StateReceived?.Invoke(this, state);
             }
-            else if (reportId == ReportIds.SettingValue)
+            else if (reportId == BaseReportIds.SettingValue)
             {
                 var report = SettingReport.Parse(payload);
                 TaskCompletionSource<SettingValue>? tcs;

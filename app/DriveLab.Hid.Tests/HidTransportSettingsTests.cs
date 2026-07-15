@@ -30,7 +30,7 @@ public class HidTransportSettingsTests
 
         await t.WriteSettingAsync(SettingId.MotionRange, new SettingValue(SettingType.UInt16, 900));
 
-        Assert.Equal(ReportIds.SettingWrite, channel.LastWrite![0]);
+        Assert.Equal(BaseReportIds.SettingWrite, channel.LastWrite![0]);
         var payload = new byte[64];
         Array.Copy(channel.LastWrite!, 1, payload, 0, 64);
         var report = SettingReport.Parse(payload);
@@ -49,14 +49,14 @@ public class HidTransportSettingsTests
 
         // firmware would answer with a SettingValue report for the same field
         var reply = new SettingReport((byte)SettingId.EncoderCpr, 0, new SettingValue(SettingType.UInt16, 10000)).ToBytes();
-        channel.Emit(Wire(ReportIds.SettingValue, reply));
+        channel.Emit(Wire(BaseReportIds.SettingValue, reply));
 
         var value = await readTask;
         Assert.Equal(SettingType.UInt16, value.Type);
         Assert.Equal(10000, value.AsDouble);
 
         // and it sent a read request first
-        Assert.Equal(ReportIds.SettingReadRequest, channel.Writes[0][0]);
+        Assert.Equal(BaseReportIds.SettingReadRequest, channel.Writes[0][0]);
     }
 
     [Fact]

@@ -29,7 +29,7 @@ public partial class TestViewModel : ViewModelBase
         if (!_session.IsConnected)
             return Task.CompletedTask;
 
-        return _session.SendDirectControlAsync(new DirectControl
+        return _session.SendDirectControlAsync(new BaseDirectControl
         {
             SpringForce = ToInt16(Spring),
             ConstantForce = ToInt16(Constant),

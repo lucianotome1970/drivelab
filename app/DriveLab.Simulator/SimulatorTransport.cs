@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  SimulatorTransport.cs — Transporte simulado do volante: aplica settings a um VirtualWheel e gera DeviceState sintético.
+//  SimulatorTransport.cs — Transporte simulado do volante: aplica settings a um VirtualWheel e gera BaseState sintético.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -23,9 +23,9 @@ public sealed class SimulatorTransport : ITransport
 
     public bool IsConnected { get; private set; }
     public FirmwareVersion FirmwareVersion { get; } = new(0, 26, 7, 12);
-    public DeviceFlags Flags { get; private set; } = DeviceFlags.UsingSimulator | DeviceFlags.Calibrated;
+    public BaseFlags Flags { get; private set; } = BaseFlags.UsingSimulator | BaseFlags.Calibrated;
 
-    public event EventHandler<DeviceState>? StateReceived;
+    public event EventHandler<BaseState>? StateReceived;
 
     public Task ConnectAsync(CancellationToken ct = default)
     {
@@ -36,7 +36,7 @@ public sealed class SimulatorTransport : ITransport
                 _settings[descriptor.Id] = new SettingValue(descriptor.Type, descriptor.Default);
 
             ApplySettingsToWheel();
-            _wheel.ForceEnabled = Flags.HasFlag(DeviceFlags.ForceEnabled);
+            _wheel.ForceEnabled = Flags.HasFlag(BaseFlags.ForceEnabled);
         }
         IsConnected = true;
         return Task.CompletedTask;
@@ -69,7 +69,7 @@ public sealed class SimulatorTransport : ITransport
         }
     }
 
-    public Task SendDirectControlAsync(DirectControl control)
+    public Task SendDirectControlAsync(BaseDirectControl control)
     {
         lock (_sync)
         {
@@ -98,7 +98,7 @@ public sealed class SimulatorTransport : ITransport
                 {
                     _wheel.ForceEnabled = arg != 0;
                 }
-                Flags = arg != 0 ? Flags | DeviceFlags.ForceEnabled : Flags & ~DeviceFlags.ForceEnabled;
+                Flags = arg != 0 ? Flags | BaseFlags.ForceEnabled : Flags & ~BaseFlags.ForceEnabled;
                 break;
             case DeviceCommand.Reboot:
                 return ConnectAsync();
@@ -112,7 +112,7 @@ public sealed class SimulatorTransport : ITransport
 
     public void Step(double dt)
     {
-        DeviceState state;
+        BaseState state;
         lock (_sync)
         {
             _wheel.Step(dt);
@@ -148,7 +148,7 @@ public sealed class SimulatorTransport : ITransport
         _wheel.TotalStrength01 = _settings[SettingId.TotalStrength].AsDouble / 100.0;
     }
 
-    private DeviceState BuildState() => new()
+    private BaseState BuildState() => new()
     {
         Firmware = FirmwareVersion,
         Flags = Flags,

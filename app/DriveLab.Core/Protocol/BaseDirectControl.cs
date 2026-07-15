@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DirectControl.cs — Report de controle direto de forças (spring/constant/periodic/damper) serializado para bytes.
+//  BaseDirectControl.cs — Report de controle direto de forças (spring/constant/periodic/damper) serializado para bytes.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -9,7 +9,7 @@ using System.Buffers.Binary;
 
 namespace DriveLab.Core.Protocol;
 
-public sealed class DirectControl
+public sealed class BaseDirectControl
 {
     public short SpringForce { get; set; }
     public short ConstantForce { get; set; }
@@ -29,7 +29,7 @@ public sealed class DirectControl
         return buffer;
     }
 
-    public static DirectControl Parse(ReadOnlySpan<byte> src) => new()
+    public static BaseDirectControl Parse(ReadOnlySpan<byte> src) => new()
     {
         SpringForce = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(0, 2)),
         ConstantForce = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(2, 2)),

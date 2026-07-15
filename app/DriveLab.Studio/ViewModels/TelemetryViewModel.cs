@@ -34,7 +34,7 @@ public sealed class TelemetryViewModel : ViewModelBase
         _session.StateReceived += OnState;
     }
 
-    private void OnState(object? sender, DeviceState state)
+    private void OnState(object? sender, BaseState state)
     {
         Append(PositionSamples, state.Position / 100.0);
         Append(TorqueSamples, state.Torque / 100.0);
