@@ -120,9 +120,10 @@ Condition effects (spring/damper) are computed on the device from the **encoder*
 
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, tests
-firmware/            Wheel firmware — ODESC v4.2 / STM32F405 (PlatformIO)   [LGPL-3.0]
-firmware-pedal/      Pedals firmware — RP2040 + HX711                       [MIT]
-firmware-handbrake/  Handbrake firmware — RP2040 + HX711                    [MIT]
+firmware-base/       Wheelbase firmware — ODESC v4.2 / STM32F405, the FFB motor (PlatformIO)  [LGPL-3.0]
+firmware-pedal/      Pedals firmware — RP2040 + HX711                                        [MIT]
+firmware-handbrake/  Handbrake firmware — RP2040 + HX711                                     [MIT]
+# firmware-wheel/    Rim firmware (buttons/LEDs/paddles) — planned, not started yet
 tools/HidDump/       HID protocol debug tool
 docs/                Design specs & implementation plans
 ```
@@ -151,7 +152,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 # output: dist/win-x64/DriveLab.Studio.exe
 ```
 
-**Flash the firmware** (needs [PlatformIO](https://platformio.org)): open `firmware/` and start at milestone **M0** (serial only, no motor) — see `firmware/README.md`.
+**Flash the firmware** (needs [PlatformIO](https://platformio.org)): open `firmware-base/` and start at milestone **M0** (serial only, no motor) — see `firmware-base/README.md`.
 
 ### Roadmap
 
@@ -166,7 +167,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 ### License
 
 - **App + libraries + tools + pedal/handbrake firmware:** [MIT](https://opensource.org/licenses/MIT).
-- **Wheel firmware** (`firmware/`): **LGPL-3.0** — it links the LGPL libraries `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`.
+- **Base (wheelbase) firmware** (`firmware-base/`): **LGPL-3.0** — it links the LGPL libraries `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`.
 
 Every source file carries a header stating its license.
 
@@ -238,9 +239,10 @@ Os efeitos de condição (mola/damper) são calculados no dispositivo a partir d
 
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, testes
-firmware/            Firmware do volante — ODESC v4.2 / STM32F405 (PlatformIO)  [LGPL-3.0]
-firmware-pedal/      Firmware dos pedais — RP2040 + HX711                       [MIT]
-firmware-handbrake/  Firmware do freio de mão — RP2040 + HX711                  [MIT]
+firmware-base/       Firmware da base — ODESC v4.2 / STM32F405, o motor FFB (PlatformIO)  [LGPL-3.0]
+firmware-pedal/      Firmware dos pedais — RP2040 + HX711                                [MIT]
+firmware-handbrake/  Firmware do freio de mão — RP2040 + HX711                           [MIT]
+# firmware-wheel/    Firmware do aro (botões/LEDs/pás) — planejado, ainda não iniciado
 tools/HidDump/       Ferramenta de debug do protocolo HID
 docs/                Specs de design & planos de implementação
 ```
@@ -269,7 +271,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 # saída: dist/win-x64/DriveLab.Studio.exe
 ```
 
-**Gravar o firmware** (precisa do [PlatformIO](https://platformio.org)): abra `firmware/` e comece pelo marco **M0** (só serial, sem motor) — veja `firmware/README.md`.
+**Gravar o firmware** (precisa do [PlatformIO](https://platformio.org)): abra `firmware-base/` e comece pelo marco **M0** (só serial, sem motor) — veja `firmware-base/README.md`.
 
 ### Roadmap
 
@@ -284,7 +286,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 ### Licença
 
 - **App + bibliotecas + ferramentas + firmware de pedal/freio:** [MIT](https://opensource.org/licenses/MIT).
-- **Firmware do volante** (`firmware/`): **LGPL-3.0** — linca as bibliotecas LGPL `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`.
+- **Firmware da base (wheelbase)** (`firmware-base/`): **LGPL-3.0** — linca as bibliotecas LGPL `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`.
 
 Todo arquivo-fonte traz um cabeçalho declarando sua licença.
 

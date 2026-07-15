@@ -1,6 +1,7 @@
-# DriveLab Firmware (Trilho B)
+# DriveLab Firmware — Base / Wheelbase (Trilho B)
 
-Firmware para a **ODESC v4.2 (STM32F405)** — o lado do dispositivo do volante DriveLab.
+Firmware da **base** (wheelbase) DriveLab — **ODESC v4.2 (STM32F405)** + motor direct-drive.
+*(O firmware do aro/volante — botões, LEDs, pás — seria o `firmware-wheel/`, ainda não iniciado.)*
 Design/decisões: [`../docs/superpowers/specs/2026-07-13-drivelab-firmware-trilho-b-design.md`](../docs/superpowers/specs/2026-07-13-drivelab-firmware-trilho-b-design.md).
 
 > **Licença:** este firmware será **LGPL** a partir do M0.5 (quando adicionarmos as libs de FFB LGPL — `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`). O app DriveLab Studio e as libs .NET seguem MIT. O código atual (M0) é nosso; a mudança de licença acontece ao integrar as libs.
@@ -20,7 +21,7 @@ Design/decisões: [`../docs/superpowers/specs/2026-07-13-drivelab-firmware-trilh
 - Alimentação: **não precisa de motor**. O USB/ST-Link já alimenta a lógica. (Não conecte o motor no M0.)
 
 ### Passos
-1. Abra a pasta `firmware/` no VS Code (PlatformIO detecta o `platformio.ini`).
+1. Abra a pasta `firmware-base/` no VS Code (PlatformIO detecta o `platformio.ini`).
 2. Conecte o ST-Link (ou ponha em DFU) e o cabo USB da ODESC.
 3. **Build**: ícone ✓ do PlatformIO (ou `pio run`). A primeira vez baixa o framework — leva alguns minutos.
 4. **Upload**: ícone → do PlatformIO (ou `pio run -t upload`).
