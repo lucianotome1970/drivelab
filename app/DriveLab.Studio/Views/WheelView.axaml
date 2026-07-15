@@ -7,130 +7,138 @@
              x:DataType="vm:WheelViewModel">
     <Border Classes="card">
         <Grid>
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="16" MaxWidth="560" HorizontalAlignment="Left" Margin="6,40,6,6">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <StackPanel Spacing="16" Margin="6,40,6,6">
+                    <TextBlock Text="{loc:Translate Wheel_Config}" Classes="h2" />
 
-                    <!-- Seção A: iluminação dos botões -->
-                    <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="h2" />
-                    <Grid Width="480" Height="480" HorizontalAlignment="Center">
-                        <Image Source="avares://DriveLab.Studio/Assets/wheel.png" Stretch="Uniform" />
-                        <ItemsControl ItemsSource="{Binding Buttons}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><Canvas Width="480" Height="480" /></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.Styles>
-                                <Style Selector="ContentPresenter" x:DataType="vm:WheelButtonViewModel">
-                                    <Setter Property="Canvas.Left" Value="{Binding Left}" />
-                                    <Setter Property="Canvas.Top" Value="{Binding Top}" />
-                                </Style>
-                                <!-- Botão selecionado ganha borda branca grossa -->
-                                <Style Selector="Button.selected">
-                                    <Setter Property="BorderThickness" Value="3" />
-                                </Style>
-                            </ItemsControl.Styles>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:WheelButtonViewModel">
-                                    <Button Width="22" Height="22" CornerRadius="11" Padding="0"
-                                            Command="{Binding $parent[ItemsControl].((vm:WheelViewModel)DataContext).SelectButtonCommand}"
-                                            CommandParameter="{Binding}"
-                                            Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
-                                            BorderBrush="White" BorderThickness="0"
-                                            Classes.selected="{Binding IsSelected}"
-                                            ToolTip.Tip="{Binding Name}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Grid>
+                    <!-- Duas colunas: volante+cores à esquerda, pás à direita -->
+                    <Grid ColumnDefinitions="Auto,28,Auto" HorizontalAlignment="Left">
 
-                    <!-- Paleta de cores -->
-                    <TextBlock Text="{Binding SelectedButton.Name, FallbackValue=''}" Classes="muted" />
-                    <ItemsControl ItemsSource="{Binding Palette}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="x:String">
-                                <Button Width="32" Height="32" CornerRadius="16" Margin="4" Padding="0"
-                                        Background="{Binding Converter={x:Static conv:HexToBrushConverter.Instance}}"
-                                        BorderBrush="{DynamicResource DlBorder}" BorderThickness="1"
-                                        Command="{Binding $parent[ItemsControl].((vm:WheelViewModel)DataContext).SetColorCommand}"
-                                        CommandParameter="{Binding}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        <!-- Coluna esquerda: desenho do volante + cores dos botões -->
+                        <StackPanel Grid.Column="0" Spacing="12" Width="480">
+                            <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="muted" />
+                            <Grid Width="480" Height="480" HorizontalAlignment="Center">
+                                <Image Source="avares://DriveLab.Studio/Assets/wheel.png" Stretch="Uniform" />
+                                <ItemsControl ItemsSource="{Binding Buttons}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><Canvas Width="480" Height="480" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ContentPresenter" x:DataType="vm:WheelButtonViewModel">
+                                            <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                            <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                        </Style>
+                                        <Style Selector="Button.selected">
+                                            <Setter Property="BorderThickness" Value="3" />
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:WheelButtonViewModel">
+                                            <Button Width="22" Height="22" CornerRadius="11" Padding="0"
+                                                    Command="{Binding $parent[ItemsControl].((vm:WheelViewModel)DataContext).SelectButtonCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
+                                                    BorderBrush="White" BorderThickness="0"
+                                                    Classes.selected="{Binding IsSelected}"
+                                                    ToolTip.Tip="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
 
-                    <!-- Seção B: pás -->
-                    <TextBlock Text="{loc:Translate Wheel_Paddles}" Classes="h2" Margin="0,10,0,0" />
-                    <TextBlock Text="{loc:Translate Wheel_PaddleCount}" Classes="muted" />
-                    <UniformGrid Rows="1" MaxWidth="200" HorizontalAlignment="Left">
-                        <Button Classes="chip" Content="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
-                                Command="{Binding SetPaddleCountCommand}" CommandParameter="2"
-                                Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=2}" />
-                        <Button Classes="chip" Content="4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
-                                Command="{Binding SetPaddleCountCommand}" CommandParameter="4"
-                                Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=4}" />
-                    </UniformGrid>
-
-                    <!-- Par de cima: marcha (fixo) -->
-                    <Grid ColumnDefinitions="*,*">
-                        <Border Grid.Column="0" Classes="card" Margin="0,0,4,0" Padding="10">
-                            <TextBlock Text="{loc:Translate Wheel_ShiftDown}" HorizontalAlignment="Center" />
-                        </Border>
-                        <Border Grid.Column="1" Classes="card" Margin="4,0,0,0" Padding="10">
-                            <TextBlock Text="{loc:Translate Wheel_ShiftUp}" HorizontalAlignment="Center" />
-                        </Border>
-                    </Grid>
-
-                    <!-- Par de baixo (só quando 4 pás) -->
-                    <StackPanel Spacing="10" IsVisible="{Binding ShowBottomPair}">
-                    <StackPanel Spacing="10" DataContext="{Binding BottomPair}"
-                                x:DataType="vm:PaddlePairViewModel">
-                        <TextBlock Text="{loc:Translate Wheel_Function}" Classes="muted" />
-                        <UniformGrid Rows="1">
-                            <Button Classes="chip" Content="{loc:Translate Wheel_Clutch}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                    Command="{Binding SetFunctionCommand}" CommandParameter="Clutch"
-                                    Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Clutch}" />
-                            <Button Classes="chip" Content="{loc:Translate Wheel_Free}" Margin="3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                    Command="{Binding SetFunctionCommand}" CommandParameter="Free"
-                                    Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Free}" />
-                            <Button Classes="chip" Content="{loc:Translate Wheel_Button}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                    Command="{Binding SetFunctionCommand}" CommandParameter="Button"
-                                    Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Button}" />
-                        </UniformGrid>
-
-                        <StackPanel Spacing="10" IsVisible="{Binding ShowMode}">
-                            <TextBlock Text="{loc:Translate Wheel_Mode}" Classes="muted" />
-                            <UniformGrid Rows="1">
-                                <Button Classes="chip" Content="{loc:Translate Wheel_Combined}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                        Command="{Binding SetModeCommand}" CommandParameter="Combined"
-                                        Classes.selected="{Binding Mode, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Combined}" />
-                                <Button Classes="chip" Content="{loc:Translate Wheel_Independent}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                        Command="{Binding SetModeCommand}" CommandParameter="Independent"
-                                        Classes.selected="{Binding Mode, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Independent}" />
-                            </UniformGrid>
+                            <!-- Paleta de cores (aplica no botão selecionado) -->
+                            <TextBlock Text="{Binding SelectedButton.Name, FallbackValue=''}" Classes="muted" />
+                            <ItemsControl ItemsSource="{Binding Palette}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Button Width="32" Height="32" CornerRadius="16" Margin="4" Padding="0"
+                                                Background="{Binding Converter={x:Static conv:HexToBrushConverter.Instance}}"
+                                                BorderBrush="{DynamicResource DlBorder}" BorderThickness="1"
+                                                Command="{Binding $parent[ItemsControl].((vm:WheelViewModel)DataContext).SetColorCommand}"
+                                                CommandParameter="{Binding}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
 
-                        <TextBlock Text="{loc:Translate Wheel_Actuation}" Classes="muted" />
-                        <UniformGrid Rows="1">
-                            <Button Classes="chip" Content="{loc:Translate Wheel_Digital}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                    Command="{Binding SetActuationCommand}" CommandParameter="Digital"
-                                    Classes.selected="{Binding Actuation, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Digital}" />
-                            <Button Classes="chip" Content="{loc:Translate Wheel_Progression}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                    Command="{Binding SetActuationCommand}" CommandParameter="Progression"
-                                    Classes.selected="{Binding Actuation, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Progression}" />
-                        </UniformGrid>
+                        <!-- Coluna direita: configuração das pás -->
+                        <StackPanel Grid.Column="2" Spacing="10" Width="360" VerticalAlignment="Top">
+                            <TextBlock Text="{loc:Translate Wheel_Paddles}" Classes="h2" />
+                            <TextBlock Text="{loc:Translate Wheel_PaddleCount}" Classes="muted" />
+                            <UniformGrid Rows="1" MaxWidth="200" HorizontalAlignment="Left">
+                                <Button Classes="chip" Content="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
+                                        Command="{Binding SetPaddleCountCommand}" CommandParameter="2"
+                                        Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=2}" />
+                                <Button Classes="chip" Content="4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                                        Command="{Binding SetPaddleCountCommand}" CommandParameter="4"
+                                        Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=4}" />
+                            </UniformGrid>
 
-                        <StackPanel Spacing="6" IsVisible="{Binding ShowBitePoint}">
-                            <TextBlock Text="{loc:Translate Wheel_BitePoint}" Classes="muted" />
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding BitePoint}" VerticalAlignment="Center" />
-                                <Border Grid.Column="1" Classes="valueBox" MinWidth="46" Padding="8,3">
-                                    <TextBlock Text="{Binding BitePoint, StringFormat={}{0:0}%}" />
+                            <!-- Par de cima: marcha (fixo) -->
+                            <Grid ColumnDefinitions="*,*">
+                                <Border Grid.Column="0" Classes="card" Margin="0,0,4,0" Padding="10">
+                                    <TextBlock Text="{loc:Translate Wheel_ShiftDown}" HorizontalAlignment="Center" />
+                                </Border>
+                                <Border Grid.Column="1" Classes="card" Margin="4,0,0,0" Padding="10">
+                                    <TextBlock Text="{loc:Translate Wheel_ShiftUp}" HorizontalAlignment="Center" />
                                 </Border>
                             </Grid>
+
+                            <!-- Par de baixo (só quando 4 pás) -->
+                            <StackPanel Spacing="10" IsVisible="{Binding ShowBottomPair}">
+                                <StackPanel Spacing="10" DataContext="{Binding BottomPair}"
+                                            x:DataType="vm:PaddlePairViewModel">
+                                    <TextBlock Text="{loc:Translate Wheel_Function}" Classes="muted" />
+                                    <UniformGrid Rows="1">
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Clutch}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetFunctionCommand}" CommandParameter="Clutch"
+                                                Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Clutch}" />
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Free}" Margin="3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetFunctionCommand}" CommandParameter="Free"
+                                                Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Free}" />
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Button}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetFunctionCommand}" CommandParameter="Button"
+                                                Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Button}" />
+                                    </UniformGrid>
+
+                                    <StackPanel Spacing="10" IsVisible="{Binding ShowMode}">
+                                        <TextBlock Text="{loc:Translate Wheel_Mode}" Classes="muted" />
+                                        <UniformGrid Rows="1">
+                                            <Button Classes="chip" Content="{loc:Translate Wheel_Combined}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding SetModeCommand}" CommandParameter="Combined"
+                                                    Classes.selected="{Binding Mode, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Combined}" />
+                                            <Button Classes="chip" Content="{loc:Translate Wheel_Independent}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding SetModeCommand}" CommandParameter="Independent"
+                                                    Classes.selected="{Binding Mode, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Independent}" />
+                                        </UniformGrid>
+                                    </StackPanel>
+
+                                    <TextBlock Text="{loc:Translate Wheel_Actuation}" Classes="muted" />
+                                    <UniformGrid Rows="1">
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Digital}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetActuationCommand}" CommandParameter="Digital"
+                                                Classes.selected="{Binding Actuation, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Digital}" />
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Progression}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetActuationCommand}" CommandParameter="Progression"
+                                                Classes.selected="{Binding Actuation, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Progression}" />
+                                    </UniformGrid>
+
+                                    <StackPanel Spacing="6" IsVisible="{Binding ShowBitePoint}">
+                                        <TextBlock Text="{loc:Translate Wheel_BitePoint}" Classes="muted" />
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding BitePoint}" VerticalAlignment="Center" />
+                                            <Border Grid.Column="1" Classes="valueBox" MinWidth="46" Padding="8,3">
+                                                <TextBlock Text="{Binding BitePoint, StringFormat={}{0:0}%}" />
+                                            </Border>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                    </StackPanel>
+                    </Grid>
                 </StackPanel>
             </ScrollViewer>
 

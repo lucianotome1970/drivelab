@@ -21,7 +21,8 @@
 
   <data name="Wheel_Title" xml:space="preserve"><value>Volante DriveLab</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Ângulo máximo</value></data>
-  <data name="Wheel_Leds" xml:space="preserve"><value>Iluminação dos botões</value></data>
+  <data name="Wheel_Config" xml:space="preserve"><value>Configuração do volante</value></data>
+  <data name="Wheel_Leds" xml:space="preserve"><value>Cores dos botões</value></data>
   <data name="Wheel_Paddles" xml:space="preserve"><value>Pás</value></data>
   <data name="Wheel_PaddleCount" xml:space="preserve"><value>Número de pás</value></data>
   <data name="Wheel_ShiftDown" xml:space="preserve"><value>Marcha ↓</value></data>
