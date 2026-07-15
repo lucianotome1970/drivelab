@@ -6,14 +6,15 @@
              xmlns:conv="using:DriveLab.Studio.Converters"
              x:Class="DriveLab.Studio.Views.HomeView"
              x:DataType="vm:HomeViewModel">
-    <ScrollViewer HorizontalScrollBarVisibility="Auto">
-        <!-- Colunas iguais + linha Auto: os cards esticam para a mesma altura -->
-        <Grid ColumnDefinitions="420,16,420,16,420,16,420" RowDefinitions="Auto" HorizontalAlignment="Left" Margin="0,0,0,16">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!-- Cards de 420 de largura; o painel cabe exatamente 3 por linha (3×436=1308),
+             o 4º quebra para a linha de baixo. Cada card tem sua altura natural. -->
+        <WrapPanel MaxWidth="1320" HorizontalAlignment="Left" Margin="0,0,0,16">
             <!-- Card do volante -->
-            <views:DashboardView Grid.Column="0" DataContext="{Binding Wheel}" />
+            <views:DashboardView Width="420" Margin="0,0,16,16" DataContext="{Binding Wheel}" />
 
             <!-- Card da base: um único controle de força total -->
-            <Border Grid.Column="2" Classes="card" DataContext="{Binding Base}"
+            <Border Width="420" Margin="0,0,16,16" Classes="card" DataContext="{Binding Base}"
                     x:DataType="vm:BaseViewModel">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{loc:Translate Home_Base}" Classes="h2" />
@@ -27,8 +28,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- Card resumo dos pedais (ao vivo) — mesmo tamanho do card do volante -->
-            <Border Grid.Column="4" Classes="card">
+            <!-- Card resumo dos pedais (ao vivo) -->
+            <Border Width="420" Margin="0,0,16,16" Classes="card">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{loc:Translate Home_Pedals}" Classes="h2" />
                     <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="360" Stretch="Uniform"
@@ -51,7 +52,7 @@
             </Border>
 
             <!-- Card do freio de mão (ao vivo) -->
-            <Border Grid.Column="6" Classes="card" DataContext="{Binding Handbrake}"
+            <Border Width="420" Margin="0,0,16,16" Classes="card" DataContext="{Binding Handbrake}"
                     x:DataType="vm:HandbrakeViewModel">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{loc:Translate Home_Handbrake}" Classes="h2" />
@@ -71,6 +72,6 @@
                     </Border>
                 </StackPanel>
             </Border>
-        </Grid>
+        </WrapPanel>
     </ScrollViewer>
 </UserControl>
