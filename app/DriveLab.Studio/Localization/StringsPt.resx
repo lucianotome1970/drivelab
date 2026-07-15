@@ -17,9 +17,26 @@
   <data name="Nav_WheelBase" xml:space="preserve"><value>Base do Volante</value></data>
   <data name="Nav_Pedals" xml:space="preserve"><value>Pedais</value></data>
   <data name="Nav_Handbrake" xml:space="preserve"><value>Freio de mão</value></data>
+  <data name="Nav_Wheel" xml:space="preserve"><value>Volante</value></data>
 
   <data name="Wheel_Title" xml:space="preserve"><value>Volante DriveLab</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Ângulo máximo</value></data>
+  <data name="Wheel_Leds" xml:space="preserve"><value>Iluminação dos botões</value></data>
+  <data name="Wheel_Paddles" xml:space="preserve"><value>Pás</value></data>
+  <data name="Wheel_PaddleCount" xml:space="preserve"><value>Número de pás</value></data>
+  <data name="Wheel_ShiftDown" xml:space="preserve"><value>Marcha ↓</value></data>
+  <data name="Wheel_ShiftUp" xml:space="preserve"><value>Marcha ↑</value></data>
+  <data name="Wheel_Function" xml:space="preserve"><value>Função</value></data>
+  <data name="Wheel_Mode" xml:space="preserve"><value>Modo</value></data>
+  <data name="Wheel_Actuation" xml:space="preserve"><value>Acionamento</value></data>
+  <data name="Wheel_BitePoint" xml:space="preserve"><value>Bite point</value></data>
+  <data name="Wheel_Clutch" xml:space="preserve"><value>Embreagem</value></data>
+  <data name="Wheel_Free" xml:space="preserve"><value>Livre</value></data>
+  <data name="Wheel_Button" xml:space="preserve"><value>Botão</value></data>
+  <data name="Wheel_Combined" xml:space="preserve"><value>Combinada</value></data>
+  <data name="Wheel_Independent" xml:space="preserve"><value>Independente</value></data>
+  <data name="Wheel_Digital" xml:space="preserve"><value>Digital</value></data>
+  <data name="Wheel_Progression" xml:space="preserve"><value>Progressão</value></data>
 
   <data name="Page_WheelBase" xml:space="preserve"><value>Base do Volante</value></data>
   <data name="Tab_Basic" xml:space="preserve"><value>Básico</value></data>
