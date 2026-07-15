@@ -93,11 +93,11 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 
 | Part | Notes |
 |------|-------|
-| **ODESC v4.2** (STM32F405) | ⚠️ **24 V variant** — never exceed ~24 V or you'll blow the bus caps. |
+| **ODESC v4.2** (STM32F405) | **Both variants supported** — **24 V** (35 V caps → keep the bus ≤ ~24 V) or **56 V** (63 V caps → up to 56 V). Match the PSU to your board. Running the **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. |
 | **Hoverboard hub motor** | The direct-drive actuator. |
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
-| **PSU 24 V / 30 A (720 W)** | Match the ODESC voltage. |
+| **PSU** | Match your ODESC variant: **≤24 V** for the 24 V board, **up to 56 V** for the 56 V board. Example: 24 V / 30 A (720 W). |
 | ST-Link V2 | To flash the STM32 (or DFU). |
 | *(optional)* RP2040 + HX711 load cell | For the pedals / handbrake modules. |
 
@@ -160,7 +160,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ### ⚠️ Safety
 
-- The ODESC here is the **24 V** version — **never** feed it more.
+- **Match the supply to your ODESC variant:** the **24 V board** must stay at ~24 V (35 V caps); the **56 V board** takes up to 56 V (63 V caps). **Never exceed your board's rating.** A 56 V board run on a 24 V supply has comfortable headroom.
 - The **2 Ω brake resistor is mandatory** before any closed-loop torque; regen braking pushes energy back onto the bus and will destroy the capacitors without it.
 - `M0`/`M0.5` run **with no motor connected**. Bring current up gradually. A direct-drive wheel has enough torque to hurt your wrist — keep an e-stop (the plug) within reach.
 
@@ -212,11 +212,11 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 
 | Peça | Observações |
 |------|-------------|
-| **ODESC v4.2** (STM32F405) | ⚠️ **Versão 24 V** — nunca ultrapasse ~24 V ou os capacitores do barramento estouram. |
+| **ODESC v4.2** (STM32F405) | **As duas variantes são suportadas** — **24 V** (caps 35 V → manter o barramento em ~24 V) ou **56 V** (caps 63 V → até 56 V). Case a fonte com a sua placa. Usar a **placa 56 V numa fonte mais baixa (ex.: 24 V) dá folga extra** contra picos de tensão da frenagem regen. |
 | **Motor de roda de hoverboard** | O atuador direct-drive. |
 | **Encoder** | Omron E6B2-CWZ6C incremental **ou** magnético absoluto AS5047P/MT6701 — sua escolha. |
 | **Brake resistor 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia de frenagem regenerativa para não destruir os capacitores. |
-| **Fonte 24 V / 30 A (720 W)** | Casar com a tensão da ODESC. |
+| **Fonte** | Casar com a sua variante de ODESC: **≤24 V** na placa 24 V, **até 56 V** na placa 56 V. Ex.: 24 V / 30 A (720 W). |
 | ST-Link V2 | Para gravar o STM32 (ou DFU). |
 | *(opcional)* RP2040 + célula HX711 | Para os módulos de pedais / freio de mão. |
 
@@ -279,7 +279,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ### ⚠️ Segurança
 
-- A ODESC aqui é a versão **24 V** — **nunca** alimente com mais.
+- **Case a fonte com a sua variante de ODESC:** a **placa 24 V** fica em ~24 V (caps 35 V); a **placa 56 V** aceita até 56 V (caps 63 V). **Nunca ultrapasse o limite da SUA placa.** Uma placa 56 V numa fonte de 24 V tem folga confortável.
 - O **brake resistor de 2 Ω é obrigatório** antes de qualquer torque em malha fechada; a frenagem regenerativa devolve energia ao barramento e, sem ele, destrói os capacitores.
 - `M0`/`M0.5` rodam **sem motor conectado**. Suba a corrente aos poucos. Um volante direct-drive tem torque pra machucar o pulso — mantenha um e-stop (a tomada) ao alcance.
 
