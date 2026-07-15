@@ -8,6 +8,7 @@
         SystemDecorations="None"
         CanResize="False"
         ShowInTaskbar="False"
+        Topmost="True"
         WindowStartupLocation="CenterScreen"
         Background="#0F1216">
     <Grid>

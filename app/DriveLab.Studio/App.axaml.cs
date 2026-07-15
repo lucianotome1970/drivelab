@@ -21,6 +21,7 @@ public partial class App : Application
             var splashVm = new SplashViewModel();
             var splash = new SplashWindow { DataContext = splashVm };
             splash.Show();
+            splash.Activate(); // pede foreground: sem isso o SO às vezes deixa o splash atrás
 
             _ = RunStartupAsync(desktop, splash, splashVm, simulatorMode);
         }
@@ -55,6 +56,7 @@ public partial class App : Application
         desktop.MainWindow = main;
         desktop.Exit += (_, _) => viewModel.Dispose();
         main.Show();
+        main.Activate(); // garante que a janela principal fica em foreground ao fechar o splash
         splash.Close();
     }
 }
