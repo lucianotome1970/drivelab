@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:conv="using:DriveLab.Studio.Converters"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.HardwareMonitorView"
+             x:DataType="vm:HardwareMonitorViewModel">
+    <UserControl.Resources>
+        <conv:TelemetryLevelToBrushConverter x:Key="LevelBrush" />
+    </UserControl.Resources>
+    <Border Classes="card">
+        <StackPanel Spacing="16">
+            <TextBlock Text="{loc:Translate Monitor_Title}" Classes="h2" />
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate Monitor_BusVoltage}"
+                           Foreground="{DynamicResource DlText}" Margin="0,6" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding BusVoltageText}"
+                           Foreground="{Binding BusVoltageLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Translate Monitor_MotorCurrent}"
+                           Foreground="{DynamicResource DlText}" Margin="0,6" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MotorCurrentText}"
+                           Foreground="{DynamicResource DlMuted}" Margin="0,6" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate Monitor_FetTemp}"
+                           Foreground="{DynamicResource DlText}" Margin="0,6" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FetTempText}"
+                           Foreground="{Binding FetTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Translate Monitor_MotorTemp}"
+                           Foreground="{DynamicResource DlText}" Margin="0,6" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding MotorTempText}"
+                           Foreground="{Binding MotorTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Translate Monitor_McuTemp}"
+                           Foreground="{DynamicResource DlText}" Margin="0,6" />
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding McuTempText}"
+                           Foreground="{Binding McuTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:views="using:DriveLab.Studio.Views"
+             x:Class="DriveLab.Studio.Views.HardwareTabView"
+             x:DataType="vm:HardwareTabViewModel">
+    <!-- SettingsGroupView já se envolve em seu próprio ScrollViewer, então não repetimos aqui:
+         o painel de monitor fica fixo no topo (DockPanel.Dock="Top") e os settings ocupam
+         o restante, rolando internamente se precisar. -->
+    <DockPanel>
+        <views:HardwareMonitorView DockPanel.Dock="Top" Margin="0,0,0,16" DataContext="{Binding Monitor}" />
+        <views:SettingsGroupView />
+    </DockPanel>
+</UserControl>

@@ -7,7 +7,7 @@ namespace DriveLab.Studio.ViewModels;
 /// Página de ajustes para um conjunto curado de settings (ex.: "Base do Volante",
 /// "Avançado"). Carrega os valores do dispositivo ao conectar.
 /// </summary>
-public sealed class SettingsGroupViewModel : ViewModelBase
+public class SettingsGroupViewModel : ViewModelBase
 {
     private readonly DeviceSession _session;
 
