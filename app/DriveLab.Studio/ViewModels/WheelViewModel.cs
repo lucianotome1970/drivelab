@@ -14,12 +14,23 @@ public partial class WheelViewModel : ViewModelBase
 {
     private readonly IWheelProfileStorage _storage;
 
-    /// <summary>Controles no desenho do volante: 8 botões + 5 giratórios (coloríveis + pressionáveis).</summary>
+    /// <summary>Só em modo /simulator o clique simula pressionar (acende). Em modo real o "aceso"
+    /// virá da telemetria do firmware (via SetControlPressed), não do mouse.</summary>
+    public bool IsSimulator { get; }
+
+    /// <summary>Botões do desenho do volante (coloríveis + pressionáveis). Os giratórios NÃO entram
+    /// aqui: são encoders (giram, não clicam) — o desenho já os mostra; girar fica p/ o futuro.</summary>
     public IReadOnlyList<WheelButtonViewModel> Buttons { get; }
 
-    /// <summary>Pás (fora do desenho — no painel): [0]=marcha↓ [1]=marcha↑ [2]=embreagem E [3]=embreagem D.
-    /// Pressionáveis (acendem), não coloríveis.</summary>
-    public IReadOnlyList<WheelButtonViewModel> Paddles { get; }
+    // Pás (no painel, não no desenho) — pressionáveis (acendem). Propriedades nomeadas (não índice)
+    // para as bindings compiladas resolverem sem problema.
+    public WheelButtonViewModel ShiftDown { get; } = new("ShiftDown", 0, 0, "#FF9F0A");
+    public WheelButtonViewModel ShiftUp { get; } = new("ShiftUp", 0, 0, "#FF9F0A");
+    public WheelButtonViewModel ClutchLeft { get; } = new("ClutchLeft", 0, 0, "#FF9F0A");
+    public WheelButtonViewModel ClutchRight { get; } = new("ClutchRight", 0, 0, "#FF9F0A");
+
+    /// <summary>As 4 pás (p/ o lookup do SetControlPressed).</summary>
+    public IReadOnlyList<WheelButtonViewModel> Paddles => new[] { ShiftDown, ShiftUp, ClutchLeft, ClutchRight };
 
     public IReadOnlyList<string> Palette { get; } = new[]
     {
@@ -36,36 +47,21 @@ public partial class WheelViewModel : ViewModelBase
 
     public bool ShowBottomPair => PaddleCount == 4;
 
-    public WheelViewModel(IWheelProfileStorage storage)
+    public WheelViewModel(IWheelProfileStorage storage, bool simulatorMode = false)
     {
         _storage = storage;
-        // Nome, posição normalizada (0-1 sobre a imagem quadrada), cor padrão, diâmetro do marcador.
+        IsSimulator = simulatorMode;
+        // Nome, posição normalizada (0-1 sobre a imagem quadrada wheel.png), cor padrão.
         Buttons = new List<WheelButtonViewModel>
         {
-            // Botões (marcador pequeno)
-            new("N",     0.22, 0.33, "#BF5AF2"),
-            new("PIT",   0.29, 0.34, "#FFD60A"),
-            new("DRS",   0.71, 0.34, "#34C759"),
-            new("KILL",  0.78, 0.33, "#FF3B30"),
-            new("RADIO", 0.25, 0.45, "#32ADE6"),
-            new("TC",    0.25, 0.51, "#FFD60A"),
-            new("MENU",  0.75, 0.45, "#FF9F0A"),
-            new("ESC",   0.75, 0.51, "#32ADE6"),
-            // Giratórios (marcador maior) — cores dos anéis do desenho
-            new("BRAKE BIAS", 0.30, 0.62, "#FF9F0A", 40),
-            new("MAP",        0.38, 0.71, "#34C759", 40),
-            new("FUEL",       0.50, 0.73, "#FF9F0A", 40),
-            new("BOOST",      0.62, 0.71, "#0A84FF", 40),
-            new("ABS",        0.71, 0.62, "#FF9F0A", 40),
-        };
-
-        // Pás (no painel, não no desenho) — acendem ao pressionar, cor de acento.
-        Paddles = new List<WheelButtonViewModel>
-        {
-            new("ShiftDown",   0, 0, "#FF9F0A"),
-            new("ShiftUp",     0, 0, "#FF9F0A"),
-            new("ClutchLeft",  0, 0, "#FF9F0A"),
-            new("ClutchRight", 0, 0, "#FF9F0A"),
+            new("N",     0.222, 0.348, "#BF5AF2"),
+            new("PIT",   0.293, 0.352, "#FFD60A"),
+            new("DRS",   0.718, 0.348, "#34C759"),
+            new("KILL",  0.786, 0.346, "#FF3B30"),
+            new("RADIO", 0.256, 0.452, "#32ADE6"),
+            new("TC",    0.256, 0.520, "#FFD60A"),
+            new("MENU",  0.744, 0.452, "#FF9F0A"),
+            new("ESC",   0.744, 0.520, "#32ADE6"),
         };
 
         // Carrega o perfil salvo no arranque (config persiste entre execuções, como MOZA).

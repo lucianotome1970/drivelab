@@ -79,7 +79,7 @@ public static class CompositionRoot
         // dos pedais e do freio de mão, lado a lado. Base usa a MESMA sessão do volante.
         var home = new HomeViewModel(new DashboardViewModel(session), pedals, handbrake, new BaseViewModel(session));
 
-        var wheel = new WheelViewModel(new JsonWheelProfileStorage());
+        var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode);
 
         var pages = new List<NavItem>
         {

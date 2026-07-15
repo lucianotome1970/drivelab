@@ -18,10 +18,9 @@ public class WheelViewModelTests
     public void Builds_Eight_Buttons_With_Default_Colors()
     {
         var vm = New(out _);
-        Assert.Equal(13, vm.Buttons.Count); // 8 botões + 5 giratórios
+        Assert.Equal(8, vm.Buttons.Count);
         Assert.Equal("#BF5AF2", vm.Buttons.First(b => b.Name == "N").ColorHex);
         Assert.Equal("#34C759", vm.Buttons.First(b => b.Name == "DRS").ColorHex);
-        Assert.Equal(40, vm.Buttons.First(b => b.Name == "MAP").Diameter); // giratório maior
         Assert.Equal(4, vm.Paddles.Count);
     }
 

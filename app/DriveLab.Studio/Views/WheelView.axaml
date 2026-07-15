@@ -22,17 +22,12 @@
             <Setter Property="Opacity" Value="0.9" />
         </Style>
 
-        <!-- Caixa de pá: acende (IsPressed) na cor de acento -->
-        <Style Selector="Border.paddle">
-            <Setter Property="Background" Value="{DynamicResource DlCard}" />
+        <!-- Caixa de pá: borda/forma (o fundo acende via binding inline no IsPressed) -->
+        <Style Selector="Border.paddleBox">
             <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="Padding" Value="10" />
-        </Style>
-        <Style Selector="Border.paddle.pressed">
-            <Setter Property="Background" Value="#FF9F0A" />
-            <Setter Property="BorderBrush" Value="#FF9F0A" />
+            <Setter Property="Padding" Value="12" />
         </Style>
     </UserControl.Styles>
 
@@ -107,15 +102,15 @@
 
                             <!-- Par de cima: marcha (pressionável) -->
                             <Grid ColumnDefinitions="*,*">
-                                <Border Grid.Column="0" Classes="paddle" Margin="0,0,4,0"
-                                        DataContext="{Binding Paddles[0]}" x:DataType="vm:WheelButtonViewModel"
-                                        Classes.pressed="{Binding IsPressed}"
+                                <Border Grid.Column="0" Classes="paddleBox" Margin="0,0,4,0"
+                                        DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel"
+                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
                                         PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
                                     <TextBlock Text="{loc:Translate Wheel_ShiftDown}" HorizontalAlignment="Center" />
                                 </Border>
-                                <Border Grid.Column="1" Classes="paddle" Margin="4,0,0,0"
-                                        DataContext="{Binding Paddles[1]}" x:DataType="vm:WheelButtonViewModel"
-                                        Classes.pressed="{Binding IsPressed}"
+                                <Border Grid.Column="1" Classes="paddleBox" Margin="4,0,0,0"
+                                        DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel"
+                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
                                         PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
                                     <TextBlock Text="{loc:Translate Wheel_ShiftUp}" HorizontalAlignment="Center" />
                                 </Border>
@@ -123,15 +118,15 @@
 
                             <!-- Par de baixo: pás de embreagem (pressionáveis) — só quando 4 pás -->
                             <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowBottomPair}">
-                                <Border Grid.Column="0" Classes="paddle" Margin="0,0,4,0"
-                                        DataContext="{Binding Paddles[2]}" x:DataType="vm:WheelButtonViewModel"
-                                        Classes.pressed="{Binding IsPressed}"
+                                <Border Grid.Column="0" Classes="paddleBox" Margin="0,0,4,0"
+                                        DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel"
+                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
                                         PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
                                     <TextBlock Text="{loc:Translate Wheel_Clutch}" HorizontalAlignment="Center" />
                                 </Border>
-                                <Border Grid.Column="1" Classes="paddle" Margin="4,0,0,0"
-                                        DataContext="{Binding Paddles[3]}" x:DataType="vm:WheelButtonViewModel"
-                                        Classes.pressed="{Binding IsPressed}"
+                                <Border Grid.Column="1" Classes="paddleBox" Margin="4,0,0,0"
+                                        DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel"
+                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
                                         PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
                                     <TextBlock Text="{loc:Translate Wheel_Clutch}" HorizontalAlignment="Center" />
                                 </Border>
