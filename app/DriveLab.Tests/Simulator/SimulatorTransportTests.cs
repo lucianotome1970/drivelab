@@ -64,6 +64,22 @@ public class SimulatorTransportTests
     }
 
     [Fact]
+    public async Task BuildState_Includes_Synthetic_Telemetry()
+    {
+        var transport = await ConnectedAsync();
+        DeviceState? received = null;
+        transport.StateReceived += (_, state) => received = state;
+
+        transport.Step(0.01);
+
+        Assert.NotNull(received);
+        Assert.Equal((ushort)24000, received!.BusVoltageMv);
+        Assert.Equal(38, received.FetTempC);
+        Assert.Equal(42, received.MotorTempC);
+        Assert.Equal(45, received.McuTempC);
+    }
+
+    [Fact]
     public async Task ResetCenter_Command_Recenters()
     {
         var transport = await ConnectedAsync();
