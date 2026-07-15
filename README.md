@@ -60,6 +60,30 @@ Custom firmware for the ODESC v4.2 + a cross-platform configurator app.</p>
 
 ---
 
+## 🔌 Base board / Placa base
+
+The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class controller** — the firmware is the same for all of them. Two proven, interchangeable options (both **F405, 8–56 V, native USB**):
+
+🇧🇷 *A base (o estágio do motor FFB) roda em qualquer **controladora F405 classe-ODrive** — o firmware é o mesmo. Duas opções comprovadas e intercambiáveis (ambas **F405, 8–56 V, USB nativo**):*
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/screenshots/board-odesc-v42.png" width="100%" alt="ODESC v4.2 wiring" /><br/>
+<b>ODESC v4.2</b> — 24 V or 56 V variant · ~70 A / 120 A peak · ships with a brake resistor.<br/>
+Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.
+</td>
+<td width="50%" valign="top">
+<img src="docs/screenshots/board-mks-xdrive-s.png" width="100%" alt="MKS XDrive-S" /><br/>
+<b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A peak · same F405 MCU, so a drop-in alternative · ships with heatsinks + brake resistor.
+</td>
+</tr>
+</table>
+
+> Any F405 ODrive-class board works (ODESC, MKS XDrive, ODrive v3.6…). The MKS **XDrive MINI** adds an onboard AS5047P encoder, but on a hub motor you usually mount an external encoder on the shaft anyway. · *Qualquer placa F405 classe-ODrive serve (ODESC, MKS XDrive, ODrive v3.6…). A **XDrive MINI** traz um AS5047P onboard, mas num hub motor você normalmente usa um encoder externo no eixo.*
+
+---
+
 ## 🇬🇧 English
 
 ### What is DriveLab?
@@ -93,7 +117,7 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 
 | Part | Notes |
 |------|-------|
-| **ODESC v4.2** (STM32F405) | **Both variants supported** — **24 V** (35 V caps → keep the bus ≤ ~24 V) or **56 V** (63 V caps → up to 56 V). Match the PSU to your board. Running the **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. |
+| **ODESC v4.2** or **MKS XDrive** (STM32F405) | Any F405 ODrive-class board — see [Base board](#-base-board--placa-base). ODESC comes in **24 V** (35 V caps → keep the bus ≤ ~24 V) and **56 V** (63 V caps → up to 56 V); MKS XDrive is 12–56 V. Match the PSU to your board. Running a **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. |
 | **Hoverboard hub motor** | The direct-drive actuator. |
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
@@ -212,7 +236,7 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 
 | Peça | Observações |
 |------|-------------|
-| **ODESC v4.2** (STM32F405) | **As duas variantes são suportadas** — **24 V** (caps 35 V → manter o barramento em ~24 V) ou **56 V** (caps 63 V → até 56 V). Case a fonte com a sua placa. Usar a **placa 56 V numa fonte mais baixa (ex.: 24 V) dá folga extra** contra picos de tensão da frenagem regen. |
+| **ODESC v4.2** ou **MKS XDrive** (STM32F405) | Qualquer placa F405 classe-ODrive — ver [Placa base](#-base-board--placa-base). A ODESC vem em **24 V** (caps 35 V → manter ~24 V) e **56 V** (caps 63 V → até 56 V); a MKS XDrive é 12–56 V. Case a fonte com a sua placa. Usar uma **placa 56 V numa fonte mais baixa (ex.: 24 V) dá folga extra** contra picos de regen. |
 | **Motor de roda de hoverboard** | O atuador direct-drive. |
 | **Encoder** | Omron E6B2-CWZ6C incremental **ou** magnético absoluto AS5047P/MT6701 — sua escolha. |
 | **Brake resistor 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia de frenagem regenerativa para não destruir os capacitores. |
