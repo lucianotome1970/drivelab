@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  VirtualWheelTests.cs — Testes do VirtualBase: física do volante (força, mola, limites).
+//  VirtualBaseTests.cs — Testes do VirtualBase: física do volante (força, mola, limites).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -9,7 +9,7 @@ using DriveLab.Simulator;
 
 namespace DriveLab.Tests.Simulator;
 
-public class VirtualWheelTests
+public class VirtualBaseTests
 {
     private static VirtualBase StepMany(VirtualBase wheel, int steps, double dt = 0.01)
     {
