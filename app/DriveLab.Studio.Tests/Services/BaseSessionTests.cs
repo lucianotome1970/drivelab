@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DeviceSessionTests.cs — Testes de DeviceSession (conectar, desconectar, gravar/ler settings, comandos).
+//  BaseSessionTests.cs — Testes de BaseSession (conectar, desconectar, gravar/ler settings, comandos).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -13,12 +13,12 @@ using DriveLab.Studio.Services;
 
 namespace DriveLab.Studio.Tests.Services;
 
-public class DeviceSessionTests
+public class BaseSessionTests
 {
-    private static DeviceSession NewSession(out FakeTransport transport)
+    private static BaseSession NewSession(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        return new DeviceSession(transport, new ImmediateUiDispatcher());
+        return new BaseSession(transport, new ImmediateUiDispatcher());
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public class DeviceSessionTests
     public async Task ConnectAsync_Does_Not_Raise_Connected_When_Transport_Fails_To_Open()
     {
         var transport = new FakeTransport { ConnectSucceeds = false };
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var raised = false;
         session.Connected += (_, _) => raised = true;
 

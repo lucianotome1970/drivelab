@@ -24,7 +24,7 @@ public class SettingsGroupViewModelTests
     private static SettingsGroupViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         return new SettingsGroupViewModel(session, "Base do Volante", Ids);
     }
 
@@ -51,7 +51,7 @@ public class SettingsGroupViewModelTests
     public async Task Fields_AutoLoad_When_Session_Connects()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingsGroupViewModel(session, "Base do Volante", Ids);
 
         await session.ConnectAsync(); // raises Connected -> auto-load

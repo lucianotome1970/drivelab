@@ -18,7 +18,7 @@ public class HardwareMonitorViewModelTests
     private static (HardwareMonitorViewModel vm, FakeTransport t) Make()
     {
         var t = new FakeTransport();
-        var session = new DeviceSession(t, new ImmediateUiDispatcher());
+        var session = new BaseSession(t, new ImmediateUiDispatcher());
         return (new HardwareMonitorViewModel(session), t);
     }
 

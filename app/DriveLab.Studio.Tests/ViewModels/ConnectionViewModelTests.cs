@@ -19,7 +19,7 @@ public class ConnectionViewModelTests
     private static ConnectionViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         return new ConnectionViewModel(session, new ImmediateUiDispatcher());
     }
 

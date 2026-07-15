@@ -17,7 +17,7 @@ public class DeviceAutoConnectorTests
     public async Task Connects_When_Device_Present_Disconnects_When_Gone()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var present = false;
         using var ac = new DeviceAutoConnector(
             () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
@@ -43,7 +43,7 @@ public class DeviceAutoConnectorTests
     public async Task Probe_Throwing_Is_Treated_As_Absent()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         using var ac = new DeviceAutoConnector(
             () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
             () => throw new System.Exception("HID falhou"), new ImmediateUiDispatcher());

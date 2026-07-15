@@ -18,7 +18,7 @@ public class TestViewModelTests
     private static TestViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         return new TestViewModel(session);
     }
 

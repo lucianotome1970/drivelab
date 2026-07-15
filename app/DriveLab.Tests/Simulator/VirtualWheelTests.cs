@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  VirtualWheelTests.cs — Testes do VirtualWheel: física do volante (força, mola, limites).
+//  VirtualWheelTests.cs — Testes do VirtualBase: física do volante (força, mola, limites).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -11,7 +11,7 @@ namespace DriveLab.Tests.Simulator;
 
 public class VirtualWheelTests
 {
-    private static VirtualWheel StepMany(VirtualWheel wheel, int steps, double dt = 0.01)
+    private static VirtualBase StepMany(VirtualBase wheel, int steps, double dt = 0.01)
     {
         for (var i = 0; i < steps; i++) wheel.Step(dt);
         return wheel;
@@ -20,7 +20,7 @@ public class VirtualWheelTests
     [Fact]
     public void Constant_Force_Moves_Wheel_In_Force_Direction()
     {
-        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: 0.5, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
 
         StepMany(wheel, 50);
@@ -31,7 +31,7 @@ public class VirtualWheelTests
     [Fact]
     public void Spring_Returns_Wheel_Toward_Center()
     {
-        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { TotalStrength01 = 1.0 };
 
         // Empurra pra fora com força constante.
         wheel.SetInputs(constant: 0.6, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
@@ -48,7 +48,7 @@ public class VirtualWheelTests
     [Fact]
     public void ResetCenter_Zeroes_Angle_And_Velocity()
     {
-        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: 0.5, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
         StepMany(wheel, 30);
 
@@ -61,7 +61,7 @@ public class VirtualWheelTests
     [Fact]
     public void Force_Disabled_Stops_Wheel_And_Holds_Angle()
     {
-        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: 0.8, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
         StepMany(wheel, 50);
         Assert.True(Math.Abs(wheel.AngleRad) > 0, "wheel should have moved while force enabled");
@@ -79,7 +79,7 @@ public class VirtualWheelTests
     [Fact]
     public void ResetCenter_Holds_At_Zero_While_Force_Disabled()
     {
-        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: 0.8, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
         StepMany(wheel, 50);
 
@@ -93,7 +93,7 @@ public class VirtualWheelTests
     [Fact]
     public void Angle_Is_Clamped_To_Half_Range()
     {
-        var wheel = new VirtualWheel { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: 1.0, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
 
         StepMany(wheel, 2000);
@@ -105,7 +105,7 @@ public class VirtualWheelTests
     [Fact]
     public void PositionNormalized_Is_Plus_10000_At_Positive_Limit()
     {
-        var wheel = new VirtualWheel { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: 1.0, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
 
         StepMany(wheel, 2000);
@@ -116,7 +116,7 @@ public class VirtualWheelTests
     [Fact]
     public void PositionNormalized_Is_Minus_10000_At_Negative_Limit()
     {
-        var wheel = new VirtualWheel { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { MotionRangeDeg = 90, TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: -1.0, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
 
         StepMany(wheel, 2000);
@@ -129,7 +129,7 @@ public class VirtualWheelTests
     [Fact]
     public void Telemetry_Getters_Report_Sane_Values_Under_Positive_Force()
     {
-        var wheel = new VirtualWheel { TotalStrength01 = 1.0 };
+        var wheel = new VirtualBase { TotalStrength01 = 1.0 };
         wheel.SetInputs(constant: 0.5, spring: 0, periodic: 0, damper: 0, forceDrop01: 0);
 
         StepMany(wheel, 50);

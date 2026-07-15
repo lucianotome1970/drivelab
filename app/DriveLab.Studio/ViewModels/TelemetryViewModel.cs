@@ -17,13 +17,13 @@ namespace DriveLab.Studio.ViewModels;
 public sealed class TelemetryViewModel : ViewModelBase
 {
     private const int MaxSamples = 240;
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
 
     public ObservableCollection<ObservableValue> PositionSamples { get; } = new();
     public ObservableCollection<ObservableValue> TorqueSamples { get; } = new();
     public ISeries[] Series { get; }
 
-    public TelemetryViewModel(DeviceSession session)
+    public TelemetryViewModel(BaseSession session)
     {
         _session = session;
         Series = new ISeries[]

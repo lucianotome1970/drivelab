@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DeviceSessionDisposeTests.cs — Testes de Dispose de DeviceSession (interrompe eventos de estado).
+//  BaseSessionDisposeTests.cs — Testes de Dispose de BaseSession (interrompe eventos de estado).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -11,13 +11,13 @@ using Xunit;
 
 namespace DriveLab.Studio.Tests.Services;
 
-public class DeviceSessionDisposeTests
+public class BaseSessionDisposeTests
 {
     [Fact]
     public void Dispose_Stops_ReRaising_State()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var count = 0;
         session.StateReceived += (_, _) => count++;
 

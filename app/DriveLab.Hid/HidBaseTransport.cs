@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  HidTransport.cs — Transporte HID real do volante DriveLab: enquadra payloads A0 e despacha reports por Report ID.
+//  HidBaseTransport.cs — Transporte HID real do volante DriveLab: enquadra payloads A0 e despacha reports por Report ID.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -15,17 +15,17 @@ namespace DriveLab.Hid;
 /// <summary>
 /// Real <see cref="IBaseTransport"/> over USB HID. Frames A0 payloads with their HID Report ID
 /// and sends them through an <see cref="IHidChannel"/>. Incoming reports are dispatched by
-/// report id. StateReceived is raised on the channel's read thread; consumers (DeviceSession)
+/// report id. StateReceived is raised on the channel's read thread; consumers (BaseSession)
 /// marshal it to the UI thread.
 /// </summary>
-public sealed class HidTransport : IBaseTransport, IDisposable
+public sealed class HidBaseTransport : IBaseTransport, IDisposable
 {
     private readonly IHidChannel _channel;
     private readonly object _pendingLock = new();
     private readonly Dictionary<byte, TaskCompletionSource<SettingValue>> _pendingReads = new();
     private static readonly TimeSpan DefaultReadTimeout = TimeSpan.FromMilliseconds(500);
 
-    public HidTransport(IHidChannel channel)
+    public HidBaseTransport(IHidChannel channel)
     {
         _channel = channel;
         _channel.ReportReceived += OnReport;

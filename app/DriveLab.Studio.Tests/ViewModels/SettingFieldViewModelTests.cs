@@ -20,7 +20,7 @@ public class SettingFieldViewModelTests
     private static SettingFieldViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         return new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.MotionRange));
     }
 
@@ -69,7 +69,7 @@ public class SettingFieldViewModelTests
     {
         var vm = New(out var transport);
         await transport.ConnectAsync();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         // recria vm sobre a mesma sessão para observar o evento
         var field = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.MotionRange));
 
@@ -90,7 +90,7 @@ public class SettingFieldViewModelTests
     public void NonPreset_Setting_Has_No_Presets()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
         Assert.False(vm.HasPresets);
         Assert.Empty(vm.Presets);
@@ -100,7 +100,7 @@ public class SettingFieldViewModelTests
     public async Task Presets_Disabled_Until_Connected()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.MotionRange));
 
         Assert.False(vm.IsConnected);
@@ -130,7 +130,7 @@ public class SettingFieldViewModelTests
     public void Integer_Setting_Is_Integer_And_Formats_Without_Decimals()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
 
         Assert.True(vm.IsInteger);
@@ -142,7 +142,7 @@ public class SettingFieldViewModelTests
     public void Float_Setting_Is_Not_Integer()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.CurrentP));
 
         Assert.False(vm.IsInteger);
@@ -152,7 +152,7 @@ public class SettingFieldViewModelTests
     public void EncoderType_Is_Enum_With_Two_Options()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderType));
 
         Assert.True(vm.HasOptions);
@@ -166,7 +166,7 @@ public class SettingFieldViewModelTests
     public async Task Selecting_Option_Sets_Value_And_Writes_When_Connected()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderType));
 
         await transport.ConnectAsync();
@@ -181,7 +181,7 @@ public class SettingFieldViewModelTests
     public async Task Options_Disabled_Until_Connected()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderType));
 
         Assert.False(vm.IsConnected);

@@ -17,7 +17,7 @@ public class MainWindowViewModelTests
 {
     private static MainWindowViewModel New(out DashboardViewModel first, out DashboardViewModel second)
     {
-        var session = new DeviceSession(new FakeTransport(), new ImmediateUiDispatcher());
+        var session = new BaseSession(new FakeTransport(), new ImmediateUiDispatcher());
         first = new DashboardViewModel(session);
         second = new DashboardViewModel(session);
         var pages = new[]
@@ -59,7 +59,7 @@ public class MainWindowViewModelTests
     [Fact]
     public void SimulatorMode_Defaults_False_And_Can_Be_Set()
     {
-        var session = new DeviceSession(new FakeTransport(), new ImmediateUiDispatcher());
+        var session = new BaseSession(new FakeTransport(), new ImmediateUiDispatcher());
         var pages = new[] { new NavItem("Dashboard", "\U0001F39B", new DashboardViewModel(session)) };
 
         var real = new MainWindowViewModel(session, new ConnectionViewModel(session, new ImmediateUiDispatcher()), pages, new TestViewModel(session));

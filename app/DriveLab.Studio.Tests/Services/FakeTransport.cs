@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  FakeTransport.cs — Transporte falso (IBaseTransport) controlável para testes determinísticos de DeviceSession.
+//  FakeTransport.cs — Transporte falso (IBaseTransport) controlável para testes determinísticos de BaseSession.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -11,7 +11,7 @@ using DriveLab.Core.Transport;
 
 namespace DriveLab.Studio.Tests.Services;
 
-/// <summary>Controllable IBaseTransport for deterministic DeviceSession tests (no timer).</summary>
+/// <summary>Controllable IBaseTransport for deterministic BaseSession tests (no timer).</summary>
 public sealed class FakeTransport : IBaseTransport
 {
     public bool IsConnected { get; private set; }

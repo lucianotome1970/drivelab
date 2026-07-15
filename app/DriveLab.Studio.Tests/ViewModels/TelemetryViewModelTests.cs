@@ -18,7 +18,7 @@ public class TelemetryViewModelTests
     private static TelemetryViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         return new TelemetryViewModel(session);
     }
 

@@ -19,7 +19,7 @@ public class DashboardViewModelDisposeTests
     public void Dispose_Unsubscribes_From_Session()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new DashboardViewModel(session);
 
         transport.Emit(new BaseState { AngleDeciDeg = 100 });

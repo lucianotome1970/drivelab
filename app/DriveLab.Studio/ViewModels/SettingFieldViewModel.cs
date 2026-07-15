@@ -16,7 +16,7 @@ namespace DriveLab.Studio.ViewModels;
 
 public partial class SettingFieldViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
     private readonly SettingDescriptor _descriptor;
     private bool _loading;
 
@@ -53,7 +53,7 @@ public partial class SettingFieldViewModel : ViewModelBase
     public IReadOnlyList<EnumOptionViewModel> Options { get; }
     public bool HasOptions => Options.Count > 0;
 
-    public SettingFieldViewModel(DeviceSession session, SettingDescriptor descriptor)
+    public SettingFieldViewModel(BaseSession session, SettingDescriptor descriptor)
     {
         _session = session;
         _descriptor = descriptor;

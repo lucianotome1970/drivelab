@@ -16,7 +16,7 @@ namespace DriveLab.Studio.ViewModels;
 /// </summary>
 public class SettingsGroupViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
 
     public string Title { get; }
     public IReadOnlyList<SettingFieldViewModel> Fields { get; }
@@ -25,7 +25,7 @@ public class SettingsGroupViewModel : ViewModelBase
     public IReadOnlyList<SettingFieldViewModel> LeftColumn { get; }
     public IReadOnlyList<SettingFieldViewModel> RightColumn { get; }
 
-    public SettingsGroupViewModel(DeviceSession session, string title, IEnumerable<BaseSettingId> ids)
+    public SettingsGroupViewModel(BaseSession session, string title, IEnumerable<BaseSettingId> ids)
     {
         _session = session;
         Title = title;

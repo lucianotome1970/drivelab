@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  SimulatorTransportTests.cs — Testes do SimulatorTransport.
+//  SimulatorBaseTransportTests.cs — Testes do SimulatorBaseTransport.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -12,11 +12,11 @@ using DriveLab.Simulator;
 
 namespace DriveLab.Tests.Simulator;
 
-public class SimulatorTransportTests
+public class SimulatorBaseTransportTests
 {
-    private static async Task<SimulatorTransport> ConnectedAsync()
+    private static async Task<SimulatorBaseTransport> ConnectedAsync()
     {
-        var transport = new SimulatorTransport();
+        var transport = new SimulatorBaseTransport();
         await transport.ConnectAsync();
         return transport;
     }

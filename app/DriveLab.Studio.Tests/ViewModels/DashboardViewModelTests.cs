@@ -20,7 +20,7 @@ public class DashboardViewModelTests
     private static DashboardViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         return new DashboardViewModel(session);
     }
 
@@ -67,7 +67,7 @@ public class DashboardViewModelTests
     public async Task MotionRange_Syncs_When_Setting_Changed_Elsewhere()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new DashboardViewModel(session);
 
         // Outra tela (ex.: Ajustes) grava o MotionRange no dispositivo.
@@ -80,7 +80,7 @@ public class DashboardViewModelTests
     public async Task Presets_And_Center_Disabled_Until_Connected()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new DashboardViewModel(session);
 
         Assert.False(vm.SetMaxAngleCommand.CanExecute("900"));
@@ -99,7 +99,7 @@ public class DashboardViewModelTests
     public async Task MotionRange_Loads_From_Device_On_Connect()
     {
         var transport = new FakeTransport(); // ReadSettingAsync returns 900
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new DashboardViewModel(session);
 
         await session.ConnectAsync();

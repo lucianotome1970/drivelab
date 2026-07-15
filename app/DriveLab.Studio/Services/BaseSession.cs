@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DeviceSession.cs — Fachada sobre um IBaseTransport que marshala telemetria do dispositivo para a thread de UI.
+//  BaseSession.cs — Fachada sobre um IBaseTransport que marshala telemetria do dispositivo para a thread de UI.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -16,12 +16,12 @@ namespace DriveLab.Studio.Services;
 /// App-facing facade over an <see cref="IBaseTransport"/>. Marshals device telemetry
 /// onto the UI thread via <see cref="IUiDispatcher"/> so ViewModels can bind safely.
 /// </summary>
-public sealed class DeviceSession : IDisposable
+public sealed class BaseSession : IDisposable
 {
     private readonly IBaseTransport _transport;
     private readonly IUiDispatcher _dispatcher;
 
-    public DeviceSession(IBaseTransport transport, IUiDispatcher dispatcher)
+    public BaseSession(IBaseTransport transport, IUiDispatcher dispatcher)
     {
         _transport = transport;
         _dispatcher = dispatcher;
@@ -50,15 +50,15 @@ public sealed class DeviceSession : IDisposable
         if (!_transport.IsConnected)
             return;
 
-        // Streaming is currently a simulator capability; a future HidTransport
+        // Streaming is currently a simulator capability; a future HidBaseTransport
         // will expose an equivalent start/stop that this line will generalize to.
-        (_transport as SimulatorTransport)?.StartStreaming();
+        (_transport as SimulatorBaseTransport)?.StartStreaming();
         Connected?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task DisconnectAsync()
     {
-        (_transport as SimulatorTransport)?.StopStreaming();
+        (_transport as SimulatorBaseTransport)?.StopStreaming();
         await _transport.DisconnectAsync();
         Disconnected?.Invoke(this, EventArgs.Empty);
     }
@@ -79,11 +79,11 @@ public sealed class DeviceSession : IDisposable
     public void Dispose()
     {
         _transport.StateReceived -= OnTransportState;
-        (_transport as SimulatorTransport)?.StopStreaming();
+        (_transport as SimulatorBaseTransport)?.StopStreaming();
     }
 }
 
-/// <summary>Payload for <see cref="DeviceSession.SettingChanged"/>.</summary>
+/// <summary>Payload for <see cref="BaseSession.SettingChanged"/>.</summary>
 public sealed class SettingChangedEventArgs : EventArgs
 {
     public SettingChangedEventArgs(BaseSettingId id, SettingValue value)

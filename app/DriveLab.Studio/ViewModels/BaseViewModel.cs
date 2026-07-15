@@ -13,12 +13,12 @@ using DriveLab.Studio.Services;
 namespace DriveLab.Studio.ViewModels;
 
 /// <summary>Card da base no dashboard: um único controle de força total
-/// (<see cref="BaseSettingId.TotalStrength"/>). Envolve o MESMO <see cref="DeviceSession"/> do
+/// (<see cref="BaseSettingId.TotalStrength"/>). Envolve o MESMO <see cref="BaseSession"/> do
 /// volante — lê o valor ao conectar e grava ao alterar (espelha o padrão do
 /// <see cref="DashboardViewModel"/> p/ MotionRange). Não descarta a sessão (compartilhada).</summary>
 public partial class BaseViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
     private bool _loading;
 
     [ObservableProperty]
@@ -27,7 +27,7 @@ public partial class BaseViewModel : ViewModelBase
     [ObservableProperty]
     private int _totalStrength = 100;
 
-    public BaseViewModel(DeviceSession session)
+    public BaseViewModel(BaseSession session)
     {
         _session = session;
         _session.Connected += OnConnected;

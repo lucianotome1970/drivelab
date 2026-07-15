@@ -64,7 +64,7 @@ public sealed class HidHandbrakeTransport : IHandbrakeTransport, IDisposable
     }
 
     public Task WriteSettingAsync(HandbrakeSettingId id, SettingValue value) =>
-        _channel.WriteAsync(HidTransport.Frame(
+        _channel.WriteAsync(HidBaseTransport.Frame(
             PedalReportIds.SettingWrite, new SettingReport((byte)id, 0, value).ToBytes()));
 
     public Task<SettingValue> ReadSettingAsync(HandbrakeSettingId id) =>
@@ -76,7 +76,7 @@ public sealed class HidHandbrakeTransport : IHandbrakeTransport, IDisposable
         var tcs = new TaskCompletionSource<SettingValue>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_pendingLock) _pendingReads[key] = tcs;
 
-        await _channel.WriteAsync(HidTransport.Frame(
+        await _channel.WriteAsync(HidBaseTransport.Frame(
             PedalReportIds.SettingReadRequest, new SettingReadRequestReport((byte)id, 0).ToBytes()));
 
         using var cts = new CancellationTokenSource(timeout);
@@ -92,7 +92,7 @@ public sealed class HidHandbrakeTransport : IHandbrakeTransport, IDisposable
     }
 
     public Task SendCommandAsync(PedalCommandId command, byte arg = 0) =>
-        _channel.WriteAsync(HidTransport.Frame(
+        _channel.WriteAsync(HidBaseTransport.Frame(
             PedalReportIds.Command, new CommandReport((byte)command, arg).ToBytes()));
 
     private void OnReport(object? sender, byte[] wire)

@@ -14,7 +14,7 @@ namespace DriveLab.Studio.ViewModels;
 
 public partial class TestViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
 
     [ObservableProperty] private double _spring;
     [ObservableProperty] private double _constant;
@@ -22,7 +22,7 @@ public partial class TestViewModel : ViewModelBase
     [ObservableProperty] private double _damper;
     [ObservableProperty] private bool _forceEnabled;
 
-    public TestViewModel(DeviceSession session) => _session = session;
+    public TestViewModel(BaseSession session) => _session = session;
 
     public Task SendAsync()
     {

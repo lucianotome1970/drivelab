@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  DeviceSessionConnectedTests.cs — Testes do evento Connected de DeviceSession.
+//  BaseSessionConnectedTests.cs — Testes do evento Connected de BaseSession.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -11,13 +11,13 @@ using Xunit;
 
 namespace DriveLab.Studio.Tests.Services;
 
-public class DeviceSessionConnectedTests
+public class BaseSessionConnectedTests
 {
     [Fact]
     public async Task ConnectAsync_Raises_Connected()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var raised = false;
         session.Connected += (_, _) => raised = true;
 

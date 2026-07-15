@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  SimulatorTransport.cs — Transporte simulado do volante: aplica settings a um VirtualWheel e gera BaseState sintético.
+//  SimulatorBaseTransport.cs — Transporte simulado do volante: aplica settings a um VirtualBase e gera BaseState sintético.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -12,11 +12,11 @@ using DriveLab.Core.Transport;
 
 namespace DriveLab.Simulator;
 
-public sealed class SimulatorTransport : IBaseTransport
+public sealed class SimulatorBaseTransport : IBaseTransport
 {
     private readonly object _sync = new();
     private readonly Dictionary<BaseSettingId, SettingValue> _settings = new();
-    private readonly VirtualWheel _wheel = new();
+    private readonly VirtualBase _wheel = new();
     private Timer? _timer;
     private int _periodMs;
     private volatile bool _streaming;

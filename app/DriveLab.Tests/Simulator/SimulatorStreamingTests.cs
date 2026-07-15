@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  SimulatorStreamingTests.cs — Testes de streaming (start/stop) do SimulatorTransport.
+//  SimulatorStreamingTests.cs — Testes de streaming (start/stop) do SimulatorBaseTransport.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -15,7 +15,7 @@ public class SimulatorStreamingTests
     [Fact]
     public async Task StartStreaming_Emits_States_Over_Time()
     {
-        var transport = new SimulatorTransport();
+        var transport = new SimulatorBaseTransport();
         await transport.ConnectAsync();
         var count = 0;
         transport.StateReceived += (_, _) => Interlocked.Increment(ref count);
@@ -30,7 +30,7 @@ public class SimulatorStreamingTests
     [Fact]
     public async Task StopStreaming_Halts_Emissions()
     {
-        var transport = new SimulatorTransport();
+        var transport = new SimulatorBaseTransport();
         await transport.ConnectAsync();
         transport.StartStreaming(hz: 100);
         await Task.Delay(50);

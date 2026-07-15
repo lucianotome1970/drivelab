@@ -25,7 +25,7 @@ public sealed record PageTab(string Header, ViewModelBase Content);
 /// </summary>
 public sealed partial class SettingsPageViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
 
     public string Title { get; }
     public IReadOnlyList<PageTab> Tabs { get; }
@@ -35,7 +35,7 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(ResetDefaultsCommand))]
     private bool _isConnected;
 
-    public SettingsPageViewModel(DeviceSession session, string title, IEnumerable<PageTab> tabs)
+    public SettingsPageViewModel(BaseSession session, string title, IEnumerable<PageTab> tabs)
     {
         _session = session;
         Title = title;

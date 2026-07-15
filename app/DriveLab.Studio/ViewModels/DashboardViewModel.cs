@@ -17,7 +17,7 @@ namespace DriveLab.Studio.ViewModels;
 
 public partial class DashboardViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CenterCommand))]
@@ -33,7 +33,7 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private int _motionRange = 900;
 
-    public DashboardViewModel(DeviceSession session)
+    public DashboardViewModel(BaseSession session)
     {
         _session = session;
         _session.StateReceived += OnState;

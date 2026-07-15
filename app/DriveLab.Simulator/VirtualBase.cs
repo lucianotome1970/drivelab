@@ -1,13 +1,13 @@
 // ============================================================================
 //  DriveLab
-//  VirtualWheel.cs — Modelo físico simplificado do volante (mola, damper, inércia) usado pelo simulador.
+//  VirtualBase.cs — Modelo físico simplificado do volante (mola, damper, inércia) usado pelo simulador.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
 namespace DriveLab.Simulator;
 
-public sealed class VirtualWheel
+public sealed class VirtualBase
 {
     private const double Inertia = 0.05;      // kg·m² virtual
     private const double SpringStiffness = 4;  // ganho de centralização

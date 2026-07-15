@@ -1,6 +1,6 @@
 // ============================================================================
 //  DriveLab
-//  HidTransportTests.cs — Testes de HidTransport (conexão, controle direto, comandos e telemetria).
+//  HidBaseTransportTests.cs — Testes de HidBaseTransport (conexão, controle direto, comandos e telemetria).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -11,12 +11,12 @@ using Xunit;
 
 namespace DriveLab.Hid.Tests;
 
-public class HidTransportTests
+public class HidBaseTransportTests
 {
-    private static HidTransport New(out FakeHidChannel channel)
+    private static HidBaseTransport New(out FakeHidChannel channel)
     {
         channel = new FakeHidChannel();
-        return new HidTransport(channel);
+        return new HidBaseTransport(channel);
     }
 
     private static byte[] Wire(byte reportId, byte[] payload64)

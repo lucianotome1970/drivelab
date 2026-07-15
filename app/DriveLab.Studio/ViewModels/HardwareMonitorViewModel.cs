@@ -17,7 +17,7 @@ public partial class HardwareMonitorViewModel : ViewModelBase
 {
     private const sbyte NoSensor = -128;
 
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
 
     [ObservableProperty] private string _busVoltageText = "—";
     [ObservableProperty] private string _motorCurrentText = "—";
@@ -29,7 +29,7 @@ public partial class HardwareMonitorViewModel : ViewModelBase
     [ObservableProperty] private TelemetryLevel _motorTempLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _mcuTempLevel = TelemetryLevel.Ok;
 
-    public HardwareMonitorViewModel(DeviceSession session)
+    public HardwareMonitorViewModel(BaseSession session)
     {
         _session = session;
         _session.StateReceived += OnState;

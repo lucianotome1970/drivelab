@@ -18,7 +18,7 @@ public class BaseViewModelTests
     private static BaseViewModel New(out FakeTransport transport)
     {
         transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         return new BaseViewModel(session);
     }
 
@@ -49,7 +49,7 @@ public class BaseViewModelTests
     public async Task TotalStrength_Loads_From_Device_On_Connect()
     {
         var transport = new FakeTransport(); // ReadSettingAsync returns 900 (generic fake)
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new BaseViewModel(session);
 
         await session.ConnectAsync();
@@ -62,7 +62,7 @@ public class BaseViewModelTests
     public async Task TotalStrength_Syncs_When_Setting_Changed_Elsewhere()
     {
         var transport = new FakeTransport();
-        var session = new DeviceSession(transport, new ImmediateUiDispatcher());
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new BaseViewModel(session);
 
         // Outra tela (ex.: Base do Volante) grava o TotalStrength no dispositivo.

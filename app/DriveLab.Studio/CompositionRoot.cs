@@ -52,9 +52,9 @@ public static class CompositionRoot
 
     public static MainWindowViewModel CreateMainWindowViewModel(IBaseTransport? transport = null, bool simulatorMode = false)
     {
-        transport ??= new SimulatorTransport();
+        transport ??= new SimulatorBaseTransport();
         var dispatcher = new AvaloniaUiDispatcher();
-        var session = new DeviceSession(transport, dispatcher);
+        var session = new BaseSession(transport, dispatcher);
         var connection = new ConnectionViewModel(session, dispatcher);
 
         // Conexão: no SIMULADOR é manual (botão Conectar); no REAL é automática (hotplug USB) para
@@ -65,7 +65,7 @@ public static class CompositionRoot
         if (!simulatorMode)
             autoConnectors.Add(StartAutoConnect(
                 () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
-                HidTransport.IsDevicePresent, dispatcher));
+                HidBaseTransport.IsDevicePresent, dispatcher));
 
         // Pedais: simulador → simulador; real → nossa pedaleira P0 (ou Simagic, leitura) + hotplug.
         var simagicReader = new SimagicHidSharpReader();
@@ -149,7 +149,7 @@ public static class CompositionRoot
     }
 
     /// <summary>Builds a transport talking to real hardware over USB HID (used when a device is present).</summary>
-    public static IBaseTransport CreateHidTransport() => new HidTransport(new HidSharpChannel());
+    public static IBaseTransport CreateHidTransport() => new HidBaseTransport(new HidSharpChannel());
 
     /// <summary>
     /// True when the app was launched with a simulator flag (/simulator, --simulator, -simulator).

@@ -13,12 +13,12 @@ using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
-/// <summary>Estado da conexão da base no topo. Reage aos eventos da <see cref="DeviceSession"/>
+/// <summary>Estado da conexão da base no topo. Reage aos eventos da <see cref="BaseSession"/>
 /// (marshalados p/ a UI), então tanto o clique manual (simulador) quanto a conexão automática
 /// (<see cref="DeviceAutoConnector"/>, modo real) atualizam o status.</summary>
 public partial class ConnectionViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
     private readonly IUiDispatcher _dispatcher;
 
     [ObservableProperty]
@@ -27,7 +27,7 @@ public partial class ConnectionViewModel : ViewModelBase
     [ObservableProperty]
     private string _statusText = L.Get("Status_Disconnected");
 
-    public ConnectionViewModel(DeviceSession session, IUiDispatcher dispatcher)
+    public ConnectionViewModel(BaseSession session, IUiDispatcher dispatcher)
     {
         _session = session;
         _dispatcher = dispatcher;

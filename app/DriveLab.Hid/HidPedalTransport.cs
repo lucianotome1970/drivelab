@@ -14,7 +14,7 @@ namespace DriveLab.Hid;
 
 /// <summary>
 /// <see cref="IPedalTransport"/> real sobre USB HID para a NOSSA pedaleira (RP2040, firmware P0).
-/// Espelha o <see cref="HidTransport"/> do volante: enquadra os reports P0 por Report ID e
+/// Espelha o <see cref="HidBaseTransport"/> do volante: enquadra os reports P0 por Report ID e
 /// os envia por um <see cref="IHidChannel"/>. Telemetria (<c>PedalState</c> 0x20) e respostas de
 /// settings chegam pela read-thread do canal; o <c>PedalDeviceSession</c> marshala p/ a UI.
 /// </summary>
@@ -66,7 +66,7 @@ public sealed class HidPedalTransport : IPedalTransport, IDisposable
     }
 
     public Task WriteSettingAsync(PedalSettingId id, PedalIndex pedal, SettingValue value) =>
-        _channel.WriteAsync(HidTransport.Frame(
+        _channel.WriteAsync(HidBaseTransport.Frame(
             PedalReportIds.SettingWrite, new SettingReport((byte)id, (byte)pedal, value).ToBytes()));
 
     public Task<SettingValue> ReadSettingAsync(PedalSettingId id, PedalIndex pedal) =>
@@ -78,7 +78,7 @@ public sealed class HidPedalTransport : IPedalTransport, IDisposable
         var tcs = new TaskCompletionSource<SettingValue>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_pendingLock) _pendingReads[key] = tcs;
 
-        await _channel.WriteAsync(HidTransport.Frame(
+        await _channel.WriteAsync(HidBaseTransport.Frame(
             PedalReportIds.SettingReadRequest, new SettingReadRequestReport((byte)id, (byte)pedal).ToBytes()));
 
         using var cts = new CancellationTokenSource(timeout);
@@ -94,7 +94,7 @@ public sealed class HidPedalTransport : IPedalTransport, IDisposable
     }
 
     public Task SendCommandAsync(PedalCommandId command, byte arg = 0) =>
-        _channel.WriteAsync(HidTransport.Frame(
+        _channel.WriteAsync(HidBaseTransport.Frame(
             PedalReportIds.Command, new CommandReport((byte)command, arg).ToBytes()));
 
     private void OnReport(object? sender, byte[] wire)

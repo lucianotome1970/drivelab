@@ -13,7 +13,7 @@ namespace DriveLab.Studio.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private readonly DeviceSession _session;
+    private readonly BaseSession _session;
     private readonly IReadOnlyList<IDisposable> _autoConnectors;
 
     [ObservableProperty]
@@ -26,7 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public object CurrentPage => SelectedPage.Page;
     public string Title => "DriveLab Studio";
 
-    public MainWindowViewModel(DeviceSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test, bool simulatorMode = false, IReadOnlyList<IDisposable>? autoConnectors = null)
+    public MainWindowViewModel(BaseSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test, bool simulatorMode = false, IReadOnlyList<IDisposable>? autoConnectors = null)
     {
         _session = session;
         Connection = connection;
