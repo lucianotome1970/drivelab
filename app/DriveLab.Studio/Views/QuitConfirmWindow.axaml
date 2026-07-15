@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:DriveLab.Studio.Localization"
+        x:Class="DriveLab.Studio.Views.QuitConfirmWindow"
+        Width="380" SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Title="{loc:Translate Nav_Quit}"
+        Background="{DynamicResource DlBackground}">
+    <StackPanel Margin="24" Spacing="20">
+        <TextBlock Text="{loc:Translate Quit_Confirm_Message}" TextWrapping="Wrap" FontSize="15" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="{loc:Translate Quit_Confirm_No}" Click="Cancel_Click" IsCancel="True" />
+            <Button Classes="accent" Content="{loc:Translate Quit_Confirm_Yes}" Click="Confirm_Click" IsDefault="True" />
+        </StackPanel>
+    </StackPanel>
+</Window>

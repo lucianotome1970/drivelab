@@ -40,6 +40,25 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[4]}">
                     <Image Source="avares://DriveLab.Studio/Assets/wheel_ico.png" Width="26" Height="26" />
                 </Button>
+
+                <!-- Separador antes da ação de sair -->
+                <Border Height="1" Width="28" Background="{DynamicResource DlBorder}" Margin="0,4" />
+
+                <!-- Sair do app: bandeira de chegada (quadriculada), desenho vetorial -->
+                <Button Classes="nav" ToolTip.Tip="{loc:Translate Nav_Quit}" Click="CloseApp_Click">
+                    <Viewbox Width="24" Height="24">
+                        <Canvas Width="20" Height="18">
+                            <!-- mastro -->
+                            <Rectangle Canvas.Left="0" Canvas.Top="0" Width="2" Height="18" Fill="{DynamicResource DlMuted}" />
+                            <!-- fundo branco da bandeira -->
+                            <Rectangle Canvas.Left="3" Canvas.Top="1" Width="16" Height="16" Fill="White"
+                                       Stroke="{DynamicResource DlBorder}" StrokeThickness="1" />
+                            <!-- quadros pretos do xadrez 4x4 -->
+                            <Path Canvas.Left="3" Canvas.Top="1" Fill="Black"
+                                  Data="M0,0 H4 V4 H0 Z M8,0 H12 V4 H8 Z M4,4 H8 V8 H4 Z M12,4 H16 V8 H12 Z M0,8 H4 V12 H0 Z M8,8 H12 V12 H8 Z M4,12 H8 V16 H4 Z M12,12 H16 V16 H12 Z" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
             </StackPanel>
         </Border>
 

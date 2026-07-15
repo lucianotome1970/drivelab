@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
 using DriveLab.Studio.ViewModels;
 
@@ -9,6 +11,18 @@ public partial class MainWindow : Window
     private TestWindow? _testWindow;
 
     public MainWindow() => InitializeComponent();
+
+    private async void CloseApp_Click(object? sender, RoutedEventArgs e)
+    {
+        var confirmed = await new QuitConfirmWindow().ShowDialog<bool>(this);
+        if (!confirmed)
+            return;
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+        else
+            Close();
+    }
 
     private void OpenTest_Click(object? sender, RoutedEventArgs e)
     {

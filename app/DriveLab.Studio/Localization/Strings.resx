@@ -18,6 +18,10 @@
   <data name="Nav_Pedals" xml:space="preserve"><value>Pedals</value></data>
   <data name="Nav_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
   <data name="Nav_Wheel" xml:space="preserve"><value>Wheel</value></data>
+  <data name="Nav_Quit" xml:space="preserve"><value>Quit</value></data>
+  <data name="Quit_Confirm_Message" xml:space="preserve"><value>Quit DriveLab Studio?</value></data>
+  <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Quit</value></data>
+  <data name="Quit_Confirm_No" xml:space="preserve"><value>Cancel</value></data>
 
   <data name="Wheel_Title" xml:space="preserve"><value>DriveLab Wheel</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Maximum angle</value></data>
