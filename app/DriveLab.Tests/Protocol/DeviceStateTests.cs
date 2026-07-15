@@ -52,4 +52,13 @@ public class DeviceStateTests
         Assert.Equal(-10000, parsed.Position);
         Assert.Equal(-10000, parsed.Torque);
     }
+
+    [Fact]
+    public void BusVoltage_Above_Int16Max_Survives_RoundTrip()
+    {
+        // Guards the u16 signedness path: values > 32767 must not wrap negative.
+        var state = new DeviceState { BusVoltageMv = 65535 };
+        var parsed = DeviceState.Parse(state.ToBytes());
+        Assert.Equal((ushort)65535, parsed.BusVoltageMv);
+    }
 }
