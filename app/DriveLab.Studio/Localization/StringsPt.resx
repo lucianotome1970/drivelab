@@ -45,6 +45,8 @@
   <data name="Badge_Simulator" xml:space="preserve"><value>SIMULADOR</value></data>
 
   <data name="Home_Pedals" xml:space="preserve"><value>Pedais</value></data>
+  <data name="Home_Base" xml:space="preserve"><value>Base</value></data>
+  <data name="Base_Force" xml:space="preserve"><value>Força</value></data>
 
   <data name="Pedal_Clutch" xml:space="preserve"><value>Embreagem</value></data>
   <data name="Pedal_Brake" xml:space="preserve"><value>Freio</value></data>

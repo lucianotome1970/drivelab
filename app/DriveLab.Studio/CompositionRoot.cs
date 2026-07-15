@@ -75,8 +75,9 @@ public static class CompositionRoot
             .Append(new PageTab(L.Get("Tab_Telemetry"), new TelemetryViewModel(session)))
             .ToList();
 
-        // Home (dash): card do volante + resumo ao vivo dos pedais, lado a lado.
-        var home = new HomeViewModel(new DashboardViewModel(session), pedals, handbrake);
+        // Home (dash): card do volante + card da base (força total) + resumo ao vivo
+        // dos pedais e do freio de mão, lado a lado. Base usa a MESMA sessão do volante.
+        var home = new HomeViewModel(new DashboardViewModel(session), pedals, handbrake, new BaseViewModel(session));
 
         var pages = new List<NavItem>
         {

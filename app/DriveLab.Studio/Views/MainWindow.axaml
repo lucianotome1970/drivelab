@@ -20,10 +20,10 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[0]}">
                     <Image Source="avares://DriveLab.Studio/Assets/logo.png" Width="30" Height="30" />
                 </Button>
-                <!-- Base do Volante: ícone próprio (base.png) -->
+                <!-- Base do Volante: ícone próprio (base_ico.png) -->
                 <Button Classes="nav" ToolTip.Tip="{Binding Pages[1].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[1]}">
-                    <Image Source="avares://DriveLab.Studio/Assets/base.png" Width="26" Height="26" />
+                    <Image Source="avares://DriveLab.Studio/Assets/base_ico.png" Width="26" Height="26" />
                 </Button>
                 <!-- Pedais: ícone próprio (pedais.png) -->
                 <Button Classes="nav" ToolTip.Tip="{Binding Pages[2].Label}"

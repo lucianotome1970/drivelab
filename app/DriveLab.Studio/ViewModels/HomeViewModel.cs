@@ -7,23 +7,27 @@ namespace DriveLab.Studio.ViewModels;
 public sealed class HomeViewModel : ViewModelBase
 {
     public DashboardViewModel Wheel { get; }
+    public BaseViewModel? Base { get; }
     public PedalsViewModel Pedals { get; }
     public HandbrakeViewModel? Handbrake { get; }
 
-    // "handbrake" é opcional (nulo) até a Tarefa 11 ligar a DI do freio de mão no
-    // CompositionRoot; o card no Home tolera DataContext nulo até lá.
-    public HomeViewModel(DashboardViewModel wheel, PedalsViewModel pedals, HandbrakeViewModel? handbrake = null)
+    // "handbrake"/"baseWheel" são opcionais (nulos) até o CompositionRoot ligar a DI;
+    // os cards no Home toleram DataContext nulo até lá.
+    public HomeViewModel(DashboardViewModel wheel, PedalsViewModel pedals,
+        HandbrakeViewModel? handbrake = null, BaseViewModel? baseWheel = null)
     {
         Wheel = wheel;
         Pedals = pedals;
         Handbrake = handbrake;
+        Base = baseWheel;
     }
 
     public override void Dispose()
     {
-        // O Home é dono do card do volante; os Pedais e o Freio de mão são descartados
-        // pelas próprias páginas quando existirem.
+        // O Home é dono dos cards do volante e da base (mesma sessão); os Pedais e o
+        // Freio de mão são descartados pelas próprias páginas quando existirem.
         Wheel.Dispose();
+        Base?.Dispose();
         base.Dispose();
     }
 }
