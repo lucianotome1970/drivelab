@@ -16,8 +16,18 @@ Custom firmware for the ODESC v4.2 + a cross-platform configurator app.</p>
 </p>
 
 <p align="center">
-  <a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a> &nbsp;·&nbsp; <a href="https://discord.gg/Xp2pGm5wj">💬 Discord</a>
+  <a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a> &nbsp;·&nbsp; <a href="#-download--baixar">⬇️ Download</a> &nbsp;·&nbsp; <a href="https://discord.gg/Xp2pGm5wj">💬 Discord</a>
 </p>
+
+---
+
+## ⬇️ Download / Baixar
+
+**🇬🇧 [Download the latest DriveLab Studio for Windows](https://github.com/lucianotome1970/drivelab/releases/latest)** — a self-contained `.exe`, no .NET install needed. Early **pre-release** for testing. It isn't code-signed, so Windows SmartScreen will warn: **More info → Run anyway**. To explore without hardware, run `DriveLab.Studio.exe --simulator`.
+
+**🇧🇷 [Baixar o DriveLab Studio mais recente para Windows](https://github.com/lucianotome1970/drivelab/releases/latest)** — um `.exe` self-contained, sem instalar .NET. **Pre-release** inicial para testes. Não é assinado, então o SmartScreen do Windows vai avisar: **Mais informações → Executar assim mesmo**. Para explorar sem hardware, rode `DriveLab.Studio.exe --simulator`.
+
+> All builds live on the [releases page](https://github.com/lucianotome1970/drivelab/releases). · *Todas as versões ficam na [página de releases](https://github.com/lucianotome1970/drivelab/releases).*
 
 ---
 
