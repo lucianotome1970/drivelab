@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/DriveLab.Studio/Assets/logo.png" width="120" alt="DriveLab logo" />
+  <img src="app/DriveLab.Studio/Assets/splash.png" width="760" alt="DriveLab" />
 </p>
 
 <h1 align="center">DriveLab</h1>
