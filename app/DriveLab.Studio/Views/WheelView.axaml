@@ -218,6 +218,9 @@
 
             <!-- Ações no topo à direita (mesmo padrão de pedais/freio de mão) -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
+                <!-- Conectar/Desconectar só no simulador; no real a conexão é automática (hotplug USB). -->
+                <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
+                <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
                 <Border Classes="statusBadge" IsVisible="{Binding IsConnected}" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal" Spacing="7">
                         <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />

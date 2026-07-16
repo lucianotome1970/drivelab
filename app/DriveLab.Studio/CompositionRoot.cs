@@ -117,11 +117,15 @@ public static class CompositionRoot
             .Append(new PageTab(L.Get("Tab_Telemetry"), new TelemetryViewModel(session)))
             .ToList();
 
-        // Volante (aro removível): simulador → mock (sem sessão); real → HID 0x0004 + hotplug + LED ao vivo.
-        // Criado ANTES do dash p/ o card "Volante" acender pela conexão do aro.
-        WheelDeviceSession? wheelSession = null;
+        // Volante (aro removível): simulador → sessão simulada (botão Conectar); real → HID 0x0004
+        // + hotplug + LED ao vivo. Criado ANTES do dash p/ o card "Volante" acender pela conexão do aro.
+        WheelDeviceSession wheelSession;
         Func<bool>? wheelPresent = null;
-        if (!simulatorMode)
+        if (simulatorMode)
+        {
+            wheelSession = new WheelDeviceSession(new SimulatorWheelTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
+        }
+        else
         {
             wheelSession = new WheelDeviceSession(new HidWheelTransport(new HidSharpChannel()), dispatcher, L.Get("Wheel_Source_Detected"));
             wheelPresent = HidWheelTransport.IsDevicePresent;

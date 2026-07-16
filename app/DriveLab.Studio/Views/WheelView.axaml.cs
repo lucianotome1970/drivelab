@@ -23,7 +23,7 @@ public partial class WheelView : UserControl
         if (sender is Control { DataContext: WheelButtonViewModel c } ctl && DataContext is WheelViewModel vm)
         {
             vm.SelectButtonCommand.Execute(c);      // seleção p/ a paleta: sempre (config de cor)
-            if (!vm.IsSimulator)                     // simular pressionar só em modo /simulator
+            if (!vm.IsSimulator || !vm.IsConnected)  // simular pressionar só no /simulator E após Conectar
                 return;
             vm.SetControlPressed(c.Name, true);
             e.Pointer.Capture(ctl);                 // garante o PointerReleased mesmo saindo do controle
@@ -34,7 +34,7 @@ public partial class WheelView : UserControl
     {
         if (sender is Control { DataContext: WheelButtonViewModel c } ctl && DataContext is WheelViewModel vm)
         {
-            if (!vm.IsSimulator)                     // pás só simulam pressão em modo /simulator
+            if (!vm.IsSimulator || !vm.IsConnected)  // pás simulam pressão só no /simulator E após Conectar
                 return;
             vm.SetControlPressed(c.Name, true);
             e.Pointer.Capture(ctl);
