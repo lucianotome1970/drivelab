@@ -30,7 +30,7 @@ Design/decisions: internal project notes (not versioned in the public repo).
 ### Rim I/O & pin map (tunable at the top of main.cpp)
 Target rim: **10 push buttons (each RGB-lit)**, **5 rotary encoders** (with push), **4 paddles** (2 clutch + 2 shift/gears), a **D-pad** (directional buttons), and a **LED bar** (rev lights). On an RP2040-Zero the 5 encoders already eat 10 GPIOs, so the ~21 slow buttons go on **two MCP23017 I²C expanders** (32 inputs on 2 pins). BOM adds **2× MCP23017** (~US$1.5 each).
 
-- **I²C (MCP23017 ×2):** SDA `GP0`, SCL `GP1` — addresses `0x20` (#0) and `0x21` (#1).
+- **I²C (MCP23017 ×2):** SDA `GP0`, SCL `GP1` — addresses `0x20` (#0) and `0x21` (#1). **Power the expanders at 3.3 V** (from the RP2040 `3V3` pin), **not 5 V** — the RP2040 GPIOs are not 5 V-tolerant, so a 5 V SDA/SCL would damage them. Buttons wire pin → `GND` (internal pull-ups).
 - **MCP #0** (16 in): 10 push buttons → bits 0–9 · gears down/up → bits 10–11 · D-pad U/D/L/R → bits 12–15.
 - **MCP #1** (5 in used): the 5 rotary pushes → bits 16–20.
 - **Encoders A/B (direct GPIO):** `GP2/3, GP4/5, GP6/7, GP8/9, GP10/11` — CW → bits 21–25, CCW → bits 26–30 (momentary).
@@ -45,6 +45,22 @@ Target rim: **10 push buttons (each RGB-lit)**, **5 rotary encoders** (with push
 ![DriveLab wheel wiring diagram](docs/wiring.svg)
 
 *Interactive, theme-aware version: [`docs/wiring.html`](docs/wiring.html) (open locally).*
+
+**Bill of materials (rim)**
+
+| Qty | Part | Notes |
+|----:|------|-------|
+| 1 | **Waveshare RP2040-Zero** | the rim MCU (USB-C, tiny). Firmware = this repo. |
+| 2 | **MCP23017 I²C expander board** | addresses `0x20` + `0x21` (set A0/A1/A2). **Power at 3.3 V.** |
+| 10 | **SK6812** (e.g. SK6812-E, reverse-mount) | one RGB LED per button, behind a translucent momentary cap (~15–16 mm). |
+| ~8–16 | **WS2812/SK6812** | the LED bar (rev lights), chained after the buttons. |
+| 5 | **rotary encoder** (with push) | A/B on `GP2–GP11`; push on MCP #1. |
+| 2 | **pot or Hall sensor** | clutch paddles → ADC `GP26`/`GP27`. |
+| 10+ | **momentary buttons** | 10 push + 2 gears + D-pad, into the MCP23017s. |
+| 1 | **330–470 Ω resistor** | in series on the WS2812 data line. |
+| 1 | **PTC ~2–2.5 A** + **1000 µF cap** | on the `5V_LED` rail (see power section). |
+
+> Only for a **full (RGB) rim**. A simple rim (no LEDs) skips the SK6812/LED-bar/PTC/cap.
 
 ### Wheel ↔ base wiring & power (simple vs full rim)
 
@@ -108,7 +124,7 @@ Design/decisões: notas internas de projeto (não versionadas no repo público).
 ### Entradas do aro & mapa de pinos (ajustável no topo do main.cpp)
 Aro alvo: **10 botões de pressão (cada um com LED RGB)**, **5 encoders rotativos** (com push), **4 pás** (2 embreagem + 2 marcha), um **D-pad** (botões direcionais) e uma **barra de LEDs** (rev lights). Na RP2040-Zero os 5 encoders já consomem 10 GPIOs, então os ~21 botões lentos vão em **dois expanders I²C MCP23017** (32 entradas em 2 pinos). BOM acrescenta **2× MCP23017** (~US$1,5 cada).
 
-- **I²C (MCP23017 ×2):** SDA `GP0`, SCL `GP1` — endereços `0x20` (#0) e `0x21` (#1).
+- **I²C (MCP23017 ×2):** SDA `GP0`, SCL `GP1` — endereços `0x20` (#0) e `0x21` (#1). **Alimente os expanders em 3,3 V** (do pino `3V3` do RP2040), **não 5 V** — os GPIO do RP2040 não são 5 V-tolerantes, então SDA/SCL em 5 V os danificaria. Botões ligam pino → `GND` (pull-ups internos).
 - **MCP #0** (16 in): 10 botões de pressão → bits 0–9 · marcha down/up → bits 10–11 · D-pad cima/baixo/esq/dir → bits 12–15.
 - **MCP #1** (5 in usados): os 5 push dos rotativos → bits 16–20.
 - **Encoders A/B (GPIO direto):** `GP2/3, GP4/5, GP6/7, GP8/9, GP10/11` — CW → bits 21–25, CCW → bits 26–30 (momentâneos).
@@ -123,6 +139,22 @@ Aro alvo: **10 botões de pressão (cada um com LED RGB)**, **5 encoders rotativ
 ![Diagrama de ligação do volante DriveLab](docs/wiring.svg)
 
 *Versão interativa (tema claro/escuro): [`docs/wiring.html`](docs/wiring.html) (abrir localmente).*
+
+**Lista de materiais (aro)**
+
+| Qtd | Peça | Observações |
+|----:|------|-------------|
+| 1 | **Waveshare RP2040-Zero** | o MCU do aro (USB-C, minúsculo). Firmware = este repo. |
+| 2 | **Placa expander MCP23017 (I²C)** | endereços `0x20` + `0x21` (setar A0/A1/A2). **Alimentar em 3,3 V.** |
+| 10 | **SK6812** (ex. SK6812-E, reverse-mount) | um LED RGB por botão, atrás de capa momentânea translúcida (~15–16 mm). |
+| ~8–16 | **WS2812/SK6812** | a barra de LEDs (rev lights), encadeada após os botões. |
+| 5 | **encoder rotativo** (com push) | A/B em `GP2–GP11`; push no MCP #1. |
+| 2 | **pot ou sensor Hall** | pás de embreagem → ADC `GP26`/`GP27`. |
+| 10+ | **botões momentâneos** | 10 de pressão + 2 marcha + D-pad, nos MCP23017. |
+| 1 | **resistor 330–470 Ω** | em série na linha de dados do WS2812. |
+| 1 | **PTC ~2–2,5 A** + **cap 1000 µF** | no trilho `5V_LED` (ver seção de energia). |
+
+> Só para um **aro completo (RGB)**. Um aro simples (sem LED) dispensa SK6812/barra/PTC/cap.
 
 ### Interligação com a base & alimentação (aro simples vs completo)
 

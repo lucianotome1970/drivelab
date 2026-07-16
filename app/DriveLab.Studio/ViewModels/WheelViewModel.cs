@@ -37,6 +37,9 @@ public partial class WheelViewModel : ViewModelBase
     /// <summary>Brilho global dos LEDs enviado no report (0..255). Empurra ao vivo ao mudar.</summary>
     [ObservableProperty] private byte _ledBrightness = 200;
 
+    /// <summary>Rótulo da origem (ex.: "Volante detectado") p/ o selo de status; vazio se não houver sessão.</summary>
+    public string SourceLabel { get; }
+
     /// <summary>Botões do desenho do volante (coloríveis + pressionáveis). Os giratórios NÃO entram
     /// aqui: são encoders (giram, não clicam) — o desenho já os mostra; girar fica p/ o futuro.</summary>
     public IReadOnlyList<WheelButtonViewModel> Buttons { get; }
@@ -71,6 +74,7 @@ public partial class WheelViewModel : ViewModelBase
         _storage = storage;
         IsSimulator = simulatorMode;
         _session = session;
+        SourceLabel = session?.SourceLabel ?? "";
         // Nome, posição normalizada (0-1 sobre a imagem quadrada wheel.png), cor padrão.
         Buttons = new List<WheelButtonViewModel>
         {

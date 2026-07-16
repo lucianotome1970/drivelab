@@ -41,7 +41,19 @@
         <Grid>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                 <StackPanel Spacing="16" Margin="6,40,6,6">
-                    <TextBlock Text="{loc:Translate Wheel_Config}" Classes="h2" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Config}" Classes="h2" />
+                        <!-- Selo de status: só aparece quando o aro é detectado (telemetria/LED ao vivo). -->
+                        <Border Grid.Column="1" IsVisible="{Binding IsConnected}" VerticalAlignment="Center"
+                                CornerRadius="12" Padding="10,4" Background="{DynamicResource DlCard}"
+                                BorderBrush="{DynamicResource DlAccent}" BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SourceLabel}" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <!-- Duas colunas: volante+cores à esquerda, pás à direita -->
                     <Grid ColumnDefinitions="Auto,28,Auto" HorizontalAlignment="Left">
