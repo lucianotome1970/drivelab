@@ -165,9 +165,8 @@
                 <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
                 <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
                 <Button Content="{loc:Translate Pedal_Calibrate}" Command="{Binding OpenCalibrationCommand}" />
-                <Button Content="{loc:Translate Load}" Command="{Binding LoadPreferencesCommand}" />
-                <Button Content="{loc:Translate Save}" Command="{Binding SavePreferencesCommand}" />
-                <!-- Habilitado só quando há alteração não salva (dirty) — ver CanSave no VM. -->
+                <!-- Sem "Carregar"/"Salvar": a config mora no controlador — é lida sozinha ao detectar (ConnectAsync)
+                     e o único salvamento é "Salvar no controlador". Habilitado só com alteração não salva. -->
                 <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
             </StackPanel>
 

@@ -38,8 +38,29 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     /// <summary>Só no simulador aparecem os botões Conectar/Desconectar (no real é automático).</summary>
     public bool IsSimulator { get; }
 
-    [ObservableProperty] private double _currentInput01;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RawLive))]
+    private double _currentInput01;
     [ObservableProperty] private double _currentOutput01;
+
+    // --- Modal de calibração (mesmo padrão dos pedais) ---
+    [ObservableProperty] private bool _isCalibrating;
+
+    /// <summary>Valor cru ao vivo (0–4095) para a barra do modal de calibração.</summary>
+    public int RawLive => (int)Math.Round(CurrentInput01 * 4095.0);
+
+    /// <summary>Min/max cru observado durante a captura (mostra o "ponto de calibragem").</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalRange))]
+    private int _calMin;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalRange))]
+    private int _calMax;
+
+    [ObservableProperty] private bool _capturing;
+
+    public string CalRange => $"{CalMin} – {CalMax}";
 
     [ObservableProperty] private int _sensorType;
     [ObservableProperty] private bool _invert;
@@ -151,13 +172,33 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     partial void OnButtonEnabledChanged(bool value) => WriteScalar(HandbrakeSettingId.ButtonEnabled, value ? 1 : 0);
     partial void OnButtonThresholdChanged(int value) => WriteScalar(HandbrakeSettingId.ButtonThreshold, value);
 
-    [RelayCommand]
-    private Task CalibrateStart() => _session.SendCommandAsync(PedalCommandId.CalibrateStart);
+    [RelayCommand] private void OpenCalibration() => IsCalibrating = true;
 
     [RelayCommand]
-    private async Task CalibrateStop()
+    private void CloseCalibration()
     {
+        Capturing = false;
+        IsCalibrating = false;
+    }
+
+    [RelayCommand]
+    private async Task StartCalibration()
+    {
+        CalMin = 4095; // sentinela: o 1º sample de telemetria define o min real
+        CalMax = 0;
+        Capturing = true;
+        await _session.SendCommandAsync(PedalCommandId.CalibrateStart);
+    }
+
+    [RelayCommand]
+    private async Task FinishCalibration()
+    {
+        Capturing = false;
         await _session.SendCommandAsync(PedalCommandId.CalibrateStop);
+        _loading = true;
+        InputMin = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.InputMin)).AsDouble;
+        InputMax = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.InputMax)).AsDouble;
+        _loading = false;
         IsDirty = true;   // calibração mudou min/max na placa (RAM) — precisa salvar na flash
     }
 
@@ -187,6 +228,11 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         CurrentInput01 = state.Clutch.RawInput / 4095.0;
         CurrentOutput01 = state.Clutch.Output / 65535.0;
         ButtonActive = (state.Flags & (byte)HandbrakeFlags.ButtonPressed) != 0;
+        if (Capturing)
+        {
+            if (state.Clutch.RawInput < CalMin) CalMin = state.Clutch.RawInput;
+            if (state.Clutch.RawInput > CalMax) CalMax = state.Clutch.RawInput;
+        }
         IsConnected = _session.IsConnected;
     }
 

@@ -103,12 +103,47 @@
                 <!-- Conectar/Desconectar só no simulador; no real a conexão é automática (hotplug USB). -->
                 <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
                 <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
-                <Button Content="{loc:Translate Handbrake_CalibrateStart}" Command="{Binding CalibrateStartCommand}" />
-                <Button Content="{loc:Translate Handbrake_CalibrateStop}" Command="{Binding CalibrateStopCommand}" />
+                <Button Content="{loc:Translate Pedal_Calibrate}" Command="{Binding OpenCalibrationCommand}" />
                 <Button Content="{loc:Translate Handbrake_LoadDefaults}" Command="{Binding LoadDefaultsCommand}" />
                 <!-- Mesma nomenclatura do pedal; habilitado só quando dirty (ver CanSave no VM). -->
                 <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveCommand}" />
             </StackPanel>
+
+            <!-- Overlay de calibração: raw ao vivo do eixo único (mesmo padrão dos pedais) -->
+            <Border IsVisible="{Binding IsCalibrating}" Background="#CC000000">
+                <Border Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="460">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="{loc:Translate Pedal_Calibration}" Classes="h2" />
+                        <Grid ColumnDefinitions="110,*,56,120" Margin="0,4">
+                            <TextBlock Grid.Column="0" Text="{loc:Translate Handbrake_Title}" Classes="fieldLabel" VerticalAlignment="Center" />
+                            <Grid Grid.Column="1" x:Name="track" Margin="8,0">
+                                <ProgressBar Minimum="0" Maximum="4095" Value="{Binding RawLive}" VerticalAlignment="Center" />
+                                <!-- Bolinha no máximo atingido na calibração -->
+                                <Ellipse Width="12" Height="12" Fill="White"
+                                         Stroke="{DynamicResource DlAccent}" StrokeThickness="2"
+                                         HorizontalAlignment="Left" VerticalAlignment="Center"
+                                         IsVisible="{Binding Capturing}">
+                                    <Ellipse.Margin>
+                                        <MultiBinding Converter="{x:Static conv:CalMarkerMarginConverter.Instance}">
+                                            <Binding Path="CalMax" />
+                                            <Binding Path="#track.Bounds.Width" />
+                                        </MultiBinding>
+                                    </Ellipse.Margin>
+                                </Ellipse>
+                            </Grid>
+                            <TextBlock Grid.Column="2" Text="{Binding RawLive}" Classes="endLabel" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="3" Text="{Binding CalRange}" Classes="endLabel"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       IsVisible="{Binding Capturing}" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                            <Button Content="{loc:Translate Start}" Command="{Binding StartCalibrationCommand}" />
+                            <Button Classes="accent" Content="{loc:Translate Finish}" Command="{Binding FinishCalibrationCommand}" />
+                            <Button Content="{loc:Translate Close}" Command="{Binding CloseCalibrationCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

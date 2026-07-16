@@ -50,7 +50,9 @@
                         <!-- Coluna esquerda: desenho do volante + cores dos botões -->
                         <StackPanel Grid.Column="0" Spacing="12" Width="480">
                             <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="muted" />
-                            <Grid Width="480" Height="480" HorizontalAlignment="Center">
+                            <!-- Margem inferior negativa: puxa a paleta pra cima, ocupando a área transparente
+                                 do rodapé do desenho (o aro não chega até 480px). -->
+                            <Grid Width="480" Height="480" HorizontalAlignment="Center" Margin="0,0,0,-56">
                                 <!-- Pás ATRÁS do desenho (Canvas antes da imagem): aparecem pelas ABERTURAS
                                      transparentes reais do aro. Escuras (visíveis conforme a contagem), acendem
                                      em laranja quando pressionadas. Ajustáveis. -->
