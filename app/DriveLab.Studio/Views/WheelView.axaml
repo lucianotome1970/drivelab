@@ -28,12 +28,13 @@
             <Setter Property="Opacity" Value="0.9" />
         </Style>
 
-        <!-- Pá (aparece pelo recorte transparente do desenho): inativa = escura; ativa = laranja (accent). -->
+        <!-- Pá (aparece pelo recorte transparente do desenho): inativa = transparente (recesso vazio);
+             ativa = cinza ESCURO visível — a pá "aparece" escura quando acionada. -->
         <Style Selector="Rectangle.paddle">
-            <Setter Property="Fill" Value="{DynamicResource DlCard}" />
+            <Setter Property="Fill" Value="Transparent" />
         </Style>
         <Style Selector="Rectangle.paddle.active">
-            <Setter Property="Fill" Value="{DynamicResource DlAccent}" />
+            <Setter Property="Fill" Value="#5A6270" />
         </Style>
     </UserControl.Styles>
 
