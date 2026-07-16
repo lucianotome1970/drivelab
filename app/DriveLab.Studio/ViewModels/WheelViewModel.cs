@@ -101,14 +101,14 @@ public partial class WheelViewModel : ViewModelBase
         // Posições medidas sobre wheel.png (1304×1304): centróide colorido de cada botão.
         Buttons = new List<WheelButtonViewModel>
         {
-            new("N",     0.219, 0.334, "#BF5AF2"),
-            new("PIT",   0.295, 0.347, "#FFD60A"),
-            new("DRS",   0.716, 0.346, "#34C759"),
-            new("KILL",  0.783, 0.335, "#FF3B30"),
-            new("RADIO", 0.258, 0.462, "#32ADE6"),
-            new("TC",    0.257, 0.520, "#FFD60A"),
-            new("MENU",  0.746, 0.463, "#FF9F0A"),
-            new("ESC",   0.746, 0.521, "#32ADE6"),
+            new("N",     0.219, 0.349, "#BF5AF2"),
+            new("PIT",   0.295, 0.362, "#FFD60A"),
+            new("DRS",   0.716, 0.361, "#34C759"),
+            new("KILL",  0.783, 0.350, "#FF3B30"),
+            new("RADIO", 0.258, 0.477, "#32ADE6"),
+            new("TC",    0.257, 0.535, "#FFD60A"),
+            new("MENU",  0.746, 0.478, "#FF9F0A"),
+            new("ESC",   0.746, 0.536, "#32ADE6"),
         };
 
         if (_session is not null)
