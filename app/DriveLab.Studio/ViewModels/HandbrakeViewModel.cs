@@ -25,9 +25,15 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _isConnected;
     [ObservableProperty] private string _sourceLabel = "";
     [ObservableProperty] private bool _canEdit;
+
+    /// <summary>App difere da flash da placa (alteração não salva) — habilita Salvar; zera ao carregar/salvar.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isDirty;
 
     /// <summary>Só no simulador aparecem os botões Conectar/Desconectar (no real é automático).</summary>
     public bool IsSimulator { get; }
@@ -105,6 +111,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         ButtonEnabled = (await _session.ReadSettingAsync(HandbrakeSettingId.ButtonEnabled)).AsDouble != 0;
         ButtonThreshold = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.ButtonThreshold)).AsDouble;
         _loading = false;
+        IsDirty = false;   // acabou de carregar da placa: app == flash
     }
 
     private void OnPointChanged(int index, double value)
@@ -114,6 +121,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         var id = HandbrakeSettingsSchema.CurvePointIds[index];
         var d = HandbrakeSettingsSchema.Get(id);
         _ = _session.WriteSettingAsync(id, new SettingValue(d.Type, d.Clamp(value)));
+        IsDirty = true;
     }
 
     private void WriteScalar(HandbrakeSettingId id, double value)
@@ -122,6 +130,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
             return;
         var d = HandbrakeSettingsSchema.Get(id);
         _ = _session.WriteSettingAsync(id, new SettingValue(d.Type, d.Clamp(value)));
+        IsDirty = true;
     }
 
     partial void OnSensorTypeChanged(int value) => WriteScalar(HandbrakeSettingId.SensorType, value);
@@ -139,10 +148,20 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     private Task CalibrateStart() => _session.SendCommandAsync(PedalCommandId.CalibrateStart);
 
     [RelayCommand]
-    private Task CalibrateStop() => _session.SendCommandAsync(PedalCommandId.CalibrateStop);
+    private async Task CalibrateStop()
+    {
+        await _session.SendCommandAsync(PedalCommandId.CalibrateStop);
+        IsDirty = true;   // calibração mudou min/max na placa (RAM) — precisa salvar na flash
+    }
 
-    [RelayCommand]
-    private Task Save() => _session.SendCommandAsync(PedalCommandId.SaveToFlash);
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private async Task Save()
+    {
+        await _session.SendCommandAsync(PedalCommandId.SaveToFlash);
+        IsDirty = false;  // gravou na flash: firmware == app
+    }
+
+    private bool CanSave() => IsConnected && IsDirty;
 
     [RelayCommand]
     private Task LoadDefaults() => _session.SendCommandAsync(PedalCommandId.LoadDefaults);
