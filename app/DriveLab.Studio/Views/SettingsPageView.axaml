@@ -11,17 +11,18 @@
              x:Class="DriveLab.Studio.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
     <Border Classes="card">
-        <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" Classes="h2" Margin="0,0,0,12" />
+        <Grid RowDefinitions="Auto,*">
+            <!-- Cabeçalho: título à esquerda, ações no topo à direita (mesmo padrão de pedais/freio/volante). -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <TextBlock Grid.Column="0" Text="{Binding Title}" Classes="h2" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                    <Button Content="{loc:Translate Default}" Command="{Binding ResetDefaultsCommand}" />
+                    <!-- Grava na flash da base (BaseCommand.SaveSettings); habilitado só com alteração não salva. -->
+                    <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveCommand}" />
+                </StackPanel>
+            </Grid>
 
-            <!-- Barra inferior (estilo MOZA) -->
-            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
-                        Spacing="10" Margin="0,14,0,0">
-                <Button Content="{loc:Translate Default}" Command="{Binding ResetDefaultsCommand}" />
-                <Button Classes="accent" Content="{loc:Translate Save}" Command="{Binding SaveCommand}" />
-            </StackPanel>
-
-            <TabControl ItemsSource="{Binding Tabs}">
+            <TabControl Grid.Row="1" ItemsSource="{Binding Tabs}">
                 <TabControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:PageTab">
                         <TextBlock Text="{Binding Header}" />
@@ -34,6 +35,6 @@
                     </DataTemplate>
                 </TabControl.ContentTemplate>
             </TabControl>
-        </DockPanel>
+        </Grid>
     </Border>
 </UserControl>
