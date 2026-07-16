@@ -14,7 +14,7 @@
     <UserControl.Resources>
         <conv:IntEqualsConverter x:Key="IntEquals" />
     </UserControl.Resources>
-    <Border Classes="card">
+    <Border Classes="card" Classes.connected="{Binding IsConnected}">
         <StackPanel Spacing="16">
             <TextBlock Text="{loc:Translate Wheel_Title}" Classes="h2" />
 

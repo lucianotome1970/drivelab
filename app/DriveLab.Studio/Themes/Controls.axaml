@@ -15,6 +15,12 @@
         <Setter Property="Padding" Value="20" />
     </Style>
 
+    <!-- Card com dispositivo detectado/conectado: borda inferior laranja (accent) mais grossa. -->
+    <Style Selector="Border.card.connected">
+        <Setter Property="BorderBrush" Value="{DynamicResource DlAccent}" />
+        <Setter Property="BorderThickness" Value="1,1,1,4" />
+    </Style>
+
     <!-- Accent (primary) button -->
     <Style Selector="Button.accent">
         <Setter Property="Background" Value="{DynamicResource DlAccent}" />
