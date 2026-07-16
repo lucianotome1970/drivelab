@@ -55,12 +55,12 @@ public partial class WheelViewModel : ViewModelBase
     /// aqui: são encoders (giram, não clicam) — o desenho já os mostra; girar fica p/ o futuro.</summary>
     public IReadOnlyList<WheelButtonViewModel> Buttons { get; }
 
-    // Pás (no painel, não no desenho) — pressionáveis (acendem). Propriedades nomeadas (não índice)
-    // para as bindings compiladas resolverem sem problema.
-    public WheelButtonViewModel ShiftDown { get; } = new("ShiftDown", 0, 0, "#FF9F0A");
-    public WheelButtonViewModel ShiftUp { get; } = new("ShiftUp", 0, 0, "#FF9F0A");
-    public WheelButtonViewModel ClutchLeft { get; } = new("ClutchLeft", 0, 0, "#FF9F0A");
-    public WheelButtonViewModel ClutchRight { get; } = new("ClutchRight", 0, 0, "#FF9F0A");
+    // Pás sobrepostas no desenho do volante (atrás dos punhos): esq = marcha↓ + embreagem esq;
+    // dir = marcha↑ + embreagem dir. Posições normalizadas sobre wheel.png (ajustáveis).
+    public WheelButtonViewModel ShiftDown { get; }   = new("ShiftDown",   0.145, 0.40, "#FF9F0A");
+    public WheelButtonViewModel ShiftUp { get; }     = new("ShiftUp",     0.855, 0.40, "#FF9F0A");
+    public WheelButtonViewModel ClutchLeft { get; }  = new("ClutchLeft",  0.145, 0.53, "#FF9F0A");
+    public WheelButtonViewModel ClutchRight { get; } = new("ClutchRight", 0.855, 0.53, "#FF9F0A");
 
     /// <summary>As 4 pás (p/ o lookup do SetControlPressed).</summary>
     public IReadOnlyList<WheelButtonViewModel> Paddles => new[] { ShiftDown, ShiftUp, ClutchLeft, ClutchRight };

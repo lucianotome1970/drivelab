@@ -96,6 +96,31 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <!-- Pás sobre o desenho (atrás dos punhos): acendem quando ativas (telemetria/demo). -->
+                                <Canvas Width="480" Height="480" IsHitTestVisible="False">
+                                    <Viewbox Canvas.Left="47" Canvas.Top="146" Width="44" Height="92"
+                                             DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="388" Canvas.Top="146" Width="44" Height="92"
+                                             DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="47" Canvas.Top="208" Width="44" Height="92"
+                                             DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel"
+                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="388" Canvas.Top="208" Width="44" Height="92"
+                                             DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel"
+                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                </Canvas>
                             </Grid>
 
                             <!-- Paleta de cores (aplica no botão selecionado). Só com o aro conectado:
@@ -132,57 +157,8 @@
                                         Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=4}" />
                             </UniformGrid>
 
-                            <!-- Par de cima: pás de marcha — DESENHO que acende quando ativo (telemetria/demo) -->
-                            <StackPanel Orientation="Horizontal" Spacing="24" HorizontalAlignment="Center">
-                                <StackPanel Spacing="6" HorizontalAlignment="Center"
-                                            DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel">
-                                    <Grid Width="52" Height="112">
-                                        <Viewbox>
-                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                        </Viewbox>
-                                        <TextBlock Text="↓" FontSize="26" FontWeight="Bold" Foreground="#F2F2F2"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Grid>
-                                    <TextBlock Text="{loc:Translate Wheel_ShiftDown}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Spacing="6" HorizontalAlignment="Center"
-                                            DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel">
-                                    <Grid Width="52" Height="112">
-                                        <Viewbox>
-                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                        </Viewbox>
-                                        <TextBlock Text="↑" FontSize="26" FontWeight="Bold" Foreground="#F2F2F2"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Grid>
-                                    <TextBlock Text="{loc:Translate Wheel_ShiftUp}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Par de baixo: pás de embreagem — desenho (só quando 4 pás) -->
-                            <StackPanel Orientation="Horizontal" Spacing="24" HorizontalAlignment="Center" IsVisible="{Binding ShowBottomPair}">
-                                <StackPanel Spacing="6" HorizontalAlignment="Center"
-                                            DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel">
-                                    <Grid Width="52" Height="112">
-                                        <Viewbox>
-                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                        </Viewbox>
-                                    </Grid>
-                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Spacing="6" HorizontalAlignment="Center"
-                                            DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel">
-                                    <Grid Width="52" Height="112">
-                                        <Viewbox>
-                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                        </Viewbox>
-                                    </Grid>
-                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
-                                </StackPanel>
-                            </StackPanel>
+                            <!-- As pás (indicador ativo/inativo) agora ficam SOBRE o desenho do volante,
+                                 atrás dos punhos. Aqui no painel fica só a configuração. -->
 
                             <!-- Config do par de baixo (só quando 4 pás) -->
                             <StackPanel Spacing="10" IsVisible="{Binding ShowBottomPair}">
