@@ -40,6 +40,12 @@ Target rim: **10 push buttons (each RGB-lit)**, **5 rotary encoders** (with push
 
 > 32-button gamepad report: 31 buttons used (bit 31 spare) + 2 clutch axes. Games read it directly; the app drives the RGB over the P0 `WheelLed` (0x18) channel.
 
+**Wiring diagram** (block/bus view — exact per-pin detail is the table above):
+
+![DriveLab wheel wiring diagram](docs/wiring.svg)
+
+*Interactive, theme-aware version: [`docs/wiring.html`](docs/wiring.html) (open locally).*
+
 ### Wheel ↔ base wiring & power (simple vs full rim)
 
 You can build the rim at two levels — pick before wiring the quick-release:
@@ -111,6 +117,12 @@ Aro alvo: **10 botões de pressão (cada um com LED RGB)**, **5 encoders rotativ
 - **LED RGB do botão (escolhido): SK6812** (endereçável, compatível com WS2812) — um por botão, ex.: **SK6812-E** reverse-mount atrás de uma **capa momentânea de baixo perfil translúcida ~15–16 mm** (feel estilo KS). Todos os LEDs (botões + barra) encadeiam na única linha de dados GP28 — o firmware aciona sem mudança.
 
 > Report de gamepad com 32 botões: 31 usados (bit 31 sobra) + 2 eixos de embreagem. Os jogos leem direto; o app manda as cores RGB pelo canal P0 `WheelLed` (0x18).
+
+**Diagrama de ligação** (visão de blocos/barramentos — o detalhe pino-a-pino está na tabela acima):
+
+![Diagrama de ligação do volante DriveLab](docs/wiring.svg)
+
+*Versão interativa (tema claro/escuro): [`docs/wiring.html`](docs/wiring.html) (abrir localmente).*
 
 ### Interligação com a base & alimentação (aro simples vs completo)
 
