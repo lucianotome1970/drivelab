@@ -28,13 +28,13 @@
             <Setter Property="Opacity" Value="0.9" />
         </Style>
 
-        <!-- Pá (aparece pelo recorte transparente do desenho): inativa = transparente (recesso vazio);
-             ativa = cinza ESCURO visível — a pá "aparece" escura quando acionada. -->
+        <!-- Pá (aparece pelo recorte transparente do desenho): SEMPRE visível em cinza escuro
+             (para se ver as pás conforme a contagem); ao ser acionada, clareia (highlight). -->
         <Style Selector="Rectangle.paddle">
-            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Fill" Value="#3B424D" />
         </Style>
         <Style Selector="Rectangle.paddle.active">
-            <Setter Property="Fill" Value="#5A6270" />
+            <Setter Property="Fill" Value="#7A828F" />
         </Style>
     </UserControl.Styles>
 
