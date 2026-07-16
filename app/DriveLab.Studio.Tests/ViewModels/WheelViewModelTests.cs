@@ -170,6 +170,23 @@ public class WheelViewModelTests
     }
 
     [Fact]
+    public async Task Combined_Clutch_One_Press_Lights_Both()
+    {
+        var vm = WithSession(out var t);
+        await vm.ConnectCommand.ExecuteAsync(null);
+        // default: Function=Clutch, Mode=Combined
+        t.RaiseState(new WheelState { ClutchLeft = new WheelAxis(0, 50000), ClutchRight = new WheelAxis(0, 0) });
+        Assert.True(vm.ClutchLeft.IsPressed);
+        Assert.True(vm.ClutchRight.IsPressed);   // combinado: 1 acende as 2
+
+        vm.BottomPair.Mode = PaddleMode.Independent;
+        t.RaiseState(new WheelState { ClutchLeft = new WheelAxis(0, 50000), ClutchRight = new WheelAxis(0, 0) });
+        Assert.True(vm.ClutchLeft.IsPressed);
+        Assert.False(vm.ClutchRight.IsPressed);  // independente: só a esquerda
+        vm.Dispose();
+    }
+
+    [Fact]
     public async Task SaveToController_Enabled_Only_When_Dirty_And_Connected()
     {
         var vm = WithSession(out _);

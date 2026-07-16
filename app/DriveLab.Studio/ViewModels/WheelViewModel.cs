@@ -173,8 +173,20 @@ public partial class WheelViewModel : ViewModelBase
             Buttons[i].IsPressed = s.IsButtonPressed(i);
         ShiftDown.IsPressed = s.IsButtonPressed(10);
         ShiftUp.IsPressed   = s.IsButtonPressed(11);
-        ClutchLeft.IsPressed  = s.ClutchLeft.Output  > 32768;
-        ClutchRight.IsPressed = s.ClutchRight.Output > 32768;
+
+        // Embreagem: em modo COMBINADO as duas pás agem como uma — pressionar 1 acende as 2.
+        var clutchL = s.ClutchLeft.Output  > 32768;
+        var clutchR = s.ClutchRight.Output > 32768;
+        if (BottomPair.Function == PaddleFunction.Clutch && BottomPair.Mode == PaddleMode.Combined)
+        {
+            var any = clutchL || clutchR;
+            ClutchLeft.IsPressed = ClutchRight.IsPressed = any;
+        }
+        else
+        {
+            ClutchLeft.IsPressed  = clutchL;
+            ClutchRight.IsPressed = clutchR;
+        }
 
         // Knobs rotativos: girou (delta != 0) → acende; senão decai por frame.
         for (var i = 0; i < Knobs.Count; i++)
