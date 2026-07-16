@@ -167,6 +167,8 @@ public partial class WheelViewModel : ViewModelBase
     // embreagens acendem pelo eixo (output alto). Ajustável quando o layout físico fechar.
     private void OnState(object? sender, WheelState s)
     {
+        // Telemetria dirige botões/pás/knobs — no hardware real vem do firmware; no /simulator
+        // vem do demo auto-aleatório do SimulatorWheelTransport.
         for (var i = 0; i < Buttons.Count && i < 32; i++)
             Buttons[i].IsPressed = s.IsButtonPressed(i);
         ShiftDown.IsPressed = s.IsButtonPressed(10);
@@ -174,7 +176,7 @@ public partial class WheelViewModel : ViewModelBase
         ClutchLeft.IsPressed  = s.ClutchLeft.Output  > 32768;
         ClutchRight.IsPressed = s.ClutchRight.Output > 32768;
 
-        // Knobs rotativos: girou (delta != 0) → acende; senão decai por frame (telemetria ~100 Hz).
+        // Knobs rotativos: girou (delta != 0) → acende; senão decai por frame.
         for (var i = 0; i < Knobs.Count; i++)
         {
             var d = i < s.EncoderDeltas.Length ? s.EncoderDeltas[i] : (sbyte)0;

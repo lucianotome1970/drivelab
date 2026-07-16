@@ -21,18 +21,35 @@ public sealed class SimulatorWheelTransport : IWheelTransport
 {
     private readonly object _sync = new();
     private readonly Dictionary<WheelSettingId, SettingValue> _settings = new();
+    private readonly Random _rng = new();
+    private Timer? _timer;
+    private int _phase;
+
+    // Estado do demo (sorteado a cada ~0,4 s, mantido entre sorteios).
+    private uint _buttons;
+    private int _activeKnob;
+    private ushort _clutchL, _clutchR;
+    private const int NewDrawEvery = 12;    // a ~30 Hz ≈ 0,4 s
 
     public bool IsConnected { get; private set; }
     public bool SupportsConfig => true;
     public FirmwareVersion FirmwareVersion { get; } = new(0, 26, 7, 14);
 
-    // Nunca disparado (sem streaming); presente para satisfazer o contrato.
-#pragma warning disable CS0067
     public event EventHandler<WheelState>? StateReceived;
-#pragma warning restore CS0067
 
-    public Task ConnectAsync(CancellationToken ct = default) { IsConnected = true; return Task.CompletedTask; }
-    public Task DisconnectAsync() { IsConnected = false; return Task.CompletedTask; }
+    public Task ConnectAsync(CancellationToken ct = default)
+    {
+        IsConnected = true;
+        StartStreaming();
+        return Task.CompletedTask;
+    }
+
+    public Task DisconnectAsync()
+    {
+        StopStreaming();
+        IsConnected = false;
+        return Task.CompletedTask;
+    }
 
     public Task WriteSettingAsync(WheelSettingId id, SettingValue value)
     {
@@ -48,4 +65,43 @@ public sealed class SimulatorWheelTransport : IWheelTransport
 
     public Task SendCommandAsync(WheelCommandId command, byte arg = 0) => Task.CompletedTask;
     public Task SendLedAsync(WheelLedReport led) => Task.CompletedTask;
+
+    private void StartStreaming()
+    {
+        StopStreaming();
+        _timer = new Timer(_ => Step(), null, 33, 33);   // ~30 Hz
+    }
+
+    private void StopStreaming()
+    {
+        _timer?.Dispose();
+        _timer = null;
+    }
+
+    /// <summary>Demo auto-aleatório: sorteia botões/pás/embreagens/knob a cada ~0,4 s e mantém
+    /// entre sorteios (streaming a ~30 Hz). É o que "aciona" o desenho no /simulator ao conectar.</summary>
+    private void Step()
+    {
+        _phase++;
+        if (_phase % NewDrawEvery == 0)
+        {
+            _buttons = 0;
+            for (var b = 0; b < 8; b++)                        // 8 botões do desenho
+                if (_rng.NextDouble() < 0.20) _buttons |= 1u << b;
+            if (_rng.NextDouble() < 0.25) _buttons |= 1u << 10; // marcha ↓
+            if (_rng.NextDouble() < 0.25) _buttons |= 1u << 11; // marcha ↑
+            _clutchL = _rng.NextDouble() < 0.30 ? (ushort)50000 : (ushort)0;
+            _clutchR = _rng.NextDouble() < 0.30 ? (ushort)50000 : (ushort)0;
+            _activeKnob = _rng.Next(WheelState.EncoderCount);   // um knob girando
+        }
+        var state = new WheelState
+        {
+            Firmware = FirmwareVersion,
+            Buttons = _buttons,
+            ClutchLeft = new WheelAxis(0, _clutchL),
+            ClutchRight = new WheelAxis(0, _clutchR),
+        };
+        state.EncoderDeltas[_activeKnob] = 1;                   // mantém o knob ativo aceso
+        StateReceived?.Invoke(this, state);
+    }
 }
