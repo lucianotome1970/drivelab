@@ -1,6 +1,7 @@
 // ============================================================================
 //  DriveLab Firmware
 //  main.cpp (wheel/rim) — Firmware do volante removível (RP2040): Gamepad 32 botões + 2 eixos + P0 + WS2812 + flash.
+//  Entradas: 10 botões + 2 marcha + D-pad + 5 push de rotativo via 2× MCP23017 (I2C); 5 encoders em GPIO; 2 embreagens (ADC).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -18,6 +19,8 @@
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
 #include <Adafruit_NeoPixel.h>
+#include <Adafruit_MCP23X17.h>
+#include <Wire.h>
 #include <EEPROM.h>
 
 // ===================== Constantes do contrato P0 (espelham DriveLab.Core) =====================
@@ -40,26 +43,27 @@ enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4 };
 
 static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP HID de 64 c/ report id)
 
-// ===================== Pinos (ajustáveis) =====================
-static const uint8_t kRowPins[3] = { 2, 3, 4 };       // linhas da matriz (saídas)
-static const uint8_t kColPins[4] = { 5, 6, 7, 8 };    // colunas da matriz (entradas pull-up)
-static const uint8_t kShiftUpPin = 9, kShiftDownPin = 10;
-static const uint8_t kClutchPin[2] = { A0, A1 };      // GP26/GP27 (esq./dir.)
-static const uint8_t kEncPinA[2] = { 11, 13 };
-static const uint8_t kEncPinB[2] = { 12, 14 };
-static const uint8_t kEncPushPin[2] = { 15, 28 };     // GP28 = A2 usado como digital
-static const uint8_t kLedDataPin = 16;                // WS2812 (NeoPixel onboard do Zero)
+// ===================== Pinos (ajustáveis — aro DriveLab: 10 botões RGB, 5 rotativos, 2 marcha,
+//                        D-pad, 2 embreagens; ver README) =====================
+// Orçamento de pinos da RP2040-Zero: 5 encoders já usam 10 GPIOs, então os botões lentos
+// (10 push + 2 marcha + 4 D-pad + 5 push de rotativo = 21) vão em 2× MCP23017 no I2C.
+static const int      NUM_ENC = 5;                      // encoders rotativos
+static const uint8_t  kEncPinA[NUM_ENC] = { 2, 4, 6, 8, 10 };
+static const uint8_t  kEncPinB[NUM_ENC] = { 3, 5, 7, 9, 11 };
+static const uint8_t  kClutchPin[2] = { A0, A1 };       // GP26/GP27 (embreagem esq./dir.)
+static const uint8_t  kLedDataPin   = 28;               // WS2812 externo (10 botões + barra), GP28
+static const uint8_t  kI2cSdaPin    = 0, kI2cSclPin = 1; // I2C0 p/ os MCP23017
+static const uint8_t  kMcpAddr[2]   = { 0x20, 0x21 };   // #0 = push/marcha/D-pad, #1 = push dos rotativos
 
-// Layout dos bits de botão (bitmap de 32):
-//   0..11  = matriz 3x4 (linha*4 + coluna)
-//   12,13  = shift up / shift down
-//   14,15  = enc0 CW / CCW (pulso momentâneo)
-//   16,17  = enc1 CW / CCW (pulso momentâneo)
-//   18,19  = enc0 push / enc1 push
-static const int BIT_SHIFT_UP = 12, BIT_SHIFT_DOWN = 13;
-static const int BIT_ENC_CW[2] = { 14, 16 };
-static const int BIT_ENC_CCW[2] = { 15, 17 };
-static const int BIT_ENC_PUSH[2] = { 18, 19 };
+// Mapeamento MCP #0 (16 pinos 0..15) -> bit do gamepad:
+//   pinos 0..9   = 10 botões de pressão      -> bits 0..9
+//   pinos 10,11  = marcha down / up          -> bits 10,11
+//   pinos 12..15 = D-pad (cima/baixo/esq/dir)-> bits 12..15
+// MCP #1: pinos 0..4 = push dos 5 rotativos  -> bits 16..20
+// Encoders (pulsos momentâneos): CW -> bits 21..25, CCW -> bits 26..30.
+static const int BIT_ENC_PUSH0 = 16;                    // push do rotativo e -> BIT_ENC_PUSH0 + e
+static const int BIT_ENC_CW0   = 21;                    // CW  do rotativo e -> BIT_ENC_CW0 + e
+static const int BIT_ENC_CCW0  = 26;                    // CCW do rotativo e -> BIT_ENC_CCW0 + e
 
 // ===================== Config persistente =====================
 struct WheelCfg {
@@ -69,20 +73,22 @@ struct WheelCfg {
   uint8_t  clutchMode = 0;        // 0 = combinado, 1 = independente
   uint8_t  clutchBitePoint = 50;  // 0..100
   uint8_t  ledBrightness = 128;
-  uint8_t  ledCount = 8;
+  uint8_t  ledCount = 18;         // 10 LEDs de botão + 8 da barra (rev lights); ajustável via setting
 };
 
 static WheelCfg g_cfg;
-static uint32_t g_buttons = 0;       // bitmap atual (matriz + shift + encoder pushes + pulsos)
+static uint32_t g_buttons = 0;       // bitmap atual (push/marcha/D-pad + push dos rotativos + pulsos)
 static uint16_t g_clutchRaw[2] = { 0, 0 };
 static uint16_t g_clutchOut[2] = { 0, 0 };
-static int8_t   g_encDelta[4] = { 0, 0, 0, 0 };  // acumulado desde a última telemetria
-static uint8_t  g_encPrev[2] = { 0, 0 };         // último estado A/B por encoder
+static int8_t   g_encDelta[NUM_ENC] = { 0 };     // acumulado desde a última telemetria
+static uint8_t  g_encPrev[NUM_ENC] = { 0 };      // último estado A/B por encoder
 static bool     g_cal[2] = { false, false };
 static uint16_t g_calMin[2], g_calMax[2];
 
 static Adafruit_USBD_HID g_hid;
 static Adafruit_NeoPixel g_pixels(WheelCfg().ledCount, kLedDataPin, NEO_GRB + NEO_KHZ800);
+static Adafruit_MCP23X17 g_mcp[2];
+static bool g_mcpOk[2] = { false, false };       // se o chip respondeu no begin (não trava se faltar)
 
 // ===================== HID report descriptor: Gamepad (32 botões + 2 eixos) + vendor P0 =====================
 static uint8_t const kHidReport[] = {
@@ -121,29 +127,24 @@ static uint16_t clutchPipeline(int i, uint16_t raw) {
   return (uint16_t)(norm * 4095.0 + 0.5);
 }
 
-// ===================== matriz de botões =====================
+// ===================== botões lentos (via MCP23017 no I2C) =====================
+// Cada pino do MCP é entrada com pull-up → pressionado = LOW (bit 0). readGPIOAB(): A=low, B=high.
 static void scanButtons() {
-  // limpa só os bits da matriz (0..11) e shift; encoders são tratados à parte.
-  for (int b = 0; b <= 11; b++) setBit(g_buttons, b, false);
-  for (int r = 0; r < 3; r++) {
-    digitalWrite(kRowPins[r], LOW);       // ativa a linha
-    delayMicroseconds(5);
-    for (int c = 0; c < 4; c++) {
-      bool pressed = (digitalRead(kColPins[c]) == LOW);  // colunas em pull-up
-      setBit(g_buttons, r * 4 + c, pressed);
-    }
-    digitalWrite(kRowPins[r], HIGH);      // desativa a linha
+  if (g_mcpOk[0]) {
+    uint16_t v = g_mcp[0].readGPIOAB();
+    for (int p = 0; p < 16; p++) setBit(g_buttons, p, ((v >> p) & 1u) == 0);  // bits 0..15
   }
-  setBit(g_buttons, BIT_SHIFT_UP,   digitalRead(kShiftUpPin) == LOW);
-  setBit(g_buttons, BIT_SHIFT_DOWN, digitalRead(kShiftDownPin) == LOW);
-  setBit(g_buttons, BIT_ENC_PUSH[0], digitalRead(kEncPushPin[0]) == LOW);
-  setBit(g_buttons, BIT_ENC_PUSH[1], digitalRead(kEncPushPin[1]) == LOW);
+  if (g_mcpOk[1]) {
+    uint16_t v = g_mcp[1].readGPIOAB();
+    for (int e = 0; e < NUM_ENC; e++)                                          // push dos rotativos
+      setBit(g_buttons, BIT_ENC_PUSH0 + e, ((v >> e) & 1u) == 0);
+  }
 }
 
-// ===================== encoders (quadratura) =====================
+// ===================== encoders (quadratura, GPIO direto) =====================
 static const int8_t kQuadTable[16] = { 0,-1,1,0, 1,0,0,-1, -1,0,0,1, 0,1,-1,0 };
 static void scanEncoders() {
-  for (int e = 0; e < 2; e++) {
+  for (int e = 0; e < NUM_ENC; e++) {
     uint8_t a = digitalRead(kEncPinA[e]);
     uint8_t b = digitalRead(kEncPinB[e]);
     uint8_t cur = (a << 1) | b;
@@ -153,7 +154,7 @@ static void scanEncoders() {
       int v = g_encDelta[e] + step;      // acumula p/ telemetria (satura em ±127)
       g_encDelta[e] = (int8_t)(v > 127 ? 127 : (v < -128 ? -128 : v));
       // pulso momentâneo de botão (limpo no próximo sendReport do gamepad)
-      setBit(g_buttons, step > 0 ? BIT_ENC_CW[e] : BIT_ENC_CCW[e], true);
+      setBit(g_buttons, (step > 0 ? BIT_ENC_CW0 : BIT_ENC_CCW0) + e, true);
     }
     g_encPrev[e] = cur;
   }
@@ -292,15 +293,18 @@ void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
 
-  for (int r = 0; r < 3; r++) { pinMode(kRowPins[r], OUTPUT); digitalWrite(kRowPins[r], HIGH); }
-  for (int c = 0; c < 4; c++) pinMode(kColPins[c], INPUT_PULLUP);
-  pinMode(kShiftUpPin, INPUT_PULLUP);
-  pinMode(kShiftDownPin, INPUT_PULLUP);
-  for (int e = 0; e < 2; e++) {
+  // Encoders rotativos em GPIO direto (pull-up interno).
+  for (int e = 0; e < NUM_ENC; e++) {
     pinMode(kEncPinA[e], INPUT_PULLUP);
     pinMode(kEncPinB[e], INPUT_PULLUP);
-    pinMode(kEncPushPin[e], INPUT_PULLUP);
     g_encPrev[e] = (digitalRead(kEncPinA[e]) << 1) | digitalRead(kEncPinB[e]);
+  }
+  // Botões lentos nos 2× MCP23017 (I2C0); pull-up interno em todos os pinos.
+  // begin_I2C devolve false se o chip não responde — g_mcpOk evita ler um chip ausente.
+  Wire.setSDA(kI2cSdaPin); Wire.setSCL(kI2cSclPin); Wire.begin();
+  for (int m = 0; m < 2; m++) {
+    g_mcpOk[m] = g_mcp[m].begin_I2C(kMcpAddr[m], &Wire);
+    if (g_mcpOk[m]) for (int p = 0; p < 16; p++) g_mcp[m].pinMode(p, INPUT_PULLUP);
   }
 
   EEPROM.begin(256);
@@ -318,7 +322,8 @@ void setup() {
 
   const unsigned long t0 = millis();
   while (!TinyUSBDevice.mounted() && (millis() - t0) < 3000) delay(10);
-  Serial.println("=== DriveLab Volante (rim) — M4 (Gamepad 32 botoes + 2 eixos + P0 + WS2812 + flash) ===");
+  Serial.printf("=== DriveLab Volante (rim) — Gamepad 32 botoes + 2 eixos + P0 + WS2812 + flash (MCP #0=%d #1=%d) ===\n",
+                g_mcpOk[0], g_mcpOk[1]);
 }
 
 static unsigned long g_lastTelem = 0;
@@ -357,7 +362,7 @@ void loop() {
     joy[6] = axisY & 0xFF; joy[7] = (axisY >> 8) & 0xFF;
     g_hid.sendReport(RID_JOYSTICK, joy, sizeof(joy));
     // limpa os pulsos momentâneos de encoder (CW/CCW) após enviá-los uma vez
-    for (int e = 0; e < 2; e++) { setBit(g_buttons, BIT_ENC_CW[e], false); setBit(g_buttons, BIT_ENC_CCW[e], false); }
+    for (int e = 0; e < NUM_ENC; e++) { setBit(g_buttons, BIT_ENC_CW0 + e, false); setBit(g_buttons, BIT_ENC_CCW0 + e, false); }
   }
 
   // 4) telemetria WheelState (0x21) a ~100 Hz — só quando o EP estiver livre de novo (não colide c/ o de cima)
@@ -375,10 +380,9 @@ void loop() {
     st[11] = g_clutchOut[0] & 0xFF; st[12] = (g_clutchOut[0] >> 8) & 0xFF;
     st[13] = g_clutchRaw[1] & 0xFF; st[14] = (g_clutchRaw[1] >> 8) & 0xFF;
     st[15] = g_clutchOut[1] & 0xFF; st[16] = (g_clutchOut[1] >> 8) & 0xFF;
-    // [17..20] deltas de encoder (i8), depois zera o acumulado
-    st[17] = (uint8_t)g_encDelta[0]; st[18] = (uint8_t)g_encDelta[1];
-    st[19] = (uint8_t)g_encDelta[2]; st[20] = (uint8_t)g_encDelta[3];
-    for (int i = 0; i < 4; i++) g_encDelta[i] = 0;
+    // [17..21] deltas dos 5 encoders (i8), depois zera o acumulado
+    // (o app hoje lê 4 em [17..20]; o 5º em [21] fica p/ quando o WheelState do DriveLab.Core acompanhar.)
+    for (int i = 0; i < NUM_ENC; i++) { st[17 + i] = (uint8_t)g_encDelta[i]; g_encDelta[i] = 0; }
     g_hid.sendReport(RID_STATE, st, PAYLOAD);
   }
 
