@@ -29,6 +29,19 @@ public class SettingValueTests
         Assert.Equal(type, parsed.Type);
     }
 
+    [Theory]
+    [InlineData(31.6, 32)]   // slider fracionário → arredonda (não trunca)
+    [InlineData(31.4, 31)]
+    [InlineData(31.5, 32)]   // meio → away-from-zero
+    [InlineData(62.7, 63)]
+    public void Integer_Rounds_Not_Truncates(double value, byte expected)
+    {
+        var setting = new SettingValue(SettingType.UInt8, value);
+        Span<byte> buffer = stackalloc byte[1];
+        setting.WriteValue(buffer);
+        Assert.Equal(expected, buffer[0]);
+    }
+
     [Fact]
     public void Float_Value_RoundTrips()
     {
