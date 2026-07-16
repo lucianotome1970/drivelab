@@ -39,6 +39,32 @@ Target rim: **10 push buttons (each RGB-lit)**, **5 rotary encoders** (with push
 
 > 32-button gamepad report: 31 buttons used (bit 31 spare) + 2 clutch axes. Games read it directly; the app drives the RGB over the P0 `WheelLed` (0x18) channel.
 
+### Wheel ↔ base wiring & power (simple vs full rim)
+
+You can build the rim at two levels — pick before wiring the quick-release:
+
+- **Simple rim (no LEDs)** — buttons, encoders and clutch paddles only. The RP2040 + inputs draw a few tens of mA, so the whole rim runs **straight off USB VBUS**. Across the rotating joint you only need the **4 USB wires**: `VBUS (5V)`, `D+`, `D−`, `GND`. Nothing else.
+- **Full rim (RGB buttons + LED bar)** — the WS2812s can pull **~1.5 A** (26 LEDs × ~60 mA at full white), far above any USB port's budget (0.5 A USB 2.0 / 0.9 A USB 3). **Do NOT power the LEDs from USB VBUS** — the current limit is the same whether the rim plugs into the PC directly or through the base. Feed the LEDs from a **dedicated 5 V rail taken from the base's own power supply** (a buck converter off the ODESC's 24/56 V). The base has the power budget; USB does not.
+
+**Routing through the base (recommended).** The base holds a small **USB hub** (ODESC + rim share a single cable to the PC) and a **5 V buck** off the main PSU. Because the RP2040 lives **in the rim**, only these cross the quick-release (QR) + **slip ring**:
+
+| Signal | Source | Notes |
+|---|---|---|
+| `D+`, `D−`, `GND` | hub | USB data — 12 Mb/s Full-Speed, tolerant of a decent slip ring |
+| `VBUS (5V)` | hub | powers **only the RP2040 logic** (~tens of mA) |
+| `5V_LED`, `GND` | base 5 V buck | powers **only the WS2812s** — size the conductor for ~2 A |
+
+Keep logic on USB VBUS and LEDs on the base's 5 V, and **never tie the two 5 V rails together** (two sources fighting). They share **GND only**. A simple rim uses just the first two rows (the 4 USB wires).
+
+**Protections (full rim):**
+- **Common ground** between USB GND and the base 5 V GND — mandatory (data reference + LED return current).
+- **Resettable fuse (PTC ~2–2.5 A)** on the `5V_LED` rail — guards against a LED short or slip-ring fault.
+- **Bulk capacitor ~1000 µF** across 5 V/GND right next to the WS2812s on the rim — absorbs inrush/spikes.
+- **~330–470 Ω series resistor** on the WS2812 **data** line (at the first pixel) — damps ringing.
+- **Level note:** the RP2040 drives WS2812 data at 3.3 V — usually fine, but a 3.3→5 V level shifter improves reliability on long strands.
+- **Firmware safety net:** the `ledBrightness` P0 setting caps worst-case current even if full white is requested.
+- **Slip ring:** gold contacts; keep the power pair separate from the data pair; short USB run between slip ring and hub; don't hot-swap the QR under LED load.
+
 ### ⚠️ Written without a board — check on the bench first
 1. **Vendor P0 response — ✅ already fixed (2026-07).** The `0x16` (SettingValue) response is now **queued in `onSetReport` and sent from `loop()` with priority over the gamepad**, and the payload is ≤ 63 bytes — the same fix applied to `firmware-pedal`/`firmware-handbrake` (TinyUSB's single HID endpoint drops the 2nd report sent back-to-back, so settings reads would fail if `0x16` went straight from the callback). Still to confirm on real hardware once the rim is wired.
 2. **TinyUSB OUTPUT reports** (`onSetReport`): reception of `WheelLed`/`SettingWrite` — suspect #1 (same as pedal/handbrake).
@@ -83,6 +109,32 @@ Aro alvo: **10 botões de pressão (cada um com LED RGB)**, **5 encoders rotativ
 - **WS2812 (dados):** `GP28` — um cordão em série: **pixels 0–9 = os 10 LEDs dos botões, depois a barra de LEDs** (`ledCount` = 10 + barra, um setting P0).
 
 > Report de gamepad com 32 botões: 31 usados (bit 31 sobra) + 2 eixos de embreagem. Os jogos leem direto; o app manda as cores RGB pelo canal P0 `WheelLed` (0x18).
+
+### Interligação com a base & alimentação (aro simples vs completo)
+
+Dá pra montar o aro em dois níveis — decida antes de fiar o engate rápido:
+
+- **Aro simples (sem LED)** — só botões, encoders e pás de embreagem. O RP2040 + entradas puxam poucas dezenas de mA, então o aro inteiro roda **direto do VBUS do USB**. Cruzando a junta rotativa você só precisa dos **4 fios de USB**: `VBUS (5V)`, `D+`, `D−`, `GND`. Nada mais.
+- **Aro completo (botões RGB + barra de LEDs)** — os WS2812 podem puxar **~1,5 A** (26 LEDs × ~60 mA no branco máximo), muito acima do teto de qualquer porta USB (0,5 A no USB 2.0 / 0,9 A no USB 3). **NÃO alimente os LEDs pelo VBUS do USB** — o limite de corrente é o mesmo, quer o aro plugue direto no PC ou passe pela base. Alimente os LEDs por um **trilho de 5 V dedicado, tirado da fonte da própria base** (um buck a partir dos 24/56 V da ODESC). A base tem a folga de corrente; o USB não.
+
+**Passando pela base (recomendado).** A base guarda um pequeno **hub USB** (ODESC + aro dividem um único cabo pro PC) e um **buck de 5 V** a partir do PSU principal. Como o RP2040 fica **no aro**, só isto cruza o engate rápido (QR) + **slip ring**:
+
+| Sinal | Origem | Observações |
+|---|---|---|
+| `D+`, `D−`, `GND` | hub | dados USB — 12 Mb/s Full-Speed, tolerante a um slip ring decente |
+| `VBUS (5V)` | hub | alimenta **só a lógica do RP2040** (~dezenas de mA) |
+| `5V_LED`, `GND` | buck de 5 V da base | alimenta **só os WS2812** — dimensione o condutor p/ ~2 A |
+
+Mantenha a lógica no VBUS do USB e os LEDs no 5 V da base, e **nunca ligue os dois trilhos de 5 V juntos** (duas fontes brigando). Eles compartilham **só o GND**. Um aro simples usa só as duas primeiras linhas (os 4 fios de USB).
+
+**Proteções (aro completo):**
+- **GND comum** entre o GND do USB e o GND do 5 V da base — obrigatório (referência dos dados + retorno da corrente dos LEDs).
+- **Fusível rearmável (PTC ~2–2,5 A)** no trilho `5V_LED` — protege contra curto de LED ou falha do slip ring.
+- **Capacitor bulk ~1000 µF** entre 5 V/GND bem perto dos WS2812 no aro — absorve inrush/picos.
+- **Resistor série ~330–470 Ω** na linha de **dados** do WS2812 (no 1º pixel) — amortece ringing.
+- **Nota de nível:** o RP2040 aciona os dados do WS2812 em 3,3 V — costuma funcionar, mas um level shifter 3,3→5 V melhora a confiabilidade em cordões longos.
+- **Rede de segurança no firmware:** o setting P0 `ledBrightness` limita o pior caso de corrente mesmo que peçam branco total.
+- **Slip ring:** contatos dourados; separe o par de potência do par de dados; cabo USB curto entre o slip ring e o hub; não troque o QR a quente com os LEDs sob carga.
 
 ### ⚠️ Escrito sem placa — conferir primeiro na bancada
 1. **Resposta do vendor P0 — ✅ já corrigido (jul/2026).** A resposta `0x16` (SettingValue) agora é **enfileirada no `onSetReport` e enviada do `loop()` com prioridade sobre o gamepad**, com payload ≤ 63 bytes — o mesmo fix aplicado em `firmware-pedal`/`firmware-handbrake` (o endpoint HID único do TinyUSB dropa o 2º report back-to-back, então a leitura de settings falharia se o `0x16` saísse direto do callback). Falta confirmar em hardware real quando o aro estiver montado.
