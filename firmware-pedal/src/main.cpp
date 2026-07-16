@@ -38,7 +38,7 @@ enum { F_SENSOR = 0, F_INMIN = 1, F_INMAX = 2, F_INVERT = 3, F_SMOOTH = 4,
 // PedalCommandId
 enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4 };
 
-static const int PAYLOAD = 64;  // ReportConstants.ReportSize
+static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP HID de 64 c/ o report id)
 
 struct PedalCfg {
   uint8_t  sensorType = 0;                       // 0=Pot,1=Hall,2=LoadCell (M3)
@@ -63,6 +63,8 @@ static volatile uint32_t g_dbgSet = 0;
 static volatile uint8_t  g_dbgLastId = 0;
 static volatile uint8_t  g_dbgB0 = 0, g_dbgB1 = 0, g_dbgB2 = 0, g_dbgB3 = 0;
 static volatile uint16_t g_dbgLen = 0;
+static volatile uint32_t g_dbgSent16 = 0;   // quantos 0x16 (SettingValue) o firmware enviou
+static volatile int      g_dbgSent16ok = -1; // retorno do último sendReport(0x16): 1=ok 0=falhou
 
 static const uint8_t kAdcPin[3] = { A0, A1, A2 };  // GP26/GP27/GP28 (pot/hall)
 
@@ -82,7 +84,7 @@ static uint8_t const kHidReport[] = {
   0xC0,
   // --- Vendor P0 (usage page 0xFF00): reports de 64 bytes, enquadrados por Report ID ---
   0x06, 0x00, 0xFF, 0x09, 0x01, 0xA1, 0x01,
-    0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x40,  // logical 0..255, size 8, count 64
+    0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x3F,  // logical 0..255, size 8, count 63 (+id=64, cabe no EP)
     0x85, RID_PEDALSTATE,  0x09, 0x20, 0x81, 0x02,   // Input  0x20 (telemetria)
     0x85, RID_SET_VALUE,   0x09, 0x16, 0x81, 0x02,   // Input  0x16 (resposta de leitura)
     0x85, RID_SET_WRITE,   0x09, 0x14, 0x91, 0x02,   // Output 0x14 (grava setting)
@@ -188,7 +190,8 @@ static void sendSettingValue(uint8_t field, uint8_t index) {
   } else {
     out[3] = (uint8_t)val;
   }
-  g_hid.sendReport(RID_SET_VALUE, out, PAYLOAD);
+  bool ok = g_hid.sendReport(RID_SET_VALUE, out, PAYLOAD);
+  g_dbgSent16++; g_dbgSent16ok = ok ? 1 : 0;
 }
 
 static void seedDefaults() { for (int i = 0; i < 3; i++) g_cfg[i] = PedalCfg(); }
@@ -293,9 +296,10 @@ void loop() {
   // Debug de bancada (só com monitor serial aberto; senão Serial.printf travaria o loop).
   if (Serial && millis() - g_lastDbg >= 500) {
     g_lastDbg = millis();
-    Serial.printf("dbg set=%lu id=0x%02x len=%u buf=[%u %u %u %u]  cfg0: smooth=%u invert=%u\n",
+    Serial.printf("dbg set=%lu id=0x%02x len=%u buf=[%u %u %u %u] sent16=%lu(ok=%d)  cfg0: smooth=%u invert=%u\n",
                   (unsigned long)g_dbgSet, g_dbgLastId, g_dbgLen,
-                  g_dbgB0, g_dbgB1, g_dbgB2, g_dbgB3, g_cfg[0].smooth, g_cfg[0].invert);
+                  g_dbgB0, g_dbgB1, g_dbgB2, g_dbgB3,
+                  (unsigned long)g_dbgSent16, g_dbgSent16ok, g_cfg[0].smooth, g_cfg[0].invert);
   }
 
   if (!g_hid.ready()) { delay(1); return; }

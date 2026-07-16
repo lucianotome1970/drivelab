@@ -31,8 +31,8 @@ public class HidBaseTransportSettingsTests
         await t.WriteSettingAsync(BaseSettingId.MotionRange, new SettingValue(SettingType.UInt16, 900));
 
         Assert.Equal(BaseReportIds.SettingWrite, channel.LastWrite![0]);
-        var payload = new byte[64];
-        Array.Copy(channel.LastWrite!, 1, payload, 0, 64);
+        var payload = new byte[63];
+        Array.Copy(channel.LastWrite!, 1, payload, 0, 63);
         var report = SettingReport.Parse(payload);
         Assert.Equal((byte)BaseSettingId.MotionRange, report.FieldId);
         Assert.Equal(900, report.Value.AsDouble);

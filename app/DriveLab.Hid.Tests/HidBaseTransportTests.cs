@@ -78,7 +78,7 @@ public class HidBaseTransportTests
     public void Malformed_Report_Does_Not_Throw()
     {
         var t = New(out var channel);
-        var wire = new byte[1 + 64];
+        var wire = new byte[1 + 63];
         wire[0] = BaseReportIds.SettingValue;
         wire[1 + 2] = 0xFF; // invalid SettingType byte in the payload
         var ex = Record.Exception(() => channel.Emit(wire));

@@ -26,7 +26,9 @@ let reportCb: IOHIDReportCallback = { _, _, _, _, reportID, report, length in
     let rid = UInt8(reportID & 0xFF)
     seenIDs[rid, default: 0] += 1
     if rid == RID_SET_VALUE {
-        let field = report[0], index = report[1], type = report[2], v0 = report[3]
+        // No macOS o buffer vem COM o report id no byte 0 → payload começa em report[1].
+        let off = (report[0] == RID_SET_VALUE) ? 1 : 0
+        let field = report[off], index = report[off+1], type = report[off+2], v0 = report[off+3]
         print("  <- 0x16 SettingValue: field=\(field) index=\(index) type=\(type) valor=\(v0)")
         lastSmooth = Int(v0); gotValue = true
     }

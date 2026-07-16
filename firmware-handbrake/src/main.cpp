@@ -42,7 +42,7 @@ enum { F_SENSOR = 0, F_INMIN = 1, F_INMAX = 2, F_INVERT = 3, F_SMOOTH = 4,
 // PedalCommandId (reaproveitado — CalibrateStart/Stop/Save/LoadDefaults)
 enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4 };
 
-static const int PAYLOAD = 64;  // ReportConstants.ReportSize
+static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP HID de 64 c/ report id)
 
 // Botão: histerese de 3 pontos percentuais, igual a HandbrakeDeviceModel.HysteresisPercent.
 static const uint8_t BUTTON_HYSTERESIS_PCT = 3;
@@ -89,7 +89,7 @@ static uint8_t const kHidReport[] = {
   0xC0,
   // --- Vendor P0 (usage page 0xFF00): reports de 64 bytes, enquadrados por Report ID — IDÊNTICO ao pedal ---
   0x06, 0x00, 0xFF, 0x09, 0x01, 0xA1, 0x01,
-    0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x40,  // logical 0..255, size 8, count 64
+    0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x3F,  // logical 0..255, size 8, count 63 (+id=64, cabe no EP)
     0x85, RID_PEDALSTATE,  0x09, 0x20, 0x81, 0x02,   // Input  0x20 (telemetria)
     0x85, RID_SET_VALUE,   0x09, 0x16, 0x81, 0x02,   // Input  0x16 (resposta de leitura)
     0x85, RID_SET_WRITE,   0x09, 0x14, 0x91, 0x02,   // Output 0x14 (grava setting)

@@ -38,7 +38,7 @@ enum { S_CL_MIN = 0, S_CL_MAX = 1, S_CR_MIN = 2, S_CR_MAX = 3,
 // WheelCommandId
 enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4 };
 
-static const int PAYLOAD = 64;  // ReportConstants.ReportSize
+static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP HID de 64 c/ report id)
 
 // ===================== Pinos (ajustáveis) =====================
 static const uint8_t kRowPins[3] = { 2, 3, 4 };       // linhas da matriz (saídas)
@@ -96,7 +96,7 @@ static uint8_t const kHidReport[] = {
   0xC0,
   // --- Vendor P0 (usage page 0xFF00): reports de 64 bytes ---
   0x06, 0x00, 0xFF, 0x09, 0x01, 0xA1, 0x01,
-    0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x40,  // logical 0..255, size 8, count 64
+    0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x3F,  // logical 0..255, size 8, count 63 (+id=64, cabe no EP)
     0x85, RID_STATE,       0x09, 0x21, 0x81, 0x02,   // Input  0x21 (telemetria)
     0x85, RID_SET_VALUE,   0x09, 0x16, 0x81, 0x02,   // Input  0x16 (resposta de leitura)
     0x85, RID_LED,         0x09, 0x18, 0x91, 0x02,   // Output 0x18 (cores RGB)

@@ -37,7 +37,7 @@ public class PedalStateTests
         };
 
         var bytes = state.ToBytes();
-        Assert.Equal(64, bytes.Length);
+        Assert.Equal(63, bytes.Length);
 
         var parsed = PedalState.Parse(bytes);
         Assert.Equal(new FirmwareVersion(0, 1, 2, 3), parsed.Firmware);

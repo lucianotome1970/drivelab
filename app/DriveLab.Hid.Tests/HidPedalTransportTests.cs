@@ -14,7 +14,7 @@ namespace DriveLab.Hid.Tests;
 
 public class HidPedalTransportTests
 {
-    private const int ReportSize = 64;
+    private const int ReportSize = 63;
 
     private static byte[] Frame(byte reportId, byte[] payload64)
     {
