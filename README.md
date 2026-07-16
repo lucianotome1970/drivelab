@@ -168,7 +168,7 @@ app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator,
 firmware-base/       Wheelbase firmware — ODESC v4.2 / STM32F405, the FFB motor (PlatformIO)  [LGPL-3.0]
 firmware-pedal/      Pedals firmware — RP2040 + HX711                                        [MIT]
 firmware-handbrake/  Handbrake firmware — RP2040 + HX711                                     [MIT]
-# firmware-wheel/    Rim firmware (buttons/LEDs/paddles) — planned, not started yet
+firmware-wheel/      Rim firmware — RP2040 (Waveshare Zero): gamepad + WS2812 LEDs (PlatformIO)  [MIT]
 tools/HidDump/       HID protocol debug tool
 docs/                Design specs & implementation plans
 ```
@@ -287,7 +287,7 @@ app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator,
 firmware-base/       Firmware da base — ODESC v4.2 / STM32F405, o motor FFB (PlatformIO)  [LGPL-3.0]
 firmware-pedal/      Firmware dos pedais — RP2040 + HX711                                [MIT]
 firmware-handbrake/  Firmware do freio de mão — RP2040 + HX711                           [MIT]
-# firmware-wheel/    Firmware do aro (botões/LEDs/pás) — planejado, ainda não iniciado
+firmware-wheel/      Firmware do aro — RP2040 (Waveshare Zero): gamepad + LEDs WS2812 (PlatformIO)  [MIT]
 tools/HidDump/       Ferramenta de debug do protocolo HID
 docs/                Specs de design & planos de implementação
 ```

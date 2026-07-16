@@ -1,3 +1,10 @@
+// ============================================================================
+//  DriveLab
+//  hidp0.swift — Ferramenta de dev (macOS/IOKit): testa o canal vendor P0.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
 // Testador do canal vendor P0 (DriveLab Pedal) via IOKit no macOS.
 // Faz: read(Smooth) -> write(Smooth=novo) -> read(Smooth). Se o valor mudar, a escrita app->firmware OK.
 // Uso: swiftc hidp0.swift -o hidp0 && ./hidp0
