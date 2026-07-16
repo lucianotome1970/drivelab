@@ -28,15 +28,12 @@
             <Setter Property="Opacity" Value="0.9" />
         </Style>
 
-        <!-- Desenho de pá (paleta): apagado = esmaecido; ativo (IsPressed) = laranja (accent). -->
-        <Style Selector="Path.paddle">
+        <!-- Pá (aparece pelo recorte transparente do desenho): inativa = escura; ativa = laranja (accent). -->
+        <Style Selector="Rectangle.paddle">
             <Setter Property="Fill" Value="{DynamicResource DlCard}" />
-            <Setter Property="Stroke" Value="{DynamicResource DlBorder}" />
-            <Setter Property="StrokeThickness" Value="1.5" />
         </Style>
-        <Style Selector="Path.paddle.active">
+        <Style Selector="Rectangle.paddle.active">
             <Setter Property="Fill" Value="{DynamicResource DlAccent}" />
-            <Setter Property="Stroke" Value="{DynamicResource DlAccent}" />
         </Style>
     </UserControl.Styles>
 
@@ -53,32 +50,20 @@
                         <StackPanel Grid.Column="0" Spacing="12" Width="480">
                             <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="muted" />
                             <Grid Width="480" Height="480" HorizontalAlignment="Center">
-                                <!-- Pás ATRÁS do desenho (z-order antes da imagem): cobrem os cutouts laterais.
-                                     A forma visível vem do recorte transparente que você fizer no wheel-config.png;
-                                     o overlay só "acende" (accent) quando a pá está ativa (telemetria/demo). Ajustáveis. -->
+                                <!-- Pás ATRÁS do desenho (z-order antes da imagem): aparecem pelos cutouts que você
+                                     deixou transparentes no wheel-config.png; acendem (accent) quando ativas. Ajustáveis. -->
                                 <Canvas Width="480" Height="480" IsHitTestVisible="False">
-                                    <Viewbox Canvas.Left="28" Canvas.Top="165" Width="92" Height="84"
-                                             DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
-                                    </Viewbox>
-                                    <Viewbox Canvas.Left="360" Canvas.Top="165" Width="92" Height="84"
-                                             DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
-                                    </Viewbox>
-                                    <Viewbox Canvas.Left="28" Canvas.Top="255" Width="92" Height="84"
-                                             DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel"
-                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
-                                    </Viewbox>
-                                    <Viewbox Canvas.Left="360" Canvas.Top="255" Width="92" Height="84"
-                                             DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel"
-                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
-                                    </Viewbox>
+                                    <!-- Cada retângulo cobre o recorte; a forma visível vem do recorte transparente. -->
+                                    <Rectangle Classes="paddle" Classes.active="{Binding ShiftDown.IsPressed}"
+                                               Canvas.Left="64" Canvas.Top="172" Width="44" Height="48" />
+                                    <Rectangle Classes="paddle" Classes.active="{Binding ShiftUp.IsPressed}"
+                                               Canvas.Left="376" Canvas.Top="172" Width="44" Height="48" />
+                                    <Rectangle Classes="paddle" Classes.active="{Binding ClutchLeft.IsPressed}"
+                                               Canvas.Left="66" Canvas.Top="257" Width="40" Height="26"
+                                               IsVisible="{Binding ShowBottomPair}" />
+                                    <Rectangle Classes="paddle" Classes.active="{Binding ClutchRight.IsPressed}"
+                                               Canvas.Left="378" Canvas.Top="257" Width="40" Height="26"
+                                               IsVisible="{Binding ShowBottomPair}" />
                                 </Canvas>
                                 <Image Source="avares://DriveLab.Studio/Assets/wheel-config.png" Stretch="Uniform" />
                                 <ItemsControl ItemsSource="{Binding Buttons}">
