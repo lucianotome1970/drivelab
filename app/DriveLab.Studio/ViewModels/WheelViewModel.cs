@@ -69,11 +69,11 @@ public partial class WheelViewModel : ViewModelBase
     /// telemetria). Posições medidas sobre o wheel.png; Glow pulsa e decai por frame.</summary>
     public IReadOnlyList<WheelButtonViewModel> Knobs { get; } = new List<WheelButtonViewModel>
     {
-        new("BRAKE BIAS", 0.268, 0.604, "#FF6A00", diameter: 54),
-        new("MAP",        0.375, 0.681, "#34C759", diameter: 54),
-        new("FUEL",       0.502, 0.695, "#FF6A00", diameter: 54),
-        new("BOOST",      0.631, 0.681, "#32ADE6", diameter: 54),
-        new("ABS",        0.733, 0.605, "#FF6A00", diameter: 54),
+        new("BRAKE BIAS", 0.271, 0.610, "#FF6A00", diameter: 42),
+        new("MAP",        0.375, 0.687, "#34C759", diameter: 42),
+        new("FUEL",       0.503, 0.700, "#FF6A00", diameter: 42),
+        new("BOOST",      0.631, 0.687, "#32ADE6", diameter: 42),
+        new("ABS",        0.733, 0.610, "#FF6A00", diameter: 42),
     };
 
     public IReadOnlyList<string> Palette { get; } = new[]

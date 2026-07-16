@@ -28,12 +28,15 @@
             <Setter Property="Opacity" Value="0.9" />
         </Style>
 
-        <!-- Caixa de pá: borda/forma (o fundo acende via binding inline no IsPressed) -->
-        <Style Selector="Border.paddleBox">
-            <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="Padding" Value="12" />
+        <!-- Desenho de pá (paleta): apagado = esmaecido; ativo (IsPressed) = laranja (accent). -->
+        <Style Selector="Path.paddle">
+            <Setter Property="Fill" Value="{DynamicResource DlCard}" />
+            <Setter Property="Stroke" Value="{DynamicResource DlBorder}" />
+            <Setter Property="StrokeThickness" Value="1.5" />
+        </Style>
+        <Style Selector="Path.paddle.active">
+            <Setter Property="Fill" Value="{DynamicResource DlAccent}" />
+            <Setter Property="Stroke" Value="{DynamicResource DlAccent}" />
         </Style>
     </UserControl.Styles>
 
@@ -129,37 +132,57 @@
                                         Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=4}" />
                             </UniformGrid>
 
-                            <!-- Par de cima: marcha (pressionável) -->
-                            <Grid ColumnDefinitions="*,*">
-                                <Border Grid.Column="0" Classes="paddleBox" Margin="0,0,4,0"
-                                        DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel"
-                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
-                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
-                                    <TextBlock Text="{loc:Translate Wheel_ShiftDown}" HorizontalAlignment="Center" />
-                                </Border>
-                                <Border Grid.Column="1" Classes="paddleBox" Margin="4,0,0,0"
-                                        DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel"
-                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
-                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
-                                    <TextBlock Text="{loc:Translate Wheel_ShiftUp}" HorizontalAlignment="Center" />
-                                </Border>
-                            </Grid>
+                            <!-- Par de cima: pás de marcha — DESENHO que acende quando ativo (telemetria/demo) -->
+                            <StackPanel Orientation="Horizontal" Spacing="24" HorizontalAlignment="Center">
+                                <StackPanel Spacing="6" HorizontalAlignment="Center"
+                                            DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel">
+                                    <Grid Width="52" Height="112">
+                                        <Viewbox>
+                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                        </Viewbox>
+                                        <TextBlock Text="↓" FontSize="26" FontWeight="Bold" Foreground="#F2F2F2"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Text="{loc:Translate Wheel_ShiftDown}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Spacing="6" HorizontalAlignment="Center"
+                                            DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel">
+                                    <Grid Width="52" Height="112">
+                                        <Viewbox>
+                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                        </Viewbox>
+                                        <TextBlock Text="↑" FontSize="26" FontWeight="Bold" Foreground="#F2F2F2"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Text="{loc:Translate Wheel_ShiftUp}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
 
-                            <!-- Par de baixo: pás de embreagem (pressionáveis) — só quando 4 pás -->
-                            <Grid ColumnDefinitions="*,*" IsVisible="{Binding ShowBottomPair}">
-                                <Border Grid.Column="0" Classes="paddleBox" Margin="0,0,4,0"
-                                        DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel"
-                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
-                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
-                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" HorizontalAlignment="Center" />
-                                </Border>
-                                <Border Grid.Column="1" Classes="paddleBox" Margin="4,0,0,0"
-                                        DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel"
-                                        Background="{Binding IsPressed, Converter={x:Static conv:BoolToBrushConverter.Instance}}"
-                                        PointerPressed="OnPaddlePressed" PointerReleased="OnControlReleased">
-                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" HorizontalAlignment="Center" />
-                                </Border>
-                            </Grid>
+                            <!-- Par de baixo: pás de embreagem — desenho (só quando 4 pás) -->
+                            <StackPanel Orientation="Horizontal" Spacing="24" HorizontalAlignment="Center" IsVisible="{Binding ShowBottomPair}">
+                                <StackPanel Spacing="6" HorizontalAlignment="Center"
+                                            DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel">
+                                    <Grid Width="52" Height="112">
+                                        <Viewbox>
+                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                        </Viewbox>
+                                    </Grid>
+                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Spacing="6" HorizontalAlignment="Center"
+                                            DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel">
+                                    <Grid Width="52" Height="112">
+                                        <Viewbox>
+                                            <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                                  Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                        </Viewbox>
+                                    </Grid>
+                                    <TextBlock Text="{loc:Translate Wheel_Clutch}" Classes="muted" FontSize="12" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
 
                             <!-- Config do par de baixo (só quando 4 pás) -->
                             <StackPanel Spacing="10" IsVisible="{Binding ShowBottomPair}">
