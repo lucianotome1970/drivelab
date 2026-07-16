@@ -151,4 +151,23 @@ public class WheelViewModelTests
         Assert.Equal(new WheelLedColor(0xFF, 0x3B, 0x30), t.LastLed!.Leds[0]);
         vm.Dispose();
     }
+
+    [Fact]
+    public async Task SaveToController_Enabled_Only_When_Dirty_And_Connected()
+    {
+        var vm = WithSession(out _);
+        await vm.ConnectCommand.ExecuteAsync(null);
+        Assert.False(vm.IsDirty);
+        Assert.False(vm.SaveToControllerCommand.CanExecute(null));  // nada alterado
+
+        vm.SelectButtonCommand.Execute(vm.Buttons[0]);
+        vm.SetColorCommand.Execute("#0A84FF");                      // alterou → dirty
+        Assert.True(vm.IsDirty);
+        Assert.True(vm.SaveToControllerCommand.CanExecute(null));
+
+        await vm.SaveToControllerCommand.ExecuteAsync(null);        // salva → limpa dirty
+        Assert.False(vm.IsDirty);
+        Assert.False(vm.SaveToControllerCommand.CanExecute(null));
+        vm.Dispose();
+    }
 }

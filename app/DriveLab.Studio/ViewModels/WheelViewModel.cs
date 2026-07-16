@@ -7,12 +7,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Protocol;
+using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
 
 namespace DriveLab.Studio.ViewModels;
@@ -29,10 +31,19 @@ public partial class WheelViewModel : ViewModelBase
     /// vem da telemetria do firmware (via SetControlPressed), não do mouse.</summary>
     public bool IsSimulator { get; }
 
+    private bool _loading;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveToControllerCommand))]
     private bool _isConnected;
+
+    /// <summary>Config alterada desde o último salvar/carregar — habilita "Salvar no controlador"
+    /// (mesmo padrão de pedais/freio de mão). Zera ao salvar/carregar.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveToControllerCommand))]
+    private bool _isDirty;
 
     /// <summary>Brilho global dos LEDs enviado no report (0..255). Empurra ao vivo ao mudar.</summary>
     [ObservableProperty] private byte _ledBrightness = 200;
@@ -96,10 +107,18 @@ public partial class WheelViewModel : ViewModelBase
             _session.Disconnected += OnConnectionChanged;
         }
 
+        // Alterar a config das pás (função/modo/atuação/bite) marca "não salvo".
+        BottomPair.PropertyChanged += OnConfigChanged;
+
         // Carrega o perfil salvo no arranque (config persiste entre execuções, como MOZA).
         // Fire-and-forget: LoadAsync tolera arquivo ausente (mantém os defaults acima).
         _ = LoadCommand.ExecuteAsync(null);
     }
+
+    private void OnConfigChanged(object? sender, PropertyChangedEventArgs e) => MarkDirty();
+
+    /// <summary>Marca a config como não salva (ignorado durante carga/aplicação de perfil).</summary>
+    private void MarkDirty() { if (!_loading) IsDirty = true; }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private async Task ConnectAsync()
@@ -144,7 +163,7 @@ public partial class WheelViewModel : ViewModelBase
         _ = _session.SendLedAsync(new WheelLedReport(LedBrightness, colors));
     }
 
-    partial void OnLedBrightnessChanged(byte value) => PushLeds();
+    partial void OnLedBrightnessChanged(byte value) { PushLeds(); MarkDirty(); }
 
     private static WheelLedColor HexToColor(string hex)
     {
@@ -169,8 +188,11 @@ public partial class WheelViewModel : ViewModelBase
         {
             SelectedButton.ColorHex = hex;
             PushLeds();   // ao vivo: reflete a cor no aro na hora
+            MarkDirty();
         }
     }
+
+    partial void OnPaddleCountChanged(int value) => MarkDirty();
 
     [RelayCommand]
     private void SetPaddleCount(string count) => PaddleCount = int.Parse(count);
@@ -186,9 +208,22 @@ public partial class WheelViewModel : ViewModelBase
             control.IsPressed = pressed;
     }
 
+    /// <summary>Salva o perfil do app (cores/pás). Funciona offline; não mexe na flash do device.</summary>
     [RelayCommand]
     private Task Save() => _storage.SaveAsync(Export());
-    // (Ponto futuro: quando o firmware expuser LED/pás, escrever também no device aqui.)
+
+    /// <summary>Padrão dos outros módulos: só habilita quando há alteração e o aro está conectado.
+    /// Persiste o perfil do app (cores/pás) e manda SaveToFlash p/ o device (calibração/brilho).</summary>
+    [RelayCommand(CanExecute = nameof(CanSaveToController))]
+    private async Task SaveToController()
+    {
+        await _storage.SaveAsync(Export());
+        if (_session is not null && _session.IsConnected)
+            await _session.SendCommandAsync(WheelCommandId.SaveToFlash);
+        IsDirty = false;
+    }
+
+    private bool CanSaveToController() => IsConnected && IsDirty;
 
     [RelayCommand]
     private async Task Load()
@@ -206,22 +241,32 @@ public partial class WheelViewModel : ViewModelBase
 
     private void Apply(WheelProfile p)
     {
-        foreach (var saved in p.Buttons)
+        _loading = true;   // aplicar perfil não conta como "alteração do usuário"
+        try
         {
-            var b = Buttons.FirstOrDefault(x => x.Name == saved.Name);
-            if (b is not null)
-                b.ColorHex = saved.ColorHex;
+            foreach (var saved in p.Buttons)
+            {
+                var b = Buttons.FirstOrDefault(x => x.Name == saved.Name);
+                if (b is not null)
+                    b.ColorHex = saved.ColorHex;
+            }
+            PaddleCount = p.PaddleCount;
+            BottomPair.Function = p.BottomFunction;
+            BottomPair.Mode = p.BottomMode;
+            BottomPair.Actuation = p.BottomActuation;
+            BottomPair.BitePoint = p.BottomBitePoint;
+            PushLeds();   // perfil carregado → reflete no aro (se conectado)
         }
-        PaddleCount = p.PaddleCount;
-        BottomPair.Function = p.BottomFunction;
-        BottomPair.Mode = p.BottomMode;
-        BottomPair.Actuation = p.BottomActuation;
-        BottomPair.BitePoint = p.BottomBitePoint;
-        PushLeds();   // perfil carregado → reflete no aro (se conectado)
+        finally
+        {
+            _loading = false;
+            IsDirty = false;   // acabou de carregar: nada pendente
+        }
     }
 
     public override void Dispose()
     {
+        BottomPair.PropertyChanged -= OnConfigChanged;
         if (_session is not null)
         {
             _session.StateReceived -= OnState;

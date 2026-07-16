@@ -205,10 +205,14 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Ações no topo à direita -->
+            <!-- Ações no topo à direita (mesmo padrão de pedais/freio de mão) -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
+                <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0"
+                           IsVisible="{Binding IsConnected}" />
                 <Button Content="{loc:Translate Load}" Command="{Binding LoadCommand}" />
-                <Button Classes="accent" Content="{loc:Translate Save}" Command="{Binding SaveCommand}" />
+                <Button Content="{loc:Translate Save}" Command="{Binding SaveCommand}" />
+                <!-- Habilitado só quando há alteração não salva (dirty) e o aro está conectado. -->
+                <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
             </StackPanel>
         </Grid>
     </Border>
