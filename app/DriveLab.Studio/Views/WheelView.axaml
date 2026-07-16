@@ -53,7 +53,33 @@
                         <StackPanel Grid.Column="0" Spacing="12" Width="480">
                             <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="muted" />
                             <Grid Width="480" Height="480" HorizontalAlignment="Center">
-                                <Image Source="avares://DriveLab.Studio/Assets/wheel.png" Stretch="Uniform" />
+                                <!-- Pás ATRÁS do desenho (z-order antes da imagem): horizontais, espiam por trás
+                                     do aro. Acendem quando ativas (telemetria/demo). Posições ajustáveis. -->
+                                <Canvas Width="480" Height="480" IsHitTestVisible="False">
+                                    <Viewbox Canvas.Left="6" Canvas.Top="150" Width="120" Height="40"
+                                             DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="354" Canvas.Top="150" Width="120" Height="40"
+                                             DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="6" Canvas.Top="300" Width="120" Height="40"
+                                             DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel"
+                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="354" Canvas.Top="300" Width="120" Height="40"
+                                             DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel"
+                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
+                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                    </Viewbox>
+                                </Canvas>
+                                <Image Source="avares://DriveLab.Studio/Assets/wheel-config.png" Stretch="Uniform" />
                                 <ItemsControl ItemsSource="{Binding Buttons}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate><Canvas Width="480" Height="480" /></ItemsPanelTemplate>
@@ -96,31 +122,6 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <!-- Pás sobre o desenho (atrás dos punhos): acendem quando ativas (telemetria/demo). -->
-                                <Canvas Width="480" Height="480" IsHitTestVisible="False">
-                                    <Viewbox Canvas.Left="47" Canvas.Top="146" Width="44" Height="92"
-                                             DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                    </Viewbox>
-                                    <Viewbox Canvas.Left="388" Canvas.Top="146" Width="44" Height="92"
-                                             DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                    </Viewbox>
-                                    <Viewbox Canvas.Left="47" Canvas.Top="208" Width="44" Height="92"
-                                             DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel"
-                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                    </Viewbox>
-                                    <Viewbox Canvas.Left="388" Canvas.Top="208" Width="44" Height="92"
-                                             DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel"
-                                             IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
-                                        <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
-                                    </Viewbox>
-                                </Canvas>
                             </Grid>
 
                             <!-- Paleta de cores (aplica no botão selecionado). Só com o aro conectado:
