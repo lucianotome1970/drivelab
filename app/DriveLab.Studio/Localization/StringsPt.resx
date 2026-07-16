@@ -89,6 +89,7 @@
   <data name="Pedal_Source_Simulator" xml:space="preserve"><value>Simulador</value></data>
   <data name="Pedal_Source_Detected" xml:space="preserve"><value>Pedaleira detectada</value></data>
   <data name="Handbrake_Source_Detected" xml:space="preserve"><value>Freio de mão detectado</value></data>
+  <data name="Wheel_Source_Detected" xml:space="preserve"><value>Volante detectado</value></data>
 
   <data name="Splash_Starting" xml:space="preserve"><value>Iniciando…</value></data>
   <data name="Splash_SearchingBase" xml:space="preserve"><value>Procurando base…</value></data>

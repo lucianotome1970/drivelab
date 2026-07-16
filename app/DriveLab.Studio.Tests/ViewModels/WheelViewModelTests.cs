@@ -7,7 +7,10 @@
 
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using DriveLab.Core.Protocol;
 using DriveLab.Studio.Services;
+using DriveLab.Studio.Tests.Services;
 using DriveLab.Studio.ViewModels;
 using Xunit;
 
@@ -107,5 +110,45 @@ public class WheelViewModelTests
             Assert.Equal(PaddleFunction.Free, vm2.BottomPair.Function);
         }
         finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    // ---- integração ao vivo com o dispositivo (WheelDeviceSession) ----
+
+    private static WheelViewModel WithSession(out FakeWheelTransport transport)
+    {
+        transport = new FakeWheelTransport();
+        var session = new WheelDeviceSession(transport, new ImmediateUiDispatcher());
+        var path = Path.Combine(Path.GetTempPath(), $"wheelvm-{System.Guid.NewGuid():N}.json");
+        return new WheelViewModel(new JsonWheelProfileStorage(path), simulatorMode: false, session);
+    }
+
+    [Fact]
+    public async Task Telemetry_Lights_Buttons_By_Bitmap()
+    {
+        var vm = WithSession(out var t);
+        await vm.ConnectCommand.ExecuteAsync(null);
+
+        t.RaiseState(new WheelState { Buttons = 0b101, ClutchLeft = new WheelAxis(0, 40000) }); // bits 0 e 2
+
+        Assert.True(vm.Buttons[0].IsPressed);
+        Assert.False(vm.Buttons[1].IsPressed);
+        Assert.True(vm.Buttons[2].IsPressed);
+        Assert.True(vm.ClutchLeft.IsPressed);   // eixo alto acende a embreagem esq.
+        vm.Dispose();
+    }
+
+    [Fact]
+    public async Task Connect_And_SetColor_Push_Leds_Live()
+    {
+        var vm = WithSession(out var t);
+        await vm.ConnectCommand.ExecuteAsync(null);
+        Assert.True(t.LedSends >= 1);                 // conectar já empurra as cores atuais
+
+        var before = t.LedSends;
+        vm.SelectButtonCommand.Execute(vm.Buttons[0]);
+        vm.SetColorCommand.Execute("#FF3B30");        // muda a cor → empurra ao vivo
+        Assert.True(t.LedSends > before);
+        Assert.Equal(new WheelLedColor(0xFF, 0x3B, 0x30), t.LastLed!.Leds[0]);
+        vm.Dispose();
     }
 }

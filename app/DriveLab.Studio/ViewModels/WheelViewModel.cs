@@ -5,25 +5,37 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DriveLab.Core.Protocol;
 using DriveLab.Studio.Services;
 
 namespace DriveLab.Studio.ViewModels;
 
-/// <summary>Tela do volante (mock): cores de LED por botão + config de pás. Persistência em
-/// JSON local; NADA vai ao dispositivo (firmware não expõe LED/pás ainda). O ponto de escrita
-/// ao device entraria em SaveCommand quando o protocolo existir.</summary>
+/// <summary>Tela do volante: cores de LED por botão + config de pás. Em modo real conecta ao aro
+/// (<see cref="WheelDeviceSession"/>): a telemetria acende os botões pressionados e as cores são
+/// enviadas AO VIVO ao dispositivo. Sem sessão (simulador), vira o mock com persistência JSON local.</summary>
 public partial class WheelViewModel : ViewModelBase
 {
     private readonly IWheelProfileStorage _storage;
+    private readonly WheelDeviceSession? _session;
 
     /// <summary>Só em modo /simulator o clique simula pressionar (acende). Em modo real o "aceso"
-    /// virá da telemetria do firmware (via SetControlPressed), não do mouse.</summary>
+    /// vem da telemetria do firmware (via SetControlPressed), não do mouse.</summary>
     public bool IsSimulator { get; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    private bool _isConnected;
+
+    /// <summary>Brilho global dos LEDs enviado no report (0..255). Empurra ao vivo ao mudar.</summary>
+    [ObservableProperty] private byte _ledBrightness = 200;
 
     /// <summary>Botões do desenho do volante (coloríveis + pressionáveis). Os giratórios NÃO entram
     /// aqui: são encoders (giram, não clicam) — o desenho já os mostra; girar fica p/ o futuro.</summary>
@@ -54,10 +66,11 @@ public partial class WheelViewModel : ViewModelBase
 
     public bool ShowBottomPair => PaddleCount == 4;
 
-    public WheelViewModel(IWheelProfileStorage storage, bool simulatorMode = false)
+    public WheelViewModel(IWheelProfileStorage storage, bool simulatorMode = false, WheelDeviceSession? session = null)
     {
         _storage = storage;
         IsSimulator = simulatorMode;
+        _session = session;
         // Nome, posição normalizada (0-1 sobre a imagem quadrada wheel.png), cor padrão.
         Buttons = new List<WheelButtonViewModel>
         {
@@ -71,9 +84,69 @@ public partial class WheelViewModel : ViewModelBase
             new("ESC",   0.744, 0.520, "#32ADE6"),
         };
 
+        if (_session is not null)
+        {
+            _isConnected = _session.IsConnected;
+            _session.StateReceived += OnState;
+            _session.Connected += OnConnectionChanged;
+            _session.Disconnected += OnConnectionChanged;
+        }
+
         // Carrega o perfil salvo no arranque (config persiste entre execuções, como MOZA).
         // Fire-and-forget: LoadAsync tolera arquivo ausente (mantém os defaults acima).
         _ = LoadCommand.ExecuteAsync(null);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanConnect))]
+    private async Task ConnectAsync()
+    {
+        if (_session is null) return;
+        await _session.ConnectAsync();
+        PushLeds();   // manda as cores atuais assim que conecta
+    }
+
+    private bool CanConnect() => _session is not null && !IsConnected;
+
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private Task DisconnectAsync() => _session?.DisconnectAsync() ?? Task.CompletedTask;
+
+    private void OnConnectionChanged(object? sender, EventArgs e)
+    {
+        IsConnected = _session?.IsConnected ?? false;
+        if (IsConnected) PushLeds();
+    }
+
+    // Telemetria do aro → visual de pressão (mesmo caminho da simulação).
+    // Mapa provisório: bits 0..7 = os 8 botões do desenho; bits 10/11 = marcha ↓/↑;
+    // embreagens acendem pelo eixo (output alto). Ajustável quando o layout físico fechar.
+    private void OnState(object? sender, WheelState s)
+    {
+        for (var i = 0; i < Buttons.Count && i < 32; i++)
+            Buttons[i].IsPressed = s.IsButtonPressed(i);
+        ShiftDown.IsPressed = s.IsButtonPressed(10);
+        ShiftUp.IsPressed   = s.IsButtonPressed(11);
+        ClutchLeft.IsPressed  = s.ClutchLeft.Output  > 32768;
+        ClutchRight.IsPressed = s.ClutchRight.Output > 32768;
+        IsConnected = _session?.IsConnected ?? false;
+    }
+
+    /// <summary>Monta o WheelLed com as cores dos botões (pixels 0..N) e envia ao vivo.</summary>
+    private void PushLeds()
+    {
+        if (_session is null || !_session.IsConnected)
+            return;
+        var colors = Buttons.Select(b => HexToColor(b.ColorHex)).ToArray();
+        _ = _session.SendLedAsync(new WheelLedReport(LedBrightness, colors));
+    }
+
+    partial void OnLedBrightnessChanged(byte value) => PushLeds();
+
+    private static WheelLedColor HexToColor(string hex)
+    {
+        var h = hex.TrimStart('#');
+        if (h.Length != 6 || !uint.TryParse(h, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rgb))
+            return new WheelLedColor(0, 0, 0);
+        return new WheelLedColor((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
     }
 
     [RelayCommand]
@@ -88,7 +161,10 @@ public partial class WheelViewModel : ViewModelBase
     private void SetColor(string hex)
     {
         if (SelectedButton is not null)
+        {
             SelectedButton.ColorHex = hex;
+            PushLeds();   // ao vivo: reflete a cor no aro na hora
+        }
     }
 
     [RelayCommand]
@@ -136,5 +212,18 @@ public partial class WheelViewModel : ViewModelBase
         BottomPair.Mode = p.BottomMode;
         BottomPair.Actuation = p.BottomActuation;
         BottomPair.BitePoint = p.BottomBitePoint;
+        PushLeds();   // perfil carregado → reflete no aro (se conectado)
+    }
+
+    public override void Dispose()
+    {
+        if (_session is not null)
+        {
+            _session.StateReceived -= OnState;
+            _session.Connected -= OnConnectionChanged;
+            _session.Disconnected -= OnConnectionChanged;
+            _session.Dispose();
+        }
+        base.Dispose();
     }
 }

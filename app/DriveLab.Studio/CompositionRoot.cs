@@ -121,7 +121,21 @@ public static class CompositionRoot
         // dos pedais e do freio de mão, lado a lado. Base usa a MESMA sessão do volante.
         var home = new HomeViewModel(new DashboardViewModel(session), pedals, handbrake, new BaseViewModel(session));
 
-        var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode);
+        // Volante: simulador → mock (sem sessão); real → HID 0x0004 + hotplug + LED ao vivo.
+        WheelDeviceSession? wheelSession = null;
+        Func<bool>? wheelPresent = null;
+        if (!simulatorMode)
+        {
+            wheelSession = new WheelDeviceSession(new HidWheelTransport(new HidSharpChannel()), dispatcher, L.Get("Wheel_Source_Detected"));
+            wheelPresent = HidWheelTransport.IsDevicePresent;
+        }
+        var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode, wheelSession);
+        if (wheelPresent is not null)
+            autoConnectors.Add(StartAutoConnect(
+                () => wheel.IsConnected,
+                () => wheel.ConnectCommand.ExecuteAsync(null),
+                () => wheel.DisconnectCommand.ExecuteAsync(null),
+                wheelPresent, dispatcher));
         var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs);
 
         var pages = new List<NavItem>
