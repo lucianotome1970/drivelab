@@ -150,7 +150,8 @@ static void scanEncoders() {
     uint8_t idx = (g_encPrev[e] << 2) | cur;
     int8_t step = kQuadTable[idx & 0x0F];
     if (step != 0) {
-      g_encDelta[e] += step;             // acumula p/ telemetria
+      int v = g_encDelta[e] + step;      // acumula p/ telemetria (satura em ±127)
+      g_encDelta[e] = (int8_t)(v > 127 ? 127 : (v < -128 ? -128 : v));
       // pulso momentâneo de botão (limpo no próximo sendReport do gamepad)
       setBit(g_buttons, step > 0 ? BIT_ENC_CW[e] : BIT_ENC_CCW[e], true);
     }
@@ -191,7 +192,7 @@ static void writeField(uint8_t f, double v) {
     case S_MODE:   g_cfg.clutchMode = (uint8_t)v; break;
     case S_BITE:   g_cfg.clutchBitePoint = (uint8_t)v; break;
     case S_LED_BRIGHT: g_cfg.ledBrightness = (uint8_t)v; g_pixels.setBrightness(g_cfg.ledBrightness); break;
-    case S_LED_COUNT:  g_cfg.ledCount = (uint8_t)v; break;
+    case S_LED_COUNT:  g_cfg.ledCount = (uint8_t)v; g_pixels.updateLength(g_cfg.ledCount); break;
   }
 }
 static double decodeValue(const uint8_t* buf) {  // buf = payload; [2]=type, [3..]=valor LE
