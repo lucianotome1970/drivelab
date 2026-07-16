@@ -55,6 +55,14 @@ static uint16_t g_out[3] = { 0, 0, 0 };
 static double   g_smoothed[3] = { 0, 0, 0 };
 static bool     g_cal[3] = { false, false, false };
 static uint16_t g_calMin[3], g_calMax[3];
+// Resposta de setting-value: enfileirada pelo callback USB, ENVIADA pelo loop (um report por vez).
+static volatile bool     g_pendingValue = false;
+static volatile uint8_t  g_pvField = 0, g_pvIndex = 0;
+// Debug de bancada: nº de OUTPUT reports recebidos + último id + primeiros bytes + len (serial).
+static volatile uint32_t g_dbgSet = 0;
+static volatile uint8_t  g_dbgLastId = 0;
+static volatile uint8_t  g_dbgB0 = 0, g_dbgB1 = 0, g_dbgB2 = 0, g_dbgB3 = 0;
+static volatile uint16_t g_dbgLen = 0;
 
 static const uint8_t kAdcPin[3] = { A0, A1, A2 };  // GP26/GP27/GP28 (pot/hall)
 
@@ -224,6 +232,10 @@ static bool loadFromFlash() {
 // Aqui assumimos: report_id = ID do report; buffer = payload (sem o ID). Se vier diferente
 // (ex.: ID no buffer[0]), ajustar. É o principal risco deste M2 sem hardware.
 static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t const* buf, uint16_t len) {
+  g_dbgSet++; g_dbgLastId = report_id;   // debug: confirma que OUTPUT reports chegam
+  g_dbgLen = len;
+  g_dbgB0 = len > 0 ? buf[0] : 0; g_dbgB1 = len > 1 ? buf[1] : 0;
+  g_dbgB2 = len > 2 ? buf[2] : 0; g_dbgB3 = len > 3 ? buf[3] : 0;
   if (len < 2) return;
   switch (report_id) {
     case RID_SET_WRITE: {                 // [0]=field [1]=index [2]=type [3..]=valor
@@ -233,7 +245,7 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
     }
     case RID_SET_READREQ: {               // [0]=field [1]=index
       uint8_t field = buf[0], index = buf[1];
-      if (index < 3) sendSettingValue(field, index);
+      if (index < 3) { g_pvField = field; g_pvIndex = index; g_pendingValue = true; }  // responde no loop()
       break;
     }
     case RID_CMD: {                       // [0]=cmd [1]=arg
@@ -275,11 +287,20 @@ void setup() {
 }
 
 static unsigned long g_lastTelem = 0;
+static unsigned long g_lastDbg = 0;
 
 void loop() {
+  // Debug de bancada (só com monitor serial aberto; senão Serial.printf travaria o loop).
+  if (Serial && millis() - g_lastDbg >= 500) {
+    g_lastDbg = millis();
+    Serial.printf("dbg set=%lu id=0x%02x len=%u buf=[%u %u %u %u]  cfg0: smooth=%u invert=%u\n",
+                  (unsigned long)g_dbgSet, g_dbgLastId, g_dbgLen,
+                  g_dbgB0, g_dbgB1, g_dbgB2, g_dbgB3, g_cfg[0].smooth, g_cfg[0].invert);
+  }
+
   if (!g_hid.ready()) { delay(1); return; }
 
-  // 1) ler sensores (ADC pot/hall OU HX711 load cell, por sensor_type)
+  // 1) ler sensores + pipeline
   for (int p = 0; p < 3; p++) {
     g_raw[p] = readSensorRaw(p);                  // 0..4095
     if (g_cal[p]) {
@@ -289,17 +310,20 @@ void loop() {
     g_out[p] = runPipeline(p, g_raw[p]);
   }
 
-  // 2) eixos do Joystick (12-bit): usa o output do pipeline reescalado p/ 0..4095
-  uint16_t axes[3] = { (uint16_t)(g_out[0] >> 4), (uint16_t)(g_out[1] >> 4), (uint16_t)(g_out[2] >> 4) };
-  g_hid.sendReport(RID_JOYSTICK, axes, sizeof(axes));
+  // 2) Resposta de setting-value (0x16) tem prioridade nesta janela; senão, joystick (0x01).
+  if (g_pendingValue) {
+    g_pendingValue = false;
+    sendSettingValue(g_pvField, g_pvIndex);
+  } else {
+    uint16_t axes[3] = { (uint16_t)(g_out[0] >> 4), (uint16_t)(g_out[1] >> 4), (uint16_t)(g_out[2] >> 4) };
+    g_hid.sendReport(RID_JOYSTICK, axes, sizeof(axes));
+  }
 
-  // 3) telemetria PedalState (0x20) a ~100 Hz
-  if (millis() - g_lastTelem >= 10) {
+  // 3) telemetria PedalState (0x20) — só quando o endpoint estiver livre de novo (não colide c/ o de cima)
+  if (millis() - g_lastTelem >= 10 && g_hid.ready()) {
     g_lastTelem = millis();
     uint8_t st[PAYLOAD]; memset(st, 0, sizeof(st));
-    // [0..3] firmware version (0.1.0.0 placeholder), [4] flags=0
     st[1] = 1;
-    // [5..16] = por pedal: raw(u16 LE), output(u16 LE)
     int off = 5;
     for (int p = 0; p < 3; p++) {
       st[off++] = g_raw[p] & 0xFF; st[off++] = (g_raw[p] >> 8) & 0xFF;
