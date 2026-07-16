@@ -46,8 +46,31 @@ public sealed class HidSharpChannel : IHidChannel
 
     public Task WriteAsync(byte[] wireReport)
     {
-        _stream?.Write(wireReport);
-        return Task.CompletedTask;
+        var stream = _stream;
+        if (stream == null)
+            return Task.CompletedTask;
+
+        // Escreve fora da thread de UI e blinda contra falhas: uma escrita HID que lança
+        // (device sumiu, tamanho, I/O) NUNCA pode derrubar o app. O Windows exige o buffer
+        // no tamanho EXATO do output report (com o report id no byte 0) — ajusta se preciso.
+        return Task.Run(() =>
+        {
+            try
+            {
+                var buffer = wireReport;
+                var max = stream.Device.GetMaxOutputReportLength();
+                if (max > 0 && wireReport.Length != max)
+                {
+                    buffer = new byte[max];
+                    Array.Copy(wireReport, buffer, Math.Min(wireReport.Length, max));
+                }
+                stream.Write(buffer);
+            }
+            catch
+            {
+                // Falha de escrita não é fatal: o próximo write/telemetria segue.
+            }
+        });
     }
 
     private void ReadLoop()
@@ -63,7 +86,8 @@ public sealed class HidSharpChannel : IHidChannel
             if (count <= 0) continue;
             var report = new byte[count];
             Array.Copy(buffer, report, count);
-            ReportReceived?.Invoke(this, report);
+            try { ReportReceived?.Invoke(this, report); }
+            catch { /* um handler/parse ruim não pode matar a read-thread (=processo) */ }
         }
     }
 
