@@ -28,13 +28,13 @@
             <Setter Property="Opacity" Value="0.9" />
         </Style>
 
-        <!-- Pá (aparece pelo recorte transparente do desenho): SEMPRE visível em cinza escuro
-             (para se ver as pás conforme a contagem); ao ser acionada, clareia (highlight). -->
-        <Style Selector="Rectangle.paddle">
+        <!-- Pá (asa desenhada sobre as aberturas): SEMPRE visível em cinza escuro (para se ver as pás
+             conforme a contagem); ACENDE em laranja (accent) quando pressionada. -->
+        <Style Selector="Path.paddle">
             <Setter Property="Fill" Value="#3B424D" />
         </Style>
-        <Style Selector="Rectangle.paddle.active">
-            <Setter Property="Fill" Value="#7A828F" />
+        <Style Selector="Path.paddle.active">
+            <Setter Property="Fill" Value="{DynamicResource DlAccent}" />
         </Style>
     </UserControl.Styles>
 
@@ -51,22 +51,29 @@
                         <StackPanel Grid.Column="0" Spacing="12" Width="480">
                             <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="muted" />
                             <Grid Width="480" Height="480" HorizontalAlignment="Center">
-                                <!-- Pás ATRÁS do desenho (z-order antes da imagem): aparecem pelos cutouts que você
-                                     deixou transparentes no wheel-config.png; acendem (accent) quando ativas. Ajustáveis. -->
-                                <Canvas Width="480" Height="480" IsHitTestVisible="False">
-                                    <!-- Cada retângulo cobre o recorte; a forma visível vem do recorte transparente. -->
-                                    <Rectangle Classes="paddle" Classes.active="{Binding ShiftDown.IsPressed}"
-                                               Canvas.Left="64" Canvas.Top="172" Width="44" Height="48" />
-                                    <Rectangle Classes="paddle" Classes.active="{Binding ShiftUp.IsPressed}"
-                                               Canvas.Left="376" Canvas.Top="172" Width="44" Height="48" />
-                                    <Rectangle Classes="paddle" Classes.active="{Binding ClutchLeft.IsPressed}"
-                                               Canvas.Left="66" Canvas.Top="257" Width="40" Height="26"
-                                               IsVisible="{Binding ShowBottomPair}" />
-                                    <Rectangle Classes="paddle" Classes.active="{Binding ClutchRight.IsPressed}"
-                                               Canvas.Left="378" Canvas.Top="257" Width="40" Height="26"
-                                               IsVisible="{Binding ShowBottomPair}" />
-                                </Canvas>
                                 <Image Source="avares://DriveLab.Studio/Assets/wheel-config.png" Stretch="Uniform" />
+                                <!-- Pás como ASA por cima das aberturas: escuras (sempre visíveis conforme a contagem),
+                                     acendem em laranja quando pressionadas. Não cobrem toda a abertura. Ajustáveis. -->
+                                <Canvas Width="480" Height="480" IsHitTestVisible="False">
+                                    <Viewbox Canvas.Left="55" Canvas.Top="164" Width="40" Height="78">
+                                        <Path Classes="paddle" Classes.active="{Binding ShiftDown.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="385" Canvas.Top="164" Width="40" Height="78">
+                                        <Path Classes="paddle" Classes.active="{Binding ShiftUp.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="57" Canvas.Top="248" Width="36" Height="56"
+                                             IsVisible="{Binding ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding ClutchLeft.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="387" Canvas.Top="248" Width="36" Height="56"
+                                             IsVisible="{Binding ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding ClutchRight.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                </Canvas>
                                 <ItemsControl ItemsSource="{Binding Buttons}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate><Canvas Width="480" Height="480" /></ItemsPanelTemplate>
