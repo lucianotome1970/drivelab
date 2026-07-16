@@ -14,7 +14,7 @@ a **custom** USB HID device (PID `0x1209:0x0004`), enumerates as **"DriveLab Whe
 Design/decisions: internal project notes (not versioned in the public repo).
 
 > RP2040 + **arduino-pico** (Philhower) + Adafruit_TinyUSB + Adafruit_NeoPixel. MIT license.
-> **Status:** M1→M4 **written, awaiting on-board validation**. M5 (validation/polish) is still pending.
+> **Status (2026-07):** enumeration + **vendor P0 channel validated on real hardware** (Waveshare RP2040-Zero) — enumerates as **"DriveLab Wheel"** (VID `0x1209` / PID `0x0004`), joystick streams, and settings read/write works on the wire (read LedBright=128 → write 42 → read 42, the `0x16` fix confirmed). **Still to validate with the rim wired:** the MCP23017 button reads, encoders, clutch ADC, and the WS2812 LEDs — none were connected on the bench. App-side note: a `HidWheelTransport` doesn't exist yet, so the Studio can't drive the real rim until that's added.
 
 ### Two HID channels
 1. **Gamepad** (report `0x01`): 32 buttons + 2 axes (clutch paddles). What games read.
@@ -86,7 +86,7 @@ dispositivo USB HID **próprio** (PID `0x1209:0x0004`), enumera como **"DriveLab
 Design/decisões: notas internas de projeto (não versionadas no repo público).
 
 > RP2040 + **arduino-pico** (Philhower) + Adafruit_TinyUSB + Adafruit_NeoPixel. Licença MIT.
-> **Status:** M1→M4 **escritos, aguardando validação na placa**. Falta o M5 (validação/polimento).
+> **Status (2026-07):** enumeração + **canal vendor P0 validados em hardware real** (Waveshare RP2040-Zero) — enumera como **"DriveLab Wheel"** (VID `0x1209` / PID `0x0004`), o joystick transmite, e a leitura/escrita de settings funciona no fio (read LedBright=128 → write 42 → read 42, fix do `0x16` confirmado). **Falta validar com o aro montado:** a leitura dos botões via MCP23017, os encoders, o ADC das embreagens e os LEDs WS2812 — nada foi ligado na bancada. Nota do app: ainda não existe um `HidWheelTransport`, então o Studio não controla o aro real até isso ser adicionado.
 
 ### Dois canais HID
 1. **Gamepad** (report `0x01`): 32 botões + 2 eixos (pás de embreagem). O que os jogos leem.
