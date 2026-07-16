@@ -223,9 +223,8 @@
                                    Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
                     </StackPanel>
                 </Border>
-                <Button Content="{loc:Translate Load}" Command="{Binding LoadCommand}" />
-                <Button Content="{loc:Translate Save}" Command="{Binding SaveCommand}" />
-                <!-- Habilitado só quando há alteração não salva (dirty) e o aro está conectado. -->
+                <!-- Sem "Carregar"/"Salvar": o perfil carrega sozinho ao detectar o aro e o único
+                     salvamento é "Salvar no controlador". Habilitado só com alteração não salva e conectado. -->
                 <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
             </StackPanel>
         </Grid>

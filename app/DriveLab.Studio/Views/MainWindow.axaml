@@ -81,7 +81,7 @@
                             <TextBlock Text="{loc:Translate Badge_Simulator}" Foreground="#111111" FontSize="11" FontWeight="Bold" LetterSpacing="1" />
                         </Border>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <!-- Sem status global de conexão: cada módulo (base, pedais, freio de mão, aro) conecta seu próprio dispositivo. -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
                         <Button Content="{loc:Translate Test_Button}" Click="OpenTest_Click" ToolTip.Tip="{loc:Translate Test_Tooltip}"
                                 IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}" />

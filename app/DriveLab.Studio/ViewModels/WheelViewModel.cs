@@ -151,7 +151,8 @@ public partial class WheelViewModel : ViewModelBase
         IsConnected = _session?.IsConnected ?? false;
         if (IsConnected)
         {
-            PushLeds();
+            PushLeds();                                    // empurra as cores atuais assim que conecta
+            if (!IsDirty) _ = ReloadOnDetectAsync();       // e recarrega o perfil ao detectar o aro (sem sobrescrever edições não salvas)
         }
         else
         {
@@ -160,6 +161,13 @@ public partial class WheelViewModel : ViewModelBase
             foreach (var b in Buttons) b.IsPressed = false;
             foreach (var p in Paddles) p.IsPressed = false;
         }
+    }
+
+    // O "Carregar" deixou de ser um botão: ao detectar o aro, o perfil salvo é aplicado automaticamente.
+    private async Task ReloadOnDetectAsync()
+    {
+        await LoadCommand.ExecuteAsync(null);
+        PushLeds();
     }
 
     // Telemetria do aro → visual de pressão (mesmo caminho da simulação).
