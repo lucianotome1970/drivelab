@@ -127,6 +127,27 @@ The desktop app that connects to all of them: **[DriveLab Studio (app) »](app/R
 
 ---
 
+## 🧠 Why the RP2040? / Por que o RP2040?
+
+The pedals, handbrake and rim all run on a **Waveshare RP2040-Zero**. The device side needs to be a **custom USB HID device** — a gamepad **plus** a vendor channel (report ids `0x14/0x15/0x16/0x20`) that the app uses to read/write settings and stream telemetry. That drove the choice:
+
+- **Native USB** on the MCU (not a USB-to-serial bridge) — required to enumerate as a real HID device.
+- **Full control of the HID report descriptor** — provided by **Adafruit_TinyUSB**, which runs on the RP2040. That's what lets us define the custom vendor reports, not just a stock gamepad.
+- Plenty of **GPIO** (axes, buttons, encoders, WS2812 LEDs), **USB-C**, dual core, and it's **cheap** (~US$2–5).
+
+🇧🇷 *Os pedais, o freio de mão e o aro rodam numa **Waveshare RP2040-Zero**. O lado do dispositivo precisa ser um **dispositivo USB HID customizado** — um gamepad **mais** um canal vendor (report ids `0x14/0x15/0x16/0x20`) que o app usa para ler/gravar settings e receber telemetria. Foi isso que definiu a escolha:*
+- *🇧🇷 **USB nativo** no MCU (não uma ponte USB-serial) — necessário para enumerar como um HID de verdade.*
+- *🇧🇷 **Controle total do descriptor HID** — dado pelo **Adafruit_TinyUSB**, que roda no RP2040. É o que permite definir os reports vendor customizados, não só um gamepad padrão.*
+- *🇧🇷 Muito **GPIO** (eixos, botões, encoders, LEDs WS2812), **USB-C**, dual core, e é **barato** (~US$2–5).*
+
+**Can I use an Arduino instead?** Only boards with **native USB**: the **Arduino Nano RP2040 Connect** runs practically as-is (it's an RP2040); **SAMD21** boards (Zero, MKR, Nano 33 IoT) need a light port (TinyUSB supports SAMD); an **ATmega32U4** (Leonardo/Micro/Pro Micro) can do HID but through a different USB stack with tight flash/RAM (the vendor settings channel would need porting). Classic **Uno / Nano / Mega** (ATmega328/2560) **won't work** — no native USB, their CH340/FTDI chip is serial-only.
+
+🇧🇷 *__Dá pra usar um Arduino?__ Só placas com **USB nativo**: o **Arduino Nano RP2040 Connect** roda quase sem mudança (é um RP2040); placas **SAMD21** (Zero, MKR, Nano 33 IoT) precisam de um porte leve (o TinyUSB suporta SAMD); um **ATmega32U4** (Leonardo/Micro/Pro Micro) faz HID mas por outra pilha USB, com flash/RAM apertados (o canal vendor de settings precisaria ser portado). Os clássicos **Uno / Nano / Mega** (ATmega328/2560) **não funcionam** — sem USB nativo, o chip CH340/FTDI deles é só serial.*
+
+> The base/wheelbase firmware is the exception — it targets the **STM32F405 (ODESC)** for the FFB motor, not an RP2040. · *O firmware da base é a exceção — mira o **STM32F405 (ODESC)** para o motor FFB, não um RP2040.*
+
+---
+
 ## 🇬🇧 English
 
 ### What is DriveLab?
