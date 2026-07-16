@@ -122,6 +122,9 @@ DriveLab is split into independent firmwares — one per device, each with its o
 - **[Rim / Volante »](firmware-wheel/README.md)** — RP2040 · gamepad (buttons + paddles) · WS2812 LEDs · **P0**. *Written, awaiting bench validation.*
   <br/>🇧🇷 *RP2040, gamepad (botões + pás), LEDs WS2812, **P0**. Escrito, aguardando validação na bancada.*
 
+The desktop app that connects to all of them: **[DriveLab Studio (app) »](app/README.md)** — .NET 8 / Avalonia.
+<br/>🇧🇷 *O app desktop que conecta a todos eles: **[DriveLab Studio (app) »](app/README.md)** — .NET 8 / Avalonia.*
+
 ---
 
 ## 🇬🇧 English
