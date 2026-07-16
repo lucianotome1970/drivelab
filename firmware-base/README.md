@@ -81,6 +81,10 @@ If it gets fully stuck, the fallbacks are already mapped (**B1**: TinyUSB + our 
 ### Next milestones (summary)
 M1 (open-loop motor) → M2 (encoder + closed loop + brake resistor) → M3 (A0 channel, **DriveLab Studio connects via HidTransport**) → M4 (settings) → M5 (FFB force → SimpleFOC) → M6 (game effects) → M7 (validation on a sim). Details in the design.
 
+### Wheel connection (USB hub + 5 V rail)
+
+For a quick-release rim, the base is meant to host a small **USB hub** (the ODESC and the rim share one cable to the PC) and a **5 V buck** off the main PSU to power the rim's RGB LEDs — so no extra USB cable dangles from the wheel. Full wiring, the signals that cross the slip ring, and the required protections are documented in the rim README: **[firmware-wheel → Wheel ↔ base wiring & power](../firmware-wheel/README.md#wheel--base-wiring--power-simple-vs-full-rim)**.
+
 ---
 
 ## 🇧🇷 Português
@@ -153,3 +157,7 @@ Se travar de vez, os fallbacks já estão mapeados (**B1**: TinyUSB + PID própr
 
 ### Marcos seguintes (resumo)
 M1 (motor malha aberta) → M2 (encoder + malha fechada + brake resistor) → M3 (canal A0, **DriveLab Studio conecta via HidTransport**) → M4 (settings) → M5 (força FFB → SimpleFOC) → M6 (efeitos de jogo) → M7 (validação num sim). Detalhes no design.
+
+### Conexão do volante (hub USB + trilho de 5 V)
+
+Para um aro de engate rápido, a base deve hospedar um pequeno **hub USB** (a ODESC e o aro dividem um único cabo pro PC) e um **buck de 5 V** a partir do PSU principal para alimentar os LEDs RGB do aro — assim nenhum cabo USB extra fica enrolando no volante. A fiação completa, os sinais que cruzam o slip ring e as proteções necessárias estão no README do aro: **[firmware-wheel → Interligação com a base & alimentação](../firmware-wheel/README.md#interligação-com-a-base--alimentação-aro-simples-vs-completo)**.
