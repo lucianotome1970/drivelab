@@ -15,10 +15,12 @@
         <Setter Property="Padding" Value="20" />
     </Style>
 
-    <!-- Card com dispositivo detectado/conectado: borda inferior laranja (accent) mais grossa. -->
+    <!-- Card com dispositivo detectado/conectado: borda inferior laranja (accent) mais grossa
+         + cursor de mão indicando que o card é clicável (abre a tela do módulo). -->
     <Style Selector="Border.card.connected">
         <Setter Property="BorderBrush" Value="{DynamicResource DlAccent}" />
         <Setter Property="BorderThickness" Value="1,1,1,4" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
 
     <!-- Accent (primary) button -->

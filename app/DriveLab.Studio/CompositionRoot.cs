@@ -122,11 +122,12 @@ public static class CompositionRoot
         var home = new HomeViewModel(new DashboardViewModel(session), pedals, handbrake, new BaseViewModel(session));
 
         var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode);
+        var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs);
 
         var pages = new List<NavItem>
         {
             new(L.Get("Nav_Home"), "\U0001F39B", home),
-            new(L.Get("Nav_WheelBase"), "base", new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs)),
+            new(L.Get("Nav_WheelBase"), "base", basePage),
             new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals),
             new(L.Get("Nav_Handbrake"), "handbrake", handbrake),
             new(L.Get("Nav_Wheel"), "wheel", wheel),
@@ -136,7 +137,25 @@ public static class CompositionRoot
         // para o desenho do volante continuar visível ao fundo enquanto se ajusta a força.
         var test = new TestViewModel(session);
 
-        return new MainWindowViewModel(session, connection, pages, test, simulatorMode, autoConnectors);
+        var main = new MainWindowViewModel(session, connection, pages, test, simulatorMode, autoConnectors);
+
+        // Clique num card do dash (dispositivo detectado) navega para a página do módulo.
+        home.ModuleNavigator = key =>
+        {
+            ViewModelBase? target = key switch
+            {
+                "pedals" => pedals,
+                "handbrake" => handbrake,
+                "wheel" => wheel,
+                "base" => basePage,
+                _ => null,
+            };
+            var nav = pages.FirstOrDefault(p => ReferenceEquals(p.Page, target));
+            if (nav is not null)
+                main.SelectedPage = nav;
+        };
+
+        return main;
     }
 
     private static DeviceAutoConnector StartAutoConnect(

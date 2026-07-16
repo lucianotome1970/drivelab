@@ -17,11 +17,13 @@
              o 4º quebra para a linha de baixo. Cada card tem sua altura natural. -->
         <WrapPanel MaxWidth="1320" HorizontalAlignment="Left" Margin="0,0,0,16">
             <!-- Card do volante -->
-            <views:DashboardView Width="420" Margin="0,0,16,16" DataContext="{Binding Wheel}" />
+            <views:DashboardView Width="420" Margin="0,0,16,16" DataContext="{Binding Wheel}"
+                                 Tag="wheel" Tapped="Card_Tapped" />
 
             <!-- Card da base: um único controle de força total -->
             <Border Width="420" Margin="0,0,16,16" Classes="card" Classes.connected="{Binding IsConnected}"
-                    DataContext="{Binding Base}" x:DataType="vm:BaseViewModel">
+                    DataContext="{Binding Base}" x:DataType="vm:BaseViewModel"
+                    Tag="base" Tapped="Card_Tapped">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{loc:Translate Home_Base}" Classes="h2" />
                     <Image Source="avares://DriveLab.Studio/Assets/base.png" Width="360" Stretch="Uniform"
@@ -35,7 +37,8 @@
             </Border>
 
             <!-- Card resumo dos pedais (ao vivo) -->
-            <Border Width="420" Margin="0,0,16,16" Classes="card" Classes.connected="{Binding Pedals.IsConnected}">
+            <Border Width="420" Margin="0,0,16,16" Classes="card" Classes.connected="{Binding Pedals.IsConnected}"
+                    Tag="pedals" Tapped="Card_Tapped">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{loc:Translate Home_Pedals}" Classes="h2" />
                     <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="360" Stretch="Uniform"
@@ -59,7 +62,8 @@
 
             <!-- Card do freio de mão (ao vivo) -->
             <Border Width="420" Margin="0,0,16,16" Classes="card" Classes.connected="{Binding IsConnected}"
-                    DataContext="{Binding Handbrake}" x:DataType="vm:HandbrakeViewModel">
+                    DataContext="{Binding Handbrake}" x:DataType="vm:HandbrakeViewModel"
+                    Tag="handbrake" Tapped="Card_Tapped">
                 <StackPanel Spacing="16">
                     <TextBlock Text="{loc:Translate Home_Handbrake}" Classes="h2" />
                     <!-- Mesma largura do card dos pedais (imagem equivalente, 1536x1024) para

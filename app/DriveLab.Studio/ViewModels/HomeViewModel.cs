@@ -18,6 +18,26 @@ public sealed class HomeViewModel : ViewModelBase
     public PedalsViewModel Pedals { get; }
     public HandbrakeViewModel? Handbrake { get; }
 
+    /// <summary>Navegação por clique no card (key do módulo → página). Ligada pelo CompositionRoot,
+    /// que é quem conhece a lista de páginas e a janela principal.</summary>
+    public Action<string>? ModuleNavigator { get; set; }
+
+    /// <summary>Clique no card abre a tela do módulo — só quando o dispositivo está detectado/conectado.
+    /// Cliques em botões/sliders dentro do card são filtrados na view (não chegam aqui).</summary>
+    public void OpenModule(string key)
+    {
+        var connected = key switch
+        {
+            "pedals" => Pedals.IsConnected,
+            "handbrake" => Handbrake?.IsConnected == true,
+            "base" => Base?.IsConnected == true,
+            "wheel" => Wheel.IsConnected,
+            _ => false,
+        };
+        if (connected)
+            ModuleNavigator?.Invoke(key);
+    }
+
     // "handbrake"/"baseWheel" são opcionais (nulos) até o CompositionRoot ligar a DI;
     // os cards no Home toleram DataContext nulo até lá.
     public HomeViewModel(DashboardViewModel wheel, PedalsViewModel pedals,
