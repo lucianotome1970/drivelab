@@ -21,6 +21,9 @@ public sealed class HidSharpChannel : IHidChannel
 
     public bool IsOpen => _stream != null;
 
+    /// <summary>Erros de I/O HID (engolidos p/ não derrubar o app) — o app pode plugar um log aqui.</summary>
+    public static Action<string, Exception>? OnError;
+
     public event EventHandler<byte[]>? ReportReceived;
 
     public Task<bool> OpenAsync(int vendorId, int productId)
@@ -66,9 +69,10 @@ public sealed class HidSharpChannel : IHidChannel
                 }
                 stream.Write(buffer);
             }
-            catch
+            catch (Exception ex)
             {
-                // Falha de escrita não é fatal: o próximo write/telemetria segue.
+                // Falha de escrita não é fatal: o próximo write/telemetria segue. Registra o motivo.
+                OnError?.Invoke("HID write failed", ex);
             }
         });
     }
@@ -82,7 +86,7 @@ public sealed class HidSharpChannel : IHidChannel
         {
             int count;
             try { count = stream.Read(buffer, 0, buffer.Length); }
-            catch { break; }
+            catch (Exception ex) { OnError?.Invoke("HID read loop ended", ex); break; }
             if (count <= 0) continue;
             var report = new byte[count];
             Array.Copy(buffer, report, count);
