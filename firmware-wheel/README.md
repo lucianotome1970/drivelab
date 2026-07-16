@@ -36,6 +36,7 @@ Target rim: **10 push buttons (each RGB-lit)**, **5 rotary encoders** (with push
 - **Encoders A/B (direct GPIO):** `GP2/3, GP4/5, GP6/7, GP8/9, GP10/11` — CW → bits 21–25, CCW → bits 26–30 (momentary).
 - **Clutches (ADC):** `GP26` (left), `GP27` (right) — analog, for progressive clutch + bite point.
 - **WS2812 data:** `GP28` — one chained strand: **pixels 0–9 = the 10 button LEDs, then the LED bar** (`ledCount` = 10 + bar, a P0 setting).
+- **Button RGB LED (chosen): SK6812** (WS2812-compatible addressable) — one per button, e.g. a reverse-mount **SK6812-E** behind a translucent **~15–16 mm low-profile momentary cap** (KS-style feel). All LEDs (buttons + bar) daisy-chain on the single GP28 data line — the firmware drives them unchanged.
 
 > 32-button gamepad report: 31 buttons used (bit 31 spare) + 2 clutch axes. Games read it directly; the app drives the RGB over the P0 `WheelLed` (0x18) channel.
 
@@ -107,6 +108,7 @@ Aro alvo: **10 botões de pressão (cada um com LED RGB)**, **5 encoders rotativ
 - **Encoders A/B (GPIO direto):** `GP2/3, GP4/5, GP6/7, GP8/9, GP10/11` — CW → bits 21–25, CCW → bits 26–30 (momentâneos).
 - **Embreagens (ADC):** `GP26` (esq.), `GP27` (dir.) — analógico, para embreagem progressiva + bite point.
 - **WS2812 (dados):** `GP28` — um cordão em série: **pixels 0–9 = os 10 LEDs dos botões, depois a barra de LEDs** (`ledCount` = 10 + barra, um setting P0).
+- **LED RGB do botão (escolhido): SK6812** (endereçável, compatível com WS2812) — um por botão, ex.: **SK6812-E** reverse-mount atrás de uma **capa momentânea de baixo perfil translúcida ~15–16 mm** (feel estilo KS). Todos os LEDs (botões + barra) encadeiam na única linha de dados GP28 — o firmware aciona sem mudança.
 
 > Report de gamepad com 32 botões: 31 usados (bit 31 sobra) + 2 eixos de embreagem. Os jogos leem direto; o app manda as cores RGB pelo canal P0 `WheelLed` (0x18).
 
