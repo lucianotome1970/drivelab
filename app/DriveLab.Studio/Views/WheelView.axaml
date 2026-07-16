@@ -53,30 +53,31 @@
                         <StackPanel Grid.Column="0" Spacing="12" Width="480">
                             <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="muted" />
                             <Grid Width="480" Height="480" HorizontalAlignment="Center">
-                                <!-- Pás ATRÁS do desenho (z-order antes da imagem): horizontais, espiam por trás
-                                     do aro. Acendem quando ativas (telemetria/demo). Posições ajustáveis. -->
+                                <!-- Pás ATRÁS do desenho (z-order antes da imagem): cobrem os cutouts laterais.
+                                     A forma visível vem do recorte transparente que você fizer no wheel-config.png;
+                                     o overlay só "acende" (accent) quando a pá está ativa (telemetria/demo). Ajustáveis. -->
                                 <Canvas Width="480" Height="480" IsHitTestVisible="False">
-                                    <Viewbox Canvas.Left="6" Canvas.Top="150" Width="120" Height="40"
+                                    <Viewbox Canvas.Left="28" Canvas.Top="165" Width="92" Height="84"
                                              DataContext="{Binding ShiftDown}" x:DataType="vm:WheelButtonViewModel">
                                         <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
                                     </Viewbox>
-                                    <Viewbox Canvas.Left="354" Canvas.Top="150" Width="120" Height="40"
+                                    <Viewbox Canvas.Left="360" Canvas.Top="165" Width="92" Height="84"
                                              DataContext="{Binding ShiftUp}" x:DataType="vm:WheelButtonViewModel">
                                         <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
                                     </Viewbox>
-                                    <Viewbox Canvas.Left="6" Canvas.Top="300" Width="120" Height="40"
+                                    <Viewbox Canvas.Left="28" Canvas.Top="255" Width="92" Height="84"
                                              DataContext="{Binding ClutchLeft}" x:DataType="vm:WheelButtonViewModel"
                                              IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
                                         <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
                                     </Viewbox>
-                                    <Viewbox Canvas.Left="354" Canvas.Top="300" Width="120" Height="40"
+                                    <Viewbox Canvas.Left="360" Canvas.Top="255" Width="92" Height="84"
                                              DataContext="{Binding ClutchRight}" x:DataType="vm:WheelButtonViewModel"
                                              IsVisible="{Binding $parent[Canvas].((vm:WheelViewModel)DataContext).ShowBottomPair}">
                                         <Path Classes="paddle" Classes.active="{Binding IsPressed}"
-                                              Data="M20,2 C9,2 2,11 2,20 C2,29 9,38 20,38 L90,38 C101,38 108,29 108,20 C108,11 101,2 90,2 Z" />
+                                              Data="M18,2 L74,2 C84,2 90,8 90,18 L90,66 C90,76 84,82 74,82 L18,82 C8,82 2,76 2,66 L2,18 C2,8 8,2 18,2 Z" />
                                     </Viewbox>
                                 </Canvas>
                                 <Image Source="avares://DriveLab.Studio/Assets/wheel-config.png" Stretch="Uniform" />
