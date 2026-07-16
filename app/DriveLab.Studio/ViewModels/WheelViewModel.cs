@@ -106,6 +106,7 @@ public partial class WheelViewModel : ViewModelBase
     {
         if (_session is null) return;
         await _session.ConnectAsync();
+        System.Console.WriteLine($"[DriveLab] Volante ConnectAsync → IsConnected={_session.IsConnected}");
         PushLeds();   // manda as cores atuais assim que conecta
     }
 

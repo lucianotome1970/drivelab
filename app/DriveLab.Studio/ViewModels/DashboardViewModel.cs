@@ -18,11 +18,17 @@ namespace DriveLab.Studio.ViewModels;
 public partial class DashboardViewModel : ViewModelBase
 {
     private readonly BaseSession _session;
+    private readonly WheelDeviceSession? _rim;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CenterCommand))]
     [NotifyCanExecuteChangedFor(nameof(SetMaxAngleCommand))]
     private bool _isConnected;
+
+    /// <summary>Conexão do ARO removível (rim). O card "Volante" do dash acende por esta —
+    /// é o dispositivo que o usuário pluga. O ângulo/Center vêm da base (<see cref="IsConnected"/>).</summary>
+    [ObservableProperty]
+    private bool _isWheelConnected;
 
     [ObservableProperty]
     private double _angleDegrees;
@@ -33,15 +39,25 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private int _motionRange = 900;
 
-    public DashboardViewModel(BaseSession session)
+    public DashboardViewModel(BaseSession session, WheelDeviceSession? rim = null)
     {
         _session = session;
+        _rim = rim;
         _session.StateReceived += OnState;
         _session.Connected += OnConnected;
         _session.Disconnected += OnDisconnected;
         _session.SettingChanged += OnSettingChanged;
         IsConnected = _session.IsConnected;
+
+        if (_rim is not null)
+        {
+            _rim.Connected += OnRimChanged;
+            _rim.Disconnected += OnRimChanged;
+            _isWheelConnected = _rim.IsConnected;
+        }
     }
+
+    private void OnRimChanged(object? sender, EventArgs e) => IsWheelConnected = _rim?.IsConnected ?? false;
 
     public override void Dispose()
     {
@@ -49,6 +65,11 @@ public partial class DashboardViewModel : ViewModelBase
         _session.Connected -= OnConnected;
         _session.Disconnected -= OnDisconnected;
         _session.SettingChanged -= OnSettingChanged;
+        if (_rim is not null)
+        {
+            _rim.Connected -= OnRimChanged;
+            _rim.Disconnected -= OnRimChanged;
+        }
         base.Dispose();
     }
 

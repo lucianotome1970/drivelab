@@ -14,7 +14,8 @@
     <UserControl.Resources>
         <conv:IntEqualsConverter x:Key="IntEquals" />
     </UserControl.Resources>
-    <Border Classes="card" Classes.connected="{Binding IsConnected}">
+    <!-- Borda "conectado" acende com o ARO (rim) detectado — é o dispositivo que se pluga. -->
+    <Border Classes="card" Classes.connected="{Binding IsWheelConnected}">
         <StackPanel Spacing="16">
             <TextBlock Text="{loc:Translate Wheel_Title}" Classes="h2" />
 
