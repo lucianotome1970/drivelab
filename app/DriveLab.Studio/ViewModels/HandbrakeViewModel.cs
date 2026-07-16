@@ -95,23 +95,30 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
             return;
 
         _loading = true;
-        SensorType = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.SensorType)).AsDouble;
-        Invert = (await _session.ReadSettingAsync(HandbrakeSettingId.Invert)).AsDouble != 0;
-        Smooth = (await _session.ReadSettingAsync(HandbrakeSettingId.Smooth)).AsDouble;
-        for (var i = 0; i < Points.Count; i++)
+        try
         {
-            var v = await _session.ReadSettingAsync(HandbrakeSettingsSchema.CurvePointIds[i]);
-            Points[i].SetQuiet(v.AsDouble);
+            SensorType = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.SensorType)).AsDouble;
+            Invert = (await _session.ReadSettingAsync(HandbrakeSettingId.Invert)).AsDouble != 0;
+            Smooth = (await _session.ReadSettingAsync(HandbrakeSettingId.Smooth)).AsDouble;
+            for (var i = 0; i < Points.Count; i++)
+            {
+                var v = await _session.ReadSettingAsync(HandbrakeSettingsSchema.CurvePointIds[i]);
+                Points[i].SetQuiet(v.AsDouble);
+            }
+            InputMin = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.InputMin)).AsDouble;
+            InputMax = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.InputMax)).AsDouble;
+            LoadCellScale = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.LoadCellScale)).AsDouble;
+            DeadzoneLow = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.DeadzoneLow)).AsDouble;
+            DeadzoneHigh = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.DeadzoneHigh)).AsDouble;
+            ButtonEnabled = (await _session.ReadSettingAsync(HandbrakeSettingId.ButtonEnabled)).AsDouble != 0;
+            ButtonThreshold = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.ButtonThreshold)).AsDouble;
+            IsDirty = false;   // acabou de carregar da placa: app == flash
         }
-        InputMin = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.InputMin)).AsDouble;
-        InputMax = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.InputMax)).AsDouble;
-        LoadCellScale = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.LoadCellScale)).AsDouble;
-        DeadzoneLow = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.DeadzoneLow)).AsDouble;
-        DeadzoneHigh = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.DeadzoneHigh)).AsDouble;
-        ButtonEnabled = (await _session.ReadSettingAsync(HandbrakeSettingId.ButtonEnabled)).AsDouble != 0;
-        ButtonThreshold = (int)(await _session.ReadSettingAsync(HandbrakeSettingId.ButtonThreshold)).AsDouble;
-        _loading = false;
-        IsDirty = false;   // acabou de carregar da placa: app == flash
+        finally
+        {
+            // Mesmo que uma leitura estoure timeout, libera a edição (senão _loading trava e o Salvar nunca habilita).
+            _loading = false;
+        }
     }
 
     private void OnPointChanged(int index, double value)

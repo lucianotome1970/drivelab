@@ -66,6 +66,12 @@ static bool     g_cal = false;
 static uint16_t g_calMin, g_calMax;
 static bool     g_btnPressed = false;            // estado persistente da histerese do botão
 
+// Resposta de leitura (0x16) é enfileirada no callback e enviada no loop() com prioridade:
+// o endpoint HID único do TinyUSB dropa o 2º report back-to-back, então nunca enviamos
+// 0x16 direto do onSetReport (mesmo fix já aplicado no firmware-pedal).
+static volatile bool    g_pendingValue = false;
+static volatile uint8_t g_pvField = 0, g_pvIndex = 0;
+
 static const uint8_t kAdcPin = A0;                // GP26 (pot/hall)
 
 // --- Load cell (HX711), quando sensor_type == 2. Pinos digitais (DT/SCK), iguais ao pedal índice 0. ---
@@ -264,8 +270,8 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
       break;
     }
     case RID_SET_READREQ: {               // [0]=field [1]=index
-      uint8_t field = buf[0], index = buf[1];
-      sendSettingValue(field, index);
+      // Não responde aqui (o EP dropa o 2º report): enfileira e responde no loop().
+      g_pvField = buf[0]; g_pvIndex = buf[1]; g_pendingValue = true;
       break;
     }
     case RID_CMD: {                       // [0]=cmd [1]=arg
@@ -318,17 +324,24 @@ void loop() {
   g_out = runPipeline(g_raw);
   updateButton(g_out);
 
-  // 2) Joystick: eixo Rx (16-bit, valor 12-bit reescalado) + botão (bit0) + 7 bits padding
-  uint8_t joy[3];
-  uint16_t axis12 = (uint16_t)(g_out >> 4);
-  joy[0] = axis12 & 0xFF;
-  joy[1] = (axis12 >> 8) & 0xFF;
-  joy[2] = g_btnPressed ? 0x01 : 0x00;
-  g_hid.sendReport(RID_JOYSTICK, joy, sizeof(joy));
+  // 2) Resposta de setting-value (0x16) tem prioridade nesta janela; senão, joystick (0x01).
+  //    Nunca enviamos os dois back-to-back — o EP único do TinyUSB dropa o 2º.
+  if (g_pendingValue) {
+    g_pendingValue = false;
+    sendSettingValue(g_pvField, g_pvIndex);
+  } else {
+    // Joystick: eixo Rx (16-bit, valor 12-bit reescalado) + botão (bit0) + 7 bits padding
+    uint8_t joy[3];
+    uint16_t axis12 = (uint16_t)(g_out >> 4);
+    joy[0] = axis12 & 0xFF;
+    joy[1] = (axis12 >> 8) & 0xFF;
+    joy[2] = g_btnPressed ? 0x01 : 0x00;
+    g_hid.sendReport(RID_JOYSTICK, joy, sizeof(joy));
+  }
 
-  // 3) telemetria PedalState (0x20) a ~100 Hz — eixo no slot Clutch (offset 5..8), demais zerados,
-  //    Flags (offset 4) bit0 = HandbrakeFlags.ButtonPressed
-  if (millis() - g_lastTelem >= 10) {
+  // 3) telemetria PedalState (0x20) a ~100 Hz — só quando o EP estiver livre de novo (não colide c/ o de cima).
+  //    eixo no slot Clutch (offset 5..8), demais zerados, Flags (offset 4) bit0 = HandbrakeFlags.ButtonPressed
+  if (millis() - g_lastTelem >= 10 && g_hid.ready()) {
     g_lastTelem = millis();
     uint8_t st[PAYLOAD]; memset(st, 0, sizeof(st));
     // [0..3] firmware version (0.1.0.0 placeholder), [4] flags

@@ -100,7 +100,8 @@
                 <Button Content="{loc:Translate Handbrake_CalibrateStart}" Command="{Binding CalibrateStartCommand}" />
                 <Button Content="{loc:Translate Handbrake_CalibrateStop}" Command="{Binding CalibrateStopCommand}" />
                 <Button Content="{loc:Translate Handbrake_LoadDefaults}" Command="{Binding LoadDefaultsCommand}" />
-                <Button Classes="accent" Content="{loc:Translate Handbrake_Save}" Command="{Binding SaveCommand}" />
+                <!-- Mesma nomenclatura do pedal; habilitado só quando dirty (ver CanSave no VM). -->
+                <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveCommand}" />
             </StackPanel>
         </Grid>
     </Border>

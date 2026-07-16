@@ -88,6 +88,7 @@
   <data name="Close" xml:space="preserve"><value>Close</value></data>
   <data name="Pedal_Source_Simulator" xml:space="preserve"><value>Simulator</value></data>
   <data name="Pedal_Source_Detected" xml:space="preserve"><value>Pedals detected</value></data>
+  <data name="Handbrake_Source_Detected" xml:space="preserve"><value>Handbrake detected</value></data>
 
   <data name="Splash_Starting" xml:space="preserve"><value>Starting…</value></data>
   <data name="Splash_SearchingBase" xml:space="preserve"><value>Searching for wheel base…</value></data>

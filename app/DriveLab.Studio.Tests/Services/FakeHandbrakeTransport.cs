@@ -21,6 +21,9 @@ public sealed class FakeHandbrakeTransport : IHandbrakeTransport
     public FirmwareVersion FirmwareVersion => new(1, 0, 0, 0);
     public bool SupportsConfig => true;
 
+    /// <summary>Quando true, ReadSettingAsync estoura (simula 0x16 perdido / timeout do firmware).</summary>
+    public bool ThrowOnRead { get; set; }
+
     public event EventHandler<PedalState>? StateReceived;
 
     public Task ConnectAsync(CancellationToken ct = default) { IsConnected = true; return Task.CompletedTask; }
@@ -34,6 +37,8 @@ public sealed class FakeHandbrakeTransport : IHandbrakeTransport
 
     public Task<SettingValue> ReadSettingAsync(HandbrakeSettingId id)
     {
+        if (ThrowOnRead)
+            throw new TimeoutException($"Sem SettingValue p/ field {(byte)id} (fake)");
         if (_store.TryGetValue(id, out var v))
             return Task.FromResult(v);
         var d = HandbrakeSettingsSchema.Get(id);

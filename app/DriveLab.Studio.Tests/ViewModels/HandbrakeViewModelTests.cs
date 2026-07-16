@@ -20,10 +20,12 @@ public class HandbrakeViewModelTests
         public Task<HandbrakeProfile?> LoadAsync() => Task.FromResult<HandbrakeProfile?>(null);
     }
 
-    private static HandbrakeViewModel Make()
+    private static HandbrakeViewModel Make() => Make(out _);
+
+    private static HandbrakeViewModel Make(out FakeHandbrakeTransport transport)
     {
-        var t = new FakeHandbrakeTransport();
-        var s = new HandbrakeDeviceSession(t, new ImmediateUiDispatcher());
+        transport = new FakeHandbrakeTransport();
+        var s = new HandbrakeDeviceSession(transport, new ImmediateUiDispatcher());
         return new HandbrakeViewModel(s, new FakeStorage());
     }
 
@@ -42,6 +44,25 @@ public class HandbrakeViewModelTests
         await vm.SaveCommand.ExecuteAsync(null);          // salva na flash
         Assert.False(vm.IsDirty);                         // firmware == app
         Assert.False(vm.SaveCommand.CanExecute(null));
+        vm.Dispose();
+    }
+
+    // Regressão: se uma leitura estourar (0x16 perdido/timeout), LoadAsync não pode deixar
+    // _loading travado — senão toda edição é suprimida e o Salvar nunca habilita.
+    [Fact]
+    public async Task Failed_Load_Does_Not_Brick_Editing()
+    {
+        var vm = Make(out var t);
+        t.ThrowOnRead = true;
+        // conecta; LoadAsync estoura no 1º read e propaga — o DeviceAutoConnector engole (try/catch),
+        // mas a conexão já foi estabelecida (Connected disparou antes do LoadAsync falhar).
+        try { await vm.ConnectCommand.ExecuteAsync(null); } catch (TimeoutException) { }
+        Assert.True(vm.IsConnected);
+        Assert.False(vm.IsDirty);
+
+        vm.Smooth = 30;                                   // edição deve registrar (não ficar suprimida)
+        Assert.True(vm.IsDirty);
+        Assert.True(vm.SaveCommand.CanExecute(null));
         vm.Dispose();
     }
 }

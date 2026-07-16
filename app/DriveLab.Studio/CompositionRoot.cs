@@ -98,7 +98,7 @@ public static class CompositionRoot
             handbrakeSession = new HandbrakeDeviceSession(new SimulatorHandbrakeTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
         else
         {
-            handbrakeSession = new HandbrakeDeviceSession(new HidHandbrakeTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
+            handbrakeSession = new HandbrakeDeviceSession(new HidHandbrakeTransport(new HidSharpChannel()), dispatcher, L.Get("Handbrake_Source_Detected"));
             handbrakePresent = HidHandbrakeTransport.IsDevicePresent;
         }
         var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage(), simulatorMode);
