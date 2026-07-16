@@ -105,6 +105,23 @@ Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake re
 
 ---
 
+## 🎛️ Firmware modules / Módulos de firmware
+
+DriveLab is split into independent firmwares — one per device, each with its own README. The Studio app connects to each over USB HID and auto-detects it by VID/PID.
+
+🇧🇷 *O DriveLab é dividido em firmwares independentes — um por dispositivo, cada um com seu README. O app Studio conecta a cada um via USB HID e os autodetecta por VID/PID.*
+
+- **[Wheelbase / Base »](firmware-base/README.md)** — ODESC v4.2 · STM32F405 · the FFB motor stage (SimpleFOC). *Draft (M0/M0.5), no hardware yet.*
+  <br/>🇧🇷 *Estágio do motor FFB (ODESC/STM32F405). Rascunho (M0/M0.5), ainda sem hardware.*
+- **[Pedals / Pedaleira »](firmware-pedal/README.md)** — RP2040 · 3 axes · load cell (HX711) · **P0** protocol. **✅ Validated on hardware.**
+  <br/>🇧🇷 *RP2040, 3 eixos, load cell (HX711), protocolo **P0**. **✅ Validado em hardware.***
+- **[Handbrake / Freio de mão »](firmware-handbrake/README.md)** — RP2040 · 1 axis + button · **P0** protocol. **✅ Validated on hardware** (physical sensor still to test).
+  <br/>🇧🇷 *RP2040, 1 eixo + botão, protocolo **P0**. **✅ Validado em hardware** (falta testar com sensor físico).*
+- **[Rim / Volante »](firmware-wheel/README.md)** — RP2040 · gamepad (buttons + paddles) · WS2812 LEDs · **P0**. *Written, awaiting bench validation.*
+  <br/>🇧🇷 *RP2040, gamepad (botões + pás), LEDs WS2812, **P0**. Escrito, aguardando validação na bancada.*
+
+---
+
 ## 🇬🇧 English
 
 ### What is DriveLab?

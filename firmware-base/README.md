@@ -1,18 +1,95 @@
 # DriveLab Firmware — Base / Wheelbase (Trilho B)
 
-Firmware da **base** (wheelbase) DriveLab — **ODESC v4.2 (STM32F405)** + motor direct-drive.
-*(O firmware do aro/volante removível — botões, LEDs, pás — está em `firmware-wheel/` (RP2040).)*
-Design/decisões: mantidas nas notas internas de projeto (não versionadas no repo público).
+Firmware for the DriveLab **base** (wheelbase) — **ODESC v4.2 (STM32F405)** + direct-drive motor.
+*(The firmware for the removable rim/wheel — buttons, LEDs, paddles — lives in `firmware-wheel/` (RP2040).)*
+Design/decisions: kept in internal project notes (not versioned in the public repo).
 
-> **Licença:** este firmware será **LGPL** a partir do M0.5 (quando adicionarmos as libs de FFB LGPL — `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`). O app DriveLab Studio e as libs .NET seguem MIT. O código atual (M0) é nosso; a mudança de licença acontece ao integrar as libs.
+> **License:** this firmware will be **LGPL** starting at M0.5 (when we add the LGPL FFB libs — `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`). The DriveLab Studio app and the .NET libs stay MIT. The current code (M0) is ours; the license change happens when we integrate the libs.
+
+<p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a></p>
 
 ---
 
-## Marco atual: M0 — bring-up (só serial, SEM motor)
+## 🇬🇧 English
+
+### Current milestone: M0 — bring-up (serial only, NO motor)
+
+**Goal:** prove toolchain + flashing + USB serial on your ODESC. Harmless (does not touch the motor/power).
+
+#### Prerequisites
+- **VS Code + PlatformIO extension** (installs the STM32duino toolchain by itself on the first build).
+- **ODESC v4.2** + **USB** cable (micro-USB).
+- To flash, **one** of the two:
+  - **ST-Link V2** (recommended) connected to the ODESC **SWD** header: `SWDIO`, `SWCLK`, `GND`, `3V3`.
+  - **DFU** (no ST-Link): put the board in DFU mode (BOOT0 high at reset — BOOT pad/button) and use `upload_protocol = dfu` in `platformio.ini`.
+- Power: **no motor needed**. USB/ST-Link already powers the logic. (Do not connect the motor on M0.)
+
+#### Steps
+1. Open the `firmware-base/` folder in VS Code (PlatformIO detects `platformio.ini`).
+2. Connect the ST-Link (or put it in DFU) and the ODESC USB cable.
+3. **Build**: the PlatformIO ✓ icon (or `pio run`). The first time it downloads the framework — takes a few minutes.
+4. **Upload**: the PlatformIO → icon (or `pio run -t upload`).
+5. **Serial Monitor**: the 🔌 icon (or `pio device monitor`), 115200 baud.
+
+#### Expected result (M0 ✅)
+The serial monitor shows:
+```
+=== DriveLab Firmware — M0 bring-up ===
+...
+DriveLab M0 vivo, tick = 0
+DriveLab M0 vivo, tick = 1
+...
+```
+
+#### If something goes wrong
+- **Build fails** → send the error; we'll adjust.
+- **Upload fails (ST-Link can't find the board)** → check the 4 SWD wires (SWDIO/SWCLK/GND/3V3) and the power. Alternative: DFU.
+- **Flashed but the USB serial doesn't show up** → suspect #1 is the **HSE crystal**. `genericSTM32F405RG` assumes 8 MHz; if the ODESC uses another, the USB 48 MHz clock is wrong and the port won't enumerate. Fix: find out the ODESC crystal and set `-D HSE_VALUE=<hz>` (and adjust the SystemClock if needed). Call me and we'll solve it. *(The LED/serial via ST-Link still works even if USB doesn't come up — you can isolate the problems.)*
+
+---
+
+### M0.5 — USB/FFB (the main de-risk) ⚠️ — DRAFT ready to iterate
+
+Prove decision **B2** on the F405: **enumerate as a Force Feedback device** (DirectInput wheel) on Windows, reusing the ready-made FFB stack. **No motor** yet.
+
+> **It's a first draft, written without a board** (`src/m05/main.cpp`). The shim + FFB lib combo on the F405 has never been published — **expect to iterate**. It's not guaranteed to compile/run on the first try.
+
+#### How to flash M0.5
+```bash
+pio run -e m05 -t upload      # or select the "m05" env in the PlatformIO bar
+```
+The libs (`USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`) are downloaded via `lib_deps` (git) on the first build. The `env:m05` does **not** use `USBD_USE_CDC` (the USB becomes the shim's).
+
+#### Verification (M0.5 ✅)
+Windows → *Control Panel → Devices and Printers → (the device) → Game controller settings → Properties*:
+- A **steering axis moving by itself** appears (the sketch sweeps the steering) → **enumerated + axis ok**.
+- A **Force Feedback / Test** tab/button present → the PID descriptor came up.
+
+#### Uncertainty points to resolve on the bench (by order of risk)
+1. **Compiling the libs together** — the shim and the FFB lib are AVR-origin; some symbol may be missing/conflicting. If it doesn't compile, send the error — we'll adjust (maybe copy files, not just `lib_deps`).
+2. **Shim header name** (`#include <USBLibrarySTM32.h>`) — check the actual header in the repo.
+3. **`getUSBPID()` in an ISR** — in the AVR version it runs inside the USB ISR; in the draft we call it in `loop()`. If the effects don't register in the FFB test, it needs to be hooked into the shim's USB callback/ISR.
+4. **Clock/USB** — 48 MHz (PLL48CLK); **disable VBUS sensing** if bus-powered; the HSE crystal gotcha (see M0).
+5. **F405 is not officially tested** by the shim (only F401/F411, same OTG_FS family).
+
+If it gets fully stuck, the fallbacks are already mapped (**B1**: TinyUSB + our own MIT PID; or **2-MCU**: AVR 32u4 + STM32). See design §2.
+
+*(The USB IRQ priority below the FOC timer only matters starting at M1, when SimpleFOC comes in.)*
+
+---
+
+### Next milestones (summary)
+M1 (open-loop motor) → M2 (encoder + closed loop + brake resistor) → M3 (A0 channel, **DriveLab Studio connects via HidTransport**) → M4 (settings) → M5 (FFB force → SimpleFOC) → M6 (game effects) → M7 (validation on a sim). Details in the design.
+
+---
+
+## 🇧🇷 Português
+
+### Marco atual: M0 — bring-up (só serial, SEM motor)
 
 **Objetivo:** provar toolchain + gravação + USB serial na sua ODESC. Inofensivo (não mexe no motor/potência).
 
-### Pré-requisitos
+#### Pré-requisitos
 - **VS Code + extensão PlatformIO** (instala o toolchain STM32duino sozinho na primeira build).
 - **ODESC v4.2** + cabo **USB** (micro-USB).
 - Para gravar, **um** dos dois:
@@ -20,14 +97,14 @@ Design/decisões: mantidas nas notas internas de projeto (não versionadas no re
   - **DFU** (sem ST-Link): colocar a placa em modo DFU (BOOT0 em alto no reset — pad/botão de BOOT) e usar `upload_protocol = dfu` no `platformio.ini`.
 - Alimentação: **não precisa de motor**. O USB/ST-Link já alimenta a lógica. (Não conecte o motor no M0.)
 
-### Passos
+#### Passos
 1. Abra a pasta `firmware-base/` no VS Code (PlatformIO detecta o `platformio.ini`).
 2. Conecte o ST-Link (ou ponha em DFU) e o cabo USB da ODESC.
 3. **Build**: ícone ✓ do PlatformIO (ou `pio run`). A primeira vez baixa o framework — leva alguns minutos.
 4. **Upload**: ícone → do PlatformIO (ou `pio run -t upload`).
 5. **Serial Monitor**: ícone 🔌 (ou `pio device monitor`), 115200 baud.
 
-### Resultado esperado (M0 ✅)
+#### Resultado esperado (M0 ✅)
 No monitor serial aparece:
 ```
 === DriveLab Firmware — M0 bring-up ===
@@ -37,31 +114,31 @@ DriveLab M0 vivo, tick = 1
 ...
 ```
 
-### Se der problema
+#### Se der problema
 - **Build falha** → mande o erro; ajustamos.
 - **Upload falha (ST-Link não acha a placa)** → confira os 4 fios SWD (SWDIO/SWCLK/GND/3V3) e a alimentação. Alternativa: DFU.
 - **Gravou mas o USB serial não aparece** → o suspeito nº1 é o **cristal HSE**. O `genericSTM32F405RG` assume 8 MHz; se a ODESC usar outro, o clock de 48 MHz da USB fica errado e a porta não enumera. Solução: descobrir o cristal da ODESC e definir `-D HSE_VALUE=<hz>` (e ajustar o SystemClock se preciso). Me chame que resolvemos. *(O LED/serial via ST-Link ainda funciona mesmo se a USB não subir — dá pra separar os problemas.)*
 
 ---
 
-## M0.5 — USB/FFB (o de-risco principal) ⚠️ — RASCUNHO pronto p/ iterar
+### M0.5 — USB/FFB (o de-risco principal) ⚠️ — RASCUNHO pronto p/ iterar
 
 Provar a decisão **B2** no F405: **enumerar como dispositivo Force Feedback** (volante DirectInput) no Windows, reusando a pilha FFB pronta. **Sem motor** ainda.
 
 > **É um primeiro rascunho, escrito sem placa** (`src/m05/main.cpp`). A combinação shim + lib de FFB no F405 nunca foi publicada — **espere iterar**. Não é garantido compilar/rodar de primeira.
 
-### Como gravar o M0.5
+#### Como gravar o M0.5
 ```bash
 pio run -e m05 -t upload      # ou selecione o env "m05" na barra do PlatformIO
 ```
 As libs (`USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`) são baixadas via `lib_deps` (git) na primeira build. O `env:m05` **não** usa `USBD_USE_CDC` (o USB passa a ser o do shim).
 
-### Verificação (M0.5 ✅)
+#### Verificação (M0.5 ✅)
 Windows → *Painel de Controle → Dispositivos e Impressoras → (o dispositivo) → Configurações do controle de jogo → Propriedades*:
 - Aparece um **eixo de direção se movendo sozinho** (o sketch varre o steering) → **enumerou + eixo ok**.
 - Aba/botão de **Force Feedback / Testar** presente → o descriptor PID subiu.
 
-### Pontos de incerteza a resolver na bancada (por ordem de risco)
+#### Pontos de incerteza a resolver na bancada (por ordem de risco)
 1. **Compilação das libs juntas** — o shim e a lib de FFB são AVR-origin; pode faltar/conflitar algum símbolo. Se não compilar, mande o erro — ajustamos (talvez copiar arquivos, não só `lib_deps`).
 2. **Nome do header do shim** (`#include <USBLibrarySTM32.h>`) — verificar o header real do repo.
 3. **`getUSBPID()` numa ISR** — na versão AVR roda dentro da ISR de USB; no rascunho chamamos em `loop()`. Se os efeitos não registrarem no teste de FFB, precisa hookar no callback/ISR de USB do shim.
@@ -74,5 +151,5 @@ Se travar de vez, os fallbacks já estão mapeados (**B1**: TinyUSB + PID própr
 
 ---
 
-## Marcos seguintes (resumo)
+### Marcos seguintes (resumo)
 M1 (motor malha aberta) → M2 (encoder + malha fechada + brake resistor) → M3 (canal A0, **DriveLab Studio conecta via HidTransport**) → M4 (settings) → M5 (força FFB → SimpleFOC) → M6 (efeitos de jogo) → M7 (validação num sim). Detalhes no design.
