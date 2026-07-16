@@ -15,6 +15,17 @@
         <Setter Property="Padding" Value="20" />
     </Style>
 
+    <!-- Selo "dispositivo detectado": pílula com borda accent + ponto laranja (usado nas barras
+         de ação de todos os módulos). O conteúdo (ponto + rótulo) fica na view; aqui é só a pílula. -->
+    <Style Selector="Border.statusBadge">
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Background" Value="{DynamicResource DlCard}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DlAccent}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     <!-- Card com dispositivo detectado/conectado: borda inferior laranja (accent) mais grossa
          + cursor de mão indicando que o card é clicável (abre a tela do módulo). -->
     <Style Selector="Border.card.connected">

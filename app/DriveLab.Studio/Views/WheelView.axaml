@@ -41,19 +41,7 @@
         <Grid>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                 <StackPanel Spacing="16" Margin="6,40,6,6">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Config}" Classes="h2" />
-                        <!-- Selo de status: só aparece quando o aro é detectado (telemetria/LED ao vivo). -->
-                        <Border Grid.Column="1" IsVisible="{Binding IsConnected}" VerticalAlignment="Center"
-                                CornerRadius="12" Padding="10,4" Background="{DynamicResource DlCard}"
-                                BorderBrush="{DynamicResource DlAccent}" BorderThickness="1">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding SourceLabel}" VerticalAlignment="Center"
-                                           Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                    <TextBlock Text="{loc:Translate Wheel_Config}" Classes="h2" />
 
                     <!-- Duas colunas: volante+cores à esquerda, pás à direita -->
                     <Grid ColumnDefinitions="Auto,28,Auto" HorizontalAlignment="Left">
@@ -207,8 +195,13 @@
 
             <!-- Ações no topo à direita (mesmo padrão de pedais/freio de mão) -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
-                <TextBlock Text="{Binding SourceLabel}" Classes="muted" VerticalAlignment="Center" Margin="0,0,8,0"
-                           IsVisible="{Binding IsConnected}" />
+                <Border Classes="statusBadge" IsVisible="{Binding IsConnected}" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding SourceLabel}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
                 <Button Content="{loc:Translate Load}" Command="{Binding LoadCommand}" />
                 <Button Content="{loc:Translate Save}" Command="{Binding SaveCommand}" />
                 <!-- Habilitado só quando há alteração não salva (dirty) e o aro está conectado. -->
