@@ -55,20 +55,20 @@
                                      transparentes reais do aro. Escuras (visíveis conforme a contagem), acendem
                                      em laranja quando pressionadas. Ajustáveis. -->
                                 <Canvas Width="480" Height="480" IsHitTestVisible="False">
-                                    <Viewbox Canvas.Left="57" Canvas.Top="172" Width="26" Height="42">
+                                    <Viewbox Canvas.Left="52" Canvas.Top="150" Width="40" Height="62">
                                         <Path Classes="paddle" Classes.active="{Binding ShiftDown.IsPressed}"
                                               Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
                                     </Viewbox>
-                                    <Viewbox Canvas.Left="397" Canvas.Top="172" Width="26" Height="42">
+                                    <Viewbox Canvas.Left="388" Canvas.Top="150" Width="40" Height="62">
                                         <Path Classes="paddle" Classes.active="{Binding ShiftUp.IsPressed}"
                                               Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
                                     </Viewbox>
-                                    <Viewbox Canvas.Left="58" Canvas.Top="268" Width="40" Height="62"
+                                    <Viewbox Canvas.Left="64" Canvas.Top="276" Width="30" Height="48"
                                              IsVisible="{Binding ShowBottomPair}">
                                         <Path Classes="paddle" Classes.active="{Binding ClutchLeft.IsPressed}"
                                               Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
                                     </Viewbox>
-                                    <Viewbox Canvas.Left="382" Canvas.Top="268" Width="40" Height="62"
+                                    <Viewbox Canvas.Left="386" Canvas.Top="276" Width="30" Height="48"
                                              IsVisible="{Binding ShowBottomPair}">
                                         <Path Classes="paddle" Classes.active="{Binding ClutchRight.IsPressed}"
                                               Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
