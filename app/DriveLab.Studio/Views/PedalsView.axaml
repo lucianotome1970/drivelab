@@ -161,8 +161,8 @@
                 <Button Content="{loc:Translate Pedal_Calibrate}" Command="{Binding OpenCalibrationCommand}" />
                 <Button Content="{loc:Translate Load}" Command="{Binding LoadPreferencesCommand}" />
                 <Button Content="{loc:Translate Save}" Command="{Binding SavePreferencesCommand}" />
-                <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}"
-                        IsEnabled="{Binding CanSaveToController}" />
+                <!-- Habilitado só quando há alteração não salva (dirty) — ver CanSave no VM. -->
+                <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
             </StackPanel>
 
             <!-- Overlay de calibração: raw ao vivo dos 3 pedais -->

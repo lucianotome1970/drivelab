@@ -33,6 +33,24 @@ public class PedalsViewModelTests
     }
 
     [Fact]
+    public async Task SaveToController_Enabled_Only_When_Dirty()
+    {
+        var (vm, _, _) = Make();
+        await vm.ConnectCommand.ExecuteAsync(null);      // conecta + carrega da placa
+        Assert.False(vm.IsDirty);
+        Assert.False(vm.SaveToControllerCommand.CanExecute(null)); // nada alterado
+
+        vm.Columns[0].Smooth = 30;                        // usuário altera → escreve → dirty
+        Assert.True(vm.IsDirty);
+        Assert.True(vm.SaveToControllerCommand.CanExecute(null));
+
+        await vm.SaveToControllerCommand.ExecuteAsync(null); // salva na flash
+        Assert.False(vm.IsDirty);                          // firmware == app
+        Assert.False(vm.SaveToControllerCommand.CanExecute(null));
+        vm.Dispose();
+    }
+
+    [Fact]
     public void ReadOnly_Source_Cannot_Save_And_Exposes_Label()
     {
         var t = new FakePedalTransport { SupportsConfig = false };

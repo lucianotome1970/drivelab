@@ -31,6 +31,12 @@ public sealed partial class PedalsViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     private bool _isConnected;
 
+    /// <summary>App difere do que está gravado na FLASH da placa (há alteração não salva).
+    /// Habilita "Salvar no controlador"; zera ao carregar da placa e após salvar.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveToControllerCommand))]
+    private bool _isDirty;
+
     public IReadOnlyList<PedalColumnViewModel> Columns { get; }
 
     /// <summary>Só no simulador aparecem os botões Conectar/Desconectar (no real é automático).</summary>
@@ -71,9 +77,14 @@ public sealed partial class PedalsViewModel : ViewModelBase
         _isConnected = session.IsConnected;
         _session.Connected += OnConnectionChanged;
         _session.Disconnected += OnConnectionChanged;
+        _session.SettingChanged += OnSettingWritten;
     }
 
     private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
+
+    // Qualquer escrita de setting (edição do usuário, preset, perfil) → app difere da flash.
+    // Leituras (LoadAsync) NÃO disparam SettingChanged, então carregar não marca dirty.
+    private void OnSettingWritten(object? sender, PedalSettingChangedEventArgs e) => IsDirty = true;
 
     private void OnState(object? sender, PedalState state)
     {
@@ -95,6 +106,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
         await _session.ConnectAsync();
         foreach (var column in Columns)
             await column.LoadAsync();
+        IsDirty = false;   // acabou de carregar da placa: app == flash
     }
 
     private bool CanConnect() => !IsConnected;
@@ -103,9 +115,13 @@ public sealed partial class PedalsViewModel : ViewModelBase
     private Task DisconnectAsync() => _session.DisconnectAsync();
 
     [RelayCommand(CanExecute = nameof(CanSave))]
-    private Task SaveToControllerAsync() => _session.SendCommandAsync(PedalCommandId.SaveToFlash);
+    private async Task SaveToControllerAsync()
+    {
+        await _session.SendCommandAsync(PedalCommandId.SaveToFlash);
+        IsDirty = false;   // gravou na flash: firmware == app
+    }
 
-    private bool CanSave() => IsConnected && _session.SupportsConfig;
+    private bool CanSave() => IsConnected && _session.SupportsConfig && IsDirty;
 
     [ObservableProperty] private bool _isCalibrating;
 
@@ -134,6 +150,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
             await _session.SendCommandAsync(PedalCommandId.CalibrateStop, (byte)p);
         foreach (var c in Columns)
             await c.LoadAsync();
+        IsDirty = true;    // calibração mudou min/max na placa (RAM) — precisa salvar na flash
     }
 
     [RelayCommand]
@@ -183,6 +200,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
         _session.StateReceived -= OnState;
         _session.Connected -= OnConnectionChanged;
         _session.Disconnected -= OnConnectionChanged;
+        _session.SettingChanged -= OnSettingWritten;
         foreach (var column in Columns)
             column.Dispose();
         _session.Dispose();
