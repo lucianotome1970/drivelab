@@ -15,7 +15,7 @@ public readonly record struct WheelAxis(ushort Raw, ushort Output);
 /// <summary>Telemetria do rim (report 0x21). Layout de 64 bytes little-endian espelhado pelo firmware-wheel.</summary>
 public sealed class WheelState
 {
-    public const int EncoderCount = 4;
+    public const int EncoderCount = 5;   // 5 rotativos do aro (deltas em bytes 17..21)
 
     public FirmwareVersion Firmware { get; set; }
     public WheelFlags Flags { get; set; }
@@ -38,7 +38,7 @@ public sealed class WheelState
         BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(11, 2), ClutchLeft.Output);
         BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(13, 2), ClutchRight.Raw);
         BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(15, 2), ClutchRight.Output);
-        for (var i = 0; i < EncoderCount; i++)
+        for (var i = 0; i < EncoderCount && i < EncoderDeltas.Length; i++)
             span[17 + i] = (byte)EncoderDeltas[i];
         return buffer;
     }

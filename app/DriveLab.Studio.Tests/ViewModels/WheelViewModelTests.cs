@@ -153,6 +153,23 @@ public class WheelViewModelTests
     }
 
     [Fact]
+    public async Task Telemetry_Turns_Knob_On_And_It_Decays()
+    {
+        var vm = WithSession(out var t);
+        await vm.ConnectCommand.ExecuteAsync(null);
+
+        // gira o encoder 0 → knob 0 (BRAKE BIAS) acende; bit 10 = marcha ↓ pressiona
+        t.RaiseState(new WheelState { EncoderDeltas = new sbyte[] { 4, 0, 0, 0, 0 }, Buttons = 1u << 10 });
+        Assert.True(vm.Knobs[0].Glow > 0.9);
+        Assert.True(vm.ShiftDown.IsPressed);
+
+        // frame sem giro → o brilho decai (não fica travado aceso)
+        t.RaiseState(new WheelState { EncoderDeltas = new sbyte[5] });
+        Assert.InRange(vm.Knobs[0].Glow, 0.01, 0.99);
+        vm.Dispose();
+    }
+
+    [Fact]
     public async Task SaveToController_Enabled_Only_When_Dirty_And_Connected()
     {
         var vm = WithSession(out _);

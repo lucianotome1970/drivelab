@@ -28,6 +28,9 @@ public partial class WheelButtonViewModel : ObservableObject
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isPressed;
 
+    /// <summary>Brilho de reação 0..1 (usado pelos knobs rotativos: pulsa ao girar, decai por frame).</summary>
+    [ObservableProperty] private double _glow;
+
     public WheelButtonViewModel(string name, double x, double y, string colorHex, double diameter = 22)
     {
         Name = name;

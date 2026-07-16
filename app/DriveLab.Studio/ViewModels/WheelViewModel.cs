@@ -65,6 +65,17 @@ public partial class WheelViewModel : ViewModelBase
     /// <summary>As 4 pás (p/ o lookup do SetControlPressed).</summary>
     public IReadOnlyList<WheelButtonViewModel> Paddles => new[] { ShiftDown, ShiftUp, ClutchLeft, ClutchRight };
 
+    /// <summary>Knobs rotativos (potência) sobre o desenho: reagem ao girar (delta de encoder da
+    /// telemetria). Posições medidas sobre o wheel.png; Glow pulsa e decai por frame.</summary>
+    public IReadOnlyList<WheelButtonViewModel> Knobs { get; } = new List<WheelButtonViewModel>
+    {
+        new("BRAKE BIAS", 0.268, 0.604, "#FF6A00", diameter: 54),
+        new("MAP",        0.375, 0.681, "#34C759", diameter: 54),
+        new("FUEL",       0.502, 0.695, "#FF6A00", diameter: 54),
+        new("BOOST",      0.631, 0.681, "#32ADE6", diameter: 54),
+        new("ABS",        0.733, 0.605, "#FF6A00", diameter: 54),
+    };
+
     public IReadOnlyList<string> Palette { get; } = new[]
     {
         "#000000", "#FFFFFF", "#FF3B30", "#34C759", "#0A84FF",
@@ -138,7 +149,17 @@ public partial class WheelViewModel : ViewModelBase
     private void OnConnectionChanged(object? sender, EventArgs e)
     {
         IsConnected = _session?.IsConnected ?? false;
-        if (IsConnected) PushLeds();
+        if (IsConnected)
+        {
+            PushLeds();
+        }
+        else
+        {
+            // Desconectou: apaga reações (knobs/pressões) pra não ficar "travado" aceso.
+            foreach (var k in Knobs) k.Glow = 0;
+            foreach (var b in Buttons) b.IsPressed = false;
+            foreach (var p in Paddles) p.IsPressed = false;
+        }
     }
 
     // Telemetria do aro → visual de pressão (mesmo caminho da simulação).
@@ -152,6 +173,14 @@ public partial class WheelViewModel : ViewModelBase
         ShiftUp.IsPressed   = s.IsButtonPressed(11);
         ClutchLeft.IsPressed  = s.ClutchLeft.Output  > 32768;
         ClutchRight.IsPressed = s.ClutchRight.Output > 32768;
+
+        // Knobs rotativos: girou (delta != 0) → acende; senão decai por frame (telemetria ~100 Hz).
+        for (var i = 0; i < Knobs.Count; i++)
+        {
+            var d = i < s.EncoderDeltas.Length ? s.EncoderDeltas[i] : (sbyte)0;
+            Knobs[i].Glow = d != 0 ? 1.0 : Knobs[i].Glow * 0.82;
+        }
+
         IsConnected = _session?.IsConnected ?? false;
     }
 

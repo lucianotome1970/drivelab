@@ -27,7 +27,7 @@ public class WheelStateTests
             Buttons = 0b1010_0000_0000_0000_0000_0000_0000_0101u,
             ClutchLeft = new WheelAxis(1234, 2345),
             ClutchRight = new WheelAxis(3456, 4095),
-            EncoderDeltas = new sbyte[] { 3, -2, 0, 127 },
+            EncoderDeltas = new sbyte[] { 3, -2, 0, 127, -5 },
         };
 
         var parsed = WheelState.Parse(state.ToBytes());

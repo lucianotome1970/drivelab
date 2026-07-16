@@ -73,6 +73,26 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <!-- Knobs rotativos (potência): anel que acende ao girar (Glow via telemetria). -->
+                                <ItemsControl ItemsSource="{Binding Knobs}" IsHitTestVisible="False">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><Canvas Width="480" Height="480" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ContentPresenter" x:DataType="vm:WheelButtonViewModel">
+                                            <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                            <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:WheelButtonViewModel">
+                                            <Border Width="{Binding Diameter}" Height="{Binding Diameter}" CornerRadius="999"
+                                                    BorderBrush="{DynamicResource DlAccent}" BorderThickness="3"
+                                                    Background="Transparent" Opacity="{Binding Glow}"
+                                                    ToolTip.Tip="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </Grid>
 
                             <!-- Paleta de cores (aplica no botão selecionado). Só com o aro conectado:
