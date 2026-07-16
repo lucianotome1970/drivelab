@@ -75,9 +75,12 @@
                                 </ItemsControl>
                             </Grid>
 
-                            <!-- Paleta de cores (aplica no botão selecionado) -->
+                            <!-- Paleta de cores (aplica no botão selecionado). Só com o aro conectado:
+                                 a cor vai AO VIVO ao dispositivo. -->
                             <TextBlock Text="{Binding SelectedButton.Name, FallbackValue=''}" Classes="muted" />
-                            <ItemsControl ItemsSource="{Binding Palette}">
+                            <TextBlock Text="{loc:Translate Wheel_ConnectToEditColors}" Classes="muted"
+                                       IsVisible="{Binding !IsConnected}" TextWrapping="Wrap" />
+                            <ItemsControl ItemsSource="{Binding Palette}" IsEnabled="{Binding IsConnected}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>

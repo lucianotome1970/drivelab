@@ -87,16 +87,17 @@ public partial class WheelViewModel : ViewModelBase
         _session = session;
         SourceLabel = session?.SourceLabel ?? "";
         // Nome, posição normalizada (0-1 sobre a imagem quadrada wheel.png), cor padrão.
+        // Posições medidas sobre wheel.png (1304×1304): centróide colorido de cada botão.
         Buttons = new List<WheelButtonViewModel>
         {
-            new("N",     0.222, 0.348, "#BF5AF2"),
-            new("PIT",   0.293, 0.352, "#FFD60A"),
-            new("DRS",   0.718, 0.348, "#34C759"),
-            new("KILL",  0.786, 0.346, "#FF3B30"),
-            new("RADIO", 0.256, 0.452, "#32ADE6"),
-            new("TC",    0.256, 0.520, "#FFD60A"),
-            new("MENU",  0.744, 0.452, "#FF9F0A"),
-            new("ESC",   0.744, 0.520, "#32ADE6"),
+            new("N",     0.219, 0.334, "#BF5AF2"),
+            new("PIT",   0.295, 0.347, "#FFD60A"),
+            new("DRS",   0.716, 0.346, "#34C759"),
+            new("KILL",  0.783, 0.335, "#FF3B30"),
+            new("RADIO", 0.258, 0.462, "#32ADE6"),
+            new("TC",    0.257, 0.520, "#FFD60A"),
+            new("MENU",  0.746, 0.463, "#FF9F0A"),
+            new("ESC",   0.746, 0.521, "#32ADE6"),
         };
 
         if (_session is not null)

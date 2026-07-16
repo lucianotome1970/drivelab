@@ -27,6 +27,7 @@
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Maximum angle</value></data>
   <data name="Wheel_Config" xml:space="preserve"><value>Wheel configuration</value></data>
   <data name="Wheel_Leds" xml:space="preserve"><value>Button colors</value></data>
+  <data name="Wheel_ConnectToEditColors" xml:space="preserve"><value>Connect the wheel to change LED colors.</value></data>
   <data name="Wheel_Paddles" xml:space="preserve"><value>Paddles</value></data>
   <data name="Wheel_PaddleCount" xml:space="preserve"><value>Paddle count</value></data>
   <data name="Wheel_ShiftDown" xml:space="preserve"><value>Shift down</value></data>
