@@ -206,6 +206,12 @@ static double decodeValue(const uint8_t* buf) {  // buf = payload; [2]=type, [3.
   }
   return 0;
 }
+// Resposta de leitura (0x16) enfileirada no callback e enviada no loop() com prioridade:
+// o endpoint HID único do TinyUSB dropa o 2º report back-to-back, então nunca se envia
+// 0x16 direto do onSetReport (mesmo fix do firmware-pedal/handbrake).
+static volatile bool    g_pendingValue = false;
+static volatile uint8_t g_pvField = 0, g_pvIndex = 0;
+
 static void sendSettingValue(uint8_t field, uint8_t index) {
   uint8_t out[PAYLOAD]; memset(out, 0, sizeof(out));
   uint8_t type = typeForField(field);
@@ -262,7 +268,8 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
       if (len >= 3) writeField(buf[0], decodeValue(buf));
       break;
     case RID_SET_READREQ:                  // [0]=field [1]=index
-      if (len >= 2) sendSettingValue(buf[0], buf[1]);
+      // Não responde aqui (o EP dropa o 2º report): enfileira e responde no loop().
+      if (len >= 2) { g_pvField = buf[0]; g_pvIndex = buf[1]; g_pendingValue = true; }
       break;
     case RID_CMD: {                        // [0]=cmd [1]=arg
       if (len < 1) break;
@@ -336,18 +343,25 @@ void loop() {
   uint16_t axisX = g_cfg.clutchMode == 0 ? max(g_clutchOut[0], g_clutchOut[1]) : g_clutchOut[0];
   uint16_t axisY = g_cfg.clutchMode == 0 ? axisX : g_clutchOut[1];
 
-  // 3) Gamepad: 4 bytes de botões (LE) + X + Y (16-bit)
-  uint8_t joy[8];
-  joy[0] = g_buttons & 0xFF; joy[1] = (g_buttons >> 8) & 0xFF;
-  joy[2] = (g_buttons >> 16) & 0xFF; joy[3] = (g_buttons >> 24) & 0xFF;
-  joy[4] = axisX & 0xFF; joy[5] = (axisX >> 8) & 0xFF;
-  joy[6] = axisY & 0xFF; joy[7] = (axisY >> 8) & 0xFF;
-  g_hid.sendReport(RID_JOYSTICK, joy, sizeof(joy));
-  // limpa os pulsos momentâneos de encoder (CW/CCW) após enviá-los uma vez
-  for (int e = 0; e < 2; e++) { setBit(g_buttons, BIT_ENC_CW[e], false); setBit(g_buttons, BIT_ENC_CCW[e], false); }
+  // 3) Resposta de setting-value (0x16) tem prioridade nesta janela; senão, o gamepad (0x01).
+  //    Nunca enviamos os dois back-to-back — o EP único do TinyUSB dropa o 2º.
+  if (g_pendingValue) {
+    g_pendingValue = false;
+    sendSettingValue(g_pvField, g_pvIndex);
+  } else {
+    // Gamepad: 4 bytes de botões (LE) + X + Y (16-bit)
+    uint8_t joy[8];
+    joy[0] = g_buttons & 0xFF; joy[1] = (g_buttons >> 8) & 0xFF;
+    joy[2] = (g_buttons >> 16) & 0xFF; joy[3] = (g_buttons >> 24) & 0xFF;
+    joy[4] = axisX & 0xFF; joy[5] = (axisX >> 8) & 0xFF;
+    joy[6] = axisY & 0xFF; joy[7] = (axisY >> 8) & 0xFF;
+    g_hid.sendReport(RID_JOYSTICK, joy, sizeof(joy));
+    // limpa os pulsos momentâneos de encoder (CW/CCW) após enviá-los uma vez
+    for (int e = 0; e < 2; e++) { setBit(g_buttons, BIT_ENC_CW[e], false); setBit(g_buttons, BIT_ENC_CCW[e], false); }
+  }
 
-  // 4) telemetria WheelState (0x21) a ~100 Hz
-  if (millis() - g_lastTelem >= 10) {
+  // 4) telemetria WheelState (0x21) a ~100 Hz — só quando o EP estiver livre de novo (não colide c/ o de cima)
+  if (millis() - g_lastTelem >= 10 && g_hid.ready()) {
     g_lastTelem = millis();
     uint8_t st[PAYLOAD]; memset(st, 0, sizeof(st));
     // [0..3] fw 0.1.0.0

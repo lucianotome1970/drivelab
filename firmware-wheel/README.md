@@ -35,7 +35,7 @@ Design/decisions: internal project notes (not versioned in the public repo).
 - WS2812 (data): GP16.
 
 ### ⚠️ Written without a board — check on the bench first
-1. **Known latent bug — vendor P0 response.** This firmware's **vendor P0** channel **still sends the `0x16` (SettingValue) response straight from the `onSetReport` callback** — this is a **known latent bug**. The pedals and the handbrake had exactly this problem: TinyUSB's single HID endpoint drops the 2nd report sent back-to-back, so settings reads fail. **Before validating settings on this firmware, you MUST apply the same fix already made in `firmware-pedal`/`firmware-handbrake`**: queue the response in the callback and send it from `loop()` with priority over the gamepad, and make sure the payload is ≤ 63 bytes (the 64-byte EP = 63 payload + 1 report id).
+1. **Vendor P0 response — ✅ already fixed (2026-07).** The `0x16` (SettingValue) response is now **queued in `onSetReport` and sent from `loop()` with priority over the gamepad**, and the payload is ≤ 63 bytes — the same fix applied to `firmware-pedal`/`firmware-handbrake` (TinyUSB's single HID endpoint drops the 2nd report sent back-to-back, so settings reads would fail if `0x16` went straight from the callback). Still to confirm on real hardware once the rim is wired.
 2. **TinyUSB OUTPUT reports** (`onSetReport`): reception of `WheelLed`/`SettingWrite` — suspect #1 (same as pedal/handbrake).
 3. **Report descriptor** (gamepad + vendor) visible to Windows/HidSharp.
 4. **Byte-layout** matching `DriveLab.Core` 1:1 (`WheelState`, `WheelLedReport`).
@@ -75,7 +75,7 @@ Design/decisões: notas internas de projeto (não versionadas no repo público).
 - WS2812 (dados): GP16.
 
 ### ⚠️ Escrito sem placa — conferir primeiro na bancada
-1. **Bug latente conhecido — resposta do vendor P0.** O canal **vendor P0** deste firmware **ainda envia a resposta `0x16` (SettingValue) direto do callback `onSetReport`** — isso é um **bug latente já conhecido**. A pedaleira e o freio de mão tiveram exatamente este problema: o endpoint HID único do TinyUSB dropa o 2º report enviado back-to-back, então a leitura de settings falha. **Antes de validar settings neste firmware, é obrigatório aplicar o mesmo fix já feito em `firmware-pedal`/`firmware-handbrake`**: enfileirar a resposta no callback e enviá-la a partir do `loop()` com prioridade sobre o gamepad, além de garantir payload ≤ 63 bytes (o EP de 64 = 63 payload + 1 report id).
+1. **Resposta do vendor P0 — ✅ já corrigido (jul/2026).** A resposta `0x16` (SettingValue) agora é **enfileirada no `onSetReport` e enviada do `loop()` com prioridade sobre o gamepad**, com payload ≤ 63 bytes — o mesmo fix aplicado em `firmware-pedal`/`firmware-handbrake` (o endpoint HID único do TinyUSB dropa o 2º report back-to-back, então a leitura de settings falharia se o `0x16` saísse direto do callback). Falta confirmar em hardware real quando o aro estiver montado.
 2. **OUTPUT reports do TinyUSB** (`onSetReport`): recepção de `WheelLed`/`SettingWrite` — suspeito nº1 (igual pedal/handbrake).
 3. **Report descriptor** (gamepad + vendor) visível ao Windows/HidSharp.
 4. **Byte-layout** casando 1:1 com `DriveLab.Core` (`WheelState`, `WheelLedReport`).
