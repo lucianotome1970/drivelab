@@ -135,7 +135,8 @@ public static class CompositionRoot
         // ao vivo dos pedais e do freio de mão. Base usa a MESMA sessão FFB.
         var home = new HomeViewModel(new DashboardViewModel(session, wheelSession), pedals, handbrake, new BaseViewModel(session));
 
-        var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode, wheelSession);
+        var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode, wheelSession,
+            new JsonNamedProfileStore<WheelProfile>("wheel"));
         if (wheelPresent is not null)
         {
             System.Console.WriteLine($"[DriveLab] Volante presente no arranque (HidSharp 0x1209:0x0004): {wheelPresent()}");

@@ -17,7 +17,8 @@ public sealed record WheelProfile(
     PaddleFunction BottomFunction,
     PaddleMode BottomMode,
     PaddleActuation BottomActuation,
-    int BottomBitePoint);
+    int BottomBitePoint,
+    int LedBrightness = 200);   // default p/ compat. com JSON antigo (sem brilho)
 
 public interface IWheelProfileStorage
 {

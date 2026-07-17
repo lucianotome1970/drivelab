@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
@@ -26,6 +27,8 @@ public partial class WheelViewModel : ViewModelBase
 {
     private readonly IWheelProfileStorage _storage;
     private readonly WheelDeviceSession? _session;
+    private readonly INamedProfileStore<WheelProfile>? _library;   // perfis nomeados (opcional)
+    private bool _suppressProfileApply;   // evita aplicar ao repovoar a lista
 
     /// <summary>Só em modo /simulator o clique simula pressionar (acende). Em modo real o "aceso"
     /// vem da telemetria do firmware (via SetControlPressed), não do mouse.</summary>
@@ -108,11 +111,26 @@ public partial class WheelViewModel : ViewModelBase
 
     public bool ShowBottomPair => PaddleCount == 4;
 
-    public WheelViewModel(IWheelProfileStorage storage, bool simulatorMode = false, WheelDeviceSession? session = null)
+    // --- Perfis nomeados (biblioteca do módulo) ---
+    public ObservableCollection<string> Profiles { get; } = new();
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteProfileCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RenameProfileCommand))]
+    private string? _selectedProfileName;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveAsProfileCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RenameProfileCommand))]
+    private string _newProfileName = "";
+
+    public WheelViewModel(IWheelProfileStorage storage, bool simulatorMode = false,
+                          WheelDeviceSession? session = null, INamedProfileStore<WheelProfile>? library = null)
     {
         _storage = storage;
         IsSimulator = simulatorMode;
         _session = session;
+        _library = library;
         SourceLabel = session?.SourceLabel ?? "";
         // Nome, posição normalizada (0-1 sobre a imagem quadrada wheel.png), cor padrão.
         // Posições medidas sobre wheel.png (1304×1304): centróide colorido de cada botão.
@@ -142,7 +160,92 @@ public partial class WheelViewModel : ViewModelBase
         // Carrega o perfil salvo no arranque (config persiste entre execuções, como MOZA).
         // Fire-and-forget: LoadAsync tolera arquivo ausente (mantém os defaults acima).
         _ = LoadCommand.ExecuteAsync(null);
+
+        RefreshProfiles();   // popula a lista de perfis nomeados (se houver biblioteca)
     }
+
+    // ===================== Perfis nomeados =====================
+    private void RefreshProfiles(string? select = null)
+    {
+        if (_library is null)
+            return;
+        _suppressProfileApply = true;
+        Profiles.Clear();
+        foreach (var n in _library.ListNames())
+            Profiles.Add(n);
+        SelectedProfileName = select is not null && Profiles.Contains(select) ? select : null;
+        _suppressProfileApply = false;
+    }
+
+    // Selecionar um perfil na lista aplica-o na hora (com o aro conectado — a UI é gated por IsConnected).
+    partial void OnSelectedProfileNameChanged(string? value)
+    {
+        if (_suppressProfileApply || value is null || _library is null)
+            return;
+        _ = ApplySelectedProfileAsync(value);
+    }
+
+    private async Task ApplySelectedProfileAsync(string name)
+    {
+        var p = await _library!.LoadAsync(name);
+        if (p is not null)
+            ApplyProfileToDevice(p);
+    }
+
+    /// <summary>Aplica um perfil ESCREVENDO no dispositivo (diferente de <see cref="Apply"/>, que só
+    /// reflete a config carregada): mode/bite/brilho vão à placa e as cores são empurradas; marca "não salvo".</summary>
+    private void ApplyProfileToDevice(WheelProfile p)
+    {
+        foreach (var saved in p.Buttons)
+        {
+            var b = Buttons.FirstOrDefault(x => x.Name == saved.Name);
+            if (b is not null)
+                b.ColorHex = saved.ColorHex;
+        }
+        PaddleCount = p.PaddleCount;
+        BottomPair.Function = p.BottomFunction;
+        BottomPair.Actuation = p.BottomActuation;
+        BottomPair.Mode = p.BottomMode;              // OnConfigChanged → escreve ClutchMode na placa
+        BottomPair.BitePoint = p.BottomBitePoint;    // OnConfigChanged → escreve ClutchBitePoint na placa
+        LedBrightness = (byte)Math.Clamp(p.LedBrightness, 0, 255);
+        PushLeds();          // empurra as cores do perfil ao aro
+        IsDirty = true;      // aplicou um perfil → precisa "Salvar no controlador" p/ gravar na flash
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSaveAsProfile))]
+    private async Task SaveAsProfile()
+    {
+        var name = NewProfileName.Trim();
+        if (_library is null || name.Length == 0)
+            return;
+        await _library.SaveAsync(name, Export());
+        NewProfileName = "";
+        RefreshProfiles(select: name);
+    }
+    private bool CanSaveAsProfile() => _library is not null && !string.IsNullOrWhiteSpace(NewProfileName);
+
+    [RelayCommand(CanExecute = nameof(HasSelectedProfile))]
+    private void DeleteProfile()
+    {
+        if (_library is null || SelectedProfileName is null)
+            return;
+        _library.Delete(SelectedProfileName);
+        RefreshProfiles();
+    }
+    private bool HasSelectedProfile() => _library is not null && SelectedProfileName is not null;
+
+    [RelayCommand(CanExecute = nameof(CanRenameProfile))]
+    private void RenameProfile()
+    {
+        var name = NewProfileName.Trim();
+        if (_library is null || SelectedProfileName is null || name.Length == 0)
+            return;
+        _library.Rename(SelectedProfileName, name);
+        NewProfileName = "";
+        RefreshProfiles(select: name);
+    }
+    private bool CanRenameProfile() =>
+        _library is not null && SelectedProfileName is not null && !string.IsNullOrWhiteSpace(NewProfileName);
 
     private void OnConfigChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -402,7 +505,8 @@ public partial class WheelViewModel : ViewModelBase
     private WheelProfile Export() => new(
         Buttons.Select(b => new WheelButtonColor(b.Name, b.ColorHex)).ToArray(),
         PaddleCount,
-        BottomPair.Function, BottomPair.Mode, BottomPair.Actuation, BottomPair.BitePoint);
+        BottomPair.Function, BottomPair.Mode, BottomPair.Actuation, BottomPair.BitePoint,
+        LedBrightness);
 
     private void Apply(WheelProfile p)
     {
@@ -420,6 +524,7 @@ public partial class WheelViewModel : ViewModelBase
             BottomPair.Mode = p.BottomMode;
             BottomPair.Actuation = p.BottomActuation;
             BottomPair.BitePoint = p.BottomBitePoint;
+            LedBrightness = (byte)Math.Clamp(p.LedBrightness, 0, 255);
             PushLeds();   // perfil carregado → reflete no aro (se conectado)
         }
         finally

@@ -29,6 +29,12 @@
   <data name="Wheel_Leds" xml:space="preserve"><value>Cores dos botões</value></data>
   <data name="Wheel_ConnectToEditColors" xml:space="preserve"><value>Conecte o volante para alterar as cores dos LEDs.</value></data>
   <data name="Wheel_Brightness" xml:space="preserve"><value>Brilho dos LEDs</value></data>
+  <data name="Profile_Label" xml:space="preserve"><value>Perfil</value></data>
+  <data name="Profile_Placeholder" xml:space="preserve"><value>Selecione…</value></data>
+  <data name="Profile_NameWatermark" xml:space="preserve"><value>Nome do perfil</value></data>
+  <data name="Profile_SaveAs" xml:space="preserve"><value>Salvar como</value></data>
+  <data name="Profile_Rename" xml:space="preserve"><value>Renomear</value></data>
+  <data name="Profile_Delete" xml:space="preserve"><value>Excluir</value></data>
   <data name="Wheel_Paddles" xml:space="preserve"><value>Pás</value></data>
   <data name="Wheel_PaddleCount" xml:space="preserve"><value>Número de pás</value></data>
   <data name="Wheel_ShiftDown" xml:space="preserve"><value>Marcha ↓</value></data>
