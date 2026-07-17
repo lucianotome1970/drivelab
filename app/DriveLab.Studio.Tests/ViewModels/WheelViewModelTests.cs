@@ -145,6 +145,29 @@ public class WheelViewModelTests
     }
 
     [Fact]
+    public async Task Profile_Save_Updates_Selected_In_Place()
+    {
+        var vm = WithLibrary(out _, out var dir);
+        var lib = new JsonNamedProfileStore<WheelProfile>("wheel", dir);
+        try
+        {
+            await vm.ConnectCommand.ExecuteAsync(null);
+            vm.SelectButtonCommand.Execute(vm.Buttons[0]);   // "N"
+            vm.SetColorCommand.Execute("#111111");
+            vm.ProfileLibrary.NewName = "P1";
+            await vm.ProfileLibrary.SaveAsCommand.ExecuteAsync(null);   // selecionado = P1
+
+            vm.SetColorCommand.Execute("#222222");
+            await vm.ProfileLibrary.SaveCommand.ExecuteAsync(null);     // atualiza P1 no lugar
+
+            var saved = await lib.LoadAsync("P1");
+            Assert.Equal("#222222", saved!.Buttons.First(b => b.Name == "N").ColorHex);
+            vm.Dispose();
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public async Task Profiles_SaveAs_Then_Apply_And_Delete()
     {
         var vm = WithLibrary(out _, out var dir);

@@ -36,6 +36,7 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
     public ObservableCollection<string> Profiles { get; } = new();
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCommand))]
     private string? _selectedName;
@@ -70,6 +71,15 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
         var p = await _store!.LoadAsync(name);
         if (p is not null)
             _apply(p);
+    }
+
+    /// <summary>Atualiza o perfil selecionado com a config atual (grava por cima do mesmo nome).</summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task Save()
+    {
+        if (_store is null || SelectedName is null)
+            return;
+        await _store.SaveAsync(SelectedName, _capture());
     }
 
     [RelayCommand(CanExecute = nameof(CanSaveAs))]

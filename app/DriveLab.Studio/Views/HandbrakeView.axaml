@@ -24,6 +24,7 @@
                 <TextBlock Text="{loc:Translate Profile_Label}" Classes="muted" VerticalAlignment="Center" />
                 <ComboBox MinWidth="170" ItemsSource="{Binding ProfileLibrary.Profiles}" SelectedItem="{Binding ProfileLibrary.SelectedName}"
                           PlaceholderText="{loc:Translate Profile_Placeholder}" />
+                <Button Classes="accent" Content="{loc:Translate Profile_Save}" Command="{Binding ProfileLibrary.SaveCommand}" />
                 <TextBox Width="150" Text="{Binding ProfileLibrary.NewName}" Watermark="{loc:Translate Profile_NameWatermark}" />
                 <Button Content="{loc:Translate Profile_SaveAs}" Command="{Binding ProfileLibrary.SaveAsCommand}" />
                 <Button Content="{loc:Translate Profile_Rename}" Command="{Binding ProfileLibrary.RenameCommand}" />
