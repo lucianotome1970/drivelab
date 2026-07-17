@@ -104,7 +104,7 @@
                 <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
                 <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
                 <Button Content="{loc:Translate Pedal_Calibrate}" Command="{Binding OpenCalibrationCommand}" />
-                <Button Content="{loc:Translate Handbrake_LoadDefaults}" Command="{Binding LoadDefaultsCommand}" />
+                <Button Content="{loc:Translate Default}" Command="{Binding LoadDefaultsCommand}" />
                 <!-- Mesma nomenclatura do pedal; habilitado só quando dirty (ver CanSave no VM). -->
                 <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveCommand}" />
             </StackPanel>

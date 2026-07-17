@@ -26,6 +26,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LoadDefaultsCommand))]
     private bool _isConnected;
     [ObservableProperty] private string _sourceLabel = "";
     [ObservableProperty] private bool _canEdit;
@@ -211,8 +212,14 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
 
     private bool CanSave() => IsConnected && IsDirty;
 
-    [RelayCommand]
-    private Task LoadDefaults() => _session.SendCommandAsync(PedalCommandId.LoadDefaults);
+    /// <summary>Restaura os padrões de fábrica no controlador, relê e marca como não salvo.</summary>
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private async Task LoadDefaults()
+    {
+        await _session.SendCommandAsync(PedalCommandId.LoadDefaults);
+        await LoadAsync();
+        IsDirty = true;   // defaults na RAM da placa — precisa "Salvar no controlador"
+    }
 
     [RelayCommand]
     private void SelectSensor(string type) => SensorType = int.Parse(type);

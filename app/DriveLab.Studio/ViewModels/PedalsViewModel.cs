@@ -29,6 +29,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SaveToControllerCommand))]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ResetDefaultsCommand))]
     private bool _isConnected;
 
     /// <summary>App difere do que está gravado na FLASH da placa (há alteração não salva).
@@ -151,6 +152,15 @@ public sealed partial class PedalsViewModel : ViewModelBase
         foreach (var c in Columns)
             await c.LoadAsync();
         IsDirty = true;    // calibração mudou min/max na placa (RAM) — precisa salvar na flash
+    }
+
+    /// <summary>Restaura os padrões de fábrica no controlador (os 3 eixos), relê e marca como não salvo.</summary>
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private async Task ResetDefaults()
+    {
+        await _session.SendCommandAsync(PedalCommandId.LoadDefaults);
+        foreach (var c in Columns) await c.LoadAsync();
+        IsDirty = true;   // defaults na RAM da placa — precisa "Salvar no controlador"
     }
 
     [RelayCommand]

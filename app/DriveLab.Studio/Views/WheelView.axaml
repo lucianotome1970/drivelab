@@ -225,6 +225,7 @@
                                    Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
                     </StackPanel>
                 </Border>
+                <Button Content="{loc:Translate Default}" Command="{Binding ResetDefaultsCommand}" />
                 <!-- Sem "Carregar"/"Salvar": o perfil carrega sozinho ao detectar o aro e o único
                      salvamento é "Salvar no controlador". Habilitado só com alteração não salva e conectado. -->
                 <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />

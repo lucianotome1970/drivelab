@@ -37,6 +37,7 @@ public partial class WheelViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveToControllerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ResetDefaultsCommand))]
     private bool _isConnected;
 
     /// <summary>Config alterada desde o último salvar/carregar — habilita "Salvar no controlador"
@@ -74,6 +75,13 @@ public partial class WheelViewModel : ViewModelBase
         new("FUEL",       0.503, 0.708, "#FF6A00", diameter: 42),
         new("BOOST",      0.631, 0.695, "#32ADE6", diameter: 42),
         new("ABS",        0.733, 0.618, "#FF6A00", diameter: 42),
+    };
+
+    /// <summary>Cores padrão de fábrica dos 8 botões (mesmas do construtor), para o "Padrão".</summary>
+    private static readonly Dictionary<string, string> DefaultColors = new()
+    {
+        ["N"] = "#BF5AF2", ["PIT"] = "#FFD60A", ["DRS"] = "#34C759", ["KILL"] = "#FF3B30",
+        ["RADIO"] = "#32ADE6", ["TC"] = "#FFD60A", ["MENU"] = "#FF9F0A", ["ESC"] = "#32ADE6",
     };
 
     public IReadOnlyList<string> Palette { get; } = new[]
@@ -258,6 +266,31 @@ public partial class WheelViewModel : ViewModelBase
                       ?? Paddles.FirstOrDefault(p => p.Name == name);
         if (control is not null)
             control.IsPressed = pressed;
+    }
+
+    /// <summary>Restaura cores dos botões e config das pás ao padrão de fábrica (marca não salvo).</summary>
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private void ResetDefaults()
+    {
+        _loading = true;   // aplicar o padrão não conta como edição individual
+        try
+        {
+            foreach (var b in Buttons)
+                if (DefaultColors.TryGetValue(b.Name, out var hex))
+                    b.ColorHex = hex;
+            PaddleCount = 4;
+            var d = new PaddlePairViewModel();   // defaults canônicos das pás
+            BottomPair.Function = d.Function;
+            BottomPair.Mode = d.Mode;
+            BottomPair.Actuation = d.Actuation;
+            BottomPair.BitePoint = d.BitePoint;
+            PushLeds();   // reflete no aro na hora
+        }
+        finally
+        {
+            _loading = false;
+            IsDirty = true;   // padrão aplicado → precisa "Salvar no controlador"
+        }
     }
 
     /// <summary>Salva o perfil do app (cores/pás). Funciona offline; não mexe na flash do device.</summary>
