@@ -36,6 +36,8 @@ public partial class SettingFieldViewModel : ViewModelBase
             return text == key ? _descriptor.DisplayName : text; // fallback: nome do schema
         }
     }
+    /// <summary>Chave estável do setting (nome do id) — usada pelos perfis nomeados.</summary>
+    public string Key => _descriptor.Id.ToString();
     public double Min => _descriptor.Min;
     public double Max => _descriptor.Max;
     public string Unit => _descriptor.Unit;

@@ -26,6 +26,35 @@ public class SettingsPageViewModelTests
     }
 
     [Fact]
+    public async Task Named_Profile_SaveAs_Then_Apply_Restores_Setting()
+    {
+        var t = new FakeTransport();
+        t.ConnectAsync().GetAwaiter().GetResult();
+        var s = new BaseSession(t, new ImmediateUiDispatcher());
+        var group = new SettingsGroupViewModel(s, "Básico", new[] { BaseSettingId.TotalStrength });
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"baselib-{System.Guid.NewGuid():N}");
+        var lib = new JsonNamedProfileStore<BaseProfile>("base", dir);
+        var page = new SettingsPageViewModel(s, "Base", new[] { new PageTab("Básico", group) }, lib);
+        try
+        {
+            await group.LoadAsync();
+            group.Fields[0].Value = 80;
+            page.ProfileLibrary.NewName = "GT3";
+            await page.ProfileLibrary.SaveAsCommand.ExecuteAsync(null);
+            Assert.Contains("GT3", page.ProfileLibrary.Profiles);
+
+            group.Fields[0].Value = 30;                       // muda; aplicar restaura 80
+            page.ProfileLibrary.SelectedName = null;
+            page.ProfileLibrary.SelectedName = "GT3";
+            for (var i = 0; i < 60 && (int)group.Fields[0].Value != 80; i++)
+                await Task.Delay(5);
+            Assert.Equal(80, (int)group.Fields[0].Value);
+            page.Dispose();
+        }
+        finally { if (System.IO.Directory.Exists(dir)) System.IO.Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public async Task Save_Enabled_Only_When_Dirty()
     {
         var (page, group) = Make();

@@ -148,7 +148,8 @@ public static class CompositionRoot
                 () => wheel.DisconnectCommand.ExecuteAsync(null),
                 wheelPresent, dispatcher));
         }
-        var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs);
+        var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs,
+            new JsonNamedProfileStore<BaseProfile>("base"));
 
         var pages = new List<NavItem>
         {

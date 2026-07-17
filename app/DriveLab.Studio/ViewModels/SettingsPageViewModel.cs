@@ -40,7 +40,11 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _isDirty;
 
-    public SettingsPageViewModel(BaseSession session, string title, IEnumerable<PageTab> tabs)
+    /// <summary>Perfis nomeados do módulo (selecionar aplica; salvar/salvar como/renomear/excluir).</summary>
+    public ProfileLibraryViewModel<BaseProfile> ProfileLibrary { get; }
+
+    public SettingsPageViewModel(BaseSession session, string title, IEnumerable<PageTab> tabs,
+                                 INamedProfileStore<BaseProfile>? library = null)
     {
         _session = session;
         Title = title;
@@ -49,6 +53,24 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
         _session.Connected += OnConnectionChanged;
         _session.Disconnected += OnConnectionChanged;
         _session.SettingChanged += OnSettingWritten;
+
+        // Aplicar um perfil escreve os settings no controlador (via setters dos campos) e marca "não salvo".
+        ProfileLibrary = new ProfileLibraryViewModel<BaseProfile>(
+            library, ExportProfile, p => { ApplyProfile(p); IsDirty = true; });
+    }
+
+    /// <summary>Todos os campos de setting das abas (cada aba de config é um SettingsGroupViewModel).</summary>
+    private IEnumerable<SettingFieldViewModel> AllFields() =>
+        Tabs.Select(t => t.Content).OfType<SettingsGroupViewModel>().SelectMany(g => g.Fields);
+
+    public BaseProfile ExportProfile() =>
+        new(AllFields().ToDictionary(f => f.Key, f => f.Value));
+
+    public void ApplyProfile(BaseProfile profile)
+    {
+        foreach (var f in AllFields())
+            if (profile.Settings.TryGetValue(f.Key, out var v))
+                f.Value = v;   // dispara o write no controlador
     }
 
     private void OnConnectionChanged(object? sender, EventArgs e)
