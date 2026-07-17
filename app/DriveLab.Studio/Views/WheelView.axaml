@@ -140,6 +140,17 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+
+                            <!-- Brilho global dos LEDs (0..100% → 0..255 no firmware). Só com o aro conectado. -->
+                            <StackPanel Spacing="6" Margin="0,4,0,0" IsEnabled="{Binding IsConnected}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Brightness}" Classes="muted" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Classes="valueBox">
+                                        <TextBlock Text="{Binding LedBrightnessPercent, StringFormat={}{0}%}" />
+                                    </Border>
+                                </Grid>
+                                <Slider Minimum="0" Maximum="100" Value="{Binding LedBrightnessPercent}" VerticalAlignment="Center" />
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Coluna direita: configuração das pás. Desabilitada sem o aro conectado

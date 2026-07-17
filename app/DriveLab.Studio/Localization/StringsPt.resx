@@ -28,6 +28,7 @@
   <data name="Wheel_Config" xml:space="preserve"><value>Configuração do volante</value></data>
   <data name="Wheel_Leds" xml:space="preserve"><value>Cores dos botões</value></data>
   <data name="Wheel_ConnectToEditColors" xml:space="preserve"><value>Conecte o volante para alterar as cores dos LEDs.</value></data>
+  <data name="Wheel_Brightness" xml:space="preserve"><value>Brilho dos LEDs</value></data>
   <data name="Wheel_Paddles" xml:space="preserve"><value>Pás</value></data>
   <data name="Wheel_PaddleCount" xml:space="preserve"><value>Número de pás</value></data>
   <data name="Wheel_ShiftDown" xml:space="preserve"><value>Marcha ↓</value></data>

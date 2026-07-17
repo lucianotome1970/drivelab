@@ -47,7 +47,16 @@ public partial class WheelViewModel : ViewModelBase
     private bool _isDirty;
 
     /// <summary>Brilho global dos LEDs enviado no report (0..255). Empurra ao vivo ao mudar.</summary>
-    [ObservableProperty] private byte _ledBrightness = 200;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LedBrightnessPercent))]
+    private byte _ledBrightness = 200;
+
+    /// <summary>Brilho em 0..100% para o slider (mapeia p/ o byte 0..255 do firmware).</summary>
+    public int LedBrightnessPercent
+    {
+        get => (int)Math.Round(LedBrightness / 255.0 * 100);
+        set => LedBrightness = (byte)Math.Clamp((int)Math.Round(value / 100.0 * 255), 0, 255);
+    }
 
     /// <summary>Rótulo da origem (ex.: "Volante detectado") p/ o selo de status; vazio se não houver sessão.</summary>
     public string SourceLabel { get; }

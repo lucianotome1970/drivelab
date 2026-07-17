@@ -80,6 +80,18 @@ public class WheelViewModelTests
     }
 
     [Fact]
+    public void LedBrightnessPercent_Maps_To_Byte_And_Back()
+    {
+        var vm = New(out _);
+        vm.LedBrightnessPercent = 100;
+        Assert.Equal((byte)255, vm.LedBrightness);
+        vm.LedBrightnessPercent = 0;
+        Assert.Equal((byte)0, vm.LedBrightness);
+        vm.LedBrightness = 128;
+        Assert.Equal(50, vm.LedBrightnessPercent);
+    }
+
+    [Fact]
     public void SetPaddleCount_Toggles_ShowBottomPair()
     {
         var vm = New(out _);
