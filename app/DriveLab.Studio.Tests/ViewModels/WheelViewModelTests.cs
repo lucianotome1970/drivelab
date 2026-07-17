@@ -187,6 +187,30 @@ public class WheelViewModelTests
     }
 
     [Fact]
+    public async Task Reconnect_Reads_Firmware_Settings_From_Device_And_Discards_Unsaved()
+    {
+        var vm = WithSession(out _);
+        await vm.ConnectCommand.ExecuteAsync(null);
+
+        // Config gravada na placa (o firmware guarda esse subconjunto):
+        vm.BottomPair.BitePoint = 30;
+        vm.BottomPair.Mode = PaddleMode.Independent;
+
+        await vm.DisconnectCommand.ExecuteAsync(null);
+
+        // Edição local NÃO salva (não vai à placa enquanto desconectado):
+        vm.BottomPair.BitePoint = 80;
+        vm.BottomPair.Mode = PaddleMode.Combined;
+
+        // Reconectou → lê da placa, descartando o não salvo:
+        await vm.ConnectCommand.ExecuteAsync(null);
+        Assert.Equal(30, vm.BottomPair.BitePoint);
+        Assert.Equal(PaddleMode.Independent, vm.BottomPair.Mode);
+        Assert.False(vm.IsDirty);
+        vm.Dispose();
+    }
+
+    [Fact]
     public async Task SaveToController_Enabled_Only_When_Dirty_And_Connected()
     {
         var vm = WithSession(out _);

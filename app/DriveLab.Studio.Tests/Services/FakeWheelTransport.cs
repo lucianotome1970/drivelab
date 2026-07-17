@@ -24,10 +24,15 @@ public sealed class FakeWheelTransport : IWheelTransport
 
     public event EventHandler<WheelState>? StateReceived;
 
+    private readonly Dictionary<WheelSettingId, SettingValue> _settings = new();
+
     public Task ConnectAsync(CancellationToken ct = default) { IsConnected = true; return Task.CompletedTask; }
     public Task DisconnectAsync() { IsConnected = false; return Task.CompletedTask; }
-    public Task WriteSettingAsync(WheelSettingId id, SettingValue value) => Task.CompletedTask;
-    public Task<SettingValue> ReadSettingAsync(WheelSettingId id) => Task.FromResult(new SettingValue(SettingType.UInt8, 0));
+
+    // Ecoa as settings escritas (guarda em memória) → permite testar o round-trip write→read da placa.
+    public Task WriteSettingAsync(WheelSettingId id, SettingValue value) { _settings[id] = value; return Task.CompletedTask; }
+    public Task<SettingValue> ReadSettingAsync(WheelSettingId id) =>
+        Task.FromResult(_settings.TryGetValue(id, out var v) ? v : new SettingValue(SettingType.UInt8, 0));
     public Task SendCommandAsync(WheelCommandId command, byte arg = 0) => Task.CompletedTask;
 
     public Task SendLedAsync(WheelLedReport led)

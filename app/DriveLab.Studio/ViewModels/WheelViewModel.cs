@@ -135,7 +135,29 @@ public partial class WheelViewModel : ViewModelBase
         _ = LoadCommand.ExecuteAsync(null);
     }
 
-    private void OnConfigChanged(object? sender, PropertyChangedEventArgs e) => MarkDirty();
+    private void OnConfigChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        MarkDirty();
+        // Subconjunto que o firmware guarda → escreve na placa ao mudar (o resto é só app/JSON).
+        switch (e.PropertyName)
+        {
+            case nameof(PaddlePairViewModel.Mode):
+                WriteDeviceSetting(WheelSettingId.ClutchMode, BottomPair.Mode == PaddleMode.Independent ? 1 : 0);
+                break;
+            case nameof(PaddlePairViewModel.BitePoint):
+                WriteDeviceSetting(WheelSettingId.ClutchBitePoint, BottomPair.BitePoint);
+                break;
+        }
+    }
+
+    /// <summary>Escreve na placa uma setting que o firmware persiste (modo/bite/brilho). Ignorado
+    /// durante carga, no simulador ou desconectado.</summary>
+    private void WriteDeviceSetting(WheelSettingId id, double value)
+    {
+        if (_loading || IsSimulator || _session is null || !_session.IsConnected)
+            return;
+        _ = _session.WriteSettingAsync(id, new SettingValue(SettingType.UInt8, value));
+    }
 
     /// <summary>Marca a config como não salva (ignorado durante carga/aplicação de perfil).</summary>
     private void MarkDirty() { if (!_loading) IsDirty = true; }
@@ -146,7 +168,7 @@ public partial class WheelViewModel : ViewModelBase
         if (_session is null) return;
         await _session.ConnectAsync();
         System.Console.WriteLine($"[DriveLab] Volante ConnectAsync → IsConnected={_session.IsConnected}");
-        PushLeds();   // manda as cores atuais assim que conecta
+        await LoadFromDeviceAsync();   // (re)detectou o aro → reflete a config salva + o que a placa guarda
     }
 
     private bool CanConnect() => _session is not null && !IsConnected;
@@ -156,13 +178,10 @@ public partial class WheelViewModel : ViewModelBase
 
     private void OnConnectionChanged(object? sender, EventArgs e)
     {
+        // A carga da config ao (re)detectar acontece no ConnectCommand (LoadFromDeviceAsync),
+        // que é o mesmo caminho do hotplug real (DeviceAutoConnector) e do simulador.
         IsConnected = _session?.IsConnected ?? false;
-        if (IsConnected)
-        {
-            PushLeds();                                    // empurra as cores atuais assim que conecta
-            if (!IsDirty) _ = ReloadOnDetectAsync();       // e recarrega o perfil ao detectar o aro (sem sobrescrever edições não salvas)
-        }
-        else
+        if (!IsConnected)
         {
             // Desconectou: apaga reações (knobs/pressões) pra não ficar "travado" aceso.
             foreach (var k in Knobs) k.Glow = 0;
@@ -171,10 +190,30 @@ public partial class WheelViewModel : ViewModelBase
         }
     }
 
-    // O "Carregar" deixou de ser um botão: ao detectar o aro, o perfil salvo é aplicado automaticamente.
-    private async Task ReloadOnDetectAsync()
+    /// <summary>Ao (re)detectar o aro: reflete a config salva na tela, descartando edições não salvas.
+    /// Cores/função/contagem/atuação vêm do perfil do app (o firmware não as guarda); o subconjunto
+    /// que a placa realmente persiste (modo/bite/brilho da embreagem) é lido do device — fonte da verdade.</summary>
+    private async Task LoadFromDeviceAsync()
     {
+        // 1) App-side: cores/função/contagem/atuação (perfil salvo em disco, junto do "Salvar no controlador").
         await LoadCommand.ExecuteAsync(null);
+
+        // 2) Device é a fonte da verdade do que o firmware guarda (no simulador não há placa persistente).
+        if (!IsSimulator && _session is not null && _session.IsConnected)
+        {
+            _loading = true;   // aplicar leitura da placa não conta como edição do usuário
+            try
+            {
+                BottomPair.Mode = (await _session.ReadSettingAsync(WheelSettingId.ClutchMode)).AsDouble != 0
+                    ? PaddleMode.Independent : PaddleMode.Combined;
+                BottomPair.BitePoint = (int)(await _session.ReadSettingAsync(WheelSettingId.ClutchBitePoint)).AsDouble;
+                LedBrightness = (byte)(await _session.ReadSettingAsync(WheelSettingId.LedBrightness)).AsDouble;
+            }
+            catch { /* leitura pode estourar timeout; o perfil salvo já foi aplicado acima */ }
+            finally { _loading = false; }
+        }
+
+        IsDirty = false;   // acabou de (re)carregar do device: nada pendente
         PushLeds();
     }
 
@@ -223,7 +262,12 @@ public partial class WheelViewModel : ViewModelBase
         _ = _session.SendLedAsync(new WheelLedReport(LedBrightness, colors));
     }
 
-    partial void OnLedBrightnessChanged(byte value) { PushLeds(); MarkDirty(); }
+    partial void OnLedBrightnessChanged(byte value)
+    {
+        PushLeds();
+        WriteDeviceSetting(WheelSettingId.LedBrightness, value);   // firmware persiste o brilho
+        MarkDirty();
+    }
 
     private static WheelLedColor HexToColor(string hex)
     {
@@ -289,8 +333,12 @@ public partial class WheelViewModel : ViewModelBase
         finally
         {
             _loading = false;
-            IsDirty = true;   // padrão aplicado → precisa "Salvar no controlador"
         }
+        // Escreve na placa o subconjunto que o firmware guarda, senão o "Salvar no controlador"
+        // persistiria os valores ANTIGOS da placa (as linhas acima rodaram sob _loading).
+        WriteDeviceSetting(WheelSettingId.ClutchMode, BottomPair.Mode == PaddleMode.Independent ? 1 : 0);
+        WriteDeviceSetting(WheelSettingId.ClutchBitePoint, BottomPair.BitePoint);
+        IsDirty = true;   // padrão aplicado → precisa "Salvar no controlador"
     }
 
     /// <summary>Salva o perfil do app (cores/pás). Funciona offline; não mexe na flash do device.</summary>
