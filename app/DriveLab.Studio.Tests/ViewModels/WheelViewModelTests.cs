@@ -155,24 +155,24 @@ public class WheelViewModelTests
             // Configura e salva como "GT3":
             vm.SelectButtonCommand.Execute(vm.Buttons[0]);
             vm.SetColorCommand.Execute("#0A84FF");
-            vm.NewProfileName = "GT3";
-            await vm.SaveAsProfileCommand.ExecuteAsync(null);
-            Assert.Contains("GT3", vm.Profiles);
-            Assert.Equal("", vm.NewProfileName);
+            vm.ProfileLibrary.NewName = "GT3";
+            await vm.ProfileLibrary.SaveAsCommand.ExecuteAsync(null);
+            Assert.Contains("GT3", vm.ProfileLibrary.Profiles);
+            Assert.Equal("", vm.ProfileLibrary.NewName);
 
             // Muda a cor; selecionar o perfil aplica de volta (#0A84FF) e marca dirty:
             vm.SetColorCommand.Execute("#FF3B30");
-            vm.SelectedProfileName = null;
-            vm.SelectedProfileName = "GT3";
+            vm.ProfileLibrary.SelectedName = null;
+            vm.ProfileLibrary.SelectedName = "GT3";
             for (var i = 0; i < 60 && vm.Buttons[0].ColorHex != "#0A84FF"; i++)
                 await Task.Delay(5);
             Assert.Equal("#0A84FF", vm.Buttons[0].ColorHex);
             Assert.True(vm.IsDirty);
 
             // Excluir remove da lista:
-            vm.SelectedProfileName = "GT3";
-            vm.DeleteProfileCommand.Execute(null);
-            Assert.DoesNotContain("GT3", vm.Profiles);
+            vm.ProfileLibrary.SelectedName = "GT3";
+            vm.ProfileLibrary.DeleteCommand.Execute(null);
+            Assert.DoesNotContain("GT3", vm.ProfileLibrary.Profiles);
             vm.Dispose();
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }

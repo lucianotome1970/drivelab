@@ -48,12 +48,12 @@
                          Habilitado só com o aro conectado (aplicar escreve no controlador). -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding IsConnected}">
                         <TextBlock Text="{loc:Translate Profile_Label}" Classes="muted" VerticalAlignment="Center" />
-                        <ComboBox MinWidth="170" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfileName}"
+                        <ComboBox MinWidth="170" ItemsSource="{Binding ProfileLibrary.Profiles}" SelectedItem="{Binding ProfileLibrary.SelectedName}"
                                   PlaceholderText="{loc:Translate Profile_Placeholder}" />
-                        <TextBox Width="150" Text="{Binding NewProfileName}" Watermark="{loc:Translate Profile_NameWatermark}" />
-                        <Button Content="{loc:Translate Profile_SaveAs}" Command="{Binding SaveAsProfileCommand}" />
-                        <Button Content="{loc:Translate Profile_Rename}" Command="{Binding RenameProfileCommand}" />
-                        <Button Content="{loc:Translate Profile_Delete}" Command="{Binding DeleteProfileCommand}" />
+                        <TextBox Width="150" Text="{Binding ProfileLibrary.NewName}" Watermark="{loc:Translate Profile_NameWatermark}" />
+                        <Button Content="{loc:Translate Profile_SaveAs}" Command="{Binding ProfileLibrary.SaveAsCommand}" />
+                        <Button Content="{loc:Translate Profile_Rename}" Command="{Binding ProfileLibrary.RenameCommand}" />
+                        <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
                     </StackPanel>
 
                     <!-- Duas colunas: volante+cores à esquerda, pás à direita -->
