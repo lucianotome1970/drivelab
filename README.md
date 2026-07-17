@@ -125,6 +125,9 @@ DriveLab is split into independent firmwares — one per device, each with its o
 The desktop app that connects to all of them: **[DriveLab Studio (app) »](app/README.md)** — .NET 8 / Avalonia.
 <br/>🇧🇷 *O app desktop que conecta a todos eles: **[DriveLab Studio (app) »](app/README.md)** — .NET 8 / Avalonia.*
 
+Want to run the app against **your own board**? The full USB-HID contract is documented in **[docs/PROTOCOL.md »](docs/PROTOCOL.md)** — implement it and the Studio drives your hardware, no app changes.
+<br/>🇧🇷 *Quer rodar o app na **sua própria placa**? O contrato USB-HID completo está em **[docs/PROTOCOL.md »](docs/PROTOCOL.md)** — implemente-o e o Studio controla seu hardware, sem mexer no app.*
+
 ---
 
 ## 🧠 Why the RP2040? / Por que o RP2040?
@@ -165,6 +168,8 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 
 **App (DriveLab Studio)**
 - Clean, modern UI with **Wheel Base**, **Pedals**, **Handbrake**, and **Wheel** (rim/LEDs) modules.
+- **Named profiles per module** — save, apply, rename and delete named configs (e.g. "GT3", "Rain") for the base, pedals, handbrake and wheel; selecting a profile writes it to the controller, and *Save* lights up only when the current config differs from the loaded profile.
+- **Wheel LEDs** — per-button colors + global brightness; the rim **stores its colors in flash** (lights up on its own after a power-cycle) and the app **reads them back** from the board on connect.
 - Live **settings** grouped in tabs (Basic / Advanced / Hardware) — total force, damper, spring, soft-stop, torque & power limits, encoder config, current loop, etc. Auto-load on connect, auto-save on change.
 - **Telemetry monitor** in the Hardware tab: bus voltage + FET/motor/MCU temperatures + motor current, with ok/warning/critical thresholds.
 - **Two encoder types supported** — you choose which one you built: incremental **quadrature** (Omron E6B2) or absolute **magnetic SPI** (AS5047). Absolute keeps its zero across power cycles.
@@ -284,6 +289,8 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 
 **App (DriveLab Studio)**
 - Interface limpa e moderna com os módulos **Base do Volante**, **Pedais**, **Freio de mão** e **Volante** (aro/LEDs).
+- **Perfis nomeados por módulo** — salvar, aplicar, renomear e excluir perfis (ex.: "GT3", "Chuva") na base, pedais, freio de mão e volante; selecionar um perfil grava no controlador, e o *Salvar* só habilita quando a config atual difere do perfil carregado.
+- **LEDs do volante** — cores por botão + brilho global; o aro **guarda as cores na flash** (acende sozinho após religar) e o app **lê as cores de volta** da placa ao conectar.
 - **Ajustes** ao vivo em abas (Básico / Avançado / Hardware) — força total, damper, mola, soft-stop, limites de torque e potência, config do encoder, malha de corrente, etc. Carrega ao conectar, salva ao alterar.
 - **Monitor de telemetria** na aba Hardware: tensão do barramento + temperaturas FET/motor/MCU + corrente do motor, com limiares ok/alerta/crítico.
 - **Dois tipos de encoder suportados** — você escolhe qual construiu: **quadratura** incremental (Omron E6B2) ou **SPI magnético** absoluto (AS5047). O absoluto mantém o zero mesmo desligando.

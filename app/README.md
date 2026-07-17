@@ -42,14 +42,15 @@ Each device enumerates as its own USB HID under vendor id **`0x1209`**; the app 
 | Handbrake | DriveLab Handbrake | `0x0003` |
 | Wheel rim | DriveLab Wheel | `0x0004` |
 
-Settings and telemetry travel over the **vendor P0/A0 channel** (report ids `0x14` write, `0x15` read-request, `0x16` value, `0x20`/`0x21` telemetry, `0x02` command). See `DriveLab.Core/Protocol`.
+Settings and telemetry travel over the **vendor P0/A0 channel** (report ids `0x14` write, `0x15` read-request, `0x16` value, `0x20`/`0x21` telemetry, `0x02` command, `0x18`/`0x19` rim LEDs). The **full wire contract** is documented in **[../docs/PROTOCOL.md](../docs/PROTOCOL.md)** — implement it on any board and the app drives it. See also `DriveLab.Core/Protocol`.
 
 ### Screens
 - **Home** — dashboard cards (wheel, base, pedals, handbrake) with live values; clicking a **detected** device's card opens its module page.
 - **Wheel Base** — FFB tuning (total force, soft-stop, spring/damper…) + a read-only telemetry monitor + hardware setup.
 - **Pedals** — per-pedal output curves, invert, smoothing, sensor type, load-cell target.
 - **Handbrake** — single-axis curve + digital button (threshold/hysteresis).
-- **Wheel** — rim button LED colors + paddle configuration.
+- **Wheel** — rim button LED colors + global brightness + paddle configuration; the rim **stores its colors** and the app reads them back on connect.
+- **Named profiles** — every module has a profile selector (save / apply / rename / delete); selecting one writes it to the controller.
 
 ### Build & run
 Needs the **.NET 8 SDK**.
@@ -117,14 +118,15 @@ Cada dispositivo enumera como seu próprio USB HID sob o vendor id **`0x1209`**;
 | Freio de mão | DriveLab Handbrake | `0x0003` |
 | Aro / Volante | DriveLab Wheel | `0x0004` |
 
-Settings e telemetria trafegam pelo **canal vendor P0/A0** (report ids `0x14` write, `0x15` read-request, `0x16` value, `0x20`/`0x21` telemetria, `0x02` command). Ver `DriveLab.Core/Protocol`.
+Settings e telemetria trafegam pelo **canal vendor P0/A0** (report ids `0x14` write, `0x15` read-request, `0x16` value, `0x20`/`0x21` telemetria, `0x02` command, `0x18`/`0x19` LEDs do aro). O **contrato de fio completo** está documentado em **[../docs/PROTOCOL.md](../docs/PROTOCOL.md)** — implemente-o em qualquer placa e o app a controla. Ver também `DriveLab.Core/Protocol`.
 
 ### Telas
 - **Home** — cards do dashboard (volante, base, pedais, freio de mão) com valores ao vivo; clicar no card de um dispositivo **detectado** abre a página do módulo.
 - **Base do Volante** — ajuste de FFB (força total, batente, mola/damper…) + monitor de telemetria (só leitura) + configuração de hardware.
 - **Pedais** — curvas de saída por pedal, inverter, suavização, tipo de sensor, alvo de load cell.
 - **Freio de mão** — curva de eixo único + botão digital (limiar/histerese).
-- **Volante** — cores dos LEDs dos botões do aro + configuração das pás.
+- **Volante** — cores dos LEDs dos botões do aro + brilho global + configuração das pás; o aro **guarda as cores** e o app as lê de volta ao conectar.
+- **Perfis nomeados** — todo módulo tem um seletor de perfis (salvar / aplicar / renomear / excluir); selecionar um grava no controlador.
 
 ### Build & execução
 Precisa do **SDK do .NET 8**.
