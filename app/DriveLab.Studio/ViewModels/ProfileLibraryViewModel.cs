@@ -7,6 +7,8 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,10 +22,13 @@ namespace DriveLab.Studio.ViewModels;
 /// (<paramref name="apply"/>). Sem <see cref="INamedProfileStore{T}"/> (ex.: testes) vira no-op.</summary>
 public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where T : class
 {
+    private static readonly JsonSerializerOptions CmpOptions = new() { Converters = { new JsonStringEnumConverter() } };
+
     private readonly INamedProfileStore<T>? _store;
     private readonly Func<T> _capture;
     private readonly Action<T> _apply;
     private bool _suppressApply;   // evita aplicar ao repovoar a lista
+    private string? _baseline;     // JSON do perfil aplicado/salvo — referência p/ detectar alteração
 
     public ProfileLibraryViewModel(INamedProfileStore<T>? store, Func<T> capture, Action<T> apply)
     {
@@ -40,6 +45,11 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
     [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameCommand))]
     private string? _selectedName;
+
+    /// <summary>Config atual difere do perfil carregado (referência)? Habilita o "Salvar".</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isModified;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveAsCommand))]
@@ -70,17 +80,35 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
     {
         var p = await _store!.LoadAsync(name);
         if (p is not null)
+        {
             _apply(p);
+            SetBaseline(p);   // referência = perfil recém-aplicado → nada modificado ainda
+        }
     }
 
+    private static string Serialize(T value) => JsonSerializer.Serialize(value, CmpOptions);
+
+    private void SetBaseline(T profile)
+    {
+        _baseline = Serialize(profile);
+        IsModified = false;
+    }
+
+    /// <summary>O módulo chama isto quando a config muda: reavalia se difere do perfil de referência.</summary>
+    public void MarkConfigChanged() =>
+        IsModified = _baseline is not null && Serialize(_capture()) != _baseline;
+
     /// <summary>Atualiza o perfil selecionado com a config atual (grava por cima do mesmo nome).</summary>
-    [RelayCommand(CanExecute = nameof(HasSelection))]
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
     {
         if (_store is null || SelectedName is null)
             return;
-        await _store.SaveAsync(SelectedName, _capture());
+        var snapshot = _capture();
+        await _store.SaveAsync(SelectedName, snapshot);
+        SetBaseline(snapshot);   // salvou → referência = atual
     }
+    private bool CanSave() => _store is not null && SelectedName is not null && IsModified;
 
     [RelayCommand(CanExecute = nameof(CanSaveAs))]
     private async Task SaveAs()
@@ -88,9 +116,11 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
         var name = NewName.Trim();
         if (_store is null || name.Length == 0)
             return;
-        await _store.SaveAsync(name, _capture());
+        var snapshot = _capture();
+        await _store.SaveAsync(name, snapshot);
         NewName = "";
         Refresh(select: name);
+        SetBaseline(snapshot);   // novo perfil é a referência atual
     }
     private bool CanSaveAs() => _store is not null && !string.IsNullOrWhiteSpace(NewName);
 

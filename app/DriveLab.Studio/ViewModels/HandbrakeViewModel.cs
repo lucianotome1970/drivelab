@@ -179,6 +179,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         var d = HandbrakeSettingsSchema.Get(id);
         _ = _session.WriteSettingAsync(id, new SettingValue(d.Type, d.Clamp(value)));
         IsDirty = true;
+        ProfileLibrary.MarkConfigChanged();
     }
 
     private void WriteScalar(HandbrakeSettingId id, double value)
@@ -188,6 +189,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         var d = HandbrakeSettingsSchema.Get(id);
         _ = _session.WriteSettingAsync(id, new SettingValue(d.Type, d.Clamp(value)));
         IsDirty = true;
+        ProfileLibrary.MarkConfigChanged();
     }
 
     partial void OnSensorTypeChanged(int value) => WriteScalar(HandbrakeSettingId.SensorType, value);

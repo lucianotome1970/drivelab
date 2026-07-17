@@ -82,7 +82,11 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     }
 
     // SettingChanged só dispara em WriteSettingAsync (nunca em read/load) → todo write marca dirty.
-    private void OnSettingWritten(object? sender, SettingChangedEventArgs e) => IsDirty = true;
+    private void OnSettingWritten(object? sender, SettingChangedEventArgs e)
+    {
+        IsDirty = true;
+        ProfileLibrary.MarkConfigChanged();
+    }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()

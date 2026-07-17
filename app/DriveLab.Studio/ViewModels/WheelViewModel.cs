@@ -194,7 +194,12 @@ public partial class WheelViewModel : ViewModelBase
     }
 
     /// <summary>Marca a config como não salva (ignorado durante carga/aplicação de perfil).</summary>
-    private void MarkDirty() { if (!_loading) IsDirty = true; }
+    private void MarkDirty()
+    {
+        if (_loading) return;
+        IsDirty = true;
+        ProfileLibrary.MarkConfigChanged();   // reavalia se a config difere do perfil carregado
+    }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private async Task ConnectAsync()

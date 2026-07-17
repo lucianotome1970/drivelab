@@ -145,6 +145,31 @@ public class WheelViewModelTests
     }
 
     [Fact]
+    public async Task Profile_Save_Disabled_Until_Modified()
+    {
+        var vm = WithLibrary(out _, out var dir);
+        try
+        {
+            await vm.ConnectCommand.ExecuteAsync(null);
+            vm.ProfileLibrary.NewName = "P1";
+            await vm.ProfileLibrary.SaveAsCommand.ExecuteAsync(null);   // vira a referência
+            Assert.False(vm.ProfileLibrary.IsModified);
+            Assert.False(vm.ProfileLibrary.SaveCommand.CanExecute(null));
+
+            vm.SelectButtonCommand.Execute(vm.Buttons[0]);
+            vm.SetColorCommand.Execute("#010203");                       // altera → habilita Salvar
+            Assert.True(vm.ProfileLibrary.IsModified);
+            Assert.True(vm.ProfileLibrary.SaveCommand.CanExecute(null));
+
+            await vm.ProfileLibrary.SaveCommand.ExecuteAsync(null);      // salva → volta a não-modificado
+            Assert.False(vm.ProfileLibrary.IsModified);
+            Assert.False(vm.ProfileLibrary.SaveCommand.CanExecute(null));
+            vm.Dispose();
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public async Task Profile_Save_Updates_Selected_In_Place()
     {
         var vm = WithLibrary(out _, out var dir);

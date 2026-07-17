@@ -94,7 +94,11 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
     // Qualquer escrita de setting (edição do usuário, preset, perfil) → app difere da flash.
     // Leituras (LoadAsync) NÃO disparam SettingChanged, então carregar não marca dirty.
-    private void OnSettingWritten(object? sender, PedalSettingChangedEventArgs e) => IsDirty = true;
+    private void OnSettingWritten(object? sender, PedalSettingChangedEventArgs e)
+    {
+        IsDirty = true;
+        ProfileLibrary.MarkConfigChanged();
+    }
 
     private void OnState(object? sender, PedalState state)
     {
