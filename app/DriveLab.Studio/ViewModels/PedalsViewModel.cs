@@ -30,6 +30,7 @@ public sealed partial class PedalsViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(ResetDefaultsCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenCalibrationCommand))]
     private bool _isConnected;
 
     /// <summary>App difere do que está gravado na FLASH da placa (há alteração não salva).
@@ -126,7 +127,8 @@ public sealed partial class PedalsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isCalibrating;
 
-    [RelayCommand] private void OpenCalibration() => IsCalibrating = true;
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private void OpenCalibration() => IsCalibrating = true;
 
     [RelayCommand]
     private void CloseCalibration()

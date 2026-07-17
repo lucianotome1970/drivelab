@@ -27,6 +27,7 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     [NotifyCanExecuteChangedFor(nameof(LoadDefaultsCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenCalibrationCommand))]
     private bool _isConnected;
     [ObservableProperty] private string _sourceLabel = "";
     [ObservableProperty] private bool _canEdit;
@@ -173,7 +174,8 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
     partial void OnButtonEnabledChanged(bool value) => WriteScalar(HandbrakeSettingId.ButtonEnabled, value ? 1 : 0);
     partial void OnButtonThresholdChanged(int value) => WriteScalar(HandbrakeSettingId.ButtonThreshold, value);
 
-    [RelayCommand] private void OpenCalibration() => IsCalibrating = true;
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private void OpenCalibration() => IsCalibrating = true;
 
     [RelayCommand]
     private void CloseCalibration()
