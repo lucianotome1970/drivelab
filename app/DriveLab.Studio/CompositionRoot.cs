@@ -102,7 +102,8 @@ public static class CompositionRoot
             handbrakeSession = new HandbrakeDeviceSession(new HidHandbrakeTransport(new HidSharpChannel()), dispatcher, L.Get("Handbrake_Source_Detected"));
             handbrakePresent = HidHandbrakeTransport.IsDevicePresent;
         }
-        var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage(), simulatorMode);
+        var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage(), simulatorMode,
+            new JsonNamedProfileStore<HandbrakeProfile>("handbrake"));
         if (handbrakePresent is not null)
             autoConnectors.Add(StartAutoConnect(
                 () => handbrake.IsConnected,

@@ -79,7 +79,11 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
 
     public IReadOnlyList<PedalCurvePointViewModel> Points { get; }
 
-    public HandbrakeViewModel(HandbrakeDeviceSession session, IHandbrakeProfileStorage storage, bool simulatorMode = false)
+    /// <summary>Perfis nomeados do módulo (selecionar aplica; salvar como/renomear/excluir).</summary>
+    public ProfileLibraryViewModel<HandbrakeProfile> ProfileLibrary { get; }
+
+    public HandbrakeViewModel(HandbrakeDeviceSession session, IHandbrakeProfileStorage storage, bool simulatorMode = false,
+                              INamedProfileStore<HandbrakeProfile>? library = null)
     {
         _session = session;
         _storage = storage;
@@ -98,6 +102,29 @@ public sealed partial class HandbrakeViewModel : ViewModelBase
         _session.Connected += OnConnectionChanged;
         _session.Disconnected += OnConnectionChanged;
         _session.SettingChanged += OnSettingChanged;
+
+        // Aplicar um perfil escreve os settings no controlador (via setters) e marca "não salvo".
+        ProfileLibrary = new ProfileLibraryViewModel<HandbrakeProfile>(
+            library, ExportProfile, p => { ApplyProfile(p); IsDirty = true; });
+    }
+
+    public HandbrakeProfile ExportProfile() => new(
+        SensorType, InputMin, InputMax, Invert, (int)Smooth,
+        Points.Select(p => p.Value).ToArray(), LoadCellScale,
+        ButtonThreshold, ButtonEnabled);
+
+    public void ApplyProfile(HandbrakeProfile p)
+    {
+        SensorType = p.Sensor;
+        Invert = p.Invert;
+        Smooth = p.Smooth;
+        InputMin = p.InputMin;
+        InputMax = p.InputMax;
+        LoadCellScale = p.LoadCellScale;
+        ButtonEnabled = p.ButtonEnabled;
+        ButtonThreshold = p.ButtonThreshold;
+        for (var i = 0; i < Points.Count && i < p.Curve.Length; i++)
+            Points[i].Value = p.Curve[i];
     }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
