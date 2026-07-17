@@ -30,4 +30,7 @@ public interface IWheelTransport
 
     /// <summary>Envia as cores RGB do aro (WheelLed 0x18) — botões + barra, num único cordão.</summary>
     Task SendLedAsync(WheelLedReport led);
+
+    /// <summary>Lê as cores pré-definidas guardadas no aro (pede via comando, recebe o report 0x19).</summary>
+    Task<WheelLedReport> ReadLedsAsync();
 }

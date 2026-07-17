@@ -64,7 +64,16 @@ public sealed class SimulatorWheelTransport : IWheelTransport
     }
 
     public Task SendCommandAsync(WheelCommandId command, byte arg = 0) => Task.CompletedTask;
-    public Task SendLedAsync(WheelLedReport led) => Task.CompletedTask;
+
+    private WheelLedReport? _lastLed;
+    public Task SendLedAsync(WheelLedReport led) { lock (_sync) _lastLed = led; return Task.CompletedTask; }
+
+    // Ecoa as últimas cores enviadas (round-trip); vazio se nada foi enviado ainda.
+    public Task<WheelLedReport> ReadLedsAsync()
+    {
+        lock (_sync)
+            return Task.FromResult(_lastLed ?? new WheelLedReport(200, Array.Empty<WheelLedColor>()));
+    }
 
     private void StartStreaming()
     {

@@ -211,6 +211,27 @@ public class WheelViewModelTests
     }
 
     [Fact]
+    public async Task Reconnect_Reads_Button_Colors_From_Device()
+    {
+        var vm = WithSession(out _);
+        await vm.ConnectCommand.ExecuteAsync(null);
+
+        // Muda a cor do 1º botão e "salva no controlador" → cores vão à placa (fake ecoa no ReadLeds):
+        vm.SelectButtonCommand.Execute(vm.Buttons[0]);
+        vm.SetColorCommand.Execute("#0A84FF");
+        await vm.SaveToControllerCommand.ExecuteAsync(null);
+
+        // Desconecta e faz uma edição local NÃO salva (não chega à placa enquanto desconectado):
+        await vm.DisconnectCommand.ExecuteAsync(null);
+        vm.SetColorCommand.Execute("#FF3B30");
+
+        // Reconecta → deve ler a cor salva na placa (#0A84FF), descartando o não salvo:
+        await vm.ConnectCommand.ExecuteAsync(null);
+        Assert.Equal("#0A84FF", vm.Buttons[0].ColorHex);
+        vm.Dispose();
+    }
+
+    [Fact]
     public async Task SaveToController_Enabled_Only_When_Dirty_And_Connected()
     {
         var vm = WithSession(out _);

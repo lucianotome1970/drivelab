@@ -13,4 +13,5 @@ public enum WheelCommandId : byte
     CalibrateClutchStop = 2,
     SaveToFlash = 3,
     LoadDefaults = 4,
+    RequestLeds = 5,   // pede ao aro que devolva as cores salvas (responde com o report 0x19)
 }

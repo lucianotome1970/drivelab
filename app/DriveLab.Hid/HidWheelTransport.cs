@@ -22,6 +22,7 @@ public sealed class HidWheelTransport : IWheelTransport, IDisposable
     private readonly IHidChannel _channel;
     private readonly object _pendingLock = new();
     private readonly Dictionary<(byte field, byte index), TaskCompletionSource<SettingValue>> _pendingReads = new();
+    private TaskCompletionSource<WheelLedReport>? _pendingLedRead;
     private static readonly TimeSpan DefaultReadTimeout = TimeSpan.FromMilliseconds(500);
 
     public HidWheelTransport(IHidChannel channel)
@@ -99,6 +100,27 @@ public sealed class HidWheelTransport : IWheelTransport, IDisposable
     public Task SendLedAsync(WheelLedReport led) =>
         _channel.WriteAsync(HidBaseTransport.Frame(WheelReportIds.Led, led.ToBytes()));
 
+    public async Task<WheelLedReport> ReadLedsAsync()
+    {
+        var tcs = new TaskCompletionSource<WheelLedReport>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_pendingLock) _pendingLedRead = tcs;
+
+        // Pede as cores ao aro (comando 0x02); ele responde com o report 0x19 (tratado em OnReport).
+        await _channel.WriteAsync(HidBaseTransport.Frame(
+            WheelReportIds.Command, new CommandReport((byte)WheelCommandId.RequestLeds, 0).ToBytes()));
+
+        using var cts = new CancellationTokenSource(DefaultReadTimeout);
+        using (cts.Token.Register(() =>
+        {
+            lock (_pendingLock) { if (ReferenceEquals(_pendingLedRead, tcs)) _pendingLedRead = null; }
+            tcs.TrySetException(new TimeoutException(
+                $"Sem LedValue (0x19) em {DefaultReadTimeout.TotalMilliseconds}ms"));
+        }))
+        {
+            return await tcs.Task;
+        }
+    }
+
     private void OnReport(object? sender, byte[] wire)
     {
         if (wire.Length < 1 + ReportConstants.ReportSize)
@@ -124,6 +146,13 @@ public sealed class HidWheelTransport : IWheelTransport, IDisposable
                     _pendingReads.Remove((report.FieldId, report.Index), out tcs);
                 }
                 tcs?.TrySetResult(report.Value);
+            }
+            else if (reportId == WheelReportIds.LedValue)
+            {
+                var led = WheelLedReport.Parse(payload);
+                TaskCompletionSource<WheelLedReport>? tcs;
+                lock (_pendingLock) { tcs = _pendingLedRead; _pendingLedRead = null; }
+                tcs?.TrySetResult(led);
             }
         }
         catch

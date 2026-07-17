@@ -31,6 +31,7 @@ static const uint8_t RID_CMD       = 0x02;
 static const uint8_t RID_SET_WRITE = 0x14;
 static const uint8_t RID_SET_READREQ = 0x15;
 static const uint8_t RID_SET_VALUE = 0x16;
+static const uint8_t RID_LED_VALUE = 0x19;  // WheelReportIds.LedValue (resposta de leitura das cores)
 
 // SettingType (compartilhado)
 enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_F32 = 4 };
@@ -39,7 +40,7 @@ enum { S_CL_MIN = 0, S_CL_MAX = 1, S_CR_MIN = 2, S_CR_MAX = 3,
        S_CL_INV = 4, S_CR_INV = 5, S_MODE = 6, S_BITE = 7,
        S_LED_BRIGHT = 8, S_LED_COUNT = 9 };
 // WheelCommandId
-enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4 };
+enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4, CMD_SENDLEDS = 5 };
 
 static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP HID de 64 c/ report id)
 
@@ -105,7 +106,8 @@ static uint8_t const kHidReport[] = {
   0x06, 0x00, 0xFF, 0x09, 0x01, 0xA1, 0x01,
     0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x3F,  // logical 0..255, size 8, count 63 (+id=64, cabe no EP)
     0x85, RID_STATE,       0x09, 0x21, 0x81, 0x02,   // Input  0x21 (telemetria)
-    0x85, RID_SET_VALUE,   0x09, 0x16, 0x81, 0x02,   // Input  0x16 (resposta de leitura)
+    0x85, RID_SET_VALUE,   0x09, 0x16, 0x81, 0x02,   // Input  0x16 (resposta de leitura de setting)
+    0x85, RID_LED_VALUE,   0x09, 0x19, 0x81, 0x02,   // Input  0x19 (resposta de leitura das cores)
     0x85, RID_LED,         0x09, 0x18, 0x91, 0x02,   // Output 0x18 (cores RGB)
     0x85, RID_SET_WRITE,   0x09, 0x14, 0x91, 0x02,   // Output 0x14 (grava setting)
     0x85, RID_SET_READREQ, 0x09, 0x15, 0x91, 0x02,   // Output 0x15 (pede setting)
@@ -213,6 +215,22 @@ static double decodeValue(const uint8_t* buf) {  // buf = payload; [2]=type, [3.
 // 0x16 direto do onSetReport (mesmo fix do firmware-pedal/handbrake).
 static volatile bool    g_pendingValue = false;
 static volatile uint8_t g_pvField = 0, g_pvIndex = 0;
+static volatile bool    g_pendingLeds = false;   // pedido de leitura das cores (0x19) enfileirado no callback
+
+// Resposta de leitura das cores (0x19): mesmo layout do WheelLed (out 0x18) — [0]=count, [1]=brilho, [2+3i..]=RGB.
+static void sendLedValue() {
+  uint8_t out[PAYLOAD]; memset(out, 0, sizeof(out));
+  uint8_t count = g_cfg.ledCount; if (count > 20) count = 20;
+  out[0] = count;
+  out[1] = g_cfg.ledBrightness;
+  for (uint8_t i = 0; i < count; i++) {
+    uint16_t o = 2 + i * 3;
+    out[o]     = g_cfg.ledColors[i][0];
+    out[o + 1] = g_cfg.ledColors[i][1];
+    out[o + 2] = g_cfg.ledColors[i][2];
+  }
+  g_hid.sendReport(RID_LED_VALUE, out, PAYLOAD);
+}
 
 static void sendSettingValue(uint8_t field, uint8_t index) {
   uint8_t out[PAYLOAD]; memset(out, 0, sizeof(out));
@@ -269,7 +287,17 @@ static bool loadFromFlash() {
   EEPROM.get(addr, g_cfg); addr += sizeof(WheelCfg);
   return true;
 }
-static void seedDefaults() { g_cfg = WheelCfg(); }
+static void seedDefaults() {
+  g_cfg = WheelCfg();
+  // Paleta padrão dos 8 botões (igual ao app: N, PIT, DRS, KILL, RADIO, TC, MENU, ESC) — o aro
+  // acende com cores sensatas mesmo "de fábrica" e o app lê essas cores da placa ao conectar.
+  static const uint8_t kDefBtn[8][3] = {
+    {0xBF,0x5A,0xF2}, {0xFF,0xD6,0x0A}, {0x34,0xC7,0x59}, {0xFF,0x3B,0x30},
+    {0x32,0xAD,0xE6}, {0xFF,0xD6,0x0A}, {0xFF,0x9F,0x0A}, {0x32,0xAD,0xE6},
+  };
+  for (int i = 0; i < 8; i++)
+    for (int c = 0; c < 3; c++) g_cfg.ledColors[i][c] = kDefBtn[i][c];
+}
 
 // ===================== OUTPUT reports (host -> device) =====================
 // ATENÇÃO (bancada): confirmar como o Adafruit_TinyUSB entrega OUTPUT reports.
@@ -290,6 +318,7 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
       if (len < 1) break;
       uint8_t cmd = buf[0];
       if (cmd == CMD_LOADDEF) seedDefaults();
+      else if (cmd == CMD_SENDLEDS) g_pendingLeds = true;   // responde no loop() (EP único dropa 2º report)
       else if (cmd == CMD_CAL_START) { for (int i = 0; i < 2; i++) { g_cal[i] = true; g_calMin[i] = 0xFFFF; g_calMax[i] = 0; } }
       else if (cmd == CMD_CAL_STOP) {
         for (int i = 0; i < 2; i++) {
@@ -365,6 +394,9 @@ void loop() {
   if (g_pendingValue) {
     g_pendingValue = false;
     sendSettingValue(g_pvField, g_pvIndex);
+  } else if (g_pendingLeds) {
+    g_pendingLeds = false;
+    sendLedValue();
   } else {
     // Gamepad: 4 bytes de botões (LE) + X + Y (16-bit)
     uint8_t joy[8];

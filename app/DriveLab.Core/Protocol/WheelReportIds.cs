@@ -12,6 +12,7 @@ public static class WheelReportIds
     public const byte State = 0x21;
     public const byte Command = 0x02;
     public const byte Led = 0x18;
+    public const byte LedValue = 0x19;   // resposta (device→host) da leitura das cores pré-definidas
     public const byte SettingWrite = 0x14;
     public const byte SettingReadRequest = 0x15;
     public const byte SettingValue = 0x16;

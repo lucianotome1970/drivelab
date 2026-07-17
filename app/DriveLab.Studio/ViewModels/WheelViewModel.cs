@@ -190,31 +190,48 @@ public partial class WheelViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Ao (re)detectar o aro: reflete a config salva na tela, descartando edições não salvas.
-    /// Cores/função/contagem/atuação vêm do perfil do app (o firmware não as guarda); o subconjunto
-    /// que a placa realmente persiste (modo/bite/brilho da embreagem) é lido do device — fonte da verdade.</summary>
+    /// <summary>Ao (re)detectar o aro: reflete a config da placa na tela, descartando edições não salvas.
+    /// A placa é a fonte da verdade do que o firmware guarda (modo/bite/brilho + as cores pré-definidas);
+    /// o que o firmware NÃO guarda (função/contagem/atuação das pás) vem do perfil do app. Importante:
+    /// lê a placa ANTES de qualquer PushLeds — senão empurraríamos as cores do JSON e leríamos elas de volta.</summary>
     private async Task LoadFromDeviceAsync()
     {
-        // 1) App-side: cores/função/contagem/atuação (perfil salvo em disco, junto do "Salvar no controlador").
-        await LoadCommand.ExecuteAsync(null);
-
-        // 2) Device é a fonte da verdade do que o firmware guarda (no simulador não há placa persistente).
-        if (!IsSimulator && _session is not null && _session.IsConnected)
+        // No simulador não há placa persistente: carrega o perfil do app inteiro (inclui cores).
+        if (IsSimulator || _session is null || !_session.IsConnected)
         {
-            _loading = true;   // aplicar leitura da placa não conta como edição do usuário
-            try
-            {
-                BottomPair.Mode = (await _session.ReadSettingAsync(WheelSettingId.ClutchMode)).AsDouble != 0
-                    ? PaddleMode.Independent : PaddleMode.Combined;
-                BottomPair.BitePoint = (int)(await _session.ReadSettingAsync(WheelSettingId.ClutchBitePoint)).AsDouble;
-                LedBrightness = (byte)(await _session.ReadSettingAsync(WheelSettingId.LedBrightness)).AsDouble;
-            }
-            catch { /* leitura pode estourar timeout; o perfil salvo já foi aplicado acima */ }
-            finally { _loading = false; }
+            await LoadCommand.ExecuteAsync(null);
+            IsDirty = false;
+            PushLeds();
+            return;
         }
 
+        _loading = true;   // aplicar leitura da placa não conta como edição do usuário
+        try
+        {
+            // 1) Fonte da verdade do device: modo/bite + as cores pré-definidas (report 0x19).
+            BottomPair.Mode = (await _session.ReadSettingAsync(WheelSettingId.ClutchMode)).AsDouble != 0
+                ? PaddleMode.Independent : PaddleMode.Combined;
+            BottomPair.BitePoint = (int)(await _session.ReadSettingAsync(WheelSettingId.ClutchBitePoint)).AsDouble;
+
+            var led = await _session.ReadLedsAsync();
+            for (var i = 0; i < Buttons.Count && i < led.Leds.Count; i++)
+                Buttons[i].ColorHex = ColorToHex(led.Leds[i]);
+            if (led.Leds.Count > 0) LedBrightness = led.Brightness;
+
+            // 2) Só o que o firmware NÃO guarda vem do perfil do app: função/contagem/atuação das pás.
+            var profile = await _storage.LoadAsync();
+            if (profile is not null)
+            {
+                PaddleCount = profile.PaddleCount;
+                BottomPair.Function = profile.BottomFunction;
+                BottomPair.Actuation = profile.BottomActuation;
+            }
+        }
+        catch { /* timeout/parse: mantém o que já estava na tela */ }
+        finally { _loading = false; }
+
         IsDirty = false;   // acabou de (re)carregar do device: nada pendente
-        PushLeds();
+        PushLeds();        // reenvia as cores LIDAS DA PLACA (mesmos valores) — não sobrescreve nada
     }
 
     // Telemetria do aro → visual de pressão (mesmo caminho da simulação).
@@ -276,6 +293,9 @@ public partial class WheelViewModel : ViewModelBase
             return new WheelLedColor(0, 0, 0);
         return new WheelLedColor((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
     }
+
+    private static string ColorToHex(WheelLedColor c) =>
+        $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 
     [RelayCommand]
     private void SelectButton(WheelButtonViewModel button)

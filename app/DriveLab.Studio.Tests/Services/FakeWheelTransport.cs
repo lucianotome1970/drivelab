@@ -42,5 +42,9 @@ public sealed class FakeWheelTransport : IWheelTransport
         return Task.CompletedTask;
     }
 
+    // Ecoa as últimas cores enviadas (round-trip) — permite testar a leitura das cores da placa.
+    public Task<WheelLedReport> ReadLedsAsync() =>
+        Task.FromResult(LastLed ?? new WheelLedReport(200, System.Array.Empty<WheelLedColor>()));
+
     public void RaiseState(WheelState state) => StateReceived?.Invoke(this, state);
 }

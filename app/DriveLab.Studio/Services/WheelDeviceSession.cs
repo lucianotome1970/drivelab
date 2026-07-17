@@ -63,6 +63,9 @@ public sealed class WheelDeviceSession : IDisposable
     public Task SendLedAsync(WheelLedReport led) =>
         _transport.SendLedAsync(led);
 
+    public Task<WheelLedReport> ReadLedsAsync() =>
+        _transport.ReadLedsAsync();
+
     private void OnTransportState(object? sender, WheelState state) =>
         _dispatcher.Post(() => StateReceived?.Invoke(this, state));
 
