@@ -200,13 +200,14 @@
                                     </UniformGrid>
 
                                     <StackPanel Spacing="6" IsVisible="{Binding ShowBitePoint}">
-                                        <TextBlock Text="{loc:Translate Wheel_BitePoint}" Classes="muted" />
+                                        <!-- Título + valor na mesma linha; slider abaixo (padrão "Range do batente"). -->
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding BitePoint}" VerticalAlignment="Center" />
-                                            <Border Grid.Column="1" Classes="valueBox" MinWidth="46" Padding="8,3">
+                                            <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_BitePoint}" Classes="muted" VerticalAlignment="Center" />
+                                            <Border Grid.Column="1" Classes="valueBox">
                                                 <TextBlock Text="{Binding BitePoint, StringFormat={}{0:0}%}" />
                                             </Border>
                                         </Grid>
+                                        <Slider Minimum="0" Maximum="100" Value="{Binding BitePoint}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>

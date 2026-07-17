@@ -41,15 +41,17 @@
                                           OnContent="" OffContent="" />
                         </Grid>
 
-                        <!-- Suavização -->
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_Smooth}" Margin="0,0,10,0" />
-                            <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Smooth}" IsEnabled="{Binding CanEdit}"
+                        <!-- Suavização: título + valor na mesma linha; slider abaixo (padrão "Range do batente"). -->
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_Smooth}" />
+                                <Border Grid.Column="1" Classes="valueBox">
+                                    <TextBlock Text="{Binding Smooth, StringFormat={}{0:0}}" />
+                                </Border>
+                            </Grid>
+                            <Slider Minimum="0" Maximum="100" Value="{Binding Smooth}" IsEnabled="{Binding CanEdit}"
                                     VerticalAlignment="Center" />
-                            <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
-                                <TextBlock Text="{Binding Smooth, StringFormat={}{0:0}}" />
-                            </Border>
-                        </Grid>
+                        </StackPanel>
 
                         <!-- Tipo de sensor (chips, como nos pedais) -->
                         <TextBlock Classes="muted" Text="{loc:Translate Handbrake_Sensor}" />
@@ -71,14 +73,17 @@
                             <ToggleSwitch Grid.Column="1" IsChecked="{Binding ButtonEnabled}" IsEnabled="{Binding CanEdit}"
                                           OnContent="" OffContent="" />
                         </Grid>
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_ButtonThreshold}" Margin="0,0,10,0" />
-                            <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding ButtonThreshold}"
+                        <!-- Limiar do botão: título + valor na mesma linha; slider abaixo (padrão "Range do batente"). -->
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Handbrake_ButtonThreshold}" />
+                                <Border Grid.Column="1" Classes="valueBox">
+                                    <TextBlock Text="{Binding ButtonThreshold, StringFormat={}{0:0}%}" />
+                                </Border>
+                            </Grid>
+                            <Slider Minimum="0" Maximum="100" Value="{Binding ButtonThreshold}"
                                     IsEnabled="{Binding ButtonEnabled}" VerticalAlignment="Center" />
-                            <Border Grid.Column="2" Classes="valueBox" MinWidth="46" Padding="8,3">
-                                <TextBlock Text="{Binding ButtonThreshold, StringFormat={}{0:0}%}" />
-                            </Border>
-                        </Grid>
+                        </StackPanel>
 
                         <!-- Min/max calibrado -->
                         <Grid ColumnDefinitions="*,*">
