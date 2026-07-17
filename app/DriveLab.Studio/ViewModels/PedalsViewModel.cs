@@ -55,7 +55,11 @@ public sealed partial class PedalsViewModel : ViewModelBase
     public ObservableCollection<ObservableValue> ThrottleSamples { get; } = new();
     public ISeries[] CombinedSeries { get; }
 
-    public PedalsViewModel(PedalDeviceSession session, IPedalProfileStorage storage, bool simulatorMode = false)
+    /// <summary>Perfis nomeados do módulo (selecionar aplica; salvar como/renomear/excluir).</summary>
+    public ProfileLibraryViewModel<PedalProfile> ProfileLibrary { get; }
+
+    public PedalsViewModel(PedalDeviceSession session, IPedalProfileStorage storage, bool simulatorMode = false,
+                           INamedProfileStore<PedalProfile>? library = null)
     {
         _session = session;
         _storage = storage;
@@ -80,6 +84,10 @@ public sealed partial class PedalsViewModel : ViewModelBase
         _session.Connected += OnConnectionChanged;
         _session.Disconnected += OnConnectionChanged;
         _session.SettingChanged += OnSettingWritten;
+
+        // Aplicar um perfil escreve os settings no controlador (via setters das colunas) e marca "não salvo".
+        ProfileLibrary = new ProfileLibraryViewModel<PedalProfile>(
+            library, ExportProfile, p => { ApplyProfile(p); IsDirty = true; });
     }
 
     private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;

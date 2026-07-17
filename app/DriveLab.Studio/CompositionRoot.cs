@@ -83,7 +83,8 @@ public static class CompositionRoot
             pedalSession = new PedalDeviceSession(new HidPedalTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
             pedalPresent = HidPedalTransport.IsDevicePresent;
         }
-        var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage(), simulatorMode);
+        var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage(), simulatorMode,
+            new JsonNamedProfileStore<PedalProfile>("pedals"));
         if (pedalPresent is not null)
             autoConnectors.Add(StartAutoConnect(
                 () => pedals.IsConnected,

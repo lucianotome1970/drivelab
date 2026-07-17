@@ -33,6 +33,34 @@ public class PedalsViewModelTests
     }
 
     [Fact]
+    public async Task Named_Profile_SaveAs_Then_Apply_Restores_Config()
+    {
+        var t = new FakePedalTransport();
+        var s = new PedalDeviceSession(t, new ImmediateUiDispatcher());
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"pedlib-{System.Guid.NewGuid():N}");
+        var lib = new JsonNamedProfileStore<PedalProfile>("pedals", dir);
+        var vm = new PedalsViewModel(s, new FakeStorage(), simulatorMode: false, lib);
+        try
+        {
+            await vm.ConnectCommand.ExecuteAsync(null);
+
+            vm.Columns[0].Smooth = 42;
+            vm.ProfileLibrary.NewName = "GT3";
+            await vm.ProfileLibrary.SaveAsCommand.ExecuteAsync(null);
+            Assert.Contains("GT3", vm.ProfileLibrary.Profiles);
+
+            vm.Columns[0].Smooth = 10;                        // muda; aplicar o perfil restaura 42
+            vm.ProfileLibrary.SelectedName = null;
+            vm.ProfileLibrary.SelectedName = "GT3";
+            for (var i = 0; i < 60 && (int)vm.Columns[0].Smooth != 42; i++)
+                await Task.Delay(5);
+            Assert.Equal(42, (int)vm.Columns[0].Smooth);
+            vm.Dispose();
+        }
+        finally { if (System.IO.Directory.Exists(dir)) System.IO.Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public async Task SaveToController_Enabled_Only_When_Dirty()
     {
         var (vm, _, _) = Make();
