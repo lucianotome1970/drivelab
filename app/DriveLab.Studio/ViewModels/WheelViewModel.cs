@@ -110,7 +110,7 @@ public partial class WheelViewModel : ViewModelBase
         Buttons = new List<WheelButtonViewModel>
         {
             new("N",     0.219, 0.334, "#BF5AF2"),
-            new("PIT",   0.295, 0.347, "#FFD60A"),
+            new("PIT",   0.290, 0.347, "#FFD60A"),
             new("DRS",   0.716, 0.346, "#34C759"),
             new("KILL",  0.783, 0.335, "#FF3B30"),
             new("RADIO", 0.258, 0.462, "#32ADE6"),
