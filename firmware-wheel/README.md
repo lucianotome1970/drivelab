@@ -25,7 +25,7 @@ Design/decisions: internal project notes (not versioned in the public repo).
 - **M1** Gamepad HID: buttons (matrix + shift paddles) + 2 clutch axes (ADC) + encoders-as-buttons. Visible in `joy.cpl`.
 - **M2** Vendor P0: `WheelState` (button + paddle bitmap), `Command`, `Settings`, paddle calibration.
 - **M3** WS2812 LEDs: `WheelLed` applies colors; brightness/count via setting.
-- **M4** Flash: `SaveToFlash` persists paddle calibration + LED config (magic "DLW1"); loads on boot.
+- **M4** Flash: `SaveToFlash` persists paddle calibration + LED config **including the per-button predefined colors** (magic "DLW2"); loads on boot and the rim lights up with the saved colors on its own (no app needed).
 
 ### Rim I/O & pin map (tunable at the top of main.cpp)
 Target rim: **10 push buttons (each RGB-lit)**, **5 rotary encoders** (with push), **4 paddles** (2 clutch + 2 shift/gears), a **D-pad** (directional buttons), and a **LED bar** (rev lights). On an RP2040-Zero the 5 encoders already eat 10 GPIOs, so the ~21 slow buttons go on **two MCP23017 I²C expanders** (32 inputs on 2 pins). BOM adds **2× MCP23017** (~US$1.5 each).
@@ -119,7 +119,7 @@ Design/decisões: notas internas de projeto (não versionadas no repo público).
 - **M1** Gamepad HID: botões (matriz + pás de shift) + 2 eixos de embreagem (ADC) + encoders-como-botões. Visível no `joy.cpl`.
 - **M2** Vendor P0: `WheelState` (bitmap de botões + pás), `Command`, `Settings`, calibração das pás.
 - **M3** LEDs WS2812: `WheelLed` aplica cores; brilho/contagem por setting.
-- **M4** Flash: `SaveToFlash` persiste calibração das pás + config de LED (magic "DLW1"); carrega no boot.
+- **M4** Flash: `SaveToFlash` persiste calibração das pás + config de LED **incluindo as cores pré-definidas de cada botão** (magic "DLW2"); carrega no boot e o aro acende sozinho com as cores salvas (sem precisar do app).
 
 ### Entradas do aro & mapa de pinos (ajustável no topo do main.cpp)
 Aro alvo: **10 botões de pressão (cada um com LED RGB)**, **5 encoders rotativos** (com push), **4 pás** (2 embreagem + 2 marcha), um **D-pad** (botões direcionais) e uma **barra de LEDs** (rev lights). Na RP2040-Zero os 5 encoders já consomem 10 GPIOs, então os ~21 botões lentos vão em **dois expanders I²C MCP23017** (32 entradas em 2 pinos). BOM acrescenta **2× MCP23017** (~US$1,5 cada).

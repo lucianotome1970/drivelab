@@ -74,6 +74,7 @@ struct WheelCfg {
   uint8_t  clutchBitePoint = 50;  // 0..100
   uint8_t  ledBrightness = 128;
   uint8_t  ledCount = 18;         // 10 LEDs de botão + 8 da barra (rev lights); ajustável via setting
+  uint8_t  ledColors[20][3] = {{0}};  // cores RGB pré-definidas por LED — persistidas na flash (Salvar no controlador)
 };
 
 static WheelCfg g_cfg;
@@ -231,17 +232,30 @@ static void applyLedReport(const uint8_t* buf, uint16_t len) {
   uint8_t count = buf[0];
   uint8_t brightness = buf[1];
   if (count > 20) count = 20;
+  g_cfg.ledBrightness = brightness;        // guarda p/ persistir junto (Salvar no controlador -> flash)
   g_pixels.setBrightness(brightness);
   for (uint8_t i = 0; i < count && i < g_pixels.numPixels(); i++) {
     uint16_t o = 2 + i * 3;
     if (o + 2 >= len) break;
+    g_cfg.ledColors[i][0] = buf[o];        // guarda as cores pré-definidas na config persistente
+    g_cfg.ledColors[i][1] = buf[o + 1];
+    g_cfg.ledColors[i][2] = buf[o + 2];
     g_pixels.setPixelColor(i, g_pixels.Color(buf[o], buf[o + 1], buf[o + 2]));
   }
   g_pixels.show();
 }
 
+// Pinta na fita as cores salvas na flash (chamado no boot p/ o aro acender sozinho, sem o app).
+static void applyStoredLeds() {
+  g_pixels.setBrightness(g_cfg.ledBrightness);
+  for (uint8_t i = 0; i < g_pixels.numPixels() && i < 20; i++)
+    g_pixels.setPixelColor(i, g_pixels.Color(g_cfg.ledColors[i][0], g_cfg.ledColors[i][1], g_cfg.ledColors[i][2]));
+  g_pixels.show();
+}
+
 // ===================== persistência em flash =====================
-static const uint32_t FLASH_MAGIC = 0x444C5731;  // "DLW1" — rim (distinto de pedal "DLP1"/handbrake "DLH1")
+// "DLW2" — bump de "DLW1": WheelCfg cresceu (ledColors[]); magic novo descarta flash antiga com layout velho.
+static const uint32_t FLASH_MAGIC = 0x444C5732;
 static void saveToFlash() {
   int addr = 0;
   EEPROM.put(addr, FLASH_MAGIC); addr += sizeof(FLASH_MAGIC);
@@ -312,9 +326,7 @@ void setup() {
 
   g_pixels.updateLength(g_cfg.ledCount);
   g_pixels.begin();
-  g_pixels.setBrightness(g_cfg.ledBrightness);
-  g_pixels.clear();
-  g_pixels.show();
+  applyStoredLeds();   // acende com as cores salvas na flash (aro funciona sozinho, sem o app)
 
   g_hid.setReportDescriptor(kHidReport, sizeof(kHidReport));
   g_hid.setReportCallback(nullptr, onSetReport);  // (get_cb, set_cb)

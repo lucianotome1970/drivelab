@@ -352,7 +352,10 @@ public partial class WheelViewModel : ViewModelBase
     {
         await _storage.SaveAsync(Export());
         if (_session is not null && _session.IsConnected)
+        {
+            PushLeds();   // reenvia as cores atuais → o firmware as grava na flash junto do SaveToFlash
             await _session.SendCommandAsync(WheelCommandId.SaveToFlash);
+        }
         IsDirty = false;
     }
 
