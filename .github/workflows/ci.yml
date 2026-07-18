@@ -42,6 +42,7 @@ jobs:
         include:
           - { dir: firmware-base,      env: m0 }
           - { dir: firmware-base,      env: m05 }
+          - { dir: firmware-base,      env: m1 }
           - { dir: firmware-pedal,     env: rp2040_zero }
           - { dir: firmware-handbrake, env: rp2040_zero }
           - { dir: firmware-wheel,     env: rp2040_zero }
