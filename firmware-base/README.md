@@ -24,6 +24,41 @@ Design/decisions: kept in internal project notes (not versioned in the public re
   - **DFU** (no ST-Link): put the board in DFU mode (BOOT0 high at reset — BOOT pad/button) and use `upload_protocol = dfu` in `platformio.ini`.
 - Power: **no motor needed**. USB/ST-Link already powers the logic. (Do not connect the motor on M0.)
 
+#### Wiring the ST-Link V2 (SWD) — only 4 signals
+
+Connect **by the printed label**, not by pin position (clones vary a lot). On the aluminium ST-Link V2 dongle the names are printed on the case (two rows of 5 pins); on the board look for a 4-pad **SWD** header near the STM32 (or a JTAG connector).
+
+| ST-Link V2 (labelled pin) | Board (labelled pad) | Required? |
+|---|---|---|
+| **SWDIO** | SWDIO / **DIO** | ✅ yes |
+| **SWCLK** | SWCLK / **CLK** | ✅ yes |
+| **GND**   | **GND**         | ✅ yes |
+| **3.3V** (3V3) | 3V3 | ⚠️ conditional (see below) |
+
+- **Board powered by its own USB (recommended):** wire only **SWDIO + SWCLK + GND** — do **not** connect 3.3V (it can fight the on-board regulator).
+- **Board with no USB (ST-Link only):** also connect **3.3V** to power the logic.
+- **GND is always required** — it is the common reference for the signals.
+- Ignore the `SWIM` / `5.0V` pins — we don't use them.
+- **Optional NRST:** if `st-info --probe` can't find a "busy" board (still running the factory firmware), also wire **RST/NRST ↔ RST/NRST** for connect-under-reset.
+
+Minimum to start (board on its own USB):
+```
+ST-Link          Board
+ SWDIO  ───────►  DIO
+ SWCLK  ───────►  CLK
+ GND    ───────►  GND
+ (3.3V not connected — board already powered by USB)
+```
+
+> ⚠️ **Never energise the DC bus (24 V / 56 V) during bring-up.** M0/M0.5 don't touch the motor — the logic is powered by USB or the ST-Link only.
+
+**Not an ODESC?** If your board is a different ODrive-class clone (e.g. an **MKS XDrive 56V**), **confirm the MCU before flashing**: `brew install stlink && st-info --probe` should report an **STM32F4 (chipid `0x413`), 1024 KB flash** for our `genericSTM32F405RG` build. These clones usually ship **read-out protected (RDP level 1)** with the factory ODrive firmware — unlock it (this erases the factory firmware) with:
+> ```bash
+> openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
+>   -c "init; reset halt; stm32f4x unlock 0; reset halt; shutdown"
+> ```
+> If the crystal isn't 8 MHz, USB won't enumerate → set `-D HSE_VALUE=<hz>` (see the M0 gotcha above).
+
 #### Steps
 1. Open the `firmware-base/` folder in VS Code (PlatformIO detects `platformio.ini`).
 2. Connect the ST-Link (or put it in DFU) and the ODESC USB cable.
@@ -104,6 +139,41 @@ For a quick-release rim, the base is meant to host a small **USB hub** (the ODES
   - **ST-Link V2** (recomendado) ligado ao header **SWD** da ODESC: `SWDIO`, `SWCLK`, `GND`, `3V3`.
   - **DFU** (sem ST-Link): colocar a placa em modo DFU (BOOT0 em alto no reset — pad/botão de BOOT) e usar `upload_protocol = dfu` no `platformio.ini`.
 - Alimentação: **não precisa de motor**. O USB/ST-Link já alimenta a lógica. (Não conecte o motor no M0.)
+
+#### Ligando o ST-Link V2 (SWD) — só 4 sinais
+
+Conecte **pelo rótulo impresso**, não pela posição do pino (os clones variam muito). No pendrive de alumínio do ST-Link V2 os nomes vêm impressos na carcaça (duas fileiras de 5 pinos); na placa, procure um header **SWD** de 4 pads perto do STM32 (ou um conector JTAG).
+
+| ST-Link V2 (pino rotulado) | Placa (pad rotulado) | Obrigatório? |
+|---|---|---|
+| **SWDIO** | SWDIO / **DIO** | ✅ sim |
+| **SWCLK** | SWCLK / **CLK** | ✅ sim |
+| **GND**   | **GND**         | ✅ sim |
+| **3.3V** (3V3) | 3V3 | ⚠️ depende (veja abaixo) |
+
+- **Placa alimentada pelo USB dela (recomendado):** ligue só **SWDIO + SWCLK + GND** — **não** conecte o 3.3V (pode conflitar com o regulador da placa).
+- **Placa sem USB (só o ST-Link):** aí **conecte o 3.3V** para alimentar a lógica.
+- **GND é sempre obrigatório** — é a referência comum dos sinais.
+- Ignore os pinos `SWIM` / `5.0V` — não usamos.
+- **NRST opcional:** se o `st-info --probe` não achar a placa "ocupada" (ainda rodando o firmware de fábrica), ligue também **RST/NRST ↔ RST/NRST** para connect-under-reset.
+
+Mínimo para começar (placa no USB dela):
+```
+ST-Link          Placa
+ SWDIO  ───────►  DIO
+ SWCLK  ───────►  CLK
+ GND    ───────►  GND
+ (3.3V não liga — placa já alimentada pelo USB)
+```
+
+> ⚠️ **Nunca energize o barramento DC (24 V / 56 V) durante o bring-up.** M0/M0.5 não tocam no motor — a lógica é alimentada só pelo USB ou pelo ST-Link.
+
+**Não é uma ODESC?** Se sua placa for outro clone classe ODrive (ex.: uma **MKS XDrive 56V**), **confirme o MCU antes de gravar**: `brew install stlink && st-info --probe` deve reportar um **STM32F4 (chipid `0x413`), 1024 KB de flash** para a nossa build `genericSTM32F405RG`. Esses clones normalmente vêm **read-out protected (RDP nível 1)** com o firmware ODrive de fábrica — destrave (isso apaga o firmware de fábrica) com:
+> ```bash
+> openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
+>   -c "init; reset halt; stm32f4x unlock 0; reset halt; shutdown"
+> ```
+> Se o cristal não for 8 MHz, a USB não enumera → defina `-D HSE_VALUE=<hz>` (ver o gotcha do M0 acima).
 
 #### Passos
 1. Abra a pasta `firmware-base/` no VS Code (PlatformIO detecta o `platformio.ini`).
