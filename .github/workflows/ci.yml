@@ -1,0 +1,64 @@
+# ============================================================================
+#  DriveLab — CI
+#  Roda a cada push/PR: testes do app (.NET), testes do cérebro FFB (host C++) e os
+#  compiles de firmware (PlatformIO). Trava o modelo de qualidade — regressão pega sozinho.
+# ============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  app-tests:
+    name: App (.NET) — testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore app/DriveLab.sln
+      - name: Test
+        run: dotnet test app/DriveLab.sln --no-restore --configuration Release
+
+  brain-tests:
+    name: Cérebro FFB (host) — testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run brain host tests
+        run: bash firmware-base/test/run.sh
+
+  firmware-build:
+    name: Firmware — compile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { dir: firmware-base,      env: m0 }
+          - { dir: firmware-base,      env: m05 }
+          - { dir: firmware-pedal,     env: rp2040_zero }
+          - { dir: firmware-handbrake, env: rp2040_zero }
+          - { dir: firmware-wheel,     env: rp2040_zero }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ matrix.dir }}-${{ hashFiles(format('{0}/platformio.ini', matrix.dir)) }}
+          restore-keys: pio-${{ matrix.dir }}-
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+      - name: Build ${{ matrix.dir }} (${{ matrix.env }})
+        run: pio run -d ${{ matrix.dir }} -e ${{ matrix.env }}
