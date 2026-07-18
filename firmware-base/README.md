@@ -48,11 +48,11 @@ DriveLab M0 vivo, tick = 1
 
 ---
 
-### M0.5 — USB/FFB (the main de-risk) ⚠️ — DRAFT ready to iterate
+### M0.5 — USB/FFB (the main de-risk) ⚠️ — COMPILES for F405, awaiting bench
 
 Prove decision **B2** on the F405: **enumerate as a Force Feedback device** (DirectInput wheel) on Windows, reusing the ready-made FFB stack. **No motor** yet.
 
-> **It's a first draft, written without a board** (`src/m05/main.cpp`). The shim + FFB lib combo on the F405 has never been published — **expect to iterate**. It's not guaranteed to compile/run on the first try.
+> **Update (2026-07):** the draft (`src/m05/main.cpp`) now **compiles cleanly for the F405** (3.5% flash). Two fixes were needed vs. the first draft: the shim's real header is `USBAPI.h` (there is no `USBLibrarySTM32.h`), and the FFB lib uses the AVR-only macro `_delay_us()` — mapped to `delayMicroseconds()` via a force-included shim (`include/avr_compat.h`), so the re-fetched third-party lib isn't edited. Still **awaiting bench validation**: that it actually enumerates as an FFB wheel on real hardware (watch the HSE-crystal / VBUS-sensing gotchas below).
 
 #### How to flash M0.5
 ```bash
@@ -125,11 +125,11 @@ DriveLab M0 vivo, tick = 1
 
 ---
 
-### M0.5 — USB/FFB (o de-risco principal) ⚠️ — RASCUNHO pronto p/ iterar
+### M0.5 — USB/FFB (o de-risco principal) ⚠️ — COMPILA no F405, aguardando bancada
 
 Provar a decisão **B2** no F405: **enumerar como dispositivo Force Feedback** (volante DirectInput) no Windows, reusando a pilha FFB pronta. **Sem motor** ainda.
 
-> **É um primeiro rascunho, escrito sem placa** (`src/m05/main.cpp`). A combinação shim + lib de FFB no F405 nunca foi publicada — **espere iterar**. Não é garantido compilar/rodar de primeira.
+> **Atualização (2026-07):** o rascunho (`src/m05/main.cpp`) agora **compila limpo no F405** (3,5% de flash). Dois ajustes vs. o 1º rascunho: o header real do shim é `USBAPI.h` (não existe `USBLibrarySTM32.h`), e a lib de FFB usa a macro AVR `_delay_us()` — mapeada para `delayMicroseconds()` via header force-included (`include/avr_compat.h`), sem editar a lib de terceiros (re-baixada pelo lib_deps). **Falta validar na bancada**: que enumere de fato como volante FFB no hardware real (atenção ao cristal HSE / VBUS sensing abaixo).
 
 #### Como gravar o M0.5
 ```bash

@@ -23,7 +23,7 @@
 //   Propriedades -> deve aparecer o eixo de direção se mexendo e a aba de Force Feedback.
 
 #include <Arduino.h>
-#include <USBLibrarySTM32.h>   // VERIFICAR: nome exato do header do shim (pode variar).
+#include <USBAPI.h>            // shim USBLibrarySTM32: USB_Begin()/USB_Running() (header oficial da lib)
 #include <Joystick.h>          // ArduinoJoystickWithFFBLibrary
 
 // Volante de eixo único: só o eixo de direção (steering) habilitado.
