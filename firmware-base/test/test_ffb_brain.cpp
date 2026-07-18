@@ -15,6 +15,7 @@
 #include "pi_controller.h"
 #include "ffb_power.h"
 #include "startup.h"
+#include "force_reconstruct.h"
 
 #include <cstdio>
 
@@ -253,6 +254,53 @@ int main() {
         seq.clearFault(); CHECK(seq.state == MotorState::Idle);
         seq.update(0.1f, StartupInputs{ true, true, 24.0f, 25.0f });
         CHECK(seq.state == MotorState::Fault);                 // causa persiste → re-arma a falha
+    }
+
+    // 13) Reconstrução de força: rampa linear vs degrau (ZOH), retarget no meio, LPF, e a
+    //     MÉTRICA de suavidade (o maior salto por tick cai muito vs. segurar o valor)
+    {
+        // rampa: um degrau 0→10 vira 2.5/5/7.5/10 (janela de 4 ticks)
+        ForceReconstructor r; r.cfg.steps = 4; r.cfg.lpfAlpha = 0.0f;
+        r.setTarget(10.0f);
+        CHECK(approx(r.tick(), 2.5f));
+        CHECK(approx(r.tick(), 5.0f));
+        CHECK(approx(r.tick(), 7.5f));
+        CHECK(approx(r.tick(), 10.0f));
+        CHECK(approx(r.tick(), 10.0f));   // segura no alvo entre atualizações
+
+        // retarget no meio da janela: recomeça a interpolação do ponto atual
+        ForceReconstructor r2; r2.cfg.steps = 4;
+        r2.setTarget(10.0f); r2.tick(); r2.tick();     // current = 5
+        r2.setTarget(0.0f);                            // novo alvo a partir de 5
+        CHECK(approx(r2.tick(), 3.75f));
+        CHECK(approx(r2.tick(), 2.5f));
+
+        // ZOH (steps ≤ 1): assume o alvo imediatamente (degrau)
+        ForceReconstructor z; z.cfg.steps = 1;
+        z.setTarget(10.0f);
+        CHECK(approx(z.tick(), 10.0f));
+
+        // métrica de suavidade: maior salto por tick << degrau cru (medido a partir do valor
+        // ANTES do setTarget, pois no ZOH o salto acontece já no setTarget)
+        auto maxJumpAfterStep = [](ForceReconstructor& rec, float target, int n) {
+            float prev = rec.current(), m = 0.0f;
+            rec.setTarget(target);
+            for (int i = 0; i < n; ++i) { float v = rec.tick(); float d = v - prev; if (d < 0) d = -d; if (d > m) m = d; prev = v; }
+            return m;
+        };
+        ForceReconstructor smooth; smooth.cfg.steps = 8;
+        ForceReconstructor zoh;    zoh.cfg.steps = 1;
+        const float jS = maxJumpAfterStep(smooth, 100.0f, 8);
+        const float jZ = maxJumpAfterStep(zoh, 100.0f, 8);
+        CHECK(approx(jS, 12.5f));      // 100/8 por tick
+        CHECK(jZ >= 99.0f);            // ZOH salta ~100 de uma vez
+        CHECK(jS < jZ);               // reconstrução suaviza (menos salto = menos "notch")
+
+        // LPF opcional: mesmo com degrau, a saída se aproxima do alvo gradualmente
+        ForceReconstructor f; f.cfg.steps = 1; f.cfg.lpfAlpha = 0.5f;
+        f.setTarget(10.0f);
+        const float a = f.tick(), b = f.tick(), c = f.tick();
+        CHECK(a > 0.0f && a < b && b < c && c < 10.0f);   // sobe monotonicamente rumo ao alvo
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);

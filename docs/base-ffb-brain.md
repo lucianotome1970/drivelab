@@ -62,6 +62,19 @@ O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `compute
 - **Rampa** — ao entrar em Running, a força sobe de 0→1 em `rampSeconds` (`rampGain()`), sem solavanco.
 - **Falha com prioridade** — `guardFaulted` derruba para Fault em qualquer estado; sai só com `clearFault()` e **re-arma** se a causa persistir. O ângulo/FOC em si é do SimpleFOC; o sequenciador só decide *se/quanto* liberar.
 
+**Reconstrução de força (rumo ao topo)** — em `force_reconstruct.h`, `ForceReconstructor`: o jogo manda força discreta a 60–360 Hz; o laço roda a 10–40 kHz. Segurar o último valor (ZOH) gera "degraus" (a sensação granulada). O reconstrutor **espalha cada atualização** ao longo dos ticks (rampa linear, janela `steps`) + **LPF opcional** → saída contínua ("silky"). É um dos algoritmos que separam DD bom de DD top — e é **mensurável no host**: o teste mostra o maior salto por tick caindo de ~100 (ZOH) para 12,5 (janela de 8). No firmware: `setTarget()` quando chega um FFB report; `tick()` a cada passo do laço, alimentando `computeTorque`.
+
+### Log de diagnóstico + loop de feedback (design, para quando houver hardware)
+
+A ideia (do usuário): **firmware+app geram um log; com o log + o que o usuário sentiu, refinamos as sensações.** O caminho:
+
+1. **Firmware emite um quadro de diagnóstico** (telemetria estendida, sob demanda p/ não custar no uso normal): por tick (ou subamostrado) → `t`, força do jogo, força **reconstruída**, posição/velocidade do encoder, torque comandado, corrente medida, tensão de barramento, temperaturas, estado da máquina.
+2. **App grava em CSV** e oferece um botão **"marcar"** — o usuário anota o instante em que sentiu algo ("aqui ficou notchy", "aqui clipou", "damper fraco"). O marcador entra na mesma trilha de tempo.
+3. **Análise offline** reusa o **mesmo harness de host**: com o CSV, replicamos a entrada e comparamos algoritmos/parâmetros (janela de reconstrução, LPF, mapa de cogging, ganhos) **objetivamente** — casando a métrica com a sensação relatada.
+4. **Ajusta → regrava → repete.** Cada volta liga um número a uma sensação; é assim que se persegue o topo com método, não por tentativa e erro.
+
+Precisa de hardware só como **fonte de dados**; a infra de análise já existe (o host test). Concretamente falta: um report de diagnóstico no protocolo (base) + um gravador CSV no app (o app já tem telemetria 0x21/0x20 — estende-se para o modo diagnóstico).
+
 ### Rodar os testes (sem placa)
 
 ```bash
