@@ -64,6 +64,8 @@ O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `compute
 
 **Reconstrução de força (rumo ao topo)** — em `force_reconstruct.h`, `ForceReconstructor`: o jogo manda força discreta a 60–360 Hz; o laço roda a 10–40 kHz. Segurar o último valor (ZOH) gera "degraus" (a sensação granulada). O reconstrutor **espalha cada atualização** ao longo dos ticks (rampa linear, janela `steps`) + **LPF opcional** → saída contínua ("silky"). É um dos algoritmos que separam DD bom de DD top — e é **mensurável no host**: o teste mostra o maior salto por tick caindo de ~100 (ZOH) para 12,5 (janela de 8). No firmware: `setTarget()` quando chega um FFB report; `tick()` a cada passo do laço, alimentando `computeTorque`.
 
+**Cancelamento de cogging (rumo ao topo)** — em `cogging.h`: o cogging é ripple de torque **dependente da posição** (ímãs × ranhuras) — a maior causa de "granulado" em força pequena. `CoggingMap<N>` guarda a compensação por posição ([0,2π), N bins, interpolação + wrap) e `compensation(pos)` dá o feed-forward a **somar** ao torque. `CoggingCalibrator<N>` constrói o mapa girando o motor devagar: média por bin → remove o offset DC (carga/atrito, não é cogging) → inverte o sinal. Mensurável no host: o teste reconstrói um ripple sintético de ±0,2 Nm e o **cancela para <0,02 (~10× mais liso)**. Só a coleta das amostras precisa de bancada; a matemática (tabela, interpolação, calibração) está pronta e testada. No firmware: `torque += cog.compensation(encoderPos)` a cada tick; a tabela mora na flash, calibrada por-motor.
+
 ### Log de diagnóstico + loop de feedback (design, para quando houver hardware)
 
 A ideia (do usuário): **firmware+app geram um log; com o log + o que o usuário sentiu, refinamos as sensações.** O caminho:

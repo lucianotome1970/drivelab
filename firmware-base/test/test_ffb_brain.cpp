@@ -16,8 +16,10 @@
 #include "ffb_power.h"
 #include "startup.h"
 #include "force_reconstruct.h"
+#include "cogging.h"
 
 #include <cstdio>
+#include <cmath>
 
 using namespace drivelab;
 
@@ -301,6 +303,42 @@ int main() {
         f.setTarget(10.0f);
         const float a = f.tick(), b = f.tick(), c = f.tick();
         CHECK(a > 0.0f && a < b && b < c && c < 10.0f);   // sobe monotonicamente rumo ao alvo
+    }
+
+    // 14) Cogging: interpolação/wrap do mapa + calibração reconstrói e CANCELA um ripple sintético
+    {
+        const float twoPi = 6.28318530718f;
+
+        // interpolação + wrap-around num mapa pequeno conhecido
+        CoggingMap<4> m; m.table[0] = 0; m.table[1] = 1; m.table[2] = 2; m.table[3] = 3;
+        CHECK(approx(m.compensation(0.0f), 0.0f));
+        CHECK(approx(m.compensation(twoPi * 1.0f / 4.0f), 1.0f));   // bin 1
+        CHECK(approx(m.compensation(twoPi * 0.125f), 0.5f));        // meio entre bin0 e bin1
+        CHECK(approx(m.compensation(twoPi * 3.5f / 4.0f), 1.5f));   // wrap: entre bin3(3) e bin0(0)
+
+        // calibração: gira devagar amostrando torque = 0.2·sin(pos) + 0.5 (DC de carga/atrito).
+        // A compensação deve reconstruir −0.2·sin(pos) (DC removido, sinal invertido).
+        CoggingCalibrator<64> cal;
+        for (int k = 0; k < 2000; ++k) {
+            const float pos = twoPi * static_cast<float>(k) / 2000.0f;
+            cal.addSample(pos, 0.2f * std::sin(pos) + 0.5f);
+        }
+        CoggingMap<64> cog; cal.finish(cog);
+
+        CHECK(approx(cog.compensation(0.0f),          0.0f, 0.02f));  // −0.2·sin(0)
+        CHECK(approx(cog.compensation(twoPi * 0.25f), -0.2f, 0.02f)); // −0.2·sin(π/2)
+        CHECK(approx(cog.compensation(twoPi * 0.75f),  0.2f, 0.02f)); // −0.2·sin(3π/2)
+
+        // prova do cancelamento: torque_bruto (com cogging) + compensação ≈ liso (só o DC)
+        float worst = 0.0f;
+        for (int k = 0; k < 100; ++k) {
+            const float pos = twoPi * static_cast<float>(k) / 100.0f;
+            const float raw = 0.2f * std::sin(pos) + 0.5f;   // o que o motor faria (com ripple)
+            const float compensated = raw + cog.compensation(pos);
+            const float err = std::fabs(compensated - 0.5f); // deveria sobrar só o DC
+            if (err > worst) worst = err;
+        }
+        CHECK(worst < 0.02f);   // ripple de ±0.2 reduzido a <0.02 → ~10× mais liso
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);
