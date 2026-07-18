@@ -41,7 +41,7 @@
     <Border Classes="card">
         <Grid>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                <StackPanel Spacing="16" Margin="6,40,6,6">
+                <StackPanel Spacing="16" Margin="6,2,6,6">
                     <TextBlock Text="{loc:Translate Wheel_Config}" Classes="h2" />
 
                     <!-- Perfis nomeados do módulo. Selecionar aplica; salvar como/renomear usam a caixa de nome.
