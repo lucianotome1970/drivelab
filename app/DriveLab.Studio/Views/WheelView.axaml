@@ -57,8 +57,8 @@
                         <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
                     </StackPanel>
 
-                    <!-- Três colunas: volante · cores+brilho · pás (usa a largura e deixa as cores visíveis) -->
-                    <Grid ColumnDefinitions="Auto,28,Auto,28,Auto" HorizontalAlignment="Left">
+                    <!-- Duas colunas: volante à esquerda; à direita, cores (topo) + pás (abaixo) -->
+                    <Grid ColumnDefinitions="Auto,28,Auto" HorizontalAlignment="Left">
 
                         <!-- Coluna 0: desenho do volante -->
                         <StackPanel Grid.Column="0" Spacing="12" Width="480" VerticalAlignment="Top">
@@ -133,7 +133,10 @@
                         </StackPanel>
 
                         <!-- Coluna 2: cores dos botões + brilho -->
-                        <StackPanel Grid.Column="2" Spacing="10" Width="300" VerticalAlignment="Top">
+                        <!-- Coluna direita: cores + brilho (topo) e pás (abaixo) -->
+                        <StackPanel Grid.Column="2" Spacing="18" Width="360" VerticalAlignment="Top">
+                            <!-- Cores dos botões + brilho -->
+                            <StackPanel Spacing="10">
                             <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="h2" />
                             <!-- Paleta de cores (aplica no botão selecionado). Só com o aro conectado:
                                  a cor vai AO VIVO ao dispositivo. -->
@@ -165,12 +168,10 @@
                                 </Grid>
                                 <Slider Minimum="0" Maximum="100" Value="{Binding LedBrightnessPercent}" VerticalAlignment="Center" />
                             </StackPanel>
-                        </StackPanel>
+                            </StackPanel>
 
-                        <!-- Coluna 4: configuração das pás. Desabilitada sem o aro conectado
-                             (mesma regra da paleta de cores): a config vai/vem do controlador. -->
-                        <StackPanel Grid.Column="4" Spacing="10" Width="360" VerticalAlignment="Top"
-                                    IsEnabled="{Binding IsConnected}">
+                            <!-- Pás (abaixo das cores). Desabilitada sem o aro conectado. -->
+                            <StackPanel Spacing="10" IsEnabled="{Binding IsConnected}">
                             <TextBlock Text="{loc:Translate Wheel_Paddles}" Classes="h2" />
                             <TextBlock Text="{loc:Translate Wheel_PaddleCount}" Classes="muted" />
                             <UniformGrid Rows="1" MaxWidth="200" HorizontalAlignment="Left">
@@ -235,6 +236,7 @@
                                         <Slider Minimum="0" Maximum="100" Value="{Binding BitePoint}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </StackPanel>
+                            </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </Grid>
