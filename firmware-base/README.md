@@ -16,7 +16,9 @@ Design/decisions: kept in internal project notes (not versioned in the public re
 
 **Goal:** prove toolchain + flashing + USB serial on your ODESC. Harmless (does not touch the motor/power).
 
-> **Status (2026-07-18): flashing + execution VALIDATED on real hardware** — an **MKS ODRIVE-S V3.6-S6V** (STM32F405), flashed over **ST-Link + OpenOCD** (recipe below). Execution confirmed over SWD (the tick counter increments ~1/s) and the clock checks out (`uwTick` at 1 ms → the **8 MHz HSE is correct**). The USB CDC serial still needs the board's **own USB cable** plugged into the PC — with the clock correct it should enumerate.
+> **Status (2026-07-18): M0 FULLY VALIDATED on real hardware ✅** — an **MKS ODRIVE-S V3.6-S6V** (STM32F405), flashed over **ST-Link + OpenOCD** (recipe below). Execution confirmed over SWD *and* the **USB CDC serial streams** `DriveLab M0 vivo, tick=…` (enumerates as `GENERIC_F405RGTX CDC in FS Mode`). The 8 MHz HSE / 48 MHz USB clock is correct — **this de-risks the whole USB/FFB path (M0.5+)**.
+>
+> *Board caveat:* on this unit the **USB power input (VBUS/5V) is dead** (plugging only the board's USB doesn't light the PWR LED), but the **D+/D‑ data lines are fine** — it enumerates normally when the logic is powered another way (ST-Link 3.3V, which *does* light the LED). Tip: put the ST-Link on a **USB charger** just for power (it still outputs 3.3V without a data host), freeing the laptop's only USB port for the board's data cable.
 
 #### Prerequisites
 - **VS Code + PlatformIO extension** (installs the STM32duino toolchain by itself on the first build).
@@ -148,7 +150,9 @@ For a quick-release rim, the base is meant to host a small **USB hub** (the ODES
 
 **Objetivo:** provar toolchain + gravação + USB serial na sua ODESC. Inofensivo (não mexe no motor/potência).
 
-> **Status (2026-07-18): gravação + execução VALIDADAS no hardware real** — uma **MKS ODRIVE-S V3.6-S6V** (STM32F405), gravada via **ST-Link + OpenOCD** (receita abaixo). Execução confirmada pelo SWD (o contador de tick incrementa ~1/s) e o clock confere (`uwTick` a 1 ms → o **cristal HSE de 8 MHz está certo**). A serial USB CDC ainda precisa do **cabo USB da própria placa** ligado no PC — com o clock certo, deve enumerar.
+> **Status (2026-07-18): M0 TOTALMENTE VALIDADO no hardware real ✅** — uma **MKS ODRIVE-S V3.6-S6V** (STM32F405), gravada via **ST-Link + OpenOCD** (receita abaixo). Execução confirmada pelo SWD *e* a **serial USB CDC transmite** `DriveLab M0 vivo, tick=…` (enumera como `GENERIC_F405RGTX CDC in FS Mode`). O clock HSE 8 MHz / USB 48 MHz está certo — **isso de-risca todo o caminho USB/FFB (M0.5+)**.
+>
+> *Ressalva desta placa:* nesta unidade a **alimentação do USB (VBUS/5V) está queimada** (plugar só a USB da placa não acende o LED PWR), mas os **dados D+/D‑ estão ok** — enumera normal quando a lógica é alimentada por outro caminho (3.3V do ST-Link, que *acende* o LED). Dica: deixe o ST-Link num **carregador USB** só pra alimentar (ele solta 3.3V mesmo sem host de dados), liberando a única USB do note pro cabo de dados da placa.
 
 #### Pré-requisitos
 - **VS Code + extensão PlatformIO** (instala o toolchain STM32duino sozinho na primeira build).
