@@ -14,6 +14,7 @@
 #include "ffb_controller.h"
 #include "pi_controller.h"
 #include "ffb_power.h"
+#include "startup.h"
 
 #include <cstdio>
 
@@ -206,6 +207,52 @@ int main() {
         MockPower hot; hot.bus = 20; hot.mfet = 90; MockBrake br2;
         g2.step(hot, br2);
         CHECK(g2.faulted);
+    }
+
+    // 12) M1 — sequência de partida: inter-travamentos, Idle→Alinhamento→Rodando (+rampa), falha
+    {
+        StartupSequencer seq;
+        seq.cfg.busMinV = 20; seq.cfg.busMaxV = 30; seq.cfg.tempMaxC = 80;
+        seq.cfg.alignSeconds = 0.5f; seq.cfg.rampSeconds = 0.5f; seq.cfg.alignTorqueNm = 0.3f;
+
+        // inter-travamentos
+        StartupInputs ok{ true, false, 24.0f, 25.0f };
+        CHECK(seq.interlocksOk(ok));
+        CHECK(!seq.interlocksOk(StartupInputs{ true, false, 15.0f, 25.0f }));  // tensão baixa
+        CHECK(!seq.interlocksOk(StartupInputs{ true, false, 33.0f, 25.0f }));  // tensão alta
+        CHECK(!seq.interlocksOk(StartupInputs{ true, false, 24.0f, 90.0f }));  // quente
+        CHECK(!seq.interlocksOk(StartupInputs{ true, true,  24.0f, 25.0f }));  // proteção em falha
+
+        // Idle → Aligning (pediu força + interlocks ok)
+        CHECK(seq.state == MotorState::Idle);
+        seq.update(0.1f, ok);
+        CHECK(seq.state == MotorState::Aligning && !seq.forceEnabled());
+        CHECK(approx(seq.alignTorque(), 0.3f));                 // segura o rotor com torque baixo
+
+        // ainda alinhando (tempo insuficiente) → depois Running
+        seq.update(0.3f, ok); CHECK(seq.state == MotorState::Aligning);
+        seq.update(0.3f, ok); CHECK(seq.state == MotorState::Running);   // 0.6 ≥ 0.5
+
+        // rampa de subida 0→1
+        CHECK(approx(seq.rampGain(), 0.0f));
+        seq.update(0.25f, ok); CHECK(approx(seq.rampGain(), 0.5f) && seq.forceEnabled());
+        seq.update(0.25f, ok); CHECK(approx(seq.rampGain(), 1.0f));
+        seq.update(0.5f,  ok); CHECK(approx(seq.rampGain(), 1.0f));       // satura em 1
+
+        // soltar o enable → volta a Idle
+        seq.update(0.1f, StartupInputs{ false, false, 24.0f, 25.0f });
+        CHECK(seq.state == MotorState::Idle && approx(seq.rampGain(), 0.0f));
+
+        // falha tem prioridade em qualquer estado
+        seq.update(0.1f, ok); seq.update(0.6f, ok);            // volta a Running
+        CHECK(seq.state == MotorState::Running);
+        seq.update(0.1f, StartupInputs{ true, true, 24.0f, 25.0f });   // proteção falhou
+        CHECK(seq.state == MotorState::Fault && !seq.forceEnabled());
+
+        // sai da falha só com clearFault(); re-entra se a causa persistir
+        seq.clearFault(); CHECK(seq.state == MotorState::Idle);
+        seq.update(0.1f, StartupInputs{ true, true, 24.0f, 25.0f });
+        CHECK(seq.state == MotorState::Fault);                 // causa persiste → re-arma a falha
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);

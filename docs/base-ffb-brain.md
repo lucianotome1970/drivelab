@@ -56,6 +56,12 @@ O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `compute
 - `BrakeController` — **brake resistor** com **histerese** (liga acima de `onVoltage`, só desliga abaixo de `offVoltage`) e **duty proporcional** até `fullVoltage`. Dissipa a regeneração antes de estourar a tensão.
 - `overVoltage()` / `overTemp()` + `PowerGuard.step()` — comanda o brake e sinaliza **falha latched** por sobretensão/sobretemperatura (o laço então desliga a força). Sistema 24V → nunca deixar a tensão disparar.
 
+**Sequência de partida (M1)** — em `startup.h`, `StartupSequencer` (máquina de estados **Idle→Aligning→Running→Fault**):
+- **Inter-travamentos** — só arma com tensão na faixa `[busMinV, busMaxV]`, temperatura ≤ `tempMaxC` e sem falha da proteção.
+- **Alinhamento** — energiza open-loop com torque baixo (`alignTorqueNm`) por `alignSeconds` para alinhar o rotor antes de liberar a força.
+- **Rampa** — ao entrar em Running, a força sobe de 0→1 em `rampSeconds` (`rampGain()`), sem solavanco.
+- **Falha com prioridade** — `guardFaulted` derruba para Fault em qualquer estado; sai só com `clearFault()` e **re-arma** se a causa persistir. O ângulo/FOC em si é do SimpleFOC; o sequenciador só decide *se/quanto* liberar.
+
 ### Rodar os testes (sem placa)
 
 ```bash
