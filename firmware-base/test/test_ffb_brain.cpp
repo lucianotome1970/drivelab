@@ -17,6 +17,7 @@
 #include "startup.h"
 #include "force_reconstruct.h"
 #include "cogging.h"
+#include "filters.h"
 
 #include <cstdio>
 #include <cmath>
@@ -339,6 +340,42 @@ int main() {
             if (err > worst) worst = err;
         }
         CHECK(worst < 0.02f);   // ripple de ±0.2 reduzido a <0.02 → ~10× mais liso
+    }
+
+    // 15) Filtros DSP: low-pass (passa DC, mata Nyquist), notch (passa DC, rejeita f0), velocidade
+    {
+        const float twoPi = 6.28318530718f;
+        const float fs = 1000.0f;
+
+        // low-pass: ganho DC = 1 (constante passa), e o sinal em Nyquist (±1 alternado) é esmagado
+        Biquad lp = makeLowPass(50.0f, fs, 0.707f);
+        for (int i = 0; i < 400; ++i) lp.process(1.0f);
+        CHECK(approx(lp.process(1.0f), 1.0f, 0.01f));          // DC preservado
+        lp.reset();
+        float lastN = 0.0f;
+        for (int i = 0; i < 400; ++i) lastN = lp.process((i & 1) ? -1.0f : 1.0f);
+        CHECK(std::fabs(lastN) < 0.1f);                        // Nyquist atenuado
+
+        // notch @ 50 Hz: DC passa; uma senoide EM 50 Hz é fortemente rejeitada
+        Biquad nt = makeNotch(50.0f, fs, 5.0f);
+        for (int i = 0; i < 400; ++i) nt.process(1.0f);
+        CHECK(approx(nt.process(1.0f), 1.0f, 0.02f));          // DC preservado (não é a banda rejeitada)
+        nt.reset();
+        float inRms = 0.0f, outRms = 0.0f; int cnt = 0;
+        for (int i = 0; i < 600; ++i) {
+            const float x = std::sin(twoPi * 50.0f * static_cast<float>(i) / fs);
+            const float y = nt.process(x);
+            if (i >= 400) { inRms += x * x; outRms += y * y; ++cnt; }
+        }
+        inRms = std::sqrt(inRms / cnt); outRms = std::sqrt(outRms / cnt);
+        CHECK(outRms < 0.2f * inRms);                          // ressonância suprimida (>5× de atenuação)
+
+        // estimador de velocidade: rampa de posição (v = 2 rad/s) → estimativa converge p/ 2
+        VelocityEstimator ve; ve.lpf = makeLowPass(30.0f, fs, 0.707f);
+        const float v = 2.0f, dt = 1.0f / fs;
+        float est = 0.0f;
+        for (int i = 1; i <= 600; ++i) est = ve.update(v * dt * static_cast<float>(i), dt);
+        CHECK(approx(est, 2.0f, 0.02f));                       // segue a velocidade real, suave
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);

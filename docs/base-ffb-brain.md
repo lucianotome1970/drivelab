@@ -66,6 +66,8 @@ O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `compute
 
 **Cancelamento de cogging (rumo ao topo)** — em `cogging.h`: o cogging é ripple de torque **dependente da posição** (ímãs × ranhuras) — a maior causa de "granulado" em força pequena. `CoggingMap<N>` guarda a compensação por posição ([0,2π), N bins, interpolação + wrap) e `compensation(pos)` dá o feed-forward a **somar** ao torque. `CoggingCalibrator<N>` constrói o mapa girando o motor devagar: média por bin → remove o offset DC (carga/atrito, não é cogging) → inverte o sinal. Mensurável no host: o teste reconstrói um ripple sintético de ±0,2 Nm e o **cancela para <0,02 (~10× mais liso)**. Só a coleta das amostras precisa de bancada; a matemática (tabela, interpolação, calibração) está pronta e testada. No firmware: `torque += cog.compensation(encoderPos)` a cada tick; a tabela mora na flash, calibrada por-motor.
 
+**Filtros DSP (rumo ao topo)** — em `filters.h`: um `Biquad` genérico (2ª ordem, Direct Form II transposto) com coeficientes RBJ para **low-pass** (suavizar força/velocidade) e **notch** (matar uma **ressonância mecânica** específica — o anti-oscilação da correia/eixo). Sobre ele, `VelocityEstimator` (diferença finita + low-pass) entrega a **velocidade limpa** de que dependem a qualidade do damper/inertia/friction. Mensurável no host: o teste confirma ganho DC = 1, esmagamento em Nyquist, rejeição >5× no notch e a estimativa de velocidade convergindo para a real. É a caixa de ferramentas do "FFB tuning" (os filtros ajustáveis dos menus top-de-linha).
+
 ### Log de diagnóstico + loop de feedback (design, para quando houver hardware)
 
 A ideia (do usuário): **firmware+app geram um log; com o log + o que o usuário sentiu, refinamos as sensações.** O caminho:
