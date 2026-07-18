@@ -12,6 +12,8 @@
 // mock das interfaces de HAL — o mesmo que o firmware usará com SimpleFOC/ADC reais.
 
 #include "ffb_controller.h"
+#include "pi_controller.h"
+#include "ffb_power.h"
 
 #include <cstdio>
 
@@ -37,6 +39,16 @@ struct MockMotor : IMotor {
     float lastTorque = 0; int setCalls = 0; int disableCalls = 0;
     void setTorque(float nm) override { lastTorque = nm; ++setCalls; }
     void disable() override { ++disableCalls; }
+};
+struct MockPower : IPowerSense {
+    float bus = 24, mfet = 25, mot = 25;
+    float busVoltage() override { return bus; }
+    float mosfetTempC() override { return mfet; }
+    float motorTempC() override { return mot; }
+};
+struct MockBrake : IBrakeResistor {
+    float lastDuty = -1;
+    void setDuty(float d) override { lastDuty = d; }
 };
 
 int main() {
@@ -151,6 +163,49 @@ int main() {
         CHECK(approx(ctrl.step(255, enc, sense, motor), 0.5f));  // alvo 2.5, mas +0.5/passo
         CHECK(approx(ctrl.step(255, enc, sense, motor), 1.0f));
         CHECK(approx(ctrl.step(255, enc, sense, motor), 1.5f));
+    }
+
+    // 9) M2 — PI (malha fechada): termo P, acúmulo do I, anti-windup, reset
+    {
+        PiController pi; pi.kp = 2.0f; pi.ki = 0.0f; pi.outMin = -100; pi.outMax = 100;
+        CHECK(approx(pi.update(10, 3, 1.0f), 14.0f));      // só P: 2*(10-3)
+
+        PiController i; i.kp = 0.0f; i.ki = 1.0f; i.outMin = -5; i.outMax = 5;
+        CHECK(approx(i.update(10, 0, 1.0f), 5.0f));        // I acumula 10 → clamp anti-windup a 5
+        CHECK(approx(i.update(10, 0, 1.0f), 5.0f));        // segue saturado (windup contido)
+        CHECK(approx(i.integral, 5.0f));                   // integrador clampado, não estoura
+        i.reset();
+        CHECK(approx(i.integral, 0.0f) && approx(i.update(0, 0, 1.0f), 0.0f));
+    }
+
+    // 10) M2 — brake resistor: histerese + duty proporcional
+    {
+        BrakeController b; b.cfg.onVoltage = 26; b.cfg.fullVoltage = 30; b.cfg.offVoltage = 25;
+        CHECK(approx(b.update(24), 0.0f) && !b.isOn());    // abaixo → desligado
+        CHECK(approx(b.update(28), 0.5f) && b.isOn());     // liga; (28-26)/(30-26)=0.5
+        CHECK(approx(b.update(32), 1.0f));                 // acima de full → clamp 1
+        CHECK(approx(b.update(25.5f), 0.0f) && b.isOn());  // histerese: >off, segue ligado, duty 0
+        CHECK(approx(b.update(24), 0.0f) && !b.isOn());    // <off → desliga
+    }
+
+    // 11) M2 — PowerGuard: dump de regeneração + falha latched por sobretensão/sobretemperatura
+    {
+        PowerGuard g; g.overVoltageV = 30; g.overTempC = 80;
+        g.brake.cfg.onVoltage = 26; g.brake.cfg.fullVoltage = 30; g.brake.cfg.offVoltage = 25;
+        MockPower pw; MockBrake br;
+
+        pw.bus = 28;                                       // regen eleva a tensão → dissipa
+        CHECK(approx(g.step(pw, br), 0.5f));
+        CHECK(approx(br.lastDuty, 0.5f) && !g.faulted);
+
+        pw.bus = 33;                                       // sobretensão → FALHA
+        g.step(pw, br);
+        CHECK(g.faulted);
+
+        PowerGuard g2; g2.overTempC = 80;                  // sobretemperatura também falha
+        MockPower hot; hot.bus = 20; hot.mfet = 90; MockBrake br2;
+        g2.step(hot, br2);
+        CHECK(g2.faulted);
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);

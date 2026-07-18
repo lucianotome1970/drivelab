@@ -33,4 +33,19 @@ struct IMotor {
     virtual void disable() = 0;
 };
 
+/// Tensão do barramento + temperaturas (no firmware: ADC + NTC). Espelha a telemetria do app
+/// (bus voltage + FET/motor). Usado no M2 pela proteção e pelo brake resistor.
+struct IPowerSense {
+    virtual ~IPowerSense() = default;
+    virtual float busVoltage() = 0;   ///< V
+    virtual float mosfetTempC() = 0;
+    virtual float motorTempC() = 0;
+};
+
+/// Brake resistor — dissipa a energia de regeneração (no firmware: PWM num MOSFET dedicado).
+struct IBrakeResistor {
+    virtual ~IBrakeResistor() = default;
+    virtual void setDuty(float duty01) = 0;   ///< 0..1
+};
+
 }  // namespace drivelab

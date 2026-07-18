@@ -31,8 +31,10 @@ O `FfbController` só conhece as **interfaces** de `hal.h` — nunca o hardware.
 ### As interfaces (o "seam")
 
 - `IEncoder` — `positionRad()`, `velocityRadPerSec()` (firmware: encoder via SimpleFOC).
-- `ICurrentSense` — `readPhaseCurrents(ia, ib, ic)` (firmware: shunts + ADC) — usado só na proteção.
+- `ICurrentSense` — `readPhaseCurrents(ia, ib, ic)` (firmware: shunts + ADC) — usado na proteção.
 - `IMotor` — `setTorque(nm)`, `disable()` (firmware: BLDCMotor em modo torque).
+- `IPowerSense` — `busVoltage()`, `mosfetTempC()`, `motorTempC()` (firmware: ADC + NTC) — M2.
+- `IBrakeResistor` — `setDuty(0..1)` (firmware: PWM num MOSFET) — M2.
 
 ### A matemática (pura, testável)
 
@@ -48,6 +50,11 @@ Básico:
 - `computeTorque(...)` — o **pipeline completo**: direção → curva → ganho→Nm → efeitos do device → soft-stop → **teto duro por último**. `ForceConfig` inclui `direction` (`ForceDirection`).
 
 O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `computeTorque` → `slewLimit` → comanda o motor): se `!enabled` ou desarmado → motor desligado; sobrecorrente → **desarme latched** (`tripped`, só volta com `rearm()`); slew-rate opcional entre passos.
+
+**Proteção de potência (M2)** — camada separada, em `pi_controller.h` + `ffb_power.h`:
+- `PiController` — PI genérico com **anti-windup** (integrador clampado ao range de saída); ganhos = `CurrentP`/`CurrentI`. *(A malha FOC de corrente em si roda no SimpleFOC; este é o componente/tuning testável.)*
+- `BrakeController` — **brake resistor** com **histerese** (liga acima de `onVoltage`, só desliga abaixo de `offVoltage`) e **duty proporcional** até `fullVoltage`. Dissipa a regeneração antes de estourar a tensão.
+- `overVoltage()` / `overTemp()` + `PowerGuard.step()` — comanda o brake e sinaliza **falha latched** por sobretensão/sobretemperatura (o laço então desliga a força). Sistema 24V → nunca deixar a tensão disparar.
 
 ### Rodar os testes (sem placa)
 
