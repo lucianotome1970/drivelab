@@ -429,6 +429,43 @@ int main() {
         CHECK(approx(tc, 100.0f / 255.0f * 2.5f + 0.1f, 0.02f));   // força + cogging
     }
 
+    // 17) ESTABILIDADE — o "tremor" do FFB (mãos fora). Malha fechada volante+jogo COM ATRASO:
+    //     o jogo centra o volante lendo a posição atrasada (latência USB) → sem amortecimento
+    //     (mãos fora), a força atrasada vira "amortecimento negativo" e a base OSCILA. O fix é o
+    //     damper do device (nossa EffectConfig, da velocidade LOCAL, sem atraso). Provado no host.
+    {
+        ForceConfig fc; fc.totalStrengthPct = 100; fc.maxTorqueNm = 2.5f; fc.torqueLimitNm = 2.5f;
+        EndstopConfig ec; ec.rangeRad = 100.0f;                 // sem soft-stop na faixa
+        const float dt = 0.001f, J = 0.02f, kGame = 1500.0f;    // 1 kHz, inércia, ganho de centragem
+        const int L = 12, N = 4000;                             // 12 ms de latência do jogo
+
+        auto peakLastQuarter = [&](float damperD) {
+            EffectConfig ef; ef.damperNmPerRadPerSec = damperD; // 0 = mãos fora sem damper; >0 = damper do device
+            float theta = 0.1f, omega = 0.0f;                   // perturbação inicial
+            float hist[64] = { 0.0f }; int hi = 0;
+            float peak = 0.0f;
+            for (int n = 0; n < N; ++n) {
+                const float thetaDelayed = hist[(hi - L + 64) % 64];       // o jogo vê a posição atrasada
+                const float force255 = clampf(-kGame * thetaDelayed, -255.0f, 255.0f);
+                const float torque = computeTorque(force255, theta, omega, fc, ef, ec);
+                omega += (torque / J) * dt;                     // dinâmica do volante (sem atrito mecânico = mãos fora)
+                theta += omega * dt;
+                hist[hi] = theta; hi = (hi + 1) % 64;
+                if (n > N * 3 / 4) { const float a = theta < 0 ? -theta : theta; if (a > peak) peak = a; }
+            }
+            return peak;
+        };
+
+        // O atraso do jogo (τ = L·dt) injeta ~Ks·τ de amortecimento NEGATIVO; o damper do device
+        // precisa passar disso p/ estabilizar (aqui ~0,18 → usamos 0,3 com margem).
+        const float noDamp   = peakLastQuarter(0.0f);
+        const float withDamp = peakLastQuarter(0.30f);
+        std::printf("  [estabilidade] sem damper pico=%.4f rad   com damper pico=%.4f rad\n", noDamp, withDamp);
+        CHECK(noDamp > 0.5f);                 // sem amortecimento a oscilação CRESCE (o tremor de mãos fora)
+        CHECK(withDamp < 0.1f * noDamp);      // o damper do device MATA a oscilação (>10×)
+        CHECK(withDamp < 0.05f);              // e ela DECAI abaixo da perturbação inicial → estável
+    }
+
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

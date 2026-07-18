@@ -86,6 +86,14 @@ O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `compute
 
 Testado **ponta a ponta** no host: uma sequência partida→alinhamento→rodando→força cheia→**falha desliga** roda inteira sobre mocks. É a prova de que os blocos funcionam **juntos**, não só isolados. No firmware, troca-se só o HAL — o pipeline é o mesmo, já validado.
 
+### Estabilidade — o "tremor" do FFB (mãos fora)
+
+Todo direct-drive **oscila** se largado sem contramedidas — não é bug de marca, é física. O volante + o jogo formam uma malha fechada: o jogo lê a posição, centra o carro (força ∝ −posição) e manda pra base; a base aplica torque; o volante move; o jogo relê. Com **latência** (USB + taxa de update) e **sem amortecimento** (mãos fora), a força chega **atrasada** → vira **amortecimento negativo** → a oscilação cresce (o "tremor"). Suas mãos normalmente amortecem e estabilizam; mãos fora, some o amortecimento.
+
+**O fix** (o que as "novas atualizações de firmware" fazem): **amortecimento ativo** — um torque proporcional à **velocidade local** (`−D·ω`), que não tem atraso porque é medido na própria base. É exatamente o nosso `damperTorque` (`DamperStrength`/`StaticDamping`) — mais o `notch` (mata a frequência de ressonância) e o `frictionTorque` (piso de atrito estabiliza).
+
+**Provado no host** (teste 17): simulamos a malha volante+jogo com 12 ms de atraso. Sem damper, a oscilação **cresce de 0,1 → 4,7 rad**. Com o damper do device, **decai a ~0** (estável). Dá até pra calcular o limiar: o atraso injeta ~`Ks·τ` de amortecimento negativo, então o damper precisa passar disso. Ou seja: **sim, nosso DD teria o tremor sem contramedidas — mas nós já temos o fix, e conseguimos dimensioná-lo e prová-lo antes de qualquer placa.**
+
 ### Log de diagnóstico + loop de feedback (design, para quando houver hardware)
 
 A ideia (do usuário): **firmware+app geram um log; com o log + o que o usuário sentiu, refinamos as sensações.** O caminho:
