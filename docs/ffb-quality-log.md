@@ -15,7 +15,7 @@
 | 1 | **Força → torque** (`computeTorque`) | base de tudo: força do jogo → Nm com força total, direção e **teto duro** | escala linear + clamp corretos | ✅ lógica pronta |
 | 2 | **Curva de resposta** (linearidade) | molda o feel (realça/suaviza forças leves) | `|x|^γ` correto (γ>1 suaviza, γ<1 realça) | ✅ |
 | 3 | **Efeitos de condição do device** (mola/damper/atrito) | "feel" base sobre o FFB do jogo; **e a cura do tremor** (ver descobertas) | mola centra, damper opõe velocidade, atrito opõe movimento | ✅ |
-| 4 | **Soft-stop** (fim de curso) | protege a mecânica e dá o "batente" | 0 na faixa, mola crescente fora | ✅ |
+| 4 | **Soft-stop + amortecimento de fim de curso** | protege a mecânica e dá o "batente" — e o amortecimento evita o **quique** ao bater (relato: a MOZA tem end-of-travel damping) | mola crescente fora da faixa; **velocidade de saída ao bater: 2,71 → 0,34 rad/s (~8× menos quique)** | ✅ |
 | 5 | **Reconstrução de força** | jogo manda força discreta (60–360 Hz); laço roda a 10–40 kHz → segurar o valor gera "degraus" (granulado) | **maior salto por tick: ~100 → 12,5** (janela de 8) | ✅ |
 | 6 | **Cancelamento de cogging** | ripple do motor dependente da posição = a maior causa de "granulado" em força leve | **ripple ±0,2 Nm → <0,02 (~10× mais liso)** | ✅ math; calibração precisa de bancada |
 | 7 | **Filtros DSP** (Biquad low-pass / **notch**) | suavizar + **matar ressonância mecânica** (anti-oscilação de correia/eixo) | DC=1, Nyquist <0,1; notch **>5×** de atenuação em f0 | ✅ |

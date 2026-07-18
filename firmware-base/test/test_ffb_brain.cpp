@@ -466,6 +466,29 @@ int main() {
         CHECK(withDamp < 0.05f);              // e ela DECAI abaixo da perturbação inicial → estável
     }
 
+    // 18) Amortecimento de fim de curso: sem ele o volante QUICA no batente (mola elástica);
+    //     com ele, a energia é absorvida → encosta e assenta (o "end-of-travel damping").
+    {
+        EndstopConfig ec; ec.rangeRad = 1.0f; ec.stiffnessNm = 30.0f;
+        const float J = 0.02f, dt = 0.0005f;
+        auto finalSpeed = [&](float damping) {
+            ec.dampingNmPerRadPerSec = damping;
+            float pos = 0.9f, omega = 5.0f;                 // entrando no batente a 5 rad/s
+            for (int n = 0; n < 4000; ++n) {
+                const float t = endstopTorque(pos, ec) + endstopDamping(pos, omega, ec);
+                omega += (t / J) * dt;
+                pos += omega * dt;
+            }
+            return omega < 0 ? -omega : omega;
+        };
+        const float bounce = finalSpeed(0.0f);              // sem amortecimento
+        const float settle = finalSpeed(1.0f);              // com amortecimento
+        std::printf("  [fim de curso] sem damping saida=%.3f rad/s   com damping saida=%.3f rad/s\n", bounce, settle);
+        CHECK(bounce > 2.0f);                 // quica de volta com velocidade significativa (elástico)
+        CHECK(settle < 0.5f);                 // energia absorvida → assenta
+        CHECK(settle < 0.2f * bounce);        // muito menos "quique" que sem amortecimento (~8× aqui)
+    }
+
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

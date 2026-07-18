@@ -33,10 +33,12 @@ struct EffectConfig {
     float frictionNm           = 0.0f;  ///< atrito estático: −sinal(velocidade)·Nm (StaticDamping)
 };
 
-/// Fim de curso por software (soft-stop): mola que empurra de volta além da faixa.
+/// Fim de curso por software (soft-stop): mola que empurra de volta além da faixa + amortecimento
+/// que ABSORVE o impacto (senão o volante quica no batente). É o "end-of-travel damping" das bases top.
 struct EndstopConfig {
-    float rangeRad    = 4.71238898f;  ///< meia-faixa (ex.: ±270° = 4,712 rad)
-    float stiffnessNm = 3.0f;         ///< Nm por rad de invasão além da faixa
+    float rangeRad             = 4.71238898f; ///< meia-faixa (ex.: ±270° = 4,712 rad)
+    float stiffnessNm          = 3.0f;        ///< Nm por rad de invasão além da faixa (a "parede")
+    float dampingNmPerRadPerSec = 0.0f;       ///< amortecimento no batente: absorve a energia → não quica
 };
 
 inline float clampf(float v, float lo, float hi) {
@@ -50,10 +52,18 @@ inline float forceToTorque(int32_t hostForce, const ForceConfig& c) {
     return clampf(nm, -c.torqueLimitNm, c.torqueLimitNm);
 }
 
-/// Soft-stop: dentro da faixa = 0; além dela, torque de mola proporcional à invasão (sinal contrário).
+/// Soft-stop (mola): dentro da faixa = 0; além dela, torque proporcional à invasão (sinal contrário).
 inline float endstopTorque(float positionRad, const EndstopConfig& e) {
     if (positionRad >  e.rangeRad) return -(positionRad - e.rangeRad) * e.stiffnessNm;
     if (positionRad < -e.rangeRad) return -(positionRad + e.rangeRad) * e.stiffnessNm;
+    return 0.0f;
+}
+
+/// Amortecimento de fim de curso: SÓ na região do batente, opõe a velocidade (−D·ω). Absorve a
+/// energia do impacto → o volante encosta e assenta em vez de quicar. 0 dentro da faixa.
+inline float endstopDamping(float positionRad, float velRadPerSec, const EndstopConfig& e) {
+    if (positionRad > e.rangeRad || positionRad < -e.rangeRad)
+        return -e.dampingNmPerRadPerSec * velRadPerSec;
     return 0.0f;
 }
 
@@ -110,7 +120,8 @@ inline float computeTorque(float hostForce, float positionRad, float velRadPerSe
     t += springTorque(positionRad, ef.springNmPerRad);                  // efeitos always-on (encoder)
     t += damperTorque(velRadPerSec, ef.damperNmPerRadPerSec);
     t += frictionTorque(velRadPerSec, ef.frictionNm);
-    t += endstopTorque(positionRad, ec);                                // fim de curso
+    t += endstopTorque(positionRad, ec);                                // fim de curso (mola)
+    t += endstopDamping(positionRad, velRadPerSec, ec);                 // + amortecimento (não quica)
     return clampf(t, -fc.torqueLimitNm, fc.torqueLimitNm);              // teto duro por último
 }
 
