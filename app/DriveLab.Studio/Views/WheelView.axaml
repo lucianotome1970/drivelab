@@ -57,8 +57,8 @@
                         <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
                     </StackPanel>
 
-                    <!-- Duas colunas: volante à esquerda; à direita, cores (topo) + pás (abaixo) -->
-                    <Grid ColumnDefinitions="Auto,28,Auto" HorizontalAlignment="Left">
+                    <!-- Duas colunas: volante à esquerda; à direita (preenche o resto), cores (topo) + pás (abaixo), centralizado -->
+                    <Grid ColumnDefinitions="Auto,40,*">
 
                         <!-- Coluna 0: desenho do volante -->
                         <StackPanel Grid.Column="0" Spacing="12" Width="480" VerticalAlignment="Top">
@@ -133,8 +133,8 @@
                         </StackPanel>
 
                         <!-- Coluna 2: cores dos botões + brilho -->
-                        <!-- Coluna direita: cores + brilho (topo) e pás (abaixo) -->
-                        <StackPanel Grid.Column="2" Spacing="18" Width="360" VerticalAlignment="Top">
+                        <!-- Coluna direita: cores + brilho (topo) e pás (abaixo), bloco centralizado na coluna. -->
+                        <StackPanel Grid.Column="2" Spacing="18" Width="420" HorizontalAlignment="Center" VerticalAlignment="Top">
                             <!-- Cores dos botões + brilho -->
                             <StackPanel Spacing="10">
                             <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="h2" />
@@ -145,7 +145,7 @@
                                        IsVisible="{Binding !IsConnected}" TextWrapping="Wrap" />
                             <ItemsControl ItemsSource="{Binding Palette}" IsEnabled="{Binding IsConnected}">
                                 <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="x:String">
