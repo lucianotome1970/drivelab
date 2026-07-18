@@ -4,6 +4,8 @@
 >
 > 🇬🇧 *Design to develop and test the base FFB logic **without the board**. Whatever needs silicon (USB, real-time, motor) sits behind interfaces; the rest runs and is tested on the PC.*
 
+> 📈 Para o registro curado das melhorias/descobertas **com os números medidos** (reconstrução, cogging, o "tremor" e seu fix…), veja **[ffb-quality-log.md](ffb-quality-log.md)**. Este doc é o "como implementa"; aquele é o "o que provamos".
+
 ## 🇧🇷 Português
 
 ### Motivação

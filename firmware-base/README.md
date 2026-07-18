@@ -81,7 +81,7 @@ If it gets fully stuck, the fallbacks are already mapped (**B1**: TinyUSB + our 
 ### Next milestones (summary)
 M1 (open-loop motor) → M2 (encoder + closed loop + brake resistor) → M3 (A0 channel, **DriveLab Studio connects via HidTransport**) → M4 (settings) → M5 (FFB force → SimpleFOC) → M6 (game effects) → M7 (validation on a sim). Details in the design.
 
-**Testing the logic without the board:** the FFB "brain" (force→torque, soft-stop, safety) lives in a **portable module** (`lib/brain/`) behind a hardware seam (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`). It compiles into the firmware (HAL = SimpleFOC/ADC) **and** into a PC host test with mocks — run `test/run.sh` (no board or emulator needed). Only USB enumeration and real-time timing still need silicon (a cheap Black Pill F411 de-risks USB before the ODESC). See **[docs/base-ffb-brain.md](../docs/base-ffb-brain.md)**.
+**Testing the logic without the board:** the FFB "brain" (force→torque, soft-stop, safety) lives in a **portable module** (`lib/brain/`) behind a hardware seam (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`). It compiles into the firmware (HAL = SimpleFOC/ADC) **and** into a PC host test with mocks — run `test/run.sh` (no board or emulator needed). Only USB enumeration and real-time timing still need silicon (a cheap Black Pill F411 de-risks USB before the ODESC). See **[docs/base-ffb-brain.md](../docs/base-ffb-brain.md)** (how it's built) and **[docs/ffb-quality-log.md](../docs/ffb-quality-log.md)** (levers + discoveries with measured numbers — reconstruction, cogging, the FFB "shake" and its fix).
 
 ### Wheel connection (USB hub + 5 V rail)
 
@@ -160,7 +160,7 @@ Se travar de vez, os fallbacks já estão mapeados (**B1**: TinyUSB + PID própr
 ### Marcos seguintes (resumo)
 M1 (motor malha aberta) → M2 (encoder + malha fechada + brake resistor) → M3 (canal A0, **DriveLab Studio conecta via HidTransport**) → M4 (settings) → M5 (força FFB → SimpleFOC) → M6 (efeitos de jogo) → M7 (validação num sim). Detalhes no design.
 
-**Testar a lógica sem a placa:** o "cérebro" FFB (força→torque, soft-stop, segurança) mora num **módulo portável** (`lib/brain/`) atrás de uma costura de hardware (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`). Compila no firmware (HAL = SimpleFOC/ADC) **e** num teste de host no PC com mocks — rode `test/run.sh` (sem placa nem emulador). Só a enumeração USB e o real-time ainda precisam de silício (uma Black Pill F411 barata de-risca o USB antes da ODESC). Ver **[docs/base-ffb-brain.md](../docs/base-ffb-brain.md)**.
+**Testar a lógica sem a placa:** o "cérebro" FFB (força→torque, soft-stop, segurança) mora num **módulo portável** (`lib/brain/`) atrás de uma costura de hardware (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`). Compila no firmware (HAL = SimpleFOC/ADC) **e** num teste de host no PC com mocks — rode `test/run.sh` (sem placa nem emulador). Só a enumeração USB e o real-time ainda precisam de silício (uma Black Pill F411 barata de-risca o USB antes da ODESC). Ver **[docs/base-ffb-brain.md](../docs/base-ffb-brain.md)** (como é feito) e **[docs/ffb-quality-log.md](../docs/ffb-quality-log.md)** (alavancas + descobertas com números medidos — reconstrução, cogging, o "tremor" do FFB e seu fix).
 
 ### Conexão do volante (hub USB + trilho de 5 V)
 
