@@ -77,4 +77,20 @@ private:
     float _prev = 0.0f;
 };
 
+/// Interpolação de encoder: o encoder dá posição QUANTIZADA (degraus de 2π/CPR). Entre um degrau e
+/// o próximo, extrapola pela velocidade → posição mais fina/suave (melhora damper/inertia, sobretudo
+/// em encoder de baixa resolução). Ao chegar um degrau novo, ancora nele e zera o acumulador.
+class EncoderInterpolator {
+public:
+    float update(float rawQuantized, float velRadPerSec, float dt) {
+        if (rawQuantized != _lastRaw) { _base = rawQuantized; _acc = 0.0f; _lastRaw = rawQuantized; }
+        else _acc += dt;
+        return _base + velRadPerSec * _acc;   // extrapola dentro do degrau
+    }
+    void reset() { _lastRaw = 0.0f; _base = 0.0f; _acc = 0.0f; }
+
+private:
+    float _lastRaw = 0.0f, _base = 0.0f, _acc = 0.0f;
+};
+
 }  // namespace drivelab

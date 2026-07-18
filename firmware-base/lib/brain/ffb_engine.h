@@ -18,6 +18,7 @@
 #include "force_reconstruct.h"
 #include "cogging.h"
 #include "filters.h"
+#include "oscillation.h"
 #include "hal.h"
 
 namespace drivelab {
@@ -35,6 +36,8 @@ public:
     PowerGuard         guard;              ///< brake resistor + falha de potência
     Biquad             outputFilter;       ///< notch/low-pass na saída (default passa-tudo)
     const CoggingTable* cogging = nullptr; ///< feed-forward de cogging (opcional)
+    OscillationDetector oscGuard;          ///< anti-tremor ativo (desinfla a força se detectar limit-cycle)
+    bool  oscGuardEnabled  = false;        ///< liga o detector de oscilação
     float currentLimitA    = 8.0f;
     float maxSlewNmPerStep  = 0.0f;
     bool  enableRequested   = false;       ///< SetForceEnabled (host)
@@ -77,6 +80,7 @@ public:
         float t = computeTorque(hostF, pos, vel, force, effect, endstop); // força+efeitos+soft-stop
         if (cogging) t += cogging->compensation(pos);                   // feed-forward de cogging
         t = outputFilter.process(t);                                    // notch/low-pass opcional
+        if (oscGuardEnabled) t *= oscGuard.update(vel, dt);             // anti-tremor ativo (desinfla se oscilar)
         t *= startup.rampGain();                                        // rampa de subida (soft start)
         t = slewLimit(t, _prev, maxSlewNmPerStep);                      // limite de variação
         t = clampf(t, -force.torqueLimitNm, force.torqueLimitNm);       // TETO DURO sempre por último

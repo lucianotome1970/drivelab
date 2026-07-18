@@ -18,6 +18,7 @@
 #include "force_reconstruct.h"
 #include "cogging.h"
 #include "filters.h"
+#include "oscillation.h"
 #include "ffb_engine.h"
 
 #include <cstdio>
@@ -487,6 +488,50 @@ int main() {
         CHECK(bounce > 2.0f);                 // quica de volta com velocidade significativa (elástico)
         CHECK(settle < 0.5f);                 // energia absorvida → assenta
         CHECK(settle < 0.2f * bounce);        // muito menos "quique" que sem amortecimento (~8× aqui)
+    }
+
+    // 19) Detector de oscilação: sinal RÁPIDO e amplo → desinfla o ganho; calmo/ruído → mantém 1
+    {
+        const float twoPi = 6.28318530718f, dt = 0.001f;
+        // oscilação rápida (20 Hz, amplitude 2) → o ganho cai para o piso
+        OscillationDetector d;
+        for (int i = 0; i < 1000; ++i) d.update(2.0f * std::sin(twoPi * 20.0f * i * dt), dt);
+        CHECK(d.gain < 0.3f);                 // detectou → reduziu a força
+
+        // sinal lento (1 Hz) NÃO é oscilação → recupera para 1
+        OscillationDetector d2;
+        for (int i = 0; i < 3000; ++i) d2.update(2.0f * std::sin(twoPi * 1.0f * i * dt), dt);
+        CHECK(approx(d2.gain, 1.0f, 0.01f));  // lento não dispara
+
+        // ruído pequeno (abaixo da amplitude mínima) → ignora, mantém 1
+        OscillationDetector d3;
+        for (int i = 0; i < 1000; ++i) d3.update((i & 1) ? 0.3f : -0.3f, dt);   // rápido mas fraco
+        CHECK(approx(d3.gain, 1.0f, 0.01f));  // amplitude < minAmplitude → não conta
+    }
+
+    // 20) Interpolação de encoder: entre degraus quantizados, extrapola pela velocidade → mais liso
+    {
+        EncoderInterpolator ei;
+        const float step = 0.01f, v = 1.0f, dt = 0.002f;   // v·dt = 0.002 < step: 5 ticks por degrau
+        float lastOut = 0.0f, worstRaw = 0.0f, worstInterp = 0.0f;
+        for (int n = 0; n < 50; ++n) {
+            const float raw = step * (int)(v * n * dt / step);   // posição quantizada (degraus)
+            const float out = ei.update(raw, v, dt);
+            if (n > 0) {
+                float dRaw = raw - (step * (int)(v * (n - 1) * dt / step)); if (dRaw < 0) dRaw = -dRaw;
+                float dOut = out - lastOut; if (dOut < 0) dOut = -dOut;
+                if (dRaw > worstRaw) worstRaw = dRaw;
+                if (dOut > worstInterp) worstInterp = dOut;
+            }
+            lastOut = out;
+        }
+        CHECK(worstRaw >= step - 1e-6f);      // o cru dá saltos de um degrau inteiro
+        CHECK(worstInterp < worstRaw);        // o interpolado é mais suave (saltos menores)
+    }
+
+    // 21) FfbEngine com anti-tremor ativo desligado por padrão (não muda o comportamento base)
+    {
+        FfbEngine e; CHECK(!e.oscGuardEnabled);
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);
