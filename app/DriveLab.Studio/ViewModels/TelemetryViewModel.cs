@@ -23,9 +23,13 @@ public sealed class TelemetryViewModel : ViewModelBase
     public ObservableCollection<ObservableValue> TorqueSamples { get; } = new();
     public ISeries[] Series { get; }
 
+    /// <summary>Gravador de diagnóstico (CSV + marcações) — o lado-app do loop de feedback do FFB.</summary>
+    public DiagnosticRecorderViewModel Recorder { get; }
+
     public TelemetryViewModel(BaseSession session)
     {
         _session = session;
+        Recorder = new DiagnosticRecorderViewModel(session);
         Series = new ISeries[]
         {
             new LineSeries<ObservableValue> { Name = Localization.LocalizationManager.Get("Telemetry_Position"), Values = PositionSamples, GeometrySize = 0 },
@@ -50,6 +54,7 @@ public sealed class TelemetryViewModel : ViewModelBase
     public override void Dispose()
     {
         _session.StateReceived -= OnState;
+        Recorder.Dispose();
         base.Dispose();
     }
 }

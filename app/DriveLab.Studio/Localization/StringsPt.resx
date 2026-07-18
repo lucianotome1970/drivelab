@@ -36,6 +36,10 @@
   <data name="Profile_SaveAs" xml:space="preserve"><value>Salvar como</value></data>
   <data name="Profile_Rename" xml:space="preserve"><value>Renomear</value></data>
   <data name="Profile_Delete" xml:space="preserve"><value>Excluir</value></data>
+  <data name="Diag_Record" xml:space="preserve"><value>Gravar diagnóstico</value></data>
+  <data name="Diag_Stop" xml:space="preserve"><value>Parar</value></data>
+  <data name="Diag_Mark" xml:space="preserve"><value>Marcar</value></data>
+  <data name="Diag_Note" xml:space="preserve"><value>anotação (ex.: tremeu aqui)</value></data>
   <data name="Wheel_Paddles" xml:space="preserve"><value>Pás</value></data>
   <data name="Wheel_PaddleCount" xml:space="preserve"><value>Número de pás</value></data>
   <data name="Wheel_ShiftDown" xml:space="preserve"><value>Marcha ↓</value></data>
