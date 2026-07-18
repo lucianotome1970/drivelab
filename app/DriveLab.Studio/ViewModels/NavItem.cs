@@ -7,4 +7,7 @@
 
 namespace DriveLab.Studio.ViewModels;
 
-public sealed record NavItem(string Label, string Icon, ViewModelBase Page);
+// Label   = rótulo curto da sidebar (tooltip). Ex.: "Volante".
+// Title   = título completo do módulo, exibido no topo do app ("DriveLab Studio — <Title>").
+//           Vazio para a Home (o topo mostra só "DriveLab Studio").
+public sealed record NavItem(string Label, string Icon, ViewModelBase Page, string Title = "");

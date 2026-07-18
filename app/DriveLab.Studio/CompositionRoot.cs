@@ -153,11 +153,13 @@ public static class CompositionRoot
 
         var pages = new List<NavItem>
         {
+            // Ordem da sidebar: Home · Base · Volante · Pedais · Freio de mão
+            // (o volante vem logo após a base). Os ícones em MainWindow.axaml seguem estes índices.
             new(L.Get("Nav_Home"), "\U0001F39B", home),
-            new(L.Get("Nav_WheelBase"), "base", basePage),
-            new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals),
-            new(L.Get("Nav_Handbrake"), "handbrake", handbrake),
-            new(L.Get("Nav_Wheel"), "wheel", wheel),
+            new(L.Get("Nav_WheelBase"), "base", basePage, L.Get("Page_WheelBase")),
+            new(L.Get("Nav_Wheel"), "wheel", wheel, L.Get("Wheel_Config")),
+            new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals, L.Get("Pedal_Title")),
+            new(L.Get("Nav_Handbrake"), "handbrake", handbrake, L.Get("Handbrake_Title")),
         };
 
         // Teste (controle direto de força) não é uma aba: abre num modal à parte,

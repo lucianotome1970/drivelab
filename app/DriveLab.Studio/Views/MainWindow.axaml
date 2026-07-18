@@ -31,20 +31,20 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[1]}">
                     <Image Source="avares://DriveLab.Studio/Assets/base_ico.png" Width="26" Height="26" />
                 </Button>
-                <!-- Pedais: ícone próprio (pedais.png) -->
+                <!-- Volante: ícone próprio (wheel_ico.png) — logo após a base -->
                 <Button Classes="nav" ToolTip.Tip="{Binding Pages[2].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/wheel_ico.png" Width="26" Height="26" />
+                </Button>
+                <!-- Pedais: ícone próprio (pedais.png) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[3].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}">
                     <Image Source="avares://DriveLab.Studio/Assets/pedais.png" Width="26" Height="26" />
                 </Button>
                 <!-- Freio de mão: ícone próprio (handbrake_ico.png) -->
-                <Button Classes="nav" ToolTip.Tip="{Binding Pages[3].Label}"
-                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}">
-                    <Image Source="avares://DriveLab.Studio/Assets/handbrake_ico.png" Width="26" Height="26" />
-                </Button>
-                <!-- Volante: ícone próprio (wheel_ico.png) -->
                 <Button Classes="nav" ToolTip.Tip="{Binding Pages[4].Label}"
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[4]}">
-                    <Image Source="avares://DriveLab.Studio/Assets/wheel_ico.png" Width="26" Height="26" />
+                    <Image Source="avares://DriveLab.Studio/Assets/handbrake_ico.png" Width="26" Height="26" />
                 </Button>
 
                 <!-- Separador antes da ação de sair -->
@@ -74,7 +74,7 @@
             <Border Grid.Row="0" Padding="20,14" Background="{DynamicResource DlBackground}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,0,1">
                 <Grid ColumnDefinitions="*,Auto,Auto" DataContext="{Binding Connection}" x:DataType="vm:ConnectionViewModel">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <TextBlock Text="DriveLab Studio" Classes="h2" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding #Root.((vm:MainWindowViewModel)DataContext).HeaderTitle}" Classes="h2" VerticalAlignment="Center" />
                         <!-- Badge de modo simulador (só quando iniciado com /simulator) -->
                         <Border IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}"
                                 Background="#FF8124" CornerRadius="999" Padding="10,3" VerticalAlignment="Center">

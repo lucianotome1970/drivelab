@@ -26,6 +26,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public object CurrentPage => SelectedPage.Page;
     public string Title => "DriveLab Studio";
 
+    // Topo do app: "DriveLab Studio" na Home; "DriveLab Studio — <título do módulo>" nos módulos.
+    // O título deixa de ser repetido dentro de cada card.
+    public string HeaderTitle => string.IsNullOrEmpty(SelectedPage.Title)
+        ? "DriveLab Studio"
+        : $"DriveLab Studio — {SelectedPage.Title}";
+
     public MainWindowViewModel(BaseSession session, ConnectionViewModel connection, IReadOnlyList<NavItem> pages, TestViewModel test, bool simulatorMode = false, IReadOnlyList<IDisposable>? autoConnectors = null)
     {
         _session = session;
@@ -37,7 +43,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _selectedPage = pages[0];
     }
 
-    partial void OnSelectedPageChanged(NavItem value) => OnPropertyChanged(nameof(CurrentPage));
+    partial void OnSelectedPageChanged(NavItem value)
+    {
+        OnPropertyChanged(nameof(CurrentPage));
+        OnPropertyChanged(nameof(HeaderTitle));
+    }
 
     [RelayCommand]
     private void Navigate(NavItem item) => SelectedPage = item;

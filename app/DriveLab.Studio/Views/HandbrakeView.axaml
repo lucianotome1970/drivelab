@@ -17,11 +17,10 @@
     </UserControl.Resources>
 
     <Border Classes="card">
-        <Grid RowDefinitions="Auto,Auto,*">
-            <!-- Padrão de cabeçalho (todos os módulos): título · perfil-esq/ações-dir alinhados · conteúdo fora do scroll. -->
-            <TextBlock Grid.Row="0" Text="{loc:Translate Handbrake_Title}" Classes="h2" Margin="0,0,0,12" />
-            <!-- Perfil (esq) + ações (dir) — alinhados entre si, NÃO com o título. -->
-            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+        <Grid RowDefinitions="Auto,*">
+            <!-- Cabeçalho: o título do módulo vive no topo do app ("DriveLab Studio — Freio de mão").
+                 Aqui só perfil (esq) + ações (dir), alinhados entre si. -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                             IsEnabled="{Binding IsConnected}">
                     <TextBlock Text="{loc:Translate Profile_Label}" Classes="muted" VerticalAlignment="Center" />
@@ -51,7 +50,7 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="1">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <!-- Eixo único: uma coluna de config no mesmo estilo das colunas dos pedais -->
                 <Border Classes="card" HorizontalAlignment="Left" MaxWidth="520" Margin="6,6,6,6">
