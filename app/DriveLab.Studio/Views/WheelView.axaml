@@ -39,14 +39,12 @@
     </UserControl.Styles>
 
     <Border Classes="card">
-        <Grid>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                <StackPanel Spacing="16" Margin="6,2,6,6">
-                    <TextBlock Text="{loc:Translate Wheel_Config}" Classes="h2" />
-
-                    <!-- Perfis nomeados do módulo. Selecionar aplica; salvar como/renomear usam a caixa de nome.
-                         Habilitado só com o aro conectado (aplicar escreve no controlador). -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding IsConnected}">
+        <Grid RowDefinitions="Auto,Auto,*">
+            <!-- Padrão de cabeçalho: título · perfil-esq/ações-dir alinhados · conteúdo fora do scroll. -->
+            <TextBlock Grid.Row="0" Text="{loc:Translate Wheel_Config}" Classes="h2" Margin="0,0,0,12" />
+            <!-- Perfil (esq) + ações (dir) — alinhados entre si, não com o título. -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" IsEnabled="{Binding IsConnected}">
                         <TextBlock Text="{loc:Translate Profile_Label}" Classes="muted" VerticalAlignment="Center" />
                         <ComboBox MinWidth="170" ItemsSource="{Binding ProfileLibrary.Profiles}" SelectedItem="{Binding ProfileLibrary.SelectedName}"
                                   PlaceholderText="{loc:Translate Profile_Placeholder}" />
@@ -55,8 +53,27 @@
                         <Button Content="{loc:Translate Profile_SaveAs}" Command="{Binding ProfileLibrary.SaveAsCommand}" />
                         <Button Content="{loc:Translate Profile_Rename}" Command="{Binding ProfileLibrary.RenameCommand}" />
                         <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
-                    </StackPanel>
+                </StackPanel>
 
+                <!-- Ações à direita (Padrão/Salvar no controlador) + selo de status. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                    <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
+                    <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
+                    <Border Classes="statusBadge" IsVisible="{Binding IsConnected}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SourceLabel}" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="{loc:Translate Default}" Command="{Binding ResetDefaultsCommand}" />
+                    <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Conteúdo rolável (Row 2) -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <StackPanel Margin="6,0,6,6">
                     <!-- Duas colunas: volante à esquerda; à direita (preenche o resto), cores (topo) + pás (abaixo), centralizado -->
                     <Grid ColumnDefinitions="Auto,40,*">
 
@@ -242,24 +259,6 @@
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
-
-            <!-- Ações no topo à direita (mesmo padrão de pedais/freio de mão) -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="8" Margin="0,2,0,0">
-                <!-- Conectar/Desconectar só no simulador; no real a conexão é automática (hotplug USB). -->
-                <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
-                <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
-                <Border Classes="statusBadge" IsVisible="{Binding IsConnected}" Margin="0,0,8,0">
-                    <StackPanel Orientation="Horizontal" Spacing="7">
-                        <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding SourceLabel}" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
-                    </StackPanel>
-                </Border>
-                <Button Content="{loc:Translate Default}" Command="{Binding ResetDefaultsCommand}" />
-                <!-- Sem "Carregar"/"Salvar": o perfil carrega sozinho ao detectar o aro e o único
-                     salvamento é "Salvar no controlador". Habilitado só com alteração não salva e conectado. -->
-                <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
-            </StackPanel>
         </Grid>
     </Border>
 </UserControl>
