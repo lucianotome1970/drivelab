@@ -16,6 +16,8 @@ Design/decisions: kept in internal project notes (not versioned in the public re
 
 **Goal:** prove toolchain + flashing + USB serial on your ODESC. Harmless (does not touch the motor/power).
 
+> **Status (2026-07-18): flashing + execution VALIDATED on real hardware** — an **MKS ODRIVE-S V3.6-S6V** (STM32F405), flashed over **ST-Link + OpenOCD** (recipe below). Execution confirmed over SWD (the tick counter increments ~1/s) and the clock checks out (`uwTick` at 1 ms → the **8 MHz HSE is correct**). The USB CDC serial still needs the board's **own USB cable** plugged into the PC — with the clock correct it should enumerate.
+
 #### Prerequisites
 - **VS Code + PlatformIO extension** (installs the STM32duino toolchain by itself on the first build).
 - **ODESC v4.2** + **USB** cable (micro-USB).
@@ -52,12 +54,26 @@ ST-Link          Board
 
 > ⚠️ **Never energise the DC bus (24 V / 56 V) during bring-up.** M0/M0.5 don't touch the motor — the logic is powered by USB or the ST-Link only.
 
-**Not an ODESC?** If your board is a different ODrive-class clone (e.g. an **MKS XDrive 56V**), **confirm the MCU before flashing**: `brew install stlink && st-info --probe` should report an **STM32F4 (chipid `0x413`), 1024 KB flash** for our `genericSTM32F405RG` build. These clones usually ship **read-out protected (RDP level 1)** with the factory ODrive firmware — unlock it (this erases the factory firmware) with:
+#### Flashing an ODrive-class clone (VALIDATED on an MKS ODRIVE-S V3.6-S6V / STM32F405)
+
+If your board is an ODrive clone (ODESC, **MKS ODRIVE-S**, etc.), two things fight the flasher: the **factory ODrive firmware re-arms a watchdog** that resets the core mid-write, and cheap **ST-Link clones trip `st-flash`'s SRAM loader** (`Flash loader run error`, garbage PC). This is the sequence that worked end-to-end:
+
+1. **Wire the ST-Link `3.3V` pin** — the clone needs it as **VTref**, otherwise `st-info` says `Failed to enter SWD mode`. It also powers the logic (no board USB / DC bus needed for bring-up). Confirm the board's **PWR LED** lights.
+2. **Confirm the MCU:** `brew install stlink && st-info --probe --connect-under-reset` → expect `chipid 0x413`, `STM32F4x5_F4x7`, `192 KiB SRAM`.
+3. **Erase the factory firmware** (kills the watchdog; `erase` drives the flash controller directly, so it survives the resets — unlike a write): `st-flash --connect-under-reset --flash=1024k erase` → `Mass erase completed`.
+4. **Flash with OpenOCD** (its loader works where `st-flash`'s fails; after the erase the core halts cleanly — the `BUG: can't assert SRST` on the HLA transport is harmless): `brew install open-ocd` then
 > ```bash
 > openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
->   -c "init; reset halt; stm32f4x unlock 0; reset halt; shutdown"
+>   -c "program .pio/build/m0/firmware.elf verify reset exit"
 > ```
-> If the crystal isn't 8 MHz, USB won't enumerate → set `-D HSE_VALUE=<hz>` (see the M0 gotcha above).
+> → `Verified OK`. **From here just re-run step 4** — our firmware never arms a watchdog or holds SWD, so the fight is one-time.
+
+> **No USB serial to confirm M0?** Prove it runs over SWD, no board USB needed: `arm-none-eabi-nm .pio/build/m0/firmware.elf | grep 'loop::n'` gives the tick address, then read it twice with the core running in between —
+> ```bash
+> openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
+>   -c "init;halt;mdw 0x200010d8;resume;sleep 3000;halt;mdw 0x200010d8;shutdown"
+> ```
+> the value should increment (~1/s). Reading `uwTick` (HAL ms counter) the same way and seeing ~1 ms/tick also confirms the **HSE crystal is 8 MHz** (so USB will enumerate). *Alternative that sidesteps all of this if the board exposes USB: the **`SW1 → DFU`** switch boots the ST system bootloader (factory firmware never runs) — flash with `dfu-util -a 0 -s 0x08000000:leave -D firmware.bin`.*
 
 #### Steps
 1. Open the `firmware-base/` folder in VS Code (PlatformIO detects `platformio.ini`).
@@ -132,6 +148,8 @@ For a quick-release rim, the base is meant to host a small **USB hub** (the ODES
 
 **Objetivo:** provar toolchain + gravação + USB serial na sua ODESC. Inofensivo (não mexe no motor/potência).
 
+> **Status (2026-07-18): gravação + execução VALIDADAS no hardware real** — uma **MKS ODRIVE-S V3.6-S6V** (STM32F405), gravada via **ST-Link + OpenOCD** (receita abaixo). Execução confirmada pelo SWD (o contador de tick incrementa ~1/s) e o clock confere (`uwTick` a 1 ms → o **cristal HSE de 8 MHz está certo**). A serial USB CDC ainda precisa do **cabo USB da própria placa** ligado no PC — com o clock certo, deve enumerar.
+
 #### Pré-requisitos
 - **VS Code + extensão PlatformIO** (instala o toolchain STM32duino sozinho na primeira build).
 - **ODESC v4.2** + cabo **USB** (micro-USB).
@@ -168,12 +186,26 @@ ST-Link          Placa
 
 > ⚠️ **Nunca energize o barramento DC (24 V / 56 V) durante o bring-up.** M0/M0.5 não tocam no motor — a lógica é alimentada só pelo USB ou pelo ST-Link.
 
-**Não é uma ODESC?** Se sua placa for outro clone classe ODrive (ex.: uma **MKS XDrive 56V**), **confirme o MCU antes de gravar**: `brew install stlink && st-info --probe` deve reportar um **STM32F4 (chipid `0x413`), 1024 KB de flash** para a nossa build `genericSTM32F405RG`. Esses clones normalmente vêm **read-out protected (RDP nível 1)** com o firmware ODrive de fábrica — destrave (isso apaga o firmware de fábrica) com:
+#### Gravando um clone classe ODrive (VALIDADO numa MKS ODRIVE-S V3.6-S6V / STM32F405)
+
+Se a placa for um clone ODrive (ODESC, **MKS ODRIVE-S**, etc.), duas coisas brigam com o gravador: o **firmware ODrive de fábrica re-arma um watchdog** que reseta o core no meio da escrita, e os **ST-Link clones travam o loader de SRAM do `st-flash`** (`Flash loader run error`, PC vira lixo). Esta é a sequência que funcionou de ponta a ponta:
+
+1. **Ligue o pino `3.3V` do ST-Link** — o clone precisa dele como **VTref**, senão o `st-info` diz `Failed to enter SWD mode`. Ele também alimenta a lógica (não precisa de USB da placa nem do barramento DC no bring-up). Confirme que o **LED PWR** acende.
+2. **Confirme o MCU:** `brew install stlink && st-info --probe --connect-under-reset` → esperado `chipid 0x413`, `STM32F4x5_F4x7`, `192 KiB SRAM`.
+3. **Apague o firmware de fábrica** (mata o watchdog; o `erase` dirige o controlador de flash direto, então sobrevive aos resets — ao contrário de uma escrita): `st-flash --connect-under-reset --flash=1024k erase` → `Mass erase completed`.
+4. **Grave com OpenOCD** (o loader dele funciona onde o do `st-flash` falha; depois do erase o core halta limpo — o `BUG: can't assert SRST` do transporte HLA é inofensivo): `brew install open-ocd` e então
 > ```bash
 > openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
->   -c "init; reset halt; stm32f4x unlock 0; reset halt; shutdown"
+>   -c "program .pio/build/m0/firmware.elf verify reset exit"
 > ```
-> Se o cristal não for 8 MHz, a USB não enumera → defina `-D HSE_VALUE=<hz>` (ver o gotcha do M0 acima).
+> → `Verified OK`. **Daqui pra frente basta repetir o passo 4** — nosso firmware nunca arma watchdog nem segura o SWD, então a briga é uma vez só.
+
+> **Sem serial USB pra confirmar o M0?** Prove que roda pelo SWD, sem a USB da placa: `arm-none-eabi-nm .pio/build/m0/firmware.elf | grep 'loop::n'` dá o endereço do tick, aí leia duas vezes com o core rodando no meio —
+> ```bash
+> openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
+>   -c "init;halt;mdw 0x200010d8;resume;sleep 3000;halt;mdw 0x200010d8;shutdown"
+> ```
+> o valor deve incrementar (~1/s). Ler o `uwTick` (contador de ms do HAL) do mesmo jeito e ver ~1 ms/tick também confirma que o **cristal HSE é 8 MHz** (então a USB vai enumerar). *Alternativa que evita tudo isso se a placa expõe USB: o switch **`SW1 → DFU`** sobe o bootloader da ST (o firmware de fábrica nem roda) — grave com `dfu-util -a 0 -s 0x08000000:leave -D firmware.bin`.*
 
 #### Passos
 1. Abra a pasta `firmware-base/` no VS Code (PlatformIO detecta o `platformio.ini`).
