@@ -18,6 +18,7 @@
 #include "force_reconstruct.h"
 #include "cogging.h"
 #include "filters.h"
+#include "ffb_engine.h"
 
 #include <cstdio>
 #include <cmath>
@@ -376,6 +377,56 @@ int main() {
         float est = 0.0f;
         for (int i = 1; i <= 600; ++i) est = ve.update(v * dt * static_cast<float>(i), dt);
         CHECK(approx(est, 2.0f, 0.02f));                       // segue a velocidade real, suave
+    }
+
+    // 16) FfbEngine — pipeline COMPLETO ponta a ponta: partida→rodando→força cheia→falha desliga
+    {
+        FfbEngine eng;
+        eng.force.totalStrengthPct = 100; eng.force.maxTorqueNm = 2.5f; eng.force.torqueLimitNm = 2.5f;
+        eng.endstop.rangeRad = 10.0f;                       // sem soft-stop na faixa
+        eng.startup.cfg.alignSeconds = 0.1f; eng.startup.cfg.rampSeconds = 0.0f; eng.startup.cfg.alignTorqueNm = 0.3f;
+        eng.startup.cfg.busMinV = 20; eng.startup.cfg.busMaxV = 30; eng.startup.cfg.tempMaxC = 80;
+        eng.guard.overVoltageV = 32; eng.guard.overTempC = 80;
+        eng.guard.brake.cfg.onVoltage = 26; eng.guard.brake.cfg.fullVoltage = 30; eng.guard.brake.cfg.offVoltage = 25;
+        eng.reconstructor.cfg.steps = 1;                    // ZOH → força determinística
+        eng.currentLimitA = 8.0f;
+        eng.enableRequested = true;
+        eng.setGameForce(255.0f);
+
+        MockEncoder enc; MockSense cs; MockPower pw; MockBrake br; MockMotor mot;
+        cs.a = cs.b = cs.c = 1.0f; pw.bus = 24; pw.mfet = pw.mot = 25;
+        const float dt = 0.05f;
+
+        float t1 = eng.step(dt, enc, cs, pw, br, mot);       // Idle → Aligning
+        CHECK(eng.startup.state == MotorState::Aligning && approx(t1, 0.3f));   // segura o rotor
+        eng.step(dt, enc, cs, pw, br, mot);                  // ainda alinhando (0.05 < 0.1)
+        eng.step(0.06f, enc, cs, pw, br, mot);               // 0.11 ≥ 0.1 → Running
+        CHECK(eng.startup.state == MotorState::Running);
+        float t4 = eng.step(dt, enc, cs, pw, br, mot);       // Running, rampa cheia → força total
+        CHECK(approx(t4, 2.5f) && approx(mot.lastTorque, 2.5f));
+
+        pw.bus = 35.0f;                                      // sobretensão → falha
+        eng.step(dt, enc, cs, pw, br, mot);
+        CHECK(eng.guard.faulted && eng.startup.state == MotorState::Fault);
+        float tf = eng.step(dt, enc, cs, pw, br, mot);
+        CHECK(approx(tf, 0.0f) && mot.disableCalls > 0);     // força desligada na falha
+
+        // cogging feed-forward compõe no pipeline (força menor p/ caber sob o teto)
+        FfbEngine e2;
+        e2.force.totalStrengthPct = 100; e2.force.maxTorqueNm = 2.5f; e2.force.torqueLimitNm = 2.5f;
+        e2.endstop.rangeRad = 10.0f;
+        e2.startup.cfg.alignSeconds = 0.0f; e2.startup.cfg.rampSeconds = 0.0f;
+        e2.startup.cfg.busMinV = 20; e2.startup.cfg.busMaxV = 30; e2.startup.cfg.tempMaxC = 80;
+        e2.guard.overVoltageV = 32; e2.guard.overTempC = 80;
+        e2.reconstructor.cfg.steps = 1; e2.currentLimitA = 8.0f; e2.enableRequested = true;
+        CoggingTable cg; cg.table[0] = 0.1f; e2.cogging = &cg;
+        e2.setGameForce(100.0f);
+        MockEncoder e; MockSense c2; MockPower p2; MockBrake b2; MockMotor m2;
+        c2.a = c2.b = c2.c = 1.0f; p2.bus = 24; p2.mfet = p2.mot = 25; e.pos = 0.0f;
+        e2.step(dt, e, c2, p2, b2, m2);   // Idle→Aligning
+        e2.step(dt, e, c2, p2, b2, m2);   // Aligning→Running
+        float tc = e2.step(dt, e, c2, p2, b2, m2);   // Running, rampa cheia
+        CHECK(approx(tc, 100.0f / 255.0f * 2.5f + 0.1f, 0.02f));   // força + cogging
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);

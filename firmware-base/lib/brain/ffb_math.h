@@ -101,9 +101,10 @@ inline float slewLimit(float target, float prev, float maxDelta) {
 
 /// Pipeline M5 (sem estado): força do jogo (direção+curva+ganho→Nm) + efeitos do device
 /// (mola/damper/atrito, do encoder) + soft-stop, com o teto duro sempre por último.
-inline float computeTorque(int32_t hostForce, float positionRad, float velRadPerSec,
+/// hostForce em [-255,255] como FLOAT — aceita a força já reconstruída (contínua, não só o inteiro).
+inline float computeTorque(float hostForce, float positionRad, float velRadPerSec,
                            const ForceConfig& fc, const EffectConfig& ef, const EndstopConfig& ec) {
-    float norm = clampf(static_cast<float>(hostForce) / 255.0f * fc.direction, -1.0f, 1.0f);
+    float norm = clampf(hostForce / 255.0f * fc.direction, -1.0f, 1.0f);
     norm = responseCurve(norm, fc.linearity);
     float t = norm * (fc.totalStrengthPct / 100.0f) * fc.maxTorqueNm;   // força do jogo → Nm
     t += springTorque(positionRad, ef.springNmPerRad);                  // efeitos always-on (encoder)

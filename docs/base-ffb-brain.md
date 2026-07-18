@@ -16,9 +16,16 @@ Três camadas, espelhando o que já fazemos no app (`DriveLab.Core` ↔ `Simulat
 
 ```
 lib/brain/
-  ffb_math.h        # funções PURAS (força→torque, soft-stop, corte de corrente). Zero deps.
-  hal.h             # interfaces de hardware: IEncoder, ICurrentSense, IMotor
-  ffb_controller.h  # orquestra 1 passo: lê HAL → torque seguro → comanda motor (+ desarme latched)
+  ffb_math.h          # funções PURAS: força→torque, curva de resposta, efeitos, soft-stop, slew (M5)
+  hal.h               # interfaces de hardware: IEncoder, ICurrentSense, IMotor, IPowerSense, IBrakeResistor
+  ffb_controller.h    # orquestrador mínimo (M5): lê HAL → torque seguro → motor (+ desarme latched)
+  pi_controller.h     # PI genérico com anti-windup (M2)
+  ffb_power.h         # brake resistor (histerese) + cortes sobretensão/sobretemp (PowerGuard) (M2)
+  startup.h           # máquina de partida Idle→Aligning→Running→Fault + inter-travamentos + rampa (M1)
+  force_reconstruct.h # reconstrução da força discreta do jogo → contínua (anti-notch temporal)
+  cogging.h           # mapa + calibrador de cancelamento de cogging (feed-forward por posição)
+  filters.h           # Biquad RBJ (low-pass/notch) + estimador de velocidade
+  ffb_engine.h        # PIPELINE COMPLETO: um step() encadeia todos os blocos + HAL (o que o firmware chama)
 ```
 
 O `FfbController` só conhece as **interfaces** de `hal.h` — nunca o hardware. Isso dá **dois alvos de build** a partir do mesmo código:
@@ -67,6 +74,17 @@ O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `compute
 **Cancelamento de cogging (rumo ao topo)** — em `cogging.h`: o cogging é ripple de torque **dependente da posição** (ímãs × ranhuras) — a maior causa de "granulado" em força pequena. `CoggingMap<N>` guarda a compensação por posição ([0,2π), N bins, interpolação + wrap) e `compensation(pos)` dá o feed-forward a **somar** ao torque. `CoggingCalibrator<N>` constrói o mapa girando o motor devagar: média por bin → remove o offset DC (carga/atrito, não é cogging) → inverte o sinal. Mensurável no host: o teste reconstrói um ripple sintético de ±0,2 Nm e o **cancela para <0,02 (~10× mais liso)**. Só a coleta das amostras precisa de bancada; a matemática (tabela, interpolação, calibração) está pronta e testada. No firmware: `torque += cog.compensation(encoderPos)` a cada tick; a tabela mora na flash, calibrada por-motor.
 
 **Filtros DSP (rumo ao topo)** — em `filters.h`: um `Biquad` genérico (2ª ordem, Direct Form II transposto) com coeficientes RBJ para **low-pass** (suavizar força/velocidade) e **notch** (matar uma **ressonância mecânica** específica — o anti-oscilação da correia/eixo). Sobre ele, `VelocityEstimator` (diferença finita + low-pass) entrega a **velocidade limpa** de que dependem a qualidade do damper/inertia/friction. Mensurável no host: o teste confirma ganho DC = 1, esmagamento em Nyquist, rejeição >5× no notch e a estimativa de velocidade convergindo para a real. É a caixa de ferramentas do "FFB tuning" (os filtros ajustáveis dos menus top-de-linha).
+
+### Pipeline completo — `FfbEngine`
+
+`ffb_engine.h` encadeia tudo num único `step(dt, encoder, currentSense, powerSense, brake, motor)` — é a **única coisa que o firmware chama no laço**. Ordem por tick:
+
+1. **Proteção de potência** (`PowerGuard`) — brake resistor + avalia falha.
+2. **Máquina de partida** (`StartupSequencer`) — gate por inter-travamentos + rampa; em Aligning segura o rotor.
+3. **Sobrecorrente** → desarma e desliga.
+4. **Força:** reconstrução → `computeTorque` (força+efeitos+soft-stop) → **cogging** → **filtro de saída** → rampa → slew → **teto duro por último**.
+
+Testado **ponta a ponta** no host: uma sequência partida→alinhamento→rodando→força cheia→**falha desliga** roda inteira sobre mocks. É a prova de que os blocos funcionam **juntos**, não só isolados. No firmware, troca-se só o HAL — o pipeline é o mesmo, já validado.
 
 ### Log de diagnóstico + loop de feedback (design, para quando houver hardware)
 
