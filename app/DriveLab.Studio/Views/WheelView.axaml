@@ -57,15 +57,12 @@
                         <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
                     </StackPanel>
 
-                    <!-- Duas colunas: volante+cores à esquerda, pás à direita -->
-                    <Grid ColumnDefinitions="Auto,28,Auto" HorizontalAlignment="Left">
+                    <!-- Três colunas: volante · cores+brilho · pás (usa a largura e deixa as cores visíveis) -->
+                    <Grid ColumnDefinitions="Auto,28,Auto,28,Auto" HorizontalAlignment="Left">
 
-                        <!-- Coluna esquerda: desenho do volante + cores dos botões -->
-                        <StackPanel Grid.Column="0" Spacing="12" Width="480">
-                            <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="muted" />
-                            <!-- Margem inferior negativa: puxa a paleta pra cima, ocupando a área transparente
-                                 do rodapé do desenho (o aro não chega até 480px). -->
-                            <Grid Width="480" Height="480" HorizontalAlignment="Center" Margin="0,0,0,-56">
+                        <!-- Coluna 0: desenho do volante -->
+                        <StackPanel Grid.Column="0" Spacing="12" Width="480" VerticalAlignment="Top">
+                            <Grid Width="480" Height="480" HorizontalAlignment="Center">
                                 <!-- Pás ATRÁS do desenho (Canvas antes da imagem): aparecem pelas ABERTURAS
                                      transparentes reais do aro. Escuras (visíveis conforme a contagem), acendem
                                      em laranja quando pressionadas. Ajustáveis. -->
@@ -133,7 +130,11 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </Grid>
+                        </StackPanel>
 
+                        <!-- Coluna 2: cores dos botões + brilho -->
+                        <StackPanel Grid.Column="2" Spacing="10" Width="300" VerticalAlignment="Top">
+                            <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="h2" />
                             <!-- Paleta de cores (aplica no botão selecionado). Só com o aro conectado:
                                  a cor vai AO VIVO ao dispositivo. -->
                             <TextBlock Text="{Binding SelectedButton.Name, FallbackValue=''}" Classes="muted" />
@@ -166,9 +167,9 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Coluna direita: configuração das pás. Desabilitada sem o aro conectado
+                        <!-- Coluna 4: configuração das pás. Desabilitada sem o aro conectado
                              (mesma regra da paleta de cores): a config vai/vem do controlador. -->
-                        <StackPanel Grid.Column="2" Spacing="10" Width="360" VerticalAlignment="Top"
+                        <StackPanel Grid.Column="4" Spacing="10" Width="360" VerticalAlignment="Top"
                                     IsEnabled="{Binding IsConnected}">
                             <TextBlock Text="{loc:Translate Wheel_Paddles}" Classes="h2" />
                             <TextBlock Text="{loc:Translate Wheel_PaddleCount}" Classes="muted" />
