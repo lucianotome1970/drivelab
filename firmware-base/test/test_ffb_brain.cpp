@@ -107,6 +107,52 @@ int main() {
         CHECK(approx(ctrl.step(255, enc, sense, motor), 2.5f));
     }
 
+    // 6) M5 — curva de resposta + efeitos de condição do device (do encoder)
+    {
+        CHECK(approx(responseCurve(0.5f, 1.0f), 0.5f));    // linear = identidade
+        CHECK(approx(responseCurve(0.5f, 2.0f), 0.25f));   // >1 suaviza o leve
+        CHECK(approx(responseCurve(-0.5f, 2.0f), -0.25f)); // ímpar (preserva sinal)
+        CHECK(approx(responseCurve(0.25f, 0.5f), 0.5f));   // <1 realça o leve
+
+        CHECK(approx(springTorque(1.0f, 2.0f), -2.0f));    // mola puxa p/ o centro
+        CHECK(approx(springTorque(-1.0f, 2.0f), 2.0f));
+        CHECK(approx(damperTorque(3.0f, 0.5f), -1.5f));    // damper opõe a velocidade
+        CHECK(approx(frictionTorque(0.01f, 0.4f), -0.4f)); // atrito opõe o movimento
+        CHECK(approx(frictionTorque(-0.01f, 0.4f), 0.4f));
+        CHECK(approx(frictionTorque(0.0f, 0.4f), 0.0f));   // parado = sem atrito
+
+        CHECK(approx(slewLimit(2.5f, 0.0f, 0.5f), 0.5f));  // limita a variação
+        CHECK(approx(slewLimit(2.5f, 0.0f, 0.0f), 2.5f));  // 0 = desligado
+    }
+
+    // 7) computeTorque (pipeline completo) + inversão + centragem sem força de jogo
+    {
+        ForceConfig fc; fc.totalStrengthPct = 100; fc.maxTorqueNm = 2.5f; fc.torqueLimitNm = 2.5f;
+        EffectConfig ef; EndstopConfig ec; ec.rangeRad = 10.0f;  // sem soft-stop na faixa testada
+
+        CHECK(approx(computeTorque(255, 0.0f, 0.0f, fc, ef, ec), 2.5f));   // só força do jogo
+        fc.direction = -1.0f;                                              // inversão
+        CHECK(approx(computeTorque(255, 0.0f, 0.0f, fc, ef, ec), -2.5f));
+        fc.direction = 1.0f;
+
+        ef.springNmPerRad = 1.0f;                                          // centragem do device
+        CHECK(approx(computeTorque(0, 0.5f, 0.0f, fc, ef, ec), -0.5f));    // sem jogo, mola puxa p/ centro
+    }
+
+    // 8) FfbController com slew-rate: o torque sobe em degraus limitados (estado entre passos)
+    {
+        FfbController ctrl;
+        ctrl.force.totalStrengthPct = 100; ctrl.force.maxTorqueNm = 2.5f; ctrl.force.torqueLimitNm = 2.5f;
+        ctrl.endstop.rangeRad = 10.0f;
+        ctrl.maxSlewNmPerStep = 0.5f;
+        ctrl.enabled = true;
+        MockEncoder enc; MockSense sense; MockMotor motor; sense.a = sense.b = sense.c = 1.0f;
+
+        CHECK(approx(ctrl.step(255, enc, sense, motor), 0.5f));  // alvo 2.5, mas +0.5/passo
+        CHECK(approx(ctrl.step(255, enc, sense, motor), 1.0f));
+        CHECK(approx(ctrl.step(255, enc, sense, motor), 1.5f));
+    }
+
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

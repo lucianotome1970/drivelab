@@ -19,15 +19,19 @@ namespace drivelab {
 class FfbController {
 public:
     ForceConfig   force;
+    EffectConfig  effect;         ///< mola/damper/atrito do device (do encoder)
     EndstopConfig endstop;
-    float currentLimitA = 8.0f;   ///< corte de segurança por fase
-    bool  enabled = false;        ///< SetForceEnabled (host) liga/desliga a força
-    bool  tripped = false;        ///< desarme latched por sobrecorrente
+    float currentLimitA    = 8.0f; ///< corte de segurança por fase
+    float maxSlewNmPerStep = 0.0f; ///< limite de slew-rate por passo (0 = desligado)
+    bool  enabled = false;         ///< SetForceEnabled (host) liga/desliga a força
+    bool  tripped = false;         ///< desarme latched por sobrecorrente
 
-    /// Um passo da malha. Retorna o torque comandado (Nm) — útil p/ testar.
+    /// Um passo da malha: lê encoder+corrente → pipeline M5 → slew → comanda o motor.
+    /// Retorna o torque comandado (Nm) — útil p/ testar.
     float step(int32_t hostForce, IEncoder& enc, ICurrentSense& sense, IMotor& motor) {
         if (!enabled || tripped) {
             motor.disable();
+            _prev = 0.0f;
             return 0.0f;
         }
 
@@ -36,16 +40,23 @@ public:
         if (overCurrent(ia, ib, ic, currentLimitA)) {
             tripped = true;       // latched: só religa via rearme explícito (rearm())
             motor.disable();
+            _prev = 0.0f;
             return 0.0f;
         }
 
-        const float t = finalTorque(hostForce, enc.positionRad(), force, endstop);
+        const float target = computeTorque(hostForce, enc.positionRad(), enc.velocityRadPerSec(),
+                                           force, effect, endstop);
+        const float t = slewLimit(target, _prev, maxSlewNmPerStep);
         motor.setTorque(t);
+        _prev = t;
         return t;
     }
 
     /// Rearma após um desarme por sobrecorrente (ex.: comando do host depois de investigar).
-    void rearm() { tripped = false; }
+    void rearm() { tripped = false; _prev = 0.0f; }
+
+private:
+    float _prev = 0.0f;   ///< torque do passo anterior (para o slew-rate)
 };
 
 }  // namespace drivelab

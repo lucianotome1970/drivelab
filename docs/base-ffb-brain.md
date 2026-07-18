@@ -36,12 +36,18 @@ O `FfbController` só conhece as **interfaces** de `hal.h` — nunca o hardware.
 
 ### A matemática (pura, testável)
 
+Básico:
 - `forceToTorque(hostForce, ForceConfig)` — força FFB do host `[-255,255]` → torque (Nm), aplicando **força total** (0..100%) e o **teto duro de segurança** (`torqueLimitNm`).
 - `endstopTorque(positionRad, EndstopConfig)` — **soft-stop**: 0 dentro da faixa, mola empurrando de volta além dela.
 - `overCurrent(ia, ib, ic, limitA)` — **corte por sobrecorrente**.
-- `finalTorque(...)` — soma força + soft-stop e **reclampa ao teto duro por último** (a segurança sempre manda).
 
-O `FfbController.step()` junta tudo: se `!enabled` ou desarmado → motor desligado; sobrecorrente → **desarme latched** (`tripped`, só volta com `rearm()`); senão comanda o torque seguro.
+**Modelagem de força (M5)** — casa 1:1 com os `BaseSettingId`:
+- `responseCurve(norm, linearity)` — **curva de resposta** (`|x|^linearity·sinal`): >1 suaviza o leve, <1 realça o leve.
+- `springTorque(pos, gain)` / `damperTorque(vel, gain)` / `frictionTorque(vel, nm)` — **efeitos de condição do device** (centragem/damper/atrito) computados do **encoder**, somados à força do jogo (`SpringStrength`/`DamperStrength`/`StaticDamping`).
+- `slewLimit(target, prev, maxDelta)` — **slew-rate** (variação máx. de torque por passo; feel + protege a mecânica).
+- `computeTorque(...)` — o **pipeline completo**: direção → curva → ganho→Nm → efeitos do device → soft-stop → **teto duro por último**. `ForceConfig` inclui `direction` (`ForceDirection`).
+
+O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `computeTorque` → `slewLimit` → comanda o motor): se `!enabled` ou desarmado → motor desligado; sobrecorrente → **desarme latched** (`tripped`, só volta com `rearm()`); slew-rate opcional entre passos.
 
 ### Rodar os testes (sem placa)
 
