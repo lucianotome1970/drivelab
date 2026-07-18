@@ -76,6 +76,16 @@ Local build confirmed: **SUCCESS**, generates `.pio/build/rp2040_zero/firmware.u
 - M1–M4 (inherited from the pedal design, applied all at once in M5 below).
 - **M5 (current)** — HID Joystick (1 axis + button) + vendor P0 + ADC/HX711 + pipeline + button with hysteresis + flash. Validated in hardware (bare board). This README.
 
+### Bill of materials (handbrake)
+
+| Qty | Part | Notes |
+|----:|------|-------|
+| 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Any RP2040 works (`board = pico`). |
+| 1 | **USB-C cable** | to the PC. |
+| 1 | **Sensor** — choose: **10 kΩ pot** *or* **analog Hall** *or* **load cell + HX711** | pot/Hall on **A0=GP26**; a load cell needs an HX711 (**DT=GP2, SCK=GP3**). |
+| 0–1 | **HX711 amplifier** | only if you use a load cell. |
+| — | Handbrake lever mechanics/spring | the "button" is **derived in firmware** from the axis (a threshold with hysteresis) — **no extra physical button needed**. |
+
 ### Next step
 Test with a **physical sensor** connected (pot/Hall or HX711): axis movement, button via `buttonThreshold`, and real min/max calibration — the only checklist items still pending.
 
@@ -149,6 +159,16 @@ Build local confirmado: **SUCCESS**, gera `.pio/build/rp2040_zero/firmware.uf2` 
 - M0 — scaffold (blink + serial, sem HID).
 - M1–M4 (herdados do design do pedal, aplicados de uma vez no M5 abaixo).
 - **M5 (atual)** — HID Joystick (1 eixo + botão) + vendor P0 + ADC/HX711 + pipeline + botão com histerese + flash. Validado em hardware (placa nua). Este README.
+
+### Lista de materiais (freio de mão)
+
+| Qtd | Peça | Observações |
+|----:|------|-------------|
+| 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Qualquer RP2040 serve (`board = pico`). |
+| 1 | **Cabo USB-C** | até o PC. |
+| 1 | **Sensor** — escolha: **pot 10 kΩ** *ou* **Hall analógico** *ou* **célula de carga + HX711** | pot/Hall em **A0=GP26**; célula de carga precisa do HX711 (**DT=GP2, SCK=GP3**). |
+| 0–1 | **Amplificador HX711** | só se usar célula de carga. |
+| — | Mecânica/mola da alavanca do freio | o "botão" é **derivado no firmware** a partir do eixo (limiar com histerese) — **não precisa de botão físico extra**. |
 
 ### Próximo passo
 Testar com um **sensor físico** conectado (pot/Hall ou HX711): movimento do eixo, botão pelo `buttonThreshold`, e calibração de min/max reais — os únicos itens do checklist ainda pendentes.

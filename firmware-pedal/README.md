@@ -78,6 +78,18 @@ These points were flagged as risky while the firmware was written blind. All hav
 
 ---
 
+### Bill of materials (pedals)
+
+| Qty | Part | Notes |
+|----:|------|-------|
+| 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Any RP2040 works (`board = pico` in `platformio.ini`). |
+| 1 | **USB-C cable** | to the PC. |
+| 3 | **Sensor, one per pedal** — choose freely: **10 kΩ linear pot** *or* **analog Hall** (SS49E/A1302) *or* **load cell + HX711** | pot/Hall go on the ADC; a load cell needs an HX711 amp. `sensor_type` is per-pedal in the app. |
+| 0–3 | **HX711 amplifier** | one per load-cell pedal. DT/SCK pins: **GP2/3** (clutch), **GP4/5** (brake), **GP6/7** (throttle). |
+| — | Wires, pedal frame/springs | the mechanical rig is yours. |
+
+**ADC wiring** (pot/Hall): ends to **3V3** and **GND**, wiper/output to **A0=GP26** (clutch), **A1=GP27** (brake), **A2=GP28** (throttle).
+
 ### Next steps
 - **M5** — polish and sim testing. The bring-up validation (M1→M4 on the board) is done; what remains is refining details and testing in an actual sim.
 
@@ -156,6 +168,18 @@ Estes pontos foram marcados como suspeitos enquanto o firmware era escrito às c
 - **Eixos "colados" no máximo** → ADC flutuando sem pot; ligue um potenciômetro (ou é o pino errado).
 
 ---
+
+### Lista de materiais (pedais)
+
+| Qtd | Peça | Observações |
+|----:|------|-------------|
+| 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Qualquer RP2040 serve (`board = pico` no `platformio.ini`). |
+| 1 | **Cabo USB-C** | até o PC. |
+| 3 | **Sensor, um por pedal** — livre escolha: **pot linear 10 kΩ** *ou* **Hall analógico** (SS49E/A1302) *ou* **célula de carga + HX711** | pot/Hall vão no ADC; célula de carga precisa do amp HX711. O `sensor_type` é por pedal no app. |
+| 0–3 | **Amplificador HX711** | um por pedal de célula de carga. Pinos DT/SCK: **GP2/3** (embreagem), **GP4/5** (freio), **GP6/7** (acelerador). |
+| — | Fios, estrutura/molas dos pedais | a parte mecânica é sua. |
+
+**Ligação no ADC** (pot/Hall): pontas em **3V3** e **GND**, cursor/saída em **A0=GP26** (embreagem), **A1=GP27** (freio), **A2=GP28** (acelerador).
 
 ### Próximos passos
 - **M5** — polimento e teste no sim. A validação de bring-up (M1→M4 na placa) está feita; falta refinar detalhes e testar num sim de verdade.

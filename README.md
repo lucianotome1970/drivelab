@@ -182,7 +182,9 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 - Multi-stage safety: brake resistor, current/torque limits, soft-stop, over-voltage cutoff.
 - Companion firmware for **pedals** and **handbrake** modules (RP2040 + HX711 load cell).
 
-### Hardware (bill of materials)
+### Hardware — wheelbase / base (bill of materials)
+
+This is the **base** (the direct-drive wheelbase). Each other module is an independent USB device with its **own** bill of materials — see the per-module table below.
 
 | Part | Notes |
 |------|-------|
@@ -192,7 +194,17 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
 | **PSU** | Match your ODESC variant: **≤24 V** for the 24 V board, **up to 56 V** for the 56 V board. Example: 24 V / 30 A (720 W). |
 | ST-Link V2 | To flash the STM32 (or DFU). |
-| *(optional)* RP2040 + HX711 load cell | For the pedals / handbrake modules. |
+
+### Hardware — per module
+
+Each device is independent (its own board + USB). Full parts list + wiring/pinout in each module's README:
+
+| Module | Core hardware | Full BOM |
+|--------|---------------|----------|
+| **Wheelbase / base** | ODESC F405 + hub motor + encoder + brake resistor + PSU (table above) | this page |
+| **Pedals** | RP2040-Zero + 3 sensors (pot / Hall / load-cell+HX711) | **[firmware-pedal »](firmware-pedal/README.md#bill-of-materials-pedals)** |
+| **Handbrake** | RP2040-Zero + 1 sensor (pot / Hall / load-cell+HX711) | **[firmware-handbrake »](firmware-handbrake/README.md#bill-of-materials-handbrake)** |
+| **Wheel (rim)** | RP2040-Zero + 2× MCP23017 + 5 encoders + SK6812 LEDs | **[firmware-wheel »](firmware-wheel/README.md)** |
 
 ### How force feedback works
 
@@ -303,7 +315,9 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 - Segurança em múltiplos estágios: brake resistor, limites de corrente/torque, soft-stop, corte por sobretensão.
 - Firmwares companheiros para os módulos de **pedais** e **freio de mão** (RP2040 + célula de carga HX711).
 
-### Hardware (lista de materiais)
+### Hardware — base do volante (lista de materiais)
+
+Esta é a **base** (o wheelbase direct-drive). Cada outro módulo é um dispositivo USB independente com a **sua própria** lista de materiais — veja a tabela por módulo abaixo.
 
 | Peça | Observações |
 |------|-------------|
@@ -313,7 +327,17 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 | **Brake resistor 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia de frenagem regenerativa para não destruir os capacitores. |
 | **Fonte** | Casar com a sua variante de ODESC: **≤24 V** na placa 24 V, **até 56 V** na placa 56 V. Ex.: 24 V / 30 A (720 W). |
 | ST-Link V2 | Para gravar o STM32 (ou DFU). |
-| *(opcional)* RP2040 + célula HX711 | Para os módulos de pedais / freio de mão. |
+
+### Hardware — por módulo
+
+Cada dispositivo é independente (placa + USB próprios). Lista completa de peças + fiação/pinagem no README de cada módulo:
+
+| Módulo | Hardware principal | BOM completa |
+|--------|--------------------|--------------|
+| **Base do volante** | ODESC F405 + motor + encoder + brake resistor + fonte (tabela acima) | esta página |
+| **Pedais** | RP2040-Zero + 3 sensores (pot / Hall / célula+HX711) | **[firmware-pedal »](firmware-pedal/README.md#lista-de-materiais-pedais)** |
+| **Freio de mão** | RP2040-Zero + 1 sensor (pot / Hall / célula+HX711) | **[firmware-handbrake »](firmware-handbrake/README.md#lista-de-materiais-freio-de-mão)** |
+| **Volante (aro)** | RP2040-Zero + 2× MCP23017 + 5 encoders + LEDs SK6812 | **[firmware-wheel »](firmware-wheel/README.md)** |
 
 ### Como o force feedback funciona
 
