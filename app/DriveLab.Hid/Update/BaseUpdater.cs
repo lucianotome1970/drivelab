@@ -134,17 +134,23 @@ public sealed class BaseUpdater : IDeviceUpdater
 
             var combined = stdout + stderr;
             var found = combined.Contains(BootloaderDfuMatch, StringComparison.OrdinalIgnoreCase);
+            // Diagnóstico é best-effort e NUNCA pode alterar/mascarar o resultado da detecção —
+            // por isso o try/catch próprio, isolado do valor de retorno.
             if (_diagnostics is not null)
             {
-                var elapsed = start == default ? 0 : (DateTime.UtcNow - start).TotalSeconds;
-                // Só as linhas que mencionam algum device DFU importam — evita despejar o header do dfu-util.
-                var devLines = combined.Split('\n')
-                    .Where(l => l.Contains("Found", StringComparison.OrdinalIgnoreCase) ||
-                                l.Contains(":", StringComparison.Ordinal) && l.Contains("[", StringComparison.Ordinal))
-                    .Select(l => l.Trim());
-                var summary = string.Join(" | ", devLines);
-                _diagnostics.Invoke(
-                    $"  poll {poll} (t+{elapsed:0.0}s): exit={process.ExitCode} found={found} :: {(string.IsNullOrWhiteSpace(summary) ? "(nenhum device DFU listado)" : summary)}");
+                try
+                {
+                    var elapsed = start == default ? 0 : (DateTime.UtcNow - start).TotalSeconds;
+                    // Só as linhas que mencionam algum device DFU importam — evita despejar o header do dfu-util.
+                    var devLines = combined.Split('\n')
+                        .Where(l => l.Contains("Found", StringComparison.OrdinalIgnoreCase) ||
+                                    l.Contains(":", StringComparison.Ordinal) && l.Contains("[", StringComparison.Ordinal))
+                        .Select(l => l.Trim());
+                    var summary = string.Join(" | ", devLines);
+                    _diagnostics.Invoke(
+                        $"  poll {poll} (t+{elapsed:0.0}s): exit={process.ExitCode} found={found} :: {(string.IsNullOrWhiteSpace(summary) ? "(nenhum device DFU listado)" : summary)}");
+                }
+                catch { /* logging nunca pode derrubar/afetar a detecção */ }
             }
             return found;
         }

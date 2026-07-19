@@ -196,8 +196,10 @@ public sealed partial class UpdateViewModel : ViewModelBase
             // IDeviceAccessCoordinator). Chamado DEPOIS do EnterDfu, que ainda usa o transporte.
             if (_coordinator is not null)
             {
-                await _coordinator.BeginExclusiveAsync(device.Kind);
+                // Marca ANTES do await: se BeginExclusiveAsync pausar o auto-connect e então lançar,
+                // o ReleaseExclusiveAsync (no catch) ainda retoma — nunca deixa o poller pausado.
                 _exclusiveHeld = true;
+                await _coordinator.BeginExclusiveAsync(device.Kind);
             }
 
             StatusMessage = $"Aguardando o bootloader ({device.BootloaderName}) — salto automático...";
