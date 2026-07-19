@@ -542,4 +542,48 @@ void loop()
 
         g_hid.sendReport(RID_JOYSTICK, &report, sizeof(report));
     }
+
+    // Canal A0 (Task 5): telemetria periódica DeviceState (A0_RID_STATE /
+    // 0x21) -- é assim que o app (HidBaseTransport) sabe que a base está
+    // conectada e habilita o dashboard. Layout EXATO espelhado de
+    // app/DriveLab.Core/Protocol/BaseState.cs (ToBytes/Parse):
+    //   [0..3]   FirmwareVersion (ReleaseType, Major, Minor, Patch) -- 1
+    //            byte cada, SEM little-endian (WriteTo grava campo a campo).
+    //   [4]      flags (BaseFlags) -- 0 por ora (nenhuma flag definida ainda
+    //            usada pelo firmware).
+    //   [5..6]   Position (int16 LE)
+    //   [7..8]   AngleDeciDeg (int16 LE)
+    //   [9..10]  Torque (int16 LE)
+    //   [11..12] MotorCurrentMa (int16 LE)
+    //   [13]     FetTempC (sbyte)
+    //   [14]     ErrorCode (byte)
+    //   [15..16] BusVoltageMv (uint16 LE)
+    //   [17]     MotorTempC (sbyte)
+    //   [18]     McuTempC (sbyte)
+    //   [19..62] reservado -- zerado.
+    // M0.5 não tem motor/sensores ainda (M1): todos os campos de 5..18 ficam
+    // placeholder 0 (posição/ângulo/torque/corrente/temperaturas/barramento
+    // "zerados" em vez de lidos) -- só a versão de firmware e as flags/erro
+    // (também 0) são preenchidos de verdade.
+    // Prioridade: menor prioridade dos três sends do EP IN compartilhado
+    // (0x16 deferido > 0x01 joystick > 0x21 aqui) -- só tenta se g_hid.ready()
+    // ainda estiver livre depois dos dois envios acima nesta mesma iteração
+    // (mesmo padrão "um report por janela de EP" do fix P0/HID EP).
+    static uint32_t lastStateSend = 0;
+    if (g_hid.ready() && (now - lastStateSend >= 15))
+    {
+        lastStateSend = now;
+
+        uint8_t payload[63] = {0};
+        payload[0] = 0; // FirmwareVersion.ReleaseType (0 = dev)
+        payload[1] = 0; // FirmwareVersion.Major
+        payload[2] = 1; // FirmwareVersion.Minor
+        payload[3] = 0; // FirmwareVersion.Patch
+        payload[4] = 0; // flags
+        // payload[5..18] = sensores placeholder (posição/ângulo/torque/
+        // corrente/temperaturas/barramento) -- 0 até o M1 ligar os sensores.
+        payload[14] = 0; // error
+
+        g_hid.sendReport(A0_RID_STATE, payload, sizeof(payload));
+    }
 }
