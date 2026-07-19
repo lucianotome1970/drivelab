@@ -7,8 +7,10 @@
 
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
+using DriveLab.Core.Update;
 using DriveLab.Hid;
 using DriveLab.Hid.Simagic;
+using DriveLab.Hid.Update;
 using DriveLab.Simulator;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.ViewModels;
@@ -151,15 +153,21 @@ public static class CompositionRoot
         var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs,
             new JsonNamedProfileStore<BaseProfile>("base"));
 
+        // Atualização de firmware: por enquanto só a base, usando o MESMO transporte da sessão
+        // (real → HID; simulador → transporte simulado, EnterDfu vira no-op).
+        var updateDevices = new List<IDeviceUpdater> { new BaseUpdater(transport) };
+        var update = new UpdateViewModel(updateDevices);
+
         var pages = new List<NavItem>
         {
-            // Ordem da sidebar: Home · Base · Volante · Pedais · Freio de mão
+            // Ordem da sidebar: Home · Base · Volante · Pedais · Freio de mão · Atualizar firmware
             // (o volante vem logo após a base). Os ícones em MainWindow.axaml seguem estes índices.
             new(L.Get("Nav_Home"), "\U0001F39B", home),
             new(L.Get("Nav_WheelBase"), "base", basePage, L.Get("Page_WheelBase")),
             new(L.Get("Nav_Wheel"), "wheel", wheel, L.Get("Wheel_Config")),
             new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals, L.Get("Pedal_Title")),
             new(L.Get("Nav_Handbrake"), "handbrake", handbrake, L.Get("Handbrake_Title")),
+            new(L.Get("Nav_Update"), "update", update, L.Get("Update_Title")),
         };
 
         // Teste (controle direto de força) não é uma aba: abre num modal à parte,
