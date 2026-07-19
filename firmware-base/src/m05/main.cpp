@@ -173,9 +173,10 @@ __attribute__((section(".noinit"))) static volatile uint32_t g_dfuMagic;
 // setup() (ver checagem logo no topo de setup(), ANTES de qualquer init de
 // USB/clock), ou seja, a partir de um NVIC_SystemReset() limpo, com o
 // OTG_FS ainda no estado de reset (nunca foi tocado nesta "vida" do chip).
-// Por isso NÃO precisa mais de flush/detach/HAL_RCC_DeInit/HAL_DeInit --
-// tudo isso já está implicitamente feito pelo próprio reset de sistema que
-// trouxe a gente até aqui.
+// Não precisa de flush/detach da USB (o OTG_FS nunca subiu neste boot), mas
+// AINDA precisa de HAL_DeInit/HAL_RCC_DeInit: o core do STM32duino já
+// reconfigurou o clock (HSE/PLL 168 MHz) antes do setup(), e o bootloader da
+// ROM espera o clock no reset default (HSI) -- ver comentário abaixo.
 static void jumpToBootloaderEarly()
 {
     // O reset de sistema reinicia o NOSSO firmware, e o core do STM32duino já
