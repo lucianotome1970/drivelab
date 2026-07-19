@@ -97,6 +97,7 @@ static BaseCfg g_baseCfg;
 static bool g_pendingReadValue = false;  // true: loop() deve responder 0x16
 static uint8_t g_pendingField = 0;       // fieldId pedido pelo último 0x15
 static bool g_saveRequested = false;     // true: A0_RID_CMD pediu SaveSettings -> loop() grava na flash
+static volatile bool g_dfuRequested = false; // true: A0_RID_CMD pediu EnterDfu -> loop() salta pro bootloader
 
 // ----------------------------------------------------------------------
 // Persistência em flash (Task 4) — EEPROM emulada do STM32duino
@@ -247,6 +248,16 @@ static void hid_set_report_callback(uint8_t report_id,
             {
                 g_saveRequested = true;
                 SerialTinyUSB.printf("A0 cmd=%u (SaveSettings) arg=%u -> g_saveRequested\n", cmd, arg);
+            }
+            else if (cmd == 4 /* EnterDfu */)
+            {
+                // Só sinaliza -- o salto de verdade acontece no loop() (ver
+                // jumpToBootloader()), nunca aqui dentro do callback da
+                // pilha USB (mesma regra do g_saveRequested acima: nada de
+                // trabalho pesado/irreversível dentro do contexto de
+                // interrupção/callback do TinyUSB).
+                g_dfuRequested = true;
+                SerialTinyUSB.printf("A0 EnterDfu\n");
             }
             else
             {
@@ -483,8 +494,95 @@ void setup()
     }
 }
 
+// ----------------------------------------------------------------------
+// EnterDfu (A0 cmd=4, Task 2 do plano "firmware update over USB"): salta
+// pro bootloader de sistema da ST (gravado em ROM, endereço fixo
+// 0x1FFF0000 no F405 -- AN2606, "STM32F40x/41x built-in bootloader system
+// memory") para o host re-enumerar o dispositivo como
+// 0x0483:0xdf11 "STM32 BOOTLOADER" e regravar via dfu-util, SEM ST-Link.
+//
+// Sequência (comentada passo a passo -- é o ponto de maior risco de
+// bancada deste Task; ver nota de fallback no fim):
+//   1) flush() + detach() do TinyUSB: dá tempo do host perceber que o
+//      dispositivo saiu da enumeração atual ANTES da gente derrubar o
+//      clock/USB de baixo -- sem isso o host pode ficar "preso" tentando
+//      falar com uma interface que sumiu no meio de uma transação.
+//   2) __disable_irq(): nenhuma ISR (systick, USB, timers) pode disparar
+//      no meio do desligamento de clock/periféricos abaixo -- o bootloader
+//      da ST assume que entra com interrupções desligadas.
+//   3) Zera o SysTick (CTRL/LOAD/VAL): o bootloader de sistema reconfigura
+//      o próprio SysTick; se o nosso ficar rodando e disparar antes do
+//      VTOR ser trocado, a exceção usa o vetor ERRADO (ainda o nosso).
+//   4) HAL_RCC_DeInit() + HAL_DeInit(): volta os clocks (RCC) e os
+//      periféricos genéricos da HAL pro estado de reset -- o bootloader
+//      da ST espera o chip mais ou menos como sai do NVIC_SystemReset(),
+//      não com o HSE/PLL/USB OTG já configurados pelo nosso firmware.
+//   5) SCB->VTOR = 0x1FFF0000 + __set_MSP(boot[0]): reaponta a tabela de
+//      vetores pro bootloader ANTES de qualquer exceção poder disparar, e
+//      recarrega o Main Stack Pointer com o valor que o bootloader espera
+//      (senão ele herda nosso SP, que pode estourar a RAM dele).
+//   6) Chama o reset handler do bootloader (boot[1]) por ponteiro de
+//      função -- ele nunca retorna; o while(1) depois é só rede de
+//      segurança caso o salto falhe silenciosamente.
+//
+// FALLBACK (se instável na bancada -- salto "ao vivo" trava/não
+// re-enumera): gravar um "magic" em RAM não-inicializada (seção
+// .noinit, sobrevive a um reset por não ser zerada no startup) +
+// NVIC_SystemReset() em vez do salto direto, e checar esse magic bem no
+// início do setup() -- ANTES de qualquer init de clock/USB -- pulando
+// pro mesmo boot[0]/boot[1] só que a partir de um reset limpo de
+// verdade (em vez de tentar "desmontar" o firmware rodando). Mais
+// robusto (o bootloader da ST recomenda official reset antes do jump em
+// alguns chips), mas não foi necessário tentar primeiro -- ver nota no
+// relatório da Task 2 sobre validação de bancada.
+// ----------------------------------------------------------------------
+static void jumpToBootloader()
+{
+    SerialTinyUSB.flush();
+
+    // Desconecta o USB (host vê o dispositivo sumir) antes de mexer em
+    // clock/periféricos -- TinyUSBDevice.detach() é o wrapper Arduino de
+    // tud_disconnect().
+    TinyUSBDevice.detach();
+    delay(50);
+
+    __disable_irq();
+
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL = 0;
+
+    HAL_RCC_DeInit();
+    HAL_DeInit();
+
+    // Endereço do bootloader de sistema do STM32F405 (AN2606, boot via
+    // system memory / BOOT0 alto): boot[0] = valor inicial do MSP,
+    // boot[1] = endereço do reset handler.
+    volatile uint32_t *boot = (volatile uint32_t *)0x1FFF0000;
+    SCB->VTOR = 0x1FFF0000;
+    __set_MSP(boot[0]);
+
+    void (*blReset)(void) = (void (*)(void))boot[1];
+    blReset();
+
+    // Nunca deveria chegar aqui -- blReset() não retorna.
+    while (1)
+    {
+    }
+}
+
 void loop()
 {
+    // EnterDfu (Task 2): flag setada no callback de SET_REPORT
+    // (hid_set_report_callback, A0 cmd=4) -- o salto de verdade só
+    // acontece aqui, fora do contexto de interrupção/callback USB (mesma
+    // regra do g_saveRequested acima). jumpToBootloader() não retorna.
+    if (g_dfuRequested)
+    {
+        g_dfuRequested = false;
+        jumpToBootloader();
+    }
+
     // Mantém a pilha TinyUSB viva. TinyUSB_Device_Task() só existe/roda em
     // alguns cores (weak); TinyUSBDevice.task() é o caminho garantido aqui.
     TinyUSBDevice.task();
