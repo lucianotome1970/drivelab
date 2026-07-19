@@ -35,28 +35,52 @@ Adafruit_USBD_HID g_hid(kHidReportDescriptor, sizeof(kHidReportDescriptor),
 
 void setup()
 {
-    // Identificação USB — VID 0x1209 (pid.codes, alocação open-source) /
-    // PID 0x0001 (DriveLab Base, provisório p/ este de-risco).
-    TinyUSBDevice.setID(0x1209, 0x0001);
-    TinyUSBDevice.setManufacturerDescriptor("DriveLab");
-    TinyUSBDevice.setProductDescriptor("DriveLab Base");
-
+    // Identificação USB (VID 0x1209 pid.codes / PID 0x0001 / strings
+    // "DriveLab" / "DriveLab Base") vem de -D USB_VID/USB_PID/USB_MANUFACTURER/
+    // USB_PRODUCT no platformio.ini, NÃO de TinyUSBDevice.setID() aqui.
+    // Achado no bring-up: Adafruit_USBD_Device::begin() chama
+    // clearConfiguration() incondicionalmente, que reconstrói o device
+    // descriptor a partir dessas macros de build — qualquer setID()/
+    // setProductDescriptor() chamado ANTES de begin() era descartado. Era
+    // por isso que a v1 deste Passo A enumerava como 0x239A/0xCAFE
+    // "GENERIC_F405RGTX" (defaults da lib Adafruit / ARDUINO_BOARD do core
+    // STM32duino), mesmo chamando setID() no início do setup().
+    //
     // NOTA VBUS: o port STM32 desta lib (Adafruit_TinyUSB_stm32.cpp,
     // TinyUSB_Port_InitDevice) já desliga o sensing de VBUS incondicionalmente
     // (GCCFG NOVBUSSENS/VBUSBSEN/VBUSASEN) — necessário pois a ODESC não traz
     // PA9 ligado ao VBUS. Nenhuma chamada extra é necessária aqui.
 
+    // Padrão oficial da Adafruit_TinyUSB_Arduino p/ cores sem auto-init da
+    // pilha (ver examples/HID/hid_gamepad/hid_gamepad.ino): begin() explícito
+    // ANTES de registrar qualquer classe HID/CDC extra.
+    if (!TinyUSBDevice.isInitialized())
+    {
+        TinyUSBDevice.begin(0);
+    }
+
+    // NOTA CDC: Adafruit_USBD_Device::begin() SEMPRE registra um CDC
+    // ("Serial is always added by default" — Adafruit_USBD_Device.cpp) antes
+    // de qualquer classe nossa entrar. Era por isso que a v1 via só CDC no
+    // config descriptor: g_hid.begin() rodava ANTES de TinyUSB_Device_Init(0),
+    // e o clearConfiguration() de dentro de begin() descartava a interface
+    // HID já registrada. Um composite HID+CDC é aceitável aqui (e útil p/
+    // debug futuro via CDC).
     g_hid.begin();
 
-    // Sobe a pilha TinyUSB (equivalente a TinyUSBDevice.begin(0)).
-    TinyUSB_Device_Init(0);
+    // Se a pilha já montou só com o CDC default antes do HID entrar, o host
+    // não percebe a interface nova sem uma re-enumeração — força via
+    // detach/attach (padrão oficial da lib).
+    if (TinyUSBDevice.mounted())
+    {
+        TinyUSBDevice.detach();
+        delay(10);
+        TinyUSBDevice.attach();
+    }
 
-    // Passo A é só HID (sem CDC) — sem Serial aqui de propósito: o core do
-    // STM32duino já mapeia "Serial" -> UART física (Serial4 nesta board), e
-    // esta lib redefine a macro "Serial" -> SerialTinyUSB quando USE_TINYUSB
-    // está definido, o que colide com o core se CDC não estiver habilitado
-    // no descriptor (não é o caso aqui: só HID). Debug de bancada fica p/
-    // depois (via CDC, se necessário).
+    // Passo A não usa Serial/CDC no código (sem chamadas de log aqui de
+    // propósito) — a lib redefine a macro "Serial" -> SerialTinyUSB quando
+    // USE_TINYUSB está definido; debug de bancada fica p/ depois.
 }
 
 void loop()
