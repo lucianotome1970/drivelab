@@ -68,16 +68,19 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
     /// <summary>True quando o HidDevice é a top-level collection do canal A0 (usage page 0xFF00).</summary>
     internal static bool IsA0Device(HidDevice device) => IsA0UsagePage(GetTopUsagePage(device));
 
-    /// <summary>Varre o HID pelo VID/PID da base e confirma que a collection A0 (0xFF00) está
-    /// presente (autodetecção/hotplug). No macOS 26 o HidSharp não enumera (retorna false); no
-    /// Windows funciona.</summary>
+    /// <summary>Detecta a base por VID/PID (autodetecção/hotplug). O PID 0x0001 é exclusivo da base,
+    /// então a presença por VID/PID já basta — NÃO filtrar por usage page aqui: a base expõe UMA
+    /// interface HID combinada (FFB + A0), e o macOS reporta o device-level usage como 0x00
+    /// (indefinido, pois há duas top-level collections), então exigir 0xFF00 daria falso-negativo.
+    /// A escolha da collection A0 (quando o SO enumera mais de um HidDevice, ex.: Windows) fica no
+    /// <c>OpenAsync</c>/<c>HidSharpChannel</c>.</summary>
     public static bool IsDevicePresent()
     {
         try
         {
             return DeviceList.Local
                 .GetHidDevices(BaseDeviceIdentity.VendorId, BaseDeviceIdentity.ProductId)
-                .Any(IsA0Device);
+                .Any();
         }
         catch
         {
