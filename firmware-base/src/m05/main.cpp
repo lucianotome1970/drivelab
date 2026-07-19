@@ -47,6 +47,8 @@
 #include "a0_channel.h"
 #include "fw_signature.h"
 #include "sensors.h"
+#include "dfu_jump.h"
+#include "usb_base.h"
 
 // ----------------------------------------------------------------------
 // Layout do report de Input do RID_JOYSTICK (collection Physical dentro da
@@ -94,116 +96,14 @@ static uint8_t g_lastEffectBlock = 0;    // 0 = nenhum alocado ainda
 static A0Channel g_a0;
 
 // ----------------------------------------------------------------------
-// EnterDfu, tentativa 2 (Task 2, redo pós-bancada) — "magic em RAM +
-// reset de sistema + checagem no início do boot".
-//
-// A tentativa 1 (salto "ao vivo" pro bootloader de sistema de dentro do
-// firmware rodando -- ver comentário antigo junto de jumpToBootloader()
-// mais abaixo, mantido só como registro histórico) FALHOU na bancada: o
-// host via o dispositivo desconectar (detach), mas o bootloader NUNCA
-// re-enumerava (`dfu-util -l` não achava 0x0483:0xdf11). Causa raiz: o
-// OTG_FS já tinha sido inicializado/usado pelo TinyUSB nesta mesma
-// "vida" do chip -- HAL_RCC_DeInit()/HAL_DeInit() não bastam pra deixar
-// o periférico USB num estado que o bootloader de sistema (que espera
-// entrar como se fosse um power-on/reset limpo) reconhece. O bootloader
-// da ST não foi desenhado pra ser saltado "ao vivo" de dentro de outro
-// firmware com USB já ativo.
-//
-// A fix: em vez de saltar direto, a gente pede um NVIC_SystemReset() de
-// verdade (reset de sistema completo -- reinicializa todos os
-// periféricos, incluindo o OTG_FS, exatamente como um power-on) e só
-// DEPOIS, já num boot novo e limpo, decide (bem no início do próximo
-// setup(), ANTES de qualquer init de USB/clock) se deve pular pro
-// bootloader. Isso precisa de um jeito de "lembrar" essa decisão
-// atravessando o reset -- é pra isso que serve g_dfuMagic abaixo.
-//
-// Mecanismo de persistência escolhido: RAM não-inicializada (seção
-// ".noinit"), NÃO registrador de backup do RTC. Motivo:
-//   - Um NVIC_SystemReset() (reset de sistema via NVIC, o que a gente
-//     usa aqui) NÃO limpa a SRAM -- só reinicializa os periféricos e o
-//     core (ver PM0210 Rev 11, "1.3 System reset": um reset de sistema
-//     "resets all registers... except FCLK/HCLK are configured... and
-//     SRAM/registers of the... are unaffected" -- e mesmo sem citar a
-//     RM ipsis litteris, é fato conhecido/documentado do Cortex-M/STM32
-//     que RAM sobrevive a um reset que não seja power-on). O ÚNICO
-//     "zeramento" que essa RAM sofreria é o loop do startup assembly
-//     (Reset_Handler, startup_stm32f405xx.s) que copia .data da flash e
-//     zera [_sbss, _ebss) -- e esse loop só toca os símbolos _sdata/
-//     _edata/_sbss/_ebss, que vêm do LAYOUT do linker script
-//     (ldscript.ld da variant F405RGT_F415RGT) -- uma seção com nome
-//     PRÓPRIO (".noinit", não ".bss"/".bss*") cai fora desses ranges.
-//   - Verificado: o ldscript.ld desta variant (STM32F4xx/
-//     F405RGT_F415RGT/ldscript.ld) NÃO define uma seção ".noinit"
-//     explícita, mas TAMBÉM não tem catch-all pra seções desconhecidas
-//     -- o GNU ld trata ".noinit" como "orphan section" e a insere
-//     sozinha numa região RAM alocável ("xrw") do MEMORY do script.
-//     Confirmado via objdump -h no firmware.elf: o ld escolheu a região
-//     CCMRAM (0x10000000, 64KB, região "xrw" separada da RAM principal
-//     em 0x20000000 -- ainda SRAM on-chip normal do ponto de vista do
-//     core Cortex-M4, só que num barramento dedicado, sem DMA -- não
-//     importa aqui pois só o CPU lê/escreve g_dfuMagic), não a RAM
-//     principal onde .data/.bss vivem -- ou seja, g_dfuMagic fica ainda
-//     mais claramente FORA do range [_sbss, _ebss) que o Reset_Handler
-//     zera (nem precisa checar endereço-a-endereço: é um bus/region
-//     inteiramente diferente). Isso é o padrão comum/aceito em projetos
-//     STM32duino/PlatformIO pra esse exato truque (magic de bootloader
-//     sobrevivendo a reset) sem precisar editar o linker script -- e um
-//     NVIC_SystemReset() não zera SRAM (nem a principal, nem a CCM), só
-//     reinicializa periféricos/core.
-//   - RTC->BKP0R funcionaria também (é o método "padrão-ouro" mesmo
-//     através de um POWER-ON reset, que .noinit NÃO sobrevive), mas
-//     exigiria ligar o clock de PWR + habilitar acesso ao domínio de
-//     backup (__HAL_RCC_PWR_CLK_ENABLE + HAL_PWR_EnableBkUpAccess) e,
-//     em alguns setups, o próprio RTC/LSE -- complexidade desnecessária
-//     aqui: a gente só precisa sobreviver a um NVIC_SystemReset() (não
-//     a um power-cycle), que é exatamente o caso em que .noinit já
-//     basta. Fica registrado como fallback se .noinit se mostrar
-//     não-confiável na bancada (não foi o caso -- ver relatório).
+// EnterDfu (magic em RAM + reset de sistema + checagem no início do boot) —
+// extraído para lib/base_usb/dfu_jump.{h,cpp} (M5 Stage 0, Task 3): ver
+// dfuCheckAtBootOrJump()/dfuRequestJump() ali (histórico completo da
+// tentativa 1 que falhou na bancada, motivo do RAM ".noinit" em vez de
+// RTC->BKP0R, etc. — mantido lá, não duplicado aqui). main.cpp só chama
+// dfuCheckAtBootOrJump() bem no topo de setup() e dfuRequestJump() do
+// loop() quando g_a0.dfuRequested().
 // ----------------------------------------------------------------------
-static const uint32_t kDfuMagic = 0xB007DF00;
-__attribute__((section(".noinit"))) static volatile uint32_t g_dfuMagic;
-
-// Salto mínimo pro bootloader de sistema da ST -- chamado SÓ no início de
-// setup() (ver checagem logo no topo de setup(), ANTES de qualquer init de
-// USB/clock), ou seja, a partir de um NVIC_SystemReset() limpo, com o
-// OTG_FS ainda no estado de reset (nunca foi tocado nesta "vida" do chip).
-// Não precisa de flush/detach da USB (o OTG_FS nunca subiu neste boot), mas
-// AINDA precisa de HAL_DeInit/HAL_RCC_DeInit: o core do STM32duino já
-// reconfigurou o clock (HSE/PLL 168 MHz) antes do setup(), e o bootloader da
-// ROM espera o clock no reset default (HSI) -- ver comentário abaixo.
-static void jumpToBootloaderEarly()
-{
-    // O reset de sistema reinicia o NOSSO firmware, e o core do STM32duino já
-    // reconfigura o clock (HSE/PLL 168 MHz) antes do setup() -- então neste
-    // ponto o clock NÃO está no reset default. O bootloader por ROM (SW1/BOOT0)
-    // roda no HSI. Precisamos voltar o clock pro estado de reset (HSI, HSE/PLL
-    // off) e resetar os periféricos, senão a USB do bootloader não sobe (foi o
-    // que falhou na bancada). HAL_RCC_DeInit usa SysTick p/ timeout -> chamar
-    // ANTES de desligar SysTick/IRQ.
-    HAL_DeInit();
-    HAL_RCC_DeInit();
-
-    __disable_irq();
-
-    SysTick->CTRL = 0;
-    SysTick->LOAD = 0;
-    SysTick->VAL = 0;
-
-    // Endereço do bootloader de sistema do STM32F405 (AN2606, boot via
-    // system memory / BOOT0 alto): boot[0] = valor inicial do MSP,
-    // boot[1] = endereço do reset handler.
-    volatile uint32_t *boot = (volatile uint32_t *)0x1FFF0000;
-    SCB->VTOR = 0x1FFF0000;
-    __set_MSP(boot[0]);
-
-    void (*blReset)(void) = (void (*)(void))boot[1];
-    blReset();
-
-    // Nunca deveria chegar aqui -- blReset() não retorna.
-    while (1)
-    {
-    }
-}
 
 // Persistência em flash (EEPROM emulada do STM32duino) do canal A0 agora
 // vive em A0Channel::begin()/save() (lib/base_usb/a0_channel.cpp) — ver
@@ -387,46 +287,28 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
 // uma 2ª interface HID. Por isso o canal A0 (vendor, usage-page 0xFF00, ver
 // a0_hid_descriptor.h) NÃO é mais uma interface separada: seus reports são
 // apensados ao final do Report Descriptor do FFB e servidos pela MESMA
-// interface HID (g_hid) — o buffer combinado é montado em setup() (ver
-// g_combined_hid_report_desc) e atribuído a g_hid via setReportDescriptor()
+// interface HID (a instância vive em lib/base_usb/usb_base.cpp) — o buffer
+// combinado é montado em UsbBase::begin() e atribuído via setReportDescriptor()
 // antes do g_hid.begin(). has_out_endpoint=true continua necessário: tanto o
 // FFB (Set Effect/Envelope/.../Device Control/Device Gain) quanto o A0
 // (A0_RID_CMD/DIRECT/SETWRITE/SETREAD) têm Output reports que só chegam pelo
-// endpoint OUT dedicado.
-Adafruit_USBD_HID g_hid(ffb_hid_report_desc, ffb_hid_report_desc_len,
-                         HID_ITF_PROTOCOL_NONE, 4, /*has_out_endpoint=*/true);
+// endpoint OUT dedicado. Ver lib/base_usb/usb_base.{h,cpp} (M5 Stage 0, Task 3).
 
-// Buffer estático (precisa sobreviver ao runtime — tud_hid_descriptor_report_cb
-// devolve o ponteiro guardado por g_hid a qualquer momento, inclusive bem
-// depois do setup() retornar) com o Report Descriptor combinado: FFB
-// (Joystick + PID/Force Feedback, Task 3) seguido do canal A0 (vendor, este
-// Task). Preenchido em setup() antes de g_hid.begin() — ver comentário lá.
-static uint8_t g_combined_hid_report_desc[ffb_hid_report_desc_len + a0_hid_report_desc_len];
+// Referência ao Adafruit_USBD_HID pronto (devolvida por UsbBase::begin() em
+// setup()), guardada para o g_hid.ready()/sendReport() do joystick no loop()
+// — o report da A0Channel::serviceLoop() usa UsbBase::sendReport() direto.
+static Adafruit_USBD_HID *g_hid = nullptr;
 
 void setup()
 {
     // ------------------------------------------------------------------
-    // Checagem EnterDfu (Task 2, redo) — TEM que ser a PRIMEIRÍSSIMA coisa
-    // de setup(), antes de QUALQUER init de USB (TinyUSBDevice.begin()/
-    // g_hid.begin() logo abaixo) ou até de clock. g_dfuMagic (RAM
-    // ".noinit", ver comentário completo junto da declaração dela lá em
-    // cima) só sobrevive ao NVIC_SystemReset() disparado por
-    // jumpToBootloader() no loop() (ver mais abaixo) -- ela NÃO é limpa
-    // pelo startup assembly (Reset_Handler só zera .bss). Se achar o
-    // magic aqui, é porque acabamos de reiniciar de propósito pra entrar
-    // no bootloader: consome o magic (senão um reset comum de novo cairia
-    // de novo no bootloader, num loop) e salta -- com o OTG_FS ainda
-    // intocado nesta "vida" do chip (nenhum TinyUSBDevice.begin() rodou
-    // ainda), o bootloader de sistema entra limpo e re-enumera direito.
-    // Nada antes disto no core (pré-setup(), ver Reset_Handler +
-    // SystemInit) liga o OTG_FS -- SystemInit só configura clocks
-    // (RCC/PLL) e flash wait-states, não periféricos USB.
-    if (g_dfuMagic == kDfuMagic)
-    {
-        g_dfuMagic = 0;
-        jumpToBootloaderEarly();
-        // jumpToBootloaderEarly() não retorna.
-    }
+    // Checagem EnterDfu — TEM que ser a PRIMEIRÍSSIMA coisa de setup(),
+    // antes de QUALQUER init de USB (UsbBase::begin() logo abaixo) ou até
+    // de clock. Ver lib/base_usb/dfu_jump.{h,cpp} (M5 Stage 0, Task 3) para
+    // o mecanismo completo (magic em RAM ".noinit" + histórico de bancada);
+    // esta chamada não retorna se o magic estiver setado (acabamos de
+    // reiniciar de propósito pra entrar no bootloader).
+    dfuCheckAtBootOrJump();
 
     // Referência explícita à assinatura embutida (fw_signature.h). O
     // __attribute__((used)) no struct só garante que o COMPILADOR não
@@ -451,76 +333,14 @@ void setup()
     // isso --gc-sections não pode descartar a seção .rodata da assinatura.
     __asm__ __volatile__("" : : "r"(&fw_signature) : "memory");
 
-    // Identificação USB (VID 0x1209 pid.codes / PID 0x0001 / strings
-    // "DriveLab" / "DriveLab Base") vem de -D USB_VID/USB_PID/USB_MANUFACTURER/
-    // USB_PRODUCT no platformio.ini, NÃO de TinyUSBDevice.setID() aqui.
-    // Achado no bring-up: Adafruit_USBD_Device::begin() chama
-    // clearConfiguration() incondicionalmente, que reconstrói o device
-    // descriptor a partir dessas macros de build — qualquer setID()/
-    // setProductDescriptor() chamado ANTES de begin() era descartado. Era
-    // por isso que a v1 deste Passo A enumerava como 0x239A/0xCAFE
-    // "GENERIC_F405RGTX" (defaults da lib Adafruit / ARDUINO_BOARD do core
-    // STM32duino), mesmo chamando setID() no início do setup().
-    //
-    // NOTA VBUS: o port STM32 desta lib (Adafruit_TinyUSB_stm32.cpp,
-    // TinyUSB_Port_InitDevice) já desliga o sensing de VBUS incondicionalmente
-    // (GCCFG NOVBUSSENS/VBUSBSEN/VBUSASEN) — necessário pois a ODESC não traz
-    // PA9 ligado ao VBUS. Nenhuma chamada extra é necessária aqui.
-
-    // Padrão oficial da Adafruit_TinyUSB_Arduino p/ cores sem auto-init da
-    // pilha (ver examples/HID/hid_gamepad/hid_gamepad.ino): begin() explícito
-    // ANTES de registrar qualquer classe HID/CDC extra.
-    if (!TinyUSBDevice.isInitialized())
-    {
-        TinyUSBDevice.begin(0);
-    }
-
-    // NOTA CDC: Adafruit_USBD_Device::begin() SEMPRE registra um CDC
-    // ("Serial is always added by default" — Adafruit_USBD_Device.cpp) antes
-    // de qualquer classe nossa entrar. Era por isso que a v1 via só CDC no
-    // config descriptor: g_hid.begin() rodava ANTES de TinyUSB_Device_Init(0),
-    // e o clearConfiguration() de dentro de begin() descartava a interface
-    // HID já registrada. Um composite HID+CDC é aceitável aqui (e útil p/
-    // debug futuro via CDC).
-    // Monta o Report Descriptor combinado (FFB + A0, ver comentário junto de
-    // g_combined_hid_report_desc) e o atribui a g_hid ANTES do begin() —
-    // setReportDescriptor() só troca o ponteiro/tamanho guardados na
-    // instância (Adafruit_USBD_HID.cpp), então a ordem aqui não afeta a
-    // pilha diretamente, mas mantém a montagem e o begin() juntos e claros.
-    memcpy(g_combined_hid_report_desc, ffb_hid_report_desc, ffb_hid_report_desc_len);
-    memcpy(g_combined_hid_report_desc + ffb_hid_report_desc_len,
-           a0_hid_report_desc, a0_hid_report_desc_len);
-    g_hid.setReportDescriptor(g_combined_hid_report_desc, sizeof(g_combined_hid_report_desc));
-
-    // Callbacks de GET/SET_REPORT (ver comentários acima delas) — registrados
-    // ANTES do begin() para já valerem assim que o host mandar/pedir algo.
-    // Task 2 (redo) só combina os descritores; os callbacks do canal A0
-    // (Report IDs A0_RID_*) ficam para a Task 3 — hid_get/set_report_callback
-    // continuam tratando só os RID_PID_*/RID_JOYSTICK do FFB.
-    g_hid.setReportCallback(hid_get_report_callback, hid_set_report_callback);
-
-    g_hid.begin();
-
-    // Se a pilha já montou só com o CDC default antes do HID entrar, o host
-    // não percebe a interface nova sem uma re-enumeração — força via
-    // detach/attach (padrão oficial da lib).
-    if (TinyUSBDevice.mounted())
-    {
-        TinyUSBDevice.detach();
-        delay(10);
-        TinyUSBDevice.attach();
-    }
-
-    // CDC de debug: "Serial" já é a CDC do TinyUSB neste core (STM32duino) —
-    // tusb_config_stm32.h define "#define Serial SerialTinyUSB" e
-    // Adafruit_USBD_CDC.h define "#define SerialTinyUSB Serial"; como as duas
-    // macros se referenciam uma à outra, o pré-processador para a expansão
-    // recursiva e ambos os nomes acabam resolvendo para o mesmo objeto
-    // global `Adafruit_USBD_CDC SerialTinyUSB` (é o CDC registrado
-    // automaticamente por Adafruit_USBD_Device::begin(), não uma UART).
-    // Passo A deixou de usar Serial de propósito (só provava enumeração);
-    // aqui é onde o Passo C liga o log de verdade.
-    SerialTinyUSB.begin(115200);
+    // Setup USB completo (identidade VID/PID via build flags, descritor
+    // combinado FFB+A0, init/re-enum, CDC) — extraído para
+    // lib/base_usb/usb_base.{h,cpp} (M5 Stage 0, Task 3). Callbacks de
+    // GET/SET_REPORT (ver comentários acima delas) registrados ANTES do
+    // begin() para já valerem assim que o host mandar/pedir algo — mesma
+    // ordem do monolito original.
+    UsbBase::setReportCallbacks(hid_get_report_callback, hid_set_report_callback);
+    g_hid = &UsbBase::begin();
 
     // Canal A0: tenta carregar os settings persistidos na flash (ou volta
     // pros defaults do schema se a flash estiver vazia/com magic errado —
@@ -529,63 +349,17 @@ void setup()
     g_a0.begin();
 }
 
-// ----------------------------------------------------------------------
-// EnterDfu (A0 cmd=4, Task 2 do plano "firmware update over USB") --
-// PASSO 1 de 2 da tentativa 2 (magic + reset, ver comentário completo
-// junto de g_dfuMagic lá em cima). Chamado do loop() (nunca do callback
-// SET_REPORT -- mesma regra do g_saveRequested/g_pendingReadValue: nada
-// de trabalho pesado/irreversível dentro do contexto do TinyUSB). Grava
-// o magic em RAM .noinit e pede um reset de sistema de verdade
-// (NVIC_SystemReset()) -- o salto de fato pro bootloader só acontece no
-// PRÓXIMO boot, em jumpToBootloaderEarly() (chamada do início de
-// setup(), ANTES de qualquer init de USB), a partir de um OTG_FS limpo.
-// Não desmonta HAL/clock/USB aqui -- o reset de sistema já faz isso por
-// completo (é justamente o que resolve o problema da tentativa 1: um
-// HAL_RCC_DeInit()/HAL_DeInit() "manual" não deixa o OTG_FS tão limpo
-// quanto um reset de verdade).
-// ----------------------------------------------------------------------
-static void jumpToBootloader()
-{
-    // Dá tempo do host/CDC drenar o log antes da gente sumir -- não é
-    // estritamente necessário pro reset em si, mas evita truncar a última
-    // linha de log ("A0 EnterDfu" etc.) na janela do monitor serial.
-    SerialTinyUSB.flush();
-    delay(10);
-
-    g_dfuMagic = kDfuMagic;
-    NVIC_SystemReset();
-
-    // Nunca deveria chegar aqui -- NVIC_SystemReset() não retorna.
-    while (1)
-    {
-    }
-}
-
-// Wrapper de g_hid.sendReport() para o `sender` de A0Channel::serviceLoop()
-// (lib/base_usb/a0_channel.h) -- checa g_hid.ready() ele mesmo e só chama
-// sendReport() (e devolve true) se o endpoint IN estiver livre, senão
-// devolve false sem efeito colateral (o módulo tenta de novo na próxima
-// iteração do loop() -- mesmo padrão "um sendReport() por janela de EP" do
-// fix P0/HID EP, ver MEMORY).
-static bool a0SendReport(uint8_t reportId, const uint8_t *payload, uint16_t len)
-{
-    if (!g_hid.ready())
-    {
-        return false;
-    }
-    return g_hid.sendReport(reportId, payload, len);
-}
-
 void loop()
 {
     // EnterDfu: flag setada no callback de SET_REPORT (hid_set_report_callback
     // -> A0Channel::handleOutReport, A0 cmd=4) -- o salto de verdade só
     // acontece aqui, fora do contexto de interrupção/callback USB (mesma
     // regra do saveRequested() abaixo). dfuRequested() consome a flag (só
-    // devolve true uma vez). jumpToBootloader() não retorna.
+    // devolve true uma vez). dfuRequestJump() (lib/base_usb/dfu_jump.h) não
+    // retorna.
     if (g_a0.dfuRequested())
     {
-        jumpToBootloader();
+        dfuRequestJump();
     }
 
     // Mantém a pilha TinyUSB viva. TinyUSB_Device_Task() só existe/roda em
@@ -638,20 +412,21 @@ void loop()
     // A0_RID_SETVALUE (0x16) + telemetria periódica DeviceState (0x21) --
     // ambas dentro de A0Channel::serviceLoop (lib/base_usb/a0_channel.cpp),
     // que já respeita a prioridade "0x16 deferido antes de 0x21" e só envia
-    // se a0SendReport() (acima) achar o endpoint IN livre. Chamado ANTES do
-    // Input do joystick abaixo -- mesma posição/prioridade que o 0x16 tinha
-    // no código original (é a resposta de uma ação de UI, prioridade mais
-    // alta que o joystick decorativo); só tenta o joystick se g_hid.ready()
-    // ainda estiver livre depois (mesmo padrão do fix P0/HID EP do
-    // firmware-pedal/wheel/handbrake -- ver MEMORY "Fix P0/HID EP").
-    g_a0.serviceLoop(now, &a0SendReport);
+    // se UsbBase::sendReport() (lib/base_usb/usb_base.cpp) achar o endpoint
+    // IN livre. Chamado ANTES do Input do joystick abaixo -- mesma
+    // posição/prioridade que o 0x16 tinha no código original (é a resposta
+    // de uma ação de UI, prioridade mais alta que o joystick decorativo);
+    // só tenta o joystick se g_hid->ready() ainda estiver livre depois
+    // (mesmo padrão do fix P0/HID EP do firmware-pedal/wheel/handbrake --
+    // ver MEMORY "Fix P0/HID EP").
+    g_a0.serviceLoop(now, &UsbBase::sendReport);
 
     // Report de Input do RID_JOYSTICK: eixo X variando devagar (prova que o
     // host VÊ o dispositivo se mexendo), demais campos zerados/centrados.
     // Passo B não decodifica FFB ainda — só serve o descritor inteiro e
     // mantém um Input válido fluindo.
     static uint32_t lastSend = 0;
-    if (g_hid.ready() && (now - lastSend >= 10))
+    if (g_hid->ready() && (now - lastSend >= 10))
     {
         lastSend = now;
 
@@ -659,6 +434,6 @@ void loop()
         memset(&report, 0, sizeof(report));
         report.axes[0] = (int16_t)(32767.0f * sinf(now / 1000.0f)); // X
 
-        g_hid.sendReport(RID_JOYSTICK, &report, sizeof(report));
+        UsbBase::sendReport(RID_JOYSTICK, (const uint8_t *)&report, sizeof(report));
     }
 }
