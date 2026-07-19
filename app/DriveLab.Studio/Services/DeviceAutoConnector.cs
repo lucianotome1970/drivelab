@@ -25,6 +25,7 @@ public sealed class DeviceAutoConnector : IDisposable
     private readonly IUiDispatcher _dispatcher;
     private Timer? _timer;
     private volatile bool _busy;
+    private volatile bool _paused;
 
     public DeviceAutoConnector(
         Func<bool> isConnected, Func<Task> connect, Func<Task> disconnect,
@@ -44,10 +45,18 @@ public sealed class DeviceAutoConnector : IDisposable
         _timer = new Timer(_ => _dispatcher.Post(async () => await PollOnceAsync()), null, 0, periodMs);
     }
 
+    /// <summary>Suspende o polling (não conecta nem desconecta) — usado durante uma atualização de
+    /// firmware, quando o fluxo de update precisa de controle exclusivo da USB do dispositivo para
+    /// deixá-lo re-enumerar como bootloader (DFU) sem que este auto-connector reabra o handle.</summary>
+    public void Pause() => _paused = true;
+
+    /// <summary>Retoma o polling (o próximo tick reconecta o dispositivo assim que ele reaparecer).</summary>
+    public void Resume() => _paused = false;
+
     /// <summary>Um passo do polling: conecta se o dispositivo apareceu, desconecta se sumiu.</summary>
     public async Task PollOnceAsync()
     {
-        if (_busy)
+        if (_paused || _busy)
             return;
         _busy = true;
         try

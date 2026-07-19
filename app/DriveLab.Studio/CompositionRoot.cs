@@ -64,10 +64,16 @@ public static class CompositionRoot
         var autoConnectors = new List<IDisposable>();
 
         // Base (topo): o transporte já vem por modo do App (simulador vs HID). Real → auto-connect.
+        // Guardamos o auto-connector da base para o coordenador de update pausá-lo/retomá-lo.
+        IDeviceAccessCoordinator? updateCoordinator = null;
         if (!simulatorMode)
-            autoConnectors.Add(StartAutoConnect(
+        {
+            var baseAutoConnect = StartAutoConnect(
                 () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
-                HidBaseTransport.IsDevicePresent, dispatcher));
+                HidBaseTransport.IsDevicePresent, dispatcher);
+            autoConnectors.Add(baseAutoConnect);
+            updateCoordinator = new HostDeviceAccessCoordinator(baseAutoConnect, session.DisconnectAsync);
+        }
 
         // Pedais: simulador → simulador; real → nossa pedaleira P0 (ou Simagic, leitura) + hotplug.
         var simagicReader = new SimagicHidSharpReader();
@@ -155,8 +161,11 @@ public static class CompositionRoot
 
         // Atualização de firmware: por enquanto só a base, usando o MESMO transporte da sessão
         // (real → HID; simulador → transporte simulado, EnterDfu vira no-op).
-        var updateDevices = new List<IDeviceUpdater> { new BaseUpdater(transport) };
-        var update = new UpdateViewModel(updateDevices);
+        // Diagnóstico (só no modo real): cada poll do `dfu-util -l` vai para um log, para depurar
+        // na bancada por que o bootloader (não) apareceu. Best-effort — nunca deixa o update falhar.
+        Action<string>? dfuLog = simulatorMode ? null : BuildDfuDebugLog();
+        var updateDevices = new List<IDeviceUpdater> { new BaseUpdater(transport, diagnostics: dfuLog) };
+        var update = new UpdateViewModel(updateDevices, coordinator: updateCoordinator, baseSession: session);
 
         var pages = new List<NavItem>
         {
@@ -193,6 +202,19 @@ public static class CompositionRoot
         };
 
         return main;
+    }
+
+    /// <summary>Build a best-effort file logger for DFU update diagnostics (`~/DriveLab-dfu-debug.log`).
+    /// Each line is timestamped; IO errors are swallowed so logging can never break an update.</summary>
+    private static Action<string> BuildDfuDebugLog()
+    {
+        var path = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "DriveLab-dfu-debug.log");
+        return line =>
+        {
+            try { File.AppendAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}  {line}{Environment.NewLine}"); }
+            catch { /* best-effort: diagnóstico nunca pode derrubar o update */ }
+        };
     }
 
     private static DeviceAutoConnector StartAutoConnect(

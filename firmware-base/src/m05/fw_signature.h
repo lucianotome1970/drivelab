@@ -26,6 +26,13 @@
 
 #include <cstdint>
 
+// Versão do firmware — FONTE ÚNICA. Usada tanto na assinatura do .bin (validação
+// de update) quanto na telemetria DeviceState 0x21 (o que o app mostra como
+// "firmware vX.Y.Z"). Mantenha os dois em sincronia bumpando SÓ aqui.
+#define DRVLAB_FW_VER_MAJOR 0
+#define DRVLAB_FW_VER_MINOR 2
+#define DRVLAB_FW_VER_PATCH 0
+
 struct FwSignature {
     char magic[8];
     uint8_t kind;
@@ -33,5 +40,6 @@ struct FwSignature {
 };
 
 __attribute__((used)) static const FwSignature fw_signature = {
-    {'D', 'R', 'V', 'L', 'A', 'B', 'F', 'W'}, /*Base*/ 1, {0, 2, 0}
+    {'D', 'R', 'V', 'L', 'A', 'B', 'F', 'W'}, /*Base*/ 1,
+    {DRVLAB_FW_VER_MAJOR, DRVLAB_FW_VER_MINOR, DRVLAB_FW_VER_PATCH}
 };
