@@ -43,7 +43,6 @@
 #include <Adafruit_TinyUSB.h>
 #include "ffb_hid_descriptor.h"
 #include "ffb_report.h"
-#include "a0_hid_descriptor.h"
 #include "a0_channel.h"
 #include "fw_signature.h"
 #include "sensors.h"

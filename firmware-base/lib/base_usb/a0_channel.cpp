@@ -100,7 +100,7 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
             if (cmd == 2 /* SaveSettings */)
             {
                 m_saveRequested = true;
-                SerialTinyUSB.printf("A0 cmd=%u (SaveSettings) arg=%u -> g_saveRequested\n", cmd, arg);
+                SerialTinyUSB.printf("A0 cmd=%u (SaveSettings) arg=%u -> m_saveRequested\n", cmd, arg);
             }
             else if (cmd == 4 /* EnterDfu */)
             {
