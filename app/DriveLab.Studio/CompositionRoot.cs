@@ -165,7 +165,7 @@ public static class CompositionRoot
         // na bancada por que o bootloader (não) apareceu. Best-effort — nunca deixa o update falhar.
         Action<string>? dfuLog = simulatorMode ? null : BuildDfuDebugLog();
         var updateDevices = new List<IDeviceUpdater> { new BaseUpdater(transport, diagnostics: dfuLog) };
-        var update = new UpdateViewModel(updateDevices, coordinator: updateCoordinator);
+        var update = new UpdateViewModel(updateDevices, coordinator: updateCoordinator, baseSession: session);
 
         var pages = new List<NavItem>
         {
