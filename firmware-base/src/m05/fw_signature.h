@@ -30,7 +30,7 @@
 // de update) quanto na telemetria DeviceState 0x21 (o que o app mostra como
 // "firmware vX.Y.Z"). Mantenha os dois em sincronia bumpando SÓ aqui.
 #define DRVLAB_FW_VER_MAJOR 0
-#define DRVLAB_FW_VER_MINOR 2
+#define DRVLAB_FW_VER_MINOR 3
 #define DRVLAB_FW_VER_PATCH 0
 
 struct FwSignature {

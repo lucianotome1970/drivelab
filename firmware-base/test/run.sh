@@ -14,3 +14,7 @@ c++ -std=c++17 -Wall -Wextra -Werror -o "$out2" test_ffb_report.cpp ../src/m05/f
 out3="$(mktemp -d)/base_cfg_test"
 c++ -std=c++17 -Wall -Wextra -Werror -o "$out3" test_base_cfg.cpp ../src/m05/base_cfg.cpp
 "$out3"
+
+out4="$(mktemp -d)/sensors_test"
+c++ -std=c++17 -Wall -Wextra -Werror -o "$out4" test_sensors.cpp
+"$out4"

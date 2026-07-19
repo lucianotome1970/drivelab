@@ -47,6 +47,7 @@
 #include "a0_hid_descriptor.h"
 #include "base_cfg.h"
 #include "fw_signature.h"
+#include "sensors.h"
 
 // ----------------------------------------------------------------------
 // Layout do report de Input do RID_JOYSTICK (collection Physical dentro da
@@ -744,6 +745,16 @@ void loop()
     // mantém um Input válido fluindo.
     static uint32_t lastSend = 0;
     uint32_t now = millis();
+
+    // Amostra os sensores por ADC a ~10 Hz num cache (a telemetria abaixo usa o
+    // cache). Fora do caminho do FFB/USB — leituras leves, read-only.
+    static uint32_t lastSensor = 0;
+    if (now - lastSensor >= 100)
+    {
+        lastSensor = now;
+        sensorsSample();
+    }
+
     if (g_hid.ready() && (now - lastSend >= 10))
     {
         lastSend = now;
@@ -792,9 +803,14 @@ void loop()
         payload[2] = DRVLAB_FW_VER_MINOR;
         payload[3] = DRVLAB_FW_VER_PATCH;
         payload[4] = 0; // flags
-        // payload[5..18] = sensores placeholder (posição/ângulo/torque/
-        // corrente/temperaturas/barramento) -- 0 até o M1 ligar os sensores.
-        payload[14] = 0; // error
+        // payload[5..12] = posição/ângulo/torque/corrente -- 0 até o M1 (motor).
+        payload[13] = (uint8_t)sensorFetTempC();    // FetTempC (sbyte): máx dos NTC onboard
+        payload[14] = 0;                            // error
+        uint16_t busMv = sensorBusMilliVolts();     // BusVoltageMv (uint16 LE): ~0 sem DC
+        payload[15] = (uint8_t)(busMv & 0xFF);
+        payload[16] = (uint8_t)(busMv >> 8);
+        // payload[17] = MotorTempC -- 0 até M1 (thermistor de motor externo).
+        payload[18] = (uint8_t)sensorMcuTempC();    // McuTempC (sbyte): sensor interno do F405
 
         g_hid.sendReport(A0_RID_STATE, payload, sizeof(payload));
     }
