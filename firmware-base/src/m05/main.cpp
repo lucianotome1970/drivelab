@@ -44,6 +44,7 @@
 #include "ffb_hid_descriptor.h"
 #include "ffb_report.h"
 #include "a0_hid_descriptor.h"
+#include "base_cfg.h"
 
 // ----------------------------------------------------------------------
 // Layout do report de Input do RID_JOYSTICK (collection Physical dentro da
@@ -79,6 +80,21 @@ static constexpr uint8_t kMaxEffectBlocks = 40;
 static constexpr uint8_t kSimultaneousEffectsMax = 8;
 static uint8_t g_nextEffectBlock = 1;    // último "Effect Block Index" alocado
 static uint8_t g_lastEffectBlock = 0;    // 0 = nenhum alocado ainda
+
+// ----------------------------------------------------------------------
+// Estado do canal A0 (config channel — Task 1/3): o modelo puro dos
+// settings da base (base_cfg.h/.cpp) e o estado "leitura pendente" usado
+// para responder A0_RID_SETVALUE (0x16) de forma DEFERIDA no loop() — a
+// regra do endpoint único (mesmo achado de bancada do Passo C/Task 2: só
+// dá pra ter um sendReport() "no ar" por vez no EP IN compartilhado por
+// FFB+A0) impede responder direto de dentro do callback de SET_REPORT.
+// Task 4 troca baseSeedDefaults() por um load da flash; por ora só semeia
+// os defaults do schema (ver setup()).
+// ----------------------------------------------------------------------
+static BaseCfg g_baseCfg;
+static bool g_pendingReadValue = false;  // true: loop() deve responder 0x16
+static uint8_t g_pendingField = 0;       // fieldId pedido pelo último 0x15
+static bool g_saveRequested = false;     // true: A0_RID_CMD pediu SaveSettings (Task 4 grava na flash)
 
 static const char *ffb_op_name(uint8_t op)
 {
@@ -141,6 +157,66 @@ static void hid_set_report_callback(uint8_t report_id,
             handle_create_new_effect(buffer, bufsize);
         }
         // Outros Feature SET (nenhum outro no nosso descritor) -- ignorado.
+        return;
+    }
+
+    // Canal A0 (config, Task 3): mesmo caminho 1 (endpoint OUT) do FFB acima
+    // -- buffer[0] é o Report ID de verdade (confirmado pelo comentário da
+    // função e por ffb_parse_out logo abaixo, que também lê buffer[0]).
+    // A0_RID_SETWRITE/SETREAD/CMD/DIRECT são todos "Output" no descritor
+    // (a0_hid_report_desc), então chegam por aqui, nunca pelo caminho
+    // Feature. Layout (payload após o Report ID em buffer[0]):
+    //   0x14 SETWRITE: buffer[1]=fieldId buffer[2]=index(0) buffer[3]=type
+    //                  buffer[4..]=value LE (contrato SettingWrite do app).
+    //   0x15 SETREAD:  buffer[1]=fieldId buffer[2]=index(0).
+    //   0x22 CMD:      buffer[1]=cmd buffer[2]=arg.
+    //   0x10 DIRECT:   ignorado por ora (só log) -- sem uso definido ainda.
+    if (buffer[0] == A0_RID_SETWRITE)
+    {
+        if (bufsize >= 4)
+        {
+            uint8_t fieldId = buffer[1];
+            uint8_t type = buffer[3];
+            uint16_t valLen = bufsize - 4;
+            baseWriteField(g_baseCfg, fieldId, type, &buffer[4], valLen);
+            SerialTinyUSB.printf("A0 write field=%u type=%u len=%u\n", fieldId, type, valLen);
+        }
+        return;
+    }
+
+    if (buffer[0] == A0_RID_SETREAD)
+    {
+        if (bufsize >= 2)
+        {
+            g_pendingField = buffer[1];
+            g_pendingReadValue = true;
+            SerialTinyUSB.printf("A0 read field=%u\n", g_pendingField);
+        }
+        return;
+    }
+
+    if (buffer[0] == A0_RID_CMD)
+    {
+        if (bufsize >= 3)
+        {
+            uint8_t cmd = buffer[1];
+            uint8_t arg = buffer[2];
+            if (cmd == 2 /* SaveSettings */)
+            {
+                g_saveRequested = true;
+                SerialTinyUSB.printf("A0 cmd=%u (SaveSettings) arg=%u -> g_saveRequested\n", cmd, arg);
+            }
+            else
+            {
+                SerialTinyUSB.printf("A0 cmd=%u arg=%u (sem handler ainda)\n", cmd, arg);
+            }
+        }
+        return;
+    }
+
+    if (buffer[0] == A0_RID_DIRECT)
+    {
+        SerialTinyUSB.printf("A0 direct len=%u (ignorado por ora)\n", bufsize);
         return;
     }
 
@@ -331,6 +407,11 @@ void setup()
     // Passo A deixou de usar Serial de propósito (só provava enumeração);
     // aqui é onde o Passo C liga o log de verdade.
     SerialTinyUSB.begin(115200);
+
+    // Canal A0 (Task 3): semeia os defaults do schema (BaseSettingsSchema.cs
+    // via base_cfg.cpp/baseSeedDefaults). Task 4 troca isso por um load da
+    // flash (com fallback pros defaults se a flash estiver vazia/corrompida).
+    baseSeedDefaults(g_baseCfg);
 }
 
 void loop()
@@ -352,6 +433,38 @@ void loop()
     {
         bannerSent = true;
         SerialTinyUSB.printf("DriveLab Base M0.5 Passo C — FFB pipe (parse + log CDC) ativo\n");
+    }
+
+    // Canal A0 (Task 3): resposta DEFERIDA de A0_RID_SETREAD (0x15) via
+    // A0_RID_SETVALUE (0x16) -- deferida porque o SET_REPORT do 0x15 chega
+    // dentro do callback da pilha USB, onde não é seguro empilhar mais um
+    // sendReport() (mesmo EP IN único, compartilhado com o Input do
+    // RID_JOYSTICK abaixo). Prioridade sobre o Input do joystick nesta
+    // iteração: só tenta o joystick se g_hid.ready() ainda estiver livre
+    // depois deste envio (mesmo padrão do fix P0/HID EP do firmware-pedal/
+    // wheel/handbrake -- ver MEMORY "Fix P0/HID EP").
+    if (g_pendingReadValue && g_hid.ready())
+    {
+        g_pendingReadValue = false;
+
+        uint8_t type = 0;
+        uint8_t val[8] = {0};
+        int n = baseReadField(g_baseCfg, g_pendingField, &type, val);
+
+        // Payload do Input (SEM o Report ID -- g_hid.sendReport() antepõe
+        // sozinho, igual ao RID_JOYSTICK abaixo): [0]=fieldId [1]=index(0)
+        // [2]=type [3..]=value LE (contrato SettingValue do app).
+        uint8_t payload[63] = {0};
+        payload[0] = g_pendingField;
+        payload[1] = 0;
+        payload[2] = type;
+        if (n > 0)
+        {
+            memcpy(&payload[3], val, n);
+        }
+
+        g_hid.sendReport(A0_RID_SETVALUE, payload, sizeof(payload));
+        SerialTinyUSB.printf("A0 reply field=%u type=%u len=%d\n", g_pendingField, type, n);
     }
 
     // Report de Input do RID_JOYSTICK: eixo X variando devagar (prova que o
