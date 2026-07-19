@@ -1,30 +1,48 @@
 // ============================================================================
 //  DriveLab Firmware
-//  main.cpp (m05) — M0.5 v2 Passo B: descritor HID PID completo (FFB).
+//  main.cpp (m05) — M0.5 v2 Passo C: parser FFB ligado + log CDC + handshake
+//  PID mínimo (Pool / Block Load / Create New Effect / Device Control).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
 // ============================================================================
 
-// DriveLab Firmware — M0.5 v2, Passo B (descritor HID PID completo)
+// DriveLab Firmware — M0.5 v2, Passo C (liga o "cano" FFB)
 // Alvo: ODESC v4.2 (STM32F405). Framework: Arduino (STM32duino) + TinyUSB
 // (Adafruit TinyUSB Library).
 //
-// O Passo A (ver git log) provou a pilha TinyUSB isolada com um joystick
-// MÍNIMO (1 eixo + 1 botão) — enumerou OK no Mac e no Windows. Este Passo B
-// troca o descritor mínimo pelo HID PID (Force Feedback) COMPLETO, gerado a
-// partir do OpenFFBoard (ffb_hid_descriptor.h, Task 3): 1196 bytes, várias
-// collections de Output (Set Effect/Envelope/Condition/Periodic/Constant
-// Force/Ramp Force/...) além do Input do joystick (RID_JOYSTICK). O objetivo
-// é só provar que o descritor sai INTEIRO do device (sem truncar) e que o
-// Windows mostra a aba Force Feedback — o parser dos relatórios OUT/Set
-// Report de efeitos FFB de verdade é a Task 6 (aqui é só um stub no-op).
+// Passo A provou a pilha TinyUSB isolada com um joystick mínimo. Passo B
+// trocou o descritor mínimo pelo HID PID (Force Feedback) COMPLETO
+// (ffb_hid_descriptor.h, Task 3) com um stub no-op no SET_REPORT — só provou
+// que o descritor sai inteiro e o Windows mostra a aba Force Feedback.
 //
-// SEGURANÇA: continua SEM motor / sem estágio de potência. Só enumeração +
-// um report de Input periódico "morto" (zerado/centrado).
+// Este Passo C liga de fato o "cano": o SET_REPORT (endpoint OUT, reports
+// como Set Constant Force / Effect Operation) é decodificado por
+// ffb_report.{h,cpp} (Task 5) e logado via CDC. Para o host (DirectInput no
+// Windows) realmente criar e tocar um efeito, ele antes precisa de um
+// handshake PID mínimo por Feature report:
+//   - SET_REPORT Feature RID_PID_CREATE_NEW_EFFECT (0x11): host pede um novo
+//     efeito (Effect Type + Byte Count) -> nós alocamos um "Effect Block
+//     Index" sequencial (1..40, MAX_EFFECTS do OpenFFBoard) e guardamos.
+//   - GET_REPORT Feature RID_PID_BLOCK_LOAD (0x12): host pergunta o
+//     resultado -> respondemos {Effect Block Index, Status=Success, RAM Pool
+//     Available}.
+//   - GET_REPORT Feature RID_PID_POOL (0x13): host pergunta a capacidade do
+//     dispositivo -> respondemos {RAM Pool Size, Simultaneous Effects Max,
+//     flags}.
+//   - Device Control (RID_PID_DEVICE_CONTROL, 0x0C) chega pelo endpoint OUT
+//     normal (é Output, não Feature) — só logamos.
+// Os layouts de bytes desses três reports foram lidos direto da árvore de
+// Main Items do ffb_hid_report_desc (ver comentários junto de cada handler
+// abaixo) — eles espelham o PID Pool/Block Load/Create New Effect do
+// OpenFFBoard (Ultrawipf/OpenFFBoard, Firmware/FFBoard/UserExtensions).
+//
+// SEGURANÇA: continua SEM motor / sem estágio de potência. Só decodifica e
+// loga a força que o jogo manda — nenhum atuador é acionado.
 
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
 #include "ffb_hid_descriptor.h"
+#include "ffb_report.h"
 
 // ----------------------------------------------------------------------
 // Layout do report de Input do RID_JOYSTICK (collection Physical dentro da
@@ -46,20 +64,170 @@ static_assert(sizeof(JoystickInputReport) == 24,
               "Payload do RID_JOYSTICK deve ter 24 bytes (8 botões + 8 eixos x16b)");
 
 // ----------------------------------------------------------------------
-// Callback de SET_REPORT / dados no endpoint OUT: por enquanto NO-OP. O
-// decode real dos relatórios PID (Set Effect, Set Envelope, Effect
-// Operation, ...) fica para a Task 6 (ffb_report.*). Aqui só evita que o
-// host trave esperando resposta / a pilha ignore os OUT reports.
+// Estado mínimo do "pool" de efeitos PID (só o necessário para o handshake
+// -- nenhum efeito é de fato armazenado/tocado, é só contabilidade para o
+// host achar que o dispositivo tem onde alocar o efeito).
+//   - MAX_EFFECTS = 40 (0x28): mesmo limite do OpenFFBoard (ver
+//     ffb_hid_descriptor.h / Logical Maximum do Effect Block Index nos
+//     reports Create New Effect e Block Load).
+//   - kSimultaneousEffectsMax: quantos efeitos "simultâneos" anunciamos no
+//     PID Pool report — valor arbitrário conservador (não temos motor, é só
+//     para o host não recusar o dispositivo por capacidade zero).
+// ----------------------------------------------------------------------
+static constexpr uint8_t kMaxEffectBlocks = 40;
+static constexpr uint8_t kSimultaneousEffectsMax = 8;
+static uint8_t g_nextEffectBlock = 1;    // último "Effect Block Index" alocado
+static uint8_t g_lastEffectBlock = 0;    // 0 = nenhum alocado ainda
+
+static const char *ffb_op_name(uint8_t op)
+{
+    switch (op)
+    {
+        case 1: return "start";
+        case 2: return "start-solo";
+        case 3: return "stop";
+        default: return "unknown";
+    }
+}
+
+// ----------------------------------------------------------------------
+// SET_REPORT Feature RID_PID_CREATE_NEW_EFFECT (0x11): o host pede a
+// criação de um novo efeito. Layout (sem o byte de Report ID, que a pilha
+// TinyUSB já retira antes de chamar este callback para requests via control
+// transfer — ver hid_device.c/HID_REQ_CONTROL_SET_REPORT):
+//   buffer[0]      = Effect Type (array, 1..11 -> Constant Force/Ramp/...)
+//   buffer[1..2]   = Byte Count (10 bits) + 6 bits de padding, little-endian
+// Não alocamos memória de verdade — só devolvemos um Effect Block Index
+// sequencial (1..kMaxEffectBlocks, dando a volta) para o host consultar via
+// GET_REPORT Block Load logo em seguida.
+// ----------------------------------------------------------------------
+static void handle_create_new_effect(uint8_t const *buffer, uint16_t bufsize)
+{
+    uint8_t effectType = (bufsize >= 1) ? buffer[0] : 0;
+
+    g_lastEffectBlock = g_nextEffectBlock;
+    g_nextEffectBlock++;
+    if (g_nextEffectBlock > kMaxEffectBlocks)
+    {
+        g_nextEffectBlock = 1;
+    }
+
+    SerialTinyUSB.printf("FFB create-effect type=%u -> block=%u\n", effectType, g_lastEffectBlock);
+}
+
+// ----------------------------------------------------------------------
+// Callback de SET_REPORT: chega por dois caminhos distintos na
+// Adafruit_USBD_HID / TinyUSB (ver hid_device.c):
+//   1) Transfer real no endpoint OUT (Set Effect/Envelope/Condition/
+//      Periodic/Constant Force/Ramp Force/Effect Operation/Block Free/
+//      Device Control/Device Gain — todos "Output" no descritor):
+//      report_type == HID_REPORT_TYPE_OUTPUT, report_id == 0 (não usado
+//      pela pilha nesse caminho) e o Report ID de verdade vem como
+//      buffer[0] -- exatamente o formato que ffb_parse_out espera.
+//   2) Control transfer SET_REPORT clássico (usado pelo PID Create New
+//      Effect, que é "Feature"): report_type == HID_REPORT_TYPE_FEATURE,
+//      report_id == o Report ID de verdade (ex.: RID_PID_CREATE_NEW_EFFECT)
+//      e o buffer NÃO inclui mais o Report ID (a pilha já descartou).
 // ----------------------------------------------------------------------
 static void hid_set_report_callback(uint8_t report_id,
                                      hid_report_type_t report_type,
                                      uint8_t const *buffer, uint16_t bufsize)
 {
-    (void)report_id;
-    (void)report_type;
-    (void)buffer;
-    (void)bufsize;
-    // Passo B: intencionalmente vazio (stub). Task 6 faz o parse de verdade.
+    if (report_type == HID_REPORT_TYPE_FEATURE)
+    {
+        if (report_id == RID_PID_CREATE_NEW_EFFECT)
+        {
+            handle_create_new_effect(buffer, bufsize);
+        }
+        // Outros Feature SET (nenhum outro no nosso descritor) -- ignorado.
+        return;
+    }
+
+    // Caminho 1 (endpoint OUT): buffer[0] é o Report ID de verdade.
+    FfbOut o = ffb_parse_out(buffer, bufsize);
+    switch (o.type)
+    {
+        case FFB_SET_CONSTANT_FORCE:
+            SerialTinyUSB.printf("FFB const block=%u mag=%d\n", o.effectBlock, o.constantForce);
+            break;
+
+        case FFB_EFFECT_OPERATION:
+            SerialTinyUSB.printf("FFB effect-op block=%u op=%s\n", o.effectBlock, ffb_op_name(o.op));
+            break;
+
+        case FFB_DEVICE_CONTROL:
+            SerialTinyUSB.printf("FFB device-control len=%u\n", bufsize);
+            break;
+
+        case FFB_SET_EFFECT:
+        case FFB_BLOCK_LOAD:
+        case FFB_UNKNOWN:
+        default:
+            // Passo C só precisa provar o "cano" de Constant Force + Effect
+            // Operation; os demais reports são aceitos e ignorados (sem
+            // travar/crashar) -- ver ffb_report.h.
+            break;
+    }
+}
+
+// ----------------------------------------------------------------------
+// GET_REPORT Feature: o host lê os reports RID_PID_BLOCK_LOAD (0x12) e
+// RID_PID_POOL (0x13) para decidir se cria/toca o efeito. `buffer` já vem
+// sem o byte de Report ID (a pilha TinyUSB o antepõe sozinha antes deste
+// retorno -- ver hid_device.c/HID_REQ_CONTROL_GET_REPORT); o retorno é o
+// tamanho dos DADOS escritos (sem contar o Report ID).
+// ----------------------------------------------------------------------
+static uint16_t hid_get_report_callback(uint8_t report_id,
+                                         hid_report_type_t report_type,
+                                         uint8_t *buffer, uint16_t reqlen)
+{
+    if (report_type != HID_REPORT_TYPE_FEATURE)
+    {
+        return 0;
+    }
+
+    if (report_id == RID_PID_BLOCK_LOAD)
+    {
+        // Layout (Usage PID Block Load Report, ffb_hid_report_desc):
+        //   buffer[0]    = Effect Block Index (1 byte)
+        //   buffer[1]    = Block Load Status (array 1..3: 1=Success,
+        //                  2=Full, 3=Error)
+        //   buffer[2..3] = RAM Pool Available (uint16 little-endian)
+        if (reqlen < 4)
+        {
+            return 0;
+        }
+        buffer[0] = g_lastEffectBlock;
+        buffer[1] = 1; // Block Load Success
+        uint16_t ramPoolAvailable = 0xFFFF;
+        buffer[2] = (uint8_t)(ramPoolAvailable & 0xFF);
+        buffer[3] = (uint8_t)(ramPoolAvailable >> 8);
+        SerialTinyUSB.printf("FFB block-load -> block=%u status=success\n", g_lastEffectBlock);
+        return 4;
+    }
+
+    if (report_id == RID_PID_POOL)
+    {
+        // Layout (Usage PID Pool, ffb_hid_report_desc):
+        //   buffer[0..1] = RAM Pool Size (uint16 little-endian)
+        //   buffer[2]    = Simultaneous Effects Max (1 byte)
+        //   buffer[3]    = bit0 Device Managed Pool, bit1 Shared Parameter
+        //                  Blocks, bits2..7 padding (tudo 0 aqui: pool não é
+        //                  gerenciado pelo device, sem blocos compartilhados)
+        if (reqlen < 4)
+        {
+            return 0;
+        }
+        uint16_t ramPoolSize = 0xFFFF;
+        buffer[0] = (uint8_t)(ramPoolSize & 0xFF);
+        buffer[1] = (uint8_t)(ramPoolSize >> 8);
+        buffer[2] = kSimultaneousEffectsMax;
+        buffer[3] = 0;
+        SerialTinyUSB.printf("FFB pool -> size=%u simultaneous=%u\n", ramPoolSize, kSimultaneousEffectsMax);
+        return 4;
+    }
+
+    return 0;
 }
 
 // has_out_endpoint = true: o descritor completo tem vários Output reports
@@ -105,9 +273,9 @@ void setup()
     // e o clearConfiguration() de dentro de begin() descartava a interface
     // HID já registrada. Um composite HID+CDC é aceitável aqui (e útil p/
     // debug futuro via CDC).
-    // Stub no-op para SET_REPORT/OUT (ver comentário acima da callback) —
-    // registrado ANTES do begin() para já valer assim que o host mandar algo.
-    g_hid.setReportCallback(nullptr, hid_set_report_callback);
+    // Callbacks de GET/SET_REPORT (ver comentários acima delas) — registrados
+    // ANTES do begin() para já valerem assim que o host mandar/pedir algo.
+    g_hid.setReportCallback(hid_get_report_callback, hid_set_report_callback);
 
     g_hid.begin();
 
@@ -121,9 +289,16 @@ void setup()
         TinyUSBDevice.attach();
     }
 
-    // Passo A não usa Serial/CDC no código (sem chamadas de log aqui de
-    // propósito) — a lib redefine a macro "Serial" -> SerialTinyUSB quando
-    // USE_TINYUSB está definido; debug de bancada fica p/ depois.
+    // CDC de debug: "Serial" já é a CDC do TinyUSB neste core (STM32duino) —
+    // tusb_config_stm32.h define "#define Serial SerialTinyUSB" e
+    // Adafruit_USBD_CDC.h define "#define SerialTinyUSB Serial"; como as duas
+    // macros se referenciam uma à outra, o pré-processador para a expansão
+    // recursiva e ambos os nomes acabam resolvendo para o mesmo objeto
+    // global `Adafruit_USBD_CDC SerialTinyUSB` (é o CDC registrado
+    // automaticamente por Adafruit_USBD_Device::begin(), não uma UART).
+    // Passo A deixou de usar Serial de propósito (só provava enumeração);
+    // aqui é onde o Passo C liga o log de verdade.
+    SerialTinyUSB.begin(115200);
 }
 
 void loop()
@@ -136,6 +311,15 @@ void loop()
     {
         delay(2);
         return;
+    }
+
+    // Banner de boot via CDC — só uma vez, depois que o host monta o
+    // dispositivo (antes disso os bytes escritos na CDC são descartados).
+    static bool bannerSent = false;
+    if (!bannerSent)
+    {
+        bannerSent = true;
+        SerialTinyUSB.printf("DriveLab Base M0.5 Passo C — FFB pipe (parse + log CDC) ativo\n");
     }
 
     // Report de Input do RID_JOYSTICK: eixo X variando devagar (prova que o
