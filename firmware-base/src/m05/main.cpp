@@ -238,18 +238,26 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
 // IN-only do descritor de interface (TUD_HID_DESCRIPTOR) e o host não tem
 // como mandar SET_REPORT via endpoint (só via control transfer, que games
 // não costumam usar para efeitos de FFB em tempo real).
+// Achado de bancada (redo do Task 2): o OTG_FS do STM32F405 só tem ~3
+// endpoints IN utilizáveis (CDC consome 2, FFB 1) — não sobra um 4º IN para
+// uma 2ª interface HID. Por isso o canal A0 (vendor, usage-page 0xFF00, ver
+// a0_hid_descriptor.h) NÃO é mais uma interface separada: seus reports são
+// apensados ao final do Report Descriptor do FFB e servidos pela MESMA
+// interface HID (g_hid) — o buffer combinado é montado em setup() (ver
+// g_combined_hid_report_desc) e atribuído a g_hid via setReportDescriptor()
+// antes do g_hid.begin(). has_out_endpoint=true continua necessário: tanto o
+// FFB (Set Effect/Envelope/.../Device Control/Device Gain) quanto o A0
+// (A0_RID_CMD/DIRECT/SETWRITE/SETREAD) têm Output reports que só chegam pelo
+// endpoint OUT dedicado.
 Adafruit_USBD_HID g_hid(ffb_hid_report_desc, ffb_hid_report_desc_len,
                          HID_ITF_PROTOCOL_NONE, 4, /*has_out_endpoint=*/true);
 
-// IF1 — canal de configuração "A0" (vendor, usage-page 0xFF00): 2ª interface
-// HID do composto, ao lado da IF0 (FFB, g_hid acima) e da IF2 (CDC, automática
-// via Adafruit_USBD_Device::begin() — ver NOTA CDC no setup()). Descritor em
-// a0_hid_descriptor.h. has_out_endpoint=true pelo mesmo motivo do g_hid: tem
-// Output reports (A0_RID_CMD/DIRECT/SETWRITE/SETREAD) que só chegam pelo
-// endpoint OUT dedicado. Este Task (2) só registra a interface — os
-// callbacks de leitura/escrita (setReportCallback) ficam para a Task 3.
-Adafruit_USBD_HID g_a0(a0_hid_report_desc, a0_hid_report_desc_len,
-                        HID_ITF_PROTOCOL_NONE, 4, /*has_out_endpoint=*/true);
+// Buffer estático (precisa sobreviver ao runtime — tud_hid_descriptor_report_cb
+// devolve o ponteiro guardado por g_hid a qualquer momento, inclusive bem
+// depois do setup() retornar) com o Report Descriptor combinado: FFB
+// (Joystick + PID/Force Feedback, Task 3) seguido do canal A0 (vendor, este
+// Task). Preenchido em setup() antes de g_hid.begin() — ver comentário lá.
+static uint8_t g_combined_hid_report_desc[ffb_hid_report_desc_len + a0_hid_report_desc_len];
 
 void setup()
 {
@@ -284,18 +292,24 @@ void setup()
     // e o clearConfiguration() de dentro de begin() descartava a interface
     // HID já registrada. Um composite HID+CDC é aceitável aqui (e útil p/
     // debug futuro via CDC).
+    // Monta o Report Descriptor combinado (FFB + A0, ver comentário junto de
+    // g_combined_hid_report_desc) e o atribui a g_hid ANTES do begin() —
+    // setReportDescriptor() só troca o ponteiro/tamanho guardados na
+    // instância (Adafruit_USBD_HID.cpp), então a ordem aqui não afeta a
+    // pilha diretamente, mas mantém a montagem e o begin() juntos e claros.
+    memcpy(g_combined_hid_report_desc, ffb_hid_report_desc, ffb_hid_report_desc_len);
+    memcpy(g_combined_hid_report_desc + ffb_hid_report_desc_len,
+           a0_hid_report_desc, a0_hid_report_desc_len);
+    g_hid.setReportDescriptor(g_combined_hid_report_desc, sizeof(g_combined_hid_report_desc));
+
     // Callbacks de GET/SET_REPORT (ver comentários acima delas) — registrados
     // ANTES do begin() para já valerem assim que o host mandar/pedir algo.
+    // Task 2 (redo) só combina os descritores; os callbacks do canal A0
+    // (Report IDs A0_RID_*) ficam para a Task 3 — hid_get/set_report_callback
+    // continuam tratando só os RID_PID_*/RID_JOYSTICK do FFB.
     g_hid.setReportCallback(hid_get_report_callback, hid_set_report_callback);
 
     g_hid.begin();
-
-    // IF1 (canal A0, vendor) — begin() ANTES do detach/attach de re-enum
-    // abaixo, pelo mesmo motivo do g_hid: a Adafruit_TinyUSB_Arduino só
-    // acrescenta a interface ao config descriptor quando begin() roda antes
-    // da pilha ser (re)anunciada ao host. Sem callbacks ainda (Task 3) — só
-    // registra a interface para o host enumerar.
-    g_a0.begin();
 
     // Se a pilha já montou só com o CDC default antes do HID entrar, o host
     // não percebe a interface nova sem uma re-enumeração — força via
