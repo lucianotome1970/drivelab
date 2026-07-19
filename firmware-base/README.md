@@ -138,6 +138,33 @@ pio run -e m05 -t upload      # or select the "m05" env in the PlatformIO bar
 
 ---
 
+### M3 — A0 config channel ✅ VALIDATED on real hardware (bench + app)
+
+**What it is:** the base now speaks a vendor **config channel ("A0")**, the base's equivalent of the pedal's **P0** channel — **DriveLab Studio reads, writes and saves the base's settings**, and sees the base as connected. No motor.
+
+> **Status (2026-07-19): M3 VALIDATED on real hardware ✅** — an **MKS ODRIVE-S / STM32F405**. On-bench via `hidapi`: read `TotalStrength` (default) → write `55` → re-read `55`; `SaveSettings` + power-cycle → `55` still there; `DeviceState` (0x21) telemetry streaming. **And in DriveLab Studio on macOS**: the base connects, the "Base do Volante" ("Wheelbase") screen loads all fields, an edit + **"Save to controller"** persists (confirmed after re-opening/power-cycle).
+
+#### USB shape: one HID interface, two vendor collections
+The STM32F405 OTG_FS core has only **~3 usable IN endpoints**, so the device can't do 2× HID + CDC (one HID for FFB, one for A0, plus CDC). Instead, **A0 shares the single HID interface with the FFB** — one combined report descriptor — plus **CDC**, kept for debug logging. The A0 reports live in a vendor collection (usage page `0xFF00`) with **report IDs remapped** so they don't collide with the FFB's: `DeviceState 0x21`, `Command 0x22`, `DirectControl 0x10`, `SettingWrite 0x14`, `SettingReadRequest 0x15`, `SettingValue 0x16`.
+
+#### Settings model
+A `BaseCfg` struct mirrors the app's frozen `BaseSettingId` enum — **19 fields** (TotalStrength, SoftStop\*, Spring/Damper, encoder, current-loop gains, etc.). Settings persist to **flash** (STM32duino EEPROM emulation, magic `"DLB1"`): `SaveSettings` writes them, and they survive a power-cycle (validated above).
+
+#### Telemetry
+The base pushes a periodic `DeviceState` (`0x21`) report carrying the firmware version. **Sensor fields (bus voltage, current, temperatures) are placeholder `0` until M1** — they need the power stage, which isn't wired up yet.
+
+#### Two macOS/HidSharp gotchas
+- The combined-interface base enumerates with **device-level usage `0x00`** (not the FFB's joystick usage), so the app detects it by **VID/PID**, not by usage-page.
+- The firmware keeps a **single pending-read slot**, so the app must **serialize setting reads** — one `0x15` (SettingReadRequest) → `0x16` (SettingValue) round-trip at a time, not fired concurrently.
+
+#### Still open (future milestones)
+Real sensor telemetry and turning settings into torque land with **M1/M5**. A planned **firmware-update-over-USB (DFU)** would let future firmware updates skip the ST-Link entirely.
+
+#### Bench tool (`firmware-base/tools/`)
+- `a0_config.py` — reads/writes a single setting over the A0 channel (hidapi), used to validate the read/write/persist flow above.
+
+---
+
 ### Next milestones (summary)
 M1 (open-loop motor) → M2 (encoder + closed loop + brake resistor) → M3 (A0 channel, **DriveLab Studio connects via HidTransport**) → M4 (settings) → M5 (FFB force → SimpleFOC) → M6 (game effects) → M7 (validation on a sim). Details in the design.
 
@@ -276,6 +303,33 @@ O `env:m05` **não** usa `USBD_USE_CDC` pro caminho do joystick — a CDC é com
 *(A gravação da placa F405/classe ODrive já está documentada acima, no M0 — ST-Link + OpenOCD; a mesma receita vale aqui, sem repetir.)*
 
 *(A prioridade da IRQ USB abaixo do timer do FOC só importa a partir do M1, quando o SimpleFOC entrar.)*
+
+---
+
+### M3 — canal de configuração A0 ✅ VALIDADO no hardware real (bancada + app)
+
+**O que é:** a base agora fala um **canal de configuração vendor ("A0")**, o equivalente da base ao canal **P0** do pedal — o **DriveLab Studio lê, grava e salva as settings da base**, e vê a base como conectada. Sem motor.
+
+> **Status (2026-07-19): M3 VALIDADO no hardware real ✅** — uma **MKS ODRIVE-S / STM32F405**. Na bancada via `hidapi`: ler `TotalStrength` (default) → gravar `55` → reler `55`; `SaveSettings` + power-cycle → `55` continua lá; telemetria `DeviceState` (0x21) fluindo. **E no DriveLab Studio no macOS**: a base conecta, a tela "Base do Volante" carrega todos os campos, uma alteração + **"Salvar no controlador"** persiste (confirmado reabrindo/power-cycle).
+
+#### Formato da USB: uma interface HID, duas coleções vendor
+O core OTG_FS do STM32F405 tem só **~3 endpoints IN utilizáveis**, então o dispositivo não consegue fazer 2× HID + CDC (um HID pro FFB, outro pro A0, mais a CDC). Em vez disso, o **A0 divide a única interface HID com o FFB** — um único report descriptor combinado — mais a **CDC**, mantida pro log de debug. Os reports do A0 vivem numa coleção vendor (usage page `0xFF00`) com os **report IDs remapeados** pra não colidir com os do FFB: `DeviceState 0x21`, `Command 0x22`, `DirectControl 0x10`, `SettingWrite 0x14`, `SettingReadRequest 0x15`, `SettingValue 0x16`.
+
+#### Modelo de settings
+Uma struct `BaseCfg` espelha o enum `BaseSettingId` congelado do app — **19 campos** (TotalStrength, SoftStop\*, Spring/Damper, encoder, ganhos da malha de corrente, etc.). As settings persistem em **flash** (emulação de EEPROM do STM32duino, magic `"DLB1"`): `SaveSettings` grava, e elas sobrevivem a um power-cycle (validado acima).
+
+#### Telemetria
+A base envia periodicamente um report `DeviceState` (`0x21`) com a versão do firmware. **Os campos de sensor (tensão do barramento, corrente, temperaturas) são placeholder `0` até o M1** — precisam do estágio de potência, que ainda não está ligado.
+
+#### Duas pegadinhas do macOS/HidSharp
+- A base com interface combinada enumera com **usage de nível de dispositivo `0x00`** (não o usage de joystick do FFB), então o app a detecta por **VID/PID**, não por usage-page.
+- O firmware mantém **um único slot de leitura pendente**, então o app precisa **serializar as leituras de settings** — um round-trip `0x15` (SettingReadRequest) → `0x16` (SettingValue) por vez, não disparados em concorrência.
+
+#### Ainda em aberto (marcos futuros)
+Telemetria real de sensores e transformar settings em torque ficam pro **M1/M5**. Uma **atualização de firmware via USB (DFU)** planejada deixaria futuras gravações sem precisar do ST-Link.
+
+#### Ferramenta de bancada (`firmware-base/tools/`)
+- `a0_config.py` — lê/grava uma setting pelo canal A0 (hidapi), usada pra validar o fluxo de leitura/gravação/persistência acima.
 
 ---
 
