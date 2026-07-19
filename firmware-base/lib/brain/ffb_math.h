@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  ffb_math.h — Matemática FFB PURA (força→torque, soft-stop, corte de corrente). Sem deps de HW.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // Núcleo do "cérebro" FFB — funções PURAS, independentes de plataforma (sem Arduino,

@@ -9,7 +9,7 @@
 //      Index (1 byte), buf[2]=Effect Operation selector (1 byte,
 //      1=start/2=start-solo/3=stop), buf[3]=Loop Count (não usado aqui).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
 #include "ffb_report.h"

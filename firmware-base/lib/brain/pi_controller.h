@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  pi_controller.h — Controlador PI genérico com anti-windup (malha fechada; M2).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // PI reutilizável, puro e testável. Ganhos espelham BaseSettingId.CurrentP/CurrentI.

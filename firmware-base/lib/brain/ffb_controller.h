@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  ffb_controller.h — Orquestra um passo da malha FFB: lê HAL, calcula torque seguro, comanda o motor.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // O "cérebro" completo: junta a matemática pura (ffb_math.h) com as bordas de hardware

@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  hal.h — Interfaces de HARDWARE (encoder, sense de corrente, motor) p/ mockar em teste.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // A "costura" (seam) de hardware do cérebro FFB. No firmware real, cada interface é

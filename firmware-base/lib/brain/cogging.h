@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  cogging.h — Mapa de compensação de cogging (feed-forward por posição) + calibrador. Rumo ao topo.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // Cogging = ripple de torque do motor dependente da POSIÇÃO (ímãs × ranhuras). É o que faz forças

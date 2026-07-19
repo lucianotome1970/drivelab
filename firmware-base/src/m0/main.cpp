@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  main.cpp (m0) — Firmware de bring-up M0: só serial/USB, sem motor.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
 // DriveLab Firmware — M0 (bring-up)

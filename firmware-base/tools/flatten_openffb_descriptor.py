@@ -5,7 +5,7 @@
 #  do OpenFFBoard (macros expandidas manualmente) em um array C flat, e emite
 #  firmware-base/include/ffb_hid_descriptor.h.
 #  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-#  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+#  Copyright (c) 2026 Luciano Tomé — Licença MIT
 # ============================================================================
 #
 # Fonte dos bytes: Ultrawipf/OpenFFBoard (branch master), arquivos:
@@ -32,7 +32,7 @@
 #
 # Licença/atribuição: bytes derivados do OpenFFBoard (MIT License,
 # Copyright (c) Yannick / Ultrawipf contributors — https://github.com/Ultrawipf/OpenFFBoard).
-# Este script e o header gerado são LGPL-3.0 (DriveLab).
+# Este script e o header gerado são MIT (DriveLab).
 
 # ---------------------------------------------------------------------------
 # Constantes extraídas de ffb_defs.h / hid.h do OpenFFBoard
@@ -466,12 +466,12 @@ HEADER_TEMPLATE = """\
 //  tools/flatten_openffb_descriptor.py a partir dos bytes do OpenFFBoard
 //  (variante AXIS1_FFB_HID_DESC / gamepad 16-bit).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 //
 //  Atribuição: os bytes deste descritor derivam do projeto OpenFFBoard
 //  (https://github.com/Ultrawipf/OpenFFBoard), licenciado sob MIT License,
 //  Copyright (c) Yannick / Ultrawipf contributors. Este arquivo (a
-//  organização, os #define RID_* e o wrapper C) é LGPL-3.0 DriveLab.
+//  organização, os #define RID_* e o wrapper C) é MIT DriveLab.
 //
 //  NÃO EDITE À MÃO — regenerar com:
 //    python3 firmware-base/tools/flatten_openffb_descriptor.py

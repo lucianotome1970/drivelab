@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  test_ffb_brain.cpp — Testes de HOST do cérebro FFB (força→torque, soft-stop, segurança).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // "HIL simplificado": compila o cérebro portável (lib/brain) num binário do PC, com o

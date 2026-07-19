@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  filters.h — Biquad genérico (low-pass / notch, RBJ) + estimador de velocidade. DSP do topo.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // Primitiva de DSP reutilizável — um filtro IIR de 2ª ordem (biquad, Direct Form II transposto).

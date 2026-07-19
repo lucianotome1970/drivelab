@@ -5,7 +5,7 @@
 #  de um dispositivo USB e checa se ele sai INTEIRO (declared == received) —
 #  a checagem-chave do M0.5 v2 (o shim entregava truncado).
 #  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-#  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+#  Copyright (c) 2026 Luciano Tomé — Licença MIT
 # ============================================================================
 #  Uso: python3 dump_report_descriptor.py [VID] [PID]
 #       (defaults: 0x1209 0x0001 = DriveLab Base). Requer:

@@ -3,7 +3,7 @@
 //  main.cpp (m05) — M0.5 v2 Passo C: parser FFB ligado + log CDC + handshake
 //  PID mínimo (Pool / Block Load / Create New Effect / Device Control).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
 // DriveLab Firmware — M0.5 v2, Passo C (liga o "cano" FFB)

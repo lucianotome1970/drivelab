@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  force_reconstruct.h — Reconstrução da força do jogo (interpolação + LPF) p/ saída contínua e suave.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // O jogo manda a força FFB em passos discretos e a baixa taxa (60–360 Hz), mas o laço de

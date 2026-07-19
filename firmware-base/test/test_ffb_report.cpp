@@ -3,7 +3,7 @@
 //  test_ffb_report.cpp — Testes de HOST do parser puro de OUT report PID
 //  (decodifica bytes HID Set Constant Force / Effect Operation / etc, sem placa).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // Roda sem placa nenhuma: firmware-base/test/run.sh

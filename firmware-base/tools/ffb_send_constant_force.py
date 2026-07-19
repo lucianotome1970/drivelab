@@ -6,7 +6,7 @@
 #  o macOS mesmo com a interface HID reivindicada) e lê o log no CDC do
 #  dispositivo. Se o firmware imprimir "FFB const ... mag=...", o cano funciona.
 #  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-#  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+#  Copyright (c) 2026 Luciano Tomé — Licença MIT
 # ============================================================================
 #  Uso: python3 ffb_send_constant_force.py [magnitude] [/dev/cu.usbmodemXXXX]
 #  Requer: brew install libhidapi ; pip3 install --user pyserial
