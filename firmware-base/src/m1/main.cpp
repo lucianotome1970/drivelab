@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  main.cpp (m1) — ESQUELETO M1: motor open-loop com SimpleFOC + o cérebro FFB (lib/brain) via HAL.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // Este arquivo LIGA o "cérebro" testável (lib/brain: FfbEngine + partida segura + proteção) ao

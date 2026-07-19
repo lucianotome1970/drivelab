@@ -2,7 +2,7 @@
 //  DriveLab Firmware
 //  oscillation.h — Detector de oscilação (limit-cycle) → reduz a força sozinho. Anti-tremor ativo.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
-//  Copyright (c) 2026 Luciano Tomé — Licença LGPL-3.0
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
 // Rede de segurança para o "tremor": mesmo com damper, uma combinação ruim de latência/ganho pode
