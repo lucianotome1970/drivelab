@@ -18,6 +18,7 @@
   <data name="Nav_Pedals" xml:space="preserve"><value>Pedals</value></data>
   <data name="Nav_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
   <data name="Nav_Wheel" xml:space="preserve"><value>Wheel</value></data>
+  <data name="Nav_Update" xml:space="preserve"><value>Firmware update</value></data>
   <data name="Nav_Quit" xml:space="preserve"><value>Quit</value></data>
   <data name="Quit_Confirm_Message" xml:space="preserve"><value>Quit DriveLab Studio?</value></data>
   <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Quit</value></data>
@@ -163,4 +164,11 @@
   <data name="Monitor_McuTemp" xml:space="preserve"><value>MCU temperature</value></data>
   <data name="Monitor_DegC" xml:space="preserve"><value>°C</value></data>
   <data name="Monitor_NoSensor" xml:space="preserve"><value>—</value></data>
+
+  <data name="Update_Title" xml:space="preserve"><value>Firmware update</value></data>
+  <data name="Update_Device" xml:space="preserve"><value>Device</value></data>
+  <data name="Update_SelectFile" xml:space="preserve"><value>Select file…</value></data>
+  <data name="Update_NoFileSelected" xml:space="preserve"><value>No file selected.</value></data>
+  <data name="Update_Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Update_Warning" xml:space="preserve"><value>Do not disconnect the device while updating — interrupting the flash can leave it unusable.</value></data>
 </root>

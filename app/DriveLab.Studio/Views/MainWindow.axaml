@@ -46,6 +46,20 @@
                         Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[4]}">
                     <Image Source="avares://DriveLab.Studio/Assets/handbrake_ico.png" Width="26" Height="26" />
                 </Button>
+                <!-- Atualizar firmware: ícone vetorial (seta para baixo sobre uma bandeja/placa) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[5].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[5]}">
+                    <Viewbox Width="24" Height="24">
+                        <Canvas Width="20" Height="20">
+                            <!-- haste + cabeça da seta apontando para baixo -->
+                            <Rectangle Canvas.Left="9" Canvas.Top="0" Width="2" Height="10" Fill="{DynamicResource DlMuted}" />
+                            <Path Canvas.Left="4" Canvas.Top="8" Fill="{DynamicResource DlMuted}"
+                                  Data="M0,0 L12,0 L6,7 Z" />
+                            <!-- bandeja -->
+                            <Rectangle Canvas.Left="1" Canvas.Top="17" Width="18" Height="2" Fill="{DynamicResource DlMuted}" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
 
                 <!-- Separador antes da ação de sair -->
                 <Border Height="1" Width="28" Background="{DynamicResource DlBorder}" Margin="0,4" />
