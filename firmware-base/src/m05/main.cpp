@@ -46,6 +46,7 @@
 #include "ffb_report.h"
 #include "a0_hid_descriptor.h"
 #include "base_cfg.h"
+#include "fw_signature.h"
 
 // ----------------------------------------------------------------------
 // Layout do report de Input do RID_JOYSTICK (collection Physical dentro da
@@ -378,6 +379,29 @@ static uint8_t g_combined_hid_report_desc[ffb_hid_report_desc_len + a0_hid_repor
 
 void setup()
 {
+    // Referência explícita à assinatura embutida (fw_signature.h). O
+    // __attribute__((used)) no struct só garante que o COMPILADOR não
+    // descarte o símbolo dentro da unidade de tradução — mas o LINKER roda
+    // com --gc-sections (ver build do PlatformIO), que ainda derruba
+    // qualquer seção sem relocação alcançável a partir do reset handler.
+    // Duas tentativas mais fracas FALHARAM (comprovado via
+    // `objdump -dr main.cpp.o`, sem nenhuma referência a fw_signature, e
+    // `check_fw_signature.py` não achando a assinatura no .bin final):
+    //   1. "(void)&fw_signature;" — o endereço é calculado e descartado sem
+    //      side effect observável; o compilador nem emite a relocação.
+    //   2. "volatile uint8_t x = fw_signature.magic[0];" — como
+    //      fw_signature é `const` com valor conhecido em tempo de
+    //      compilação, o otimizador faz constant folding e embute o
+    //      literal 'D' (0x44) direto, sem NUNCA tocar a memória do struct
+    //      — a leitura "volatile" protege a variável local, não a origem
+    //      do valor.
+    // O que funciona: inline asm com constraint "r" força o compilador a
+    // materializar o ENDEREÇO de fw_signature num registrador (não dá pra
+    // constant-fold um endereço de memória do mesmo jeito que um valor),
+    // criando uma relocação real que o linker precisa resolver — e com
+    // isso --gc-sections não pode descartar a seção .rodata da assinatura.
+    __asm__ __volatile__("" : : "r"(&fw_signature) : "memory");
+
     // Identificação USB (VID 0x1209 pid.codes / PID 0x0001 / strings
     // "DriveLab" / "DriveLab Base") vem de -D USB_VID/USB_PID/USB_MANUFACTURER/
     // USB_PRODUCT no platformio.ini, NÃO de TinyUSBDevice.setID() aqui.
