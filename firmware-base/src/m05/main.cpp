@@ -787,10 +787,10 @@ void loop()
         lastStateSend = now;
 
         uint8_t payload[63] = {0};
-        payload[0] = 0; // FirmwareVersion.ReleaseType (0 = dev)
-        payload[1] = 0; // FirmwareVersion.Major
-        payload[2] = 1; // FirmwareVersion.Minor
-        payload[3] = 0; // FirmwareVersion.Patch
+        payload[0] = 0;                       // FirmwareVersion.ReleaseType (0 = dev)
+        payload[1] = DRVLAB_FW_VER_MAJOR;     // FONTE ÚNICA em fw_signature.h — bate com a assinatura do .bin
+        payload[2] = DRVLAB_FW_VER_MINOR;
+        payload[3] = DRVLAB_FW_VER_PATCH;
         payload[4] = 0; // flags
         // payload[5..18] = sensores placeholder (posição/ângulo/torque/
         // corrente/temperaturas/barramento) -- 0 até o M1 ligar os sensores.
