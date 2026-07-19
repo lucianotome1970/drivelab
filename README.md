@@ -11,7 +11,7 @@ Custom firmware for the ODESC v4.2 + a cross-platform configurator app.</p>
   <a href="https://discord.gg/Xp2pGm5wj"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <img src="https://img.shields.io/badge/app-.NET%208%20%C2%B7%20Avalonia-512BD4" alt="App stack">
   <img src="https://img.shields.io/badge/firmware-STM32F405%20%C2%B7%20SimpleFOC-00979D" alt="Firmware stack">
-  <img src="https://img.shields.io/badge/license-MIT%20%2F%20LGPL--3.0-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
   <img src="https://img.shields.io/badge/status-in%20development-orange" alt="Status">
 </p>
 
@@ -225,7 +225,7 @@ Condition effects (spring/damper) are computed on the device from the **encoder*
 
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, tests
-firmware-base/       Wheelbase firmware — ODESC v4.2 / STM32F405, the FFB motor (PlatformIO)  [LGPL-3.0]
+firmware-base/       Wheelbase firmware — ODESC v4.2 / STM32F405, the FFB motor (PlatformIO)  [MIT]
 firmware-pedal/      Pedals firmware — RP2040 + HX711                                        [MIT]
 firmware-handbrake/  Handbrake firmware — RP2040 + HX711                                     [MIT]
 firmware-wheel/      Rim firmware — RP2040 (Waveshare Zero): gamepad + WS2812 LEDs (PlatformIO)  [MIT]
@@ -271,8 +271,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ### License
 
-- **App + libraries + tools + pedal/handbrake firmware:** [MIT](https://opensource.org/licenses/MIT).
-- **Base (wheelbase) firmware** (`firmware-base/`): **LGPL-3.0** — it links the LGPL libraries `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`.
+- **Everything — app, libraries, tools, and all firmware** (base + pedal/handbrake/wheel): [MIT](https://opensource.org/licenses/MIT). *(The base was originally going LGPL for a shim FFB lib; M0.5 v2 replaced it with the MIT Adafruit TinyUSB + an OpenFFBoard-derived descriptor, so the whole project is MIT.)*
 
 Every source file carries a header stating its license.
 
@@ -358,7 +357,7 @@ Os efeitos de condição (mola/damper) são calculados no dispositivo a partir d
 
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, testes
-firmware-base/       Firmware da base — ODESC v4.2 / STM32F405, o motor FFB (PlatformIO)  [LGPL-3.0]
+firmware-base/       Firmware da base — ODESC v4.2 / STM32F405, o motor FFB (PlatformIO)  [MIT]
 firmware-pedal/      Firmware dos pedais — RP2040 + HX711                                [MIT]
 firmware-handbrake/  Firmware do freio de mão — RP2040 + HX711                           [MIT]
 firmware-wheel/      Firmware do aro — RP2040 (Waveshare Zero): gamepad + LEDs WS2812 (PlatformIO)  [MIT]
@@ -404,8 +403,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ### Licença
 
-- **App + bibliotecas + ferramentas + firmware de pedal/freio:** [MIT](https://opensource.org/licenses/MIT).
-- **Firmware da base (wheelbase)** (`firmware-base/`): **LGPL-3.0** — linca as bibliotecas LGPL `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`.
+- **Tudo — app, bibliotecas, ferramentas e todo o firmware** (base + pedal/freio/aro): [MIT](https://opensource.org/licenses/MIT). *(A base ia ser LGPL por um lib de shim FFB; o M0.5 v2 trocou pelo Adafruit TinyUSB (MIT) + descritor derivado do OpenFFBoard, então o projeto todo é MIT.)*
 
 Todo arquivo-fonte traz um cabeçalho declarando sua licença.
 
