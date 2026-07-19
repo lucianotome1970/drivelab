@@ -9,3 +9,6 @@ publish/
 .superpowers/
 docs/superpowers/
 tools/hidp0
+
+# Claude Code local settings
+.claude/

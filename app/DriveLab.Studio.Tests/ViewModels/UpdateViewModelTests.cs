@@ -29,6 +29,7 @@ public class UpdateViewModelTests
         public bool BootloaderFound = true;
         public Exception? FlashThrows;
         public string? LastFlashPath;
+        public List<string>? Events;
 
         public bool ValidateFirmware(byte[] file, out string error)
         {
@@ -42,19 +43,46 @@ public class UpdateViewModelTests
         public Task EnterBootloaderAsync()
         {
             EnterCalled = true;
+            Events?.Add("enter");
             return Task.CompletedTask;
         }
 
-        public Task<bool> WaitForBootloaderAsync(TimeSpan timeout) => Task.FromResult(BootloaderFound);
+        public Task<bool> WaitForBootloaderAsync(TimeSpan timeout)
+        {
+            Events?.Add("wait");
+            return Task.FromResult(BootloaderFound);
+        }
 
         public Task FlashAsync(string filePath, IProgress<double>? progress, CancellationToken ct = default)
         {
             FlashCalled = true;
             LastFlashPath = filePath;
+            Events?.Add("flash");
             if (FlashThrows is not null)
                 throw FlashThrows;
             progress?.Report(0.5);
             progress?.Report(1.0);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeCoordinator : IDeviceAccessCoordinator
+    {
+        public int BeginCalls;
+        public int EndCalls;
+        public List<string>? Events;
+
+        public Task BeginExclusiveAsync(DeviceKind kind)
+        {
+            BeginCalls++;
+            Events?.Add("begin");
+            return Task.CompletedTask;
+        }
+
+        public Task EndExclusiveAsync(DeviceKind kind)
+        {
+            EndCalls++;
+            Events?.Add("end");
             return Task.CompletedTask;
         }
     }
@@ -65,8 +93,9 @@ public class UpdateViewModelTests
         public Task<string?> PickFirmwareFileAsync() => Task.FromResult(PathToReturn);
     }
 
-    private static UpdateViewModel New(FakeUpdater updater, FakeFilePicker picker, byte[] fileBytes) =>
-        new(new List<IDeviceUpdater> { updater }, picker, _ => Task.FromResult(fileBytes));
+    private static UpdateViewModel New(FakeUpdater updater, FakeFilePicker picker, byte[] fileBytes,
+        IDeviceAccessCoordinator? coordinator = null) =>
+        new(new List<IDeviceUpdater> { updater }, picker, _ => Task.FromResult(fileBytes), coordinator);
 
     [Fact]
     public async Task SelectFile_With_Wrong_Kind_Sets_Invalid_And_Disables_Send()
@@ -166,5 +195,56 @@ public class UpdateViewModelTests
         var vm = New(updater, picker, MakeFirmwareBytes(DeviceKind.Base));
 
         Assert.False(vm.SendCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Send_Takes_Exclusive_Usb_After_EnterDfu_And_Before_Wait()
+    {
+        var events = new List<string>();
+        var updater = new FakeUpdater { Events = events };
+        var coordinator = new FakeCoordinator { Events = events };
+        var picker = new FakeFilePicker { PathToReturn = "/tmp/fw.bin" };
+        var vm = New(updater, picker, MakeFirmwareBytes(DeviceKind.Base), coordinator);
+        await vm.SelectFileCommand.ExecuteAsync(null);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        // Ordem crítica: EnterDfu usa o transporte (precisa estar conectado); SÓ DEPOIS pausamos o
+        // auto-connect + soltamos o handle (begin); então esperamos o DFU e flasheamos; e por fim retomamos.
+        Assert.Equal(new[] { "enter", "begin", "wait", "flash", "end" }, events);
+    }
+
+    [Fact]
+    public async Task Send_Always_Ends_Exclusive_When_Bootloader_Never_Appears()
+    {
+        var events = new List<string>();
+        var updater = new FakeUpdater { BootloaderFound = false, Events = events };
+        var coordinator = new FakeCoordinator { Events = events };
+        var picker = new FakeFilePicker { PathToReturn = "/tmp/fw.bin" };
+        var vm = New(updater, picker, MakeFirmwareBytes(DeviceKind.Base), coordinator);
+        await vm.SelectFileCommand.ExecuteAsync(null);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        Assert.False(updater.FlashCalled);
+        Assert.Equal(1, coordinator.EndCalls);                       // auto-connect SEMPRE retomado
+        Assert.Equal(new[] { "enter", "begin", "wait", "end" }, events);
+    }
+
+    [Fact]
+    public async Task Send_Always_Ends_Exclusive_When_Flash_Throws()
+    {
+        var events = new List<string>();
+        var updater = new FakeUpdater { FlashThrows = new InvalidOperationException("boom"), Events = events };
+        var coordinator = new FakeCoordinator { Events = events };
+        var picker = new FakeFilePicker { PathToReturn = "/tmp/fw.bin" };
+        var vm = New(updater, picker, MakeFirmwareBytes(DeviceKind.Base), coordinator);
+        await vm.SelectFileCommand.ExecuteAsync(null);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, coordinator.EndCalls);                       // retomado mesmo com exceção no flash
+        Assert.Equal(new[] { "enter", "begin", "wait", "flash", "end" }, events);
+        Assert.Contains("boom", vm.StatusMessage);
     }
 }

@@ -40,6 +40,27 @@ public class DeviceAutoConnectorTests
     }
 
     [Fact]
+    public async Task Paused_Does_Not_Connect_Or_Disconnect_Until_Resumed()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var present = true;
+        using var ac = new DeviceAutoConnector(
+            () => session.IsConnected, session.ConnectAsync, session.DisconnectAsync,
+            () => present, new ImmediateUiDispatcher());
+
+        ac.Pause();
+        await ac.PollOnceAsync();
+        Assert.False(session.IsConnected);       // presente, mas pausado → não conecta
+        Assert.Equal(0, transport.ConnectCalls);
+
+        ac.Resume();
+        await ac.PollOnceAsync();
+        Assert.True(session.IsConnected);         // retomado → conecta
+        Assert.Equal(1, transport.ConnectCalls);
+    }
+
+    [Fact]
     public async Task Probe_Throwing_Is_Treated_As_Absent()
     {
         var transport = new FakeTransport();

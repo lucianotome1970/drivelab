@@ -25,6 +25,7 @@ public sealed partial class UpdateViewModel : ViewModelBase
 
     private readonly IFilePicker _filePicker;
     private readonly Func<string, Task<byte[]>> _readFile;
+    private readonly IDeviceAccessCoordinator? _coordinator;
 
     public IReadOnlyList<IDeviceUpdater> Devices { get; }
 
@@ -60,11 +61,12 @@ public sealed partial class UpdateViewModel : ViewModelBase
     private bool _isSending;
 
     public UpdateViewModel(IReadOnlyList<IDeviceUpdater> devices, IFilePicker? filePicker = null,
-        Func<string, Task<byte[]>>? readFile = null)
+        Func<string, Task<byte[]>>? readFile = null, IDeviceAccessCoordinator? coordinator = null)
     {
         Devices = devices;
         _filePicker = filePicker ?? new AvaloniaFilePicker();
         _readFile = readFile ?? (path => File.ReadAllBytesAsync(path));
+        _coordinator = coordinator;
         _selectedDevice = devices.Count > 0 ? devices[0] : null;
     }
 
@@ -133,6 +135,12 @@ public sealed partial class UpdateViewModel : ViewModelBase
             StatusMessage = "Enviando comando para entrar em modo de atualização (DFU)...";
             await device.EnterBootloaderAsync();
 
+            // Controle exclusivo da USB: pausa o auto-connect e solta o handle HID, para o
+            // dispositivo re-enumerar como DFU sem outro ator reabrir o device (ver
+            // IDeviceAccessCoordinator). Chamado DEPOIS do EnterDfu, que ainda usa o transporte.
+            if (_coordinator is not null)
+                await _coordinator.BeginExclusiveAsync(device.Kind);
+
             StatusMessage = $"Aguardando o bootloader ({device.BootloaderName})...";
             var found = await device.WaitForBootloaderAsync(BootloaderTimeout);
             if (!found)
@@ -153,6 +161,10 @@ public sealed partial class UpdateViewModel : ViewModelBase
         }
         finally
         {
+            // Retoma o auto-connect (reconecta a base já com o firmware novo). Idempotente mesmo
+            // que BeginExclusiveAsync não tenha rodado (ex.: EnterDfu falhou antes).
+            if (_coordinator is not null)
+                await _coordinator.EndExclusiveAsync(device.Kind);
             IsSending = false;
         }
     }

@@ -37,13 +37,16 @@ public sealed class BaseUpdater : IDeviceUpdater
 
     private readonly IBaseTransport _transport;
     private readonly string? _dfuUtilPathOverride;
+    private readonly Action<string>? _diagnostics;
 
     /// <param name="transport">Normal (HID) transport used to send EnterDfu before the device reboots into its bootloader.</param>
     /// <param name="dfuUtilPathOverride">Test seam: force a specific dfu-util path (or an invalid one) instead of auto-resolving.</param>
-    public BaseUpdater(IBaseTransport transport, string? dfuUtilPathOverride = null)
+    /// <param name="diagnostics">Optional sink for bench-debug lines (each `dfu-util -l` poll's exit code + output). Null = no logging.</param>
+    public BaseUpdater(IBaseTransport transport, string? dfuUtilPathOverride = null, Action<string>? diagnostics = null)
     {
         _transport = transport;
         _dfuUtilPathOverride = dfuUtilPathOverride;
+        _diagnostics = diagnostics;
     }
 
     public DeviceKind Kind => DeviceKind.Base;
@@ -78,10 +81,14 @@ public sealed class BaseUpdater : IDeviceUpdater
     /// </summary>
     public async Task<bool> WaitForBootloaderAsync(TimeSpan timeout)
     {
-        var deadline = DateTime.UtcNow + timeout;
+        _diagnostics?.Invoke($"WaitForBootloader: aguardando {BootloaderDfuMatch} por até {timeout.TotalSeconds:0}s...");
+        var start = DateTime.UtcNow;
+        var deadline = start + timeout;
+        var poll = 0;
         do
         {
-            if (await IsBootloaderPresentAsync().ConfigureAwait(false))
+            poll++;
+            if (await IsBootloaderPresentAsync(poll, start).ConfigureAwait(false))
                 return true;
 
             var remaining = deadline - DateTime.UtcNow;
@@ -91,14 +98,20 @@ public sealed class BaseUpdater : IDeviceUpdater
             await Task.Delay(remaining < PollInterval ? remaining : PollInterval).ConfigureAwait(false);
         } while (DateTime.UtcNow < deadline);
 
-        return await IsBootloaderPresentAsync().ConfigureAwait(false);
+        var found = await IsBootloaderPresentAsync(poll + 1, start).ConfigureAwait(false);
+        if (!found)
+            _diagnostics?.Invoke($"WaitForBootloader: TIMEOUT após {(DateTime.UtcNow - start).TotalSeconds:0.0}s, {poll} tentativa(s) — {BootloaderDfuMatch} nunca apareceu no `dfu-util -l`.");
+        return found;
     }
 
-    private async Task<bool> IsBootloaderPresentAsync()
+    private async Task<bool> IsBootloaderPresentAsync(int poll = 0, DateTime start = default)
     {
         var dfuUtilPath = ResolveDfuUtilPath();
         if (dfuUtilPath is null)
+        {
+            _diagnostics?.Invoke("  poll: dfu-util não encontrado (ResolveDfuUtilPath == null).");
             return false;
+        }
 
         try
         {
@@ -120,10 +133,24 @@ public sealed class BaseUpdater : IDeviceUpdater
             var stderr = await stderrTask.ConfigureAwait(false);
 
             var combined = stdout + stderr;
-            return combined.Contains(BootloaderDfuMatch, StringComparison.OrdinalIgnoreCase);
+            var found = combined.Contains(BootloaderDfuMatch, StringComparison.OrdinalIgnoreCase);
+            if (_diagnostics is not null)
+            {
+                var elapsed = start == default ? 0 : (DateTime.UtcNow - start).TotalSeconds;
+                // Só as linhas que mencionam algum device DFU importam — evita despejar o header do dfu-util.
+                var devLines = combined.Split('\n')
+                    .Where(l => l.Contains("Found", StringComparison.OrdinalIgnoreCase) ||
+                                l.Contains(":", StringComparison.Ordinal) && l.Contains("[", StringComparison.Ordinal))
+                    .Select(l => l.Trim());
+                var summary = string.Join(" | ", devLines);
+                _diagnostics.Invoke(
+                    $"  poll {poll} (t+{elapsed:0.0}s): exit={process.ExitCode} found={found} :: {(string.IsNullOrWhiteSpace(summary) ? "(nenhum device DFU listado)" : summary)}");
+            }
+            return found;
         }
-        catch
+        catch (Exception ex)
         {
+            _diagnostics?.Invoke($"  poll {poll}: exceção ao rodar dfu-util -l: {ex.Message}");
             return false;
         }
     }
