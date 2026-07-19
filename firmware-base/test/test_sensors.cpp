@@ -9,7 +9,7 @@
 //
 // Roda sem placa nenhuma: firmware-base/test/run.sh
 
-#include "../src/m05/sensor_convert.h"
+#include "../lib/base_shared/sensor_convert.h"
 
 #include <cstdio>
 

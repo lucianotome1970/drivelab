@@ -9,7 +9,7 @@
 //
 // Roda sem placa nenhuma: firmware-base/test/run.sh
 
-#include "../src/m05/base_cfg.h"
+#include "../lib/base_shared/base_cfg.h"
 
 #include <cstdio>
 #include <cstring>
