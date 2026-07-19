@@ -191,5 +191,6 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
     {
         _channel.ReportReceived -= OnReport;
         _channel.Dispose();
+        _readGate.Dispose();
     }
 }
