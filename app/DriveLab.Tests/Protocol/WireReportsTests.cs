@@ -16,7 +16,9 @@ public class WireReportsTests
     [Fact]
     public void ReportIds_And_Identity_Have_Expected_Values()
     {
-        Assert.Equal(0x01, BaseReportIds.DeviceState);
+        // Remapeado de 0x01 p/ 0x21: a base é UMA interface HID combinada (FFB + A0), e 0x01 já é
+        // o report DeviceState do próprio FFB. Ver BaseReportIdsTests p/ a lista completa.
+        Assert.Equal(0x21, BaseReportIds.DeviceState);
         Assert.Equal(0x14, BaseReportIds.SettingWrite);
         Assert.Equal(0x16, BaseReportIds.SettingValue);
         Assert.Equal(0x1209, BaseDeviceIdentity.VendorId);

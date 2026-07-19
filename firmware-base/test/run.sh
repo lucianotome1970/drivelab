@@ -10,3 +10,7 @@ c++ -std=c++17 -I../lib/brain -Wall -Wextra -Werror -o "$out" test_ffb_brain.cpp
 out2="$(mktemp -d)/ffb_report_test"
 c++ -std=c++17 -Wall -Wextra -Werror -o "$out2" test_ffb_report.cpp ../src/m05/ffb_report.cpp
 "$out2"
+
+out3="$(mktemp -d)/base_cfg_test"
+c++ -std=c++17 -Wall -Wextra -Werror -o "$out3" test_base_cfg.cpp ../src/m05/base_cfg.cpp
+"$out3"
