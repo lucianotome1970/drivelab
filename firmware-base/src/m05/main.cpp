@@ -43,6 +43,7 @@
 #include <Adafruit_TinyUSB.h>
 #include "ffb_hid_descriptor.h"
 #include "ffb_report.h"
+#include "a0_hid_descriptor.h"
 
 // ----------------------------------------------------------------------
 // Layout do report de Input do RID_JOYSTICK (collection Physical dentro da
@@ -240,6 +241,16 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
 Adafruit_USBD_HID g_hid(ffb_hid_report_desc, ffb_hid_report_desc_len,
                          HID_ITF_PROTOCOL_NONE, 4, /*has_out_endpoint=*/true);
 
+// IF1 — canal de configuração "A0" (vendor, usage-page 0xFF00): 2ª interface
+// HID do composto, ao lado da IF0 (FFB, g_hid acima) e da IF2 (CDC, automática
+// via Adafruit_USBD_Device::begin() — ver NOTA CDC no setup()). Descritor em
+// a0_hid_descriptor.h. has_out_endpoint=true pelo mesmo motivo do g_hid: tem
+// Output reports (A0_RID_CMD/DIRECT/SETWRITE/SETREAD) que só chegam pelo
+// endpoint OUT dedicado. Este Task (2) só registra a interface — os
+// callbacks de leitura/escrita (setReportCallback) ficam para a Task 3.
+Adafruit_USBD_HID g_a0(a0_hid_report_desc, a0_hid_report_desc_len,
+                        HID_ITF_PROTOCOL_NONE, 4, /*has_out_endpoint=*/true);
+
 void setup()
 {
     // Identificação USB (VID 0x1209 pid.codes / PID 0x0001 / strings
@@ -278,6 +289,13 @@ void setup()
     g_hid.setReportCallback(hid_get_report_callback, hid_set_report_callback);
 
     g_hid.begin();
+
+    // IF1 (canal A0, vendor) — begin() ANTES do detach/attach de re-enum
+    // abaixo, pelo mesmo motivo do g_hid: a Adafruit_TinyUSB_Arduino só
+    // acrescenta a interface ao config descriptor quando begin() roda antes
+    // da pilha ser (re)anunciada ao host. Sem callbacks ainda (Task 3) — só
+    // registra a interface para o host enumerar.
+    g_a0.begin();
 
     // Se a pilha já montou só com o CDC default antes do HID entrar, o host
     // não percebe a interface nova sem uma re-enumeração — força via
