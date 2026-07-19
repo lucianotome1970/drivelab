@@ -4,7 +4,7 @@ Firmware for the DriveLab **base** (wheelbase) — **ODESC v4.2 (STM32F405)** + 
 *(The firmware for the removable rim/wheel — buttons, LEDs, paddles — lives in `firmware-wheel/` (RP2040).)*
 Design/decisions: kept in internal project notes (not versioned in the public repo).
 
-> **License:** this firmware will be **LGPL** starting at M0.5 (when we add the LGPL FFB libs — `USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`). The DriveLab Studio app and the .NET libs stay MIT. The current code (M0) is ours; the license change happens when we integrate the libs.
+> **License:** M0.5 v2 dropped the LGPL shim libs (`USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`) in favour of the MIT **Adafruit TinyUSB Library** plus our own HID PID descriptor (derived from **OpenFFBoard**, MIT, `github.com/Ultrawipf/OpenFFBoard`). So the firmware stays **MIT**, same as the DriveLab Studio app and the .NET libs — no LGPL bump needed after all.
 
 <p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a></p>
 
@@ -101,31 +101,38 @@ DriveLab M0 vivo, tick = 1
 
 ---
 
-### M0.5 — USB/FFB (the main de-risk) ⚠️ — COMPILES for F405, awaiting bench
+### M0.5 — USB/FFB (the main de-risk) ✅ v2 VALIDATED on real hardware (Passos A/B/C)
 
-Prove decision **B2** on the F405: **enumerate as a Force Feedback device** (DirectInput wheel) on Windows, reusing the ready-made FFB stack. **No motor** yet.
+Prove that the base can **enumerate as a Force Feedback device** (DirectInput wheel), so the game-effect pipe exists before any motor is touched. **No motor** in M0.5.
 
-> **Update (2026-07):** the draft (`src/m05/main.cpp`) now **compiles cleanly for the F405** (3.5% flash). Two fixes were needed vs. the first draft: the shim's real header is `USBAPI.h` (there is no `USBLibrarySTM32.h`), and the FFB lib uses the AVR-only macro `_delay_us()` — mapped to `delayMicroseconds()` via a force-included shim (`include/avr_compat.h`), so the re-fetched third-party lib isn't edited. Still **awaiting bench validation**: that it actually enumerates as an FFB wheel on real hardware (watch the HSE-crystal / VBUS-sensing gotchas below).
+> **v1 (shim, decision B2) FAILED on hardware — replaced by v2 (TinyUSB).** The first attempt reused the AVR-origin `ArduinoJoystickWithFFBLibrary` + `USBLibrarySTM32` shim. It compiled for the F405, but on the bench **no OS enumerated it** — not macOS, not Windows, not even a UTM Windows VM. Root cause, measured with `tools/dump_report_descriptor.py` (pyusb): the shim's EP0 control-transfer plumbing **declared** `wReportDescriptorLength = 1259` bytes but only **transmitted 32** — a truncated HID report descriptor every OS rejects outright. The shim's control-transfer code is only exercised on F401/F411; it doesn't work on the F405.
+
+#### The fix: TinyUSB with our own descriptor
+- We moved to the **Adafruit TinyUSB Library** (`lib_deps = adafruit/Adafruit TinyUSB Library` in `env:m05`, MIT-licensed). Why: STM32duino's native HID class is **input-only** (no OUT endpoint, no `SET_REPORT`), so it physically cannot receive FFB effects from the host; TinyUSB's `dwc2`/OTG_FS port is mature, serves large descriptors without truncating, and supports OUT reports.
+- **Descriptor:** the full HID PID Force-Feedback report descriptor, **flattened from OpenFFBoard** (`github.com/Ultrawipf/OpenFFBoard`, MIT, same VID family `0x1209`) — 1196 bytes, generated/validated by `tools/flatten_openffb_descriptor.py` + `tools/validate_ffb_descriptor.py`. Credit: OpenFFBoard.
+- **Device identity:** composite **HID PID + CDC**, `VID 0x1209` / `PID 0x0001`, product string **"DriveLab Base"**. Set via `build_flags` in `platformio.ini` (`USB_VID`/`USB_PID`/`USB_MANUFACTURER`/`USB_PRODUCT`) — **not** at runtime: the Adafruit `begin()` rebuilds the whole device descriptor from these build-time macros unconditionally, so a runtime `TinyUSBDevice.setID()` call made before `begin()` gets silently discarded (bit us in Passo A v1: it enumerated with the library's default `0x239A/0xCAFE`).
+
+#### Validated status (2026-07-18, MKS ODRIVE-S V3.6 / STM32F405)
+- **Passo A — minimal joystick ✅** — enumerates as a HID gamepad: macOS mounts it as a game controller, and Windows `joy.cpl` shows **"DriveLab Base"** with a live moving axis. *(v1/shim never got this far.)*
+- **Passo B — full descriptor ✅** — the complete 1196-byte HID PID descriptor is served **intact, no truncation** (confirmed via `dump_report_descriptor.py`, declared == received); the device is still recognized in Windows `joy.cpl`. Note: `joy.cpl` has no dedicated Force-Feedback tab by itself — that's normal, FFB lives in DirectInput, not the applet.
+- **Passo C — constant force received ✅** — sending a raw HID output report (`Set Constant Force`, `mag=1000`) from the Mac via `tools/ffb_send_constant_force.py` (hidapi) makes the firmware parse it and log `FFB const block=1 mag=1000` over CDC. Proves the FFB pipe end-to-end (host effect → USB → parser → log) on real hardware, without needing Windows/DirectInput.
+
+#### Still open (future milestone)
+The full DirectInput PID init handshake (Pool/Block Load requests, as a real game would drive it) and turning a received effect into motor torque (**M5**, gated behind the brain + safety) are not part of M0.5. No motor is touched here.
 
 #### How to flash M0.5
 ```bash
 pio run -e m05 -t upload      # or select the "m05" env in the PlatformIO bar
 ```
-The libs (`USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`) are downloaded via `lib_deps` (git) on the first build. The `env:m05` does **not** use `USBD_USE_CDC` (the USB becomes the shim's).
+`env:m05` does **not** use `USBD_USE_CDC` for the joystick path — CDC is composited alongside HID by TinyUSB itself (see `platformio.ini`).
 
-#### Verification (M0.5 ✅)
-Windows → *Control Panel → Devices and Printers → (the device) → Game controller settings → Properties*:
-- A **steering axis moving by itself** appears (the sketch sweeps the steering) → **enumerated + axis ok**.
-- A **Force Feedback / Test** tab/button present → the PID descriptor came up.
+#### Bench tools (`firmware-base/tools/`)
+- `validate_ffb_descriptor.py` — parses/validates the HID PID descriptor bytes (self-test, no board needed).
+- `flatten_openffb_descriptor.py` — generates the flattened descriptor from the OpenFFBoard source.
+- `dump_report_descriptor.py` — reads the config + report descriptor off the real device via pyusb (declared vs. received length — this is what caught the v1 truncation).
+- `ffb_send_constant_force.py` — sends a raw HID Set Constant Force output report via hidapi, to prove the FFB pipe without DirectInput/Windows.
 
-#### Uncertainty points to resolve on the bench (by order of risk)
-1. **Compiling the libs together** — the shim and the FFB lib are AVR-origin; some symbol may be missing/conflicting. If it doesn't compile, send the error — we'll adjust (maybe copy files, not just `lib_deps`).
-2. **Shim header name** (`#include <USBLibrarySTM32.h>`) — check the actual header in the repo.
-3. **`getUSBPID()` in an ISR** — in the AVR version it runs inside the USB ISR; in the draft we call it in `loop()`. If the effects don't register in the FFB test, it needs to be hooked into the shim's USB callback/ISR.
-4. **Clock/USB** — 48 MHz (PLL48CLK); **disable VBUS sensing** if bus-powered; the HSE crystal gotcha (see M0).
-5. **F405 is not officially tested** by the shim (only F401/F411, same OTG_FS family).
-
-If it gets fully stuck, the fallbacks are already mapped (**B1**: TinyUSB + our own MIT PID; or **2-MCU**: AVR 32u4 + STM32). See design §2.
+*(Flashing the F405/ODrive-class board is documented above under M0 — ST-Link + OpenOCD; same recipe applies here, no need to repeat it.)*
 
 *(The USB IRQ priority below the FOC timer only matters starting at M1, when SimpleFOC comes in.)*
 
@@ -235,31 +242,38 @@ DriveLab M0 vivo, tick = 1
 
 ---
 
-### M0.5 — USB/FFB (o de-risco principal) ⚠️ — COMPILA no F405, aguardando bancada
+### M0.5 — USB/FFB (o de-risco principal) ✅ v2 VALIDADO no hardware real (Passos A/B/C)
 
-Provar a decisão **B2** no F405: **enumerar como dispositivo Force Feedback** (volante DirectInput) no Windows, reusando a pilha FFB pronta. **Sem motor** ainda.
+Provar que a base consegue **enumerar como dispositivo Force Feedback** (volante DirectInput), pra provar que o cano de efeitos de jogo existe antes de encostar em motor. **Sem motor** no M0.5.
 
-> **Atualização (2026-07):** o rascunho (`src/m05/main.cpp`) agora **compila limpo no F405** (3,5% de flash). Dois ajustes vs. o 1º rascunho: o header real do shim é `USBAPI.h` (não existe `USBLibrarySTM32.h`), e a lib de FFB usa a macro AVR `_delay_us()` — mapeada para `delayMicroseconds()` via header force-included (`include/avr_compat.h`), sem editar a lib de terceiros (re-baixada pelo lib_deps). **Falta validar na bancada**: que enumere de fato como volante FFB no hardware real (atenção ao cristal HSE / VBUS sensing abaixo).
+> **v1 (shim, decisão B2) FALHOU no hardware — substituído pelo v2 (TinyUSB).** A primeira tentativa reusava o shim AVR-origin `ArduinoJoystickWithFFBLibrary` + `USBLibrarySTM32`. Compilava no F405, mas na bancada **nenhum SO enumerou** — nem macOS, nem Windows, nem uma VM UTM Windows. Causa raiz, medida com `tools/dump_report_descriptor.py` (pyusb): a canalização de control-transfer EP0 do shim **declarava** `wReportDescriptorLength = 1259` bytes mas **transmitia só 32** — um report descriptor HID truncado que todo SO rejeita de cara. O código de control-transfer do shim só é exercitado no F401/F411; não funciona no F405.
+
+#### A correção: TinyUSB com descritor próprio
+- Migramos para a **Adafruit TinyUSB Library** (`lib_deps = adafruit/Adafruit TinyUSB Library` no `env:m05`, MIT). Por quê: a classe HID nativa do STM32duino é **só de entrada** (sem endpoint OUT, sem `SET_REPORT`), então fisicamente não consegue receber efeitos FFB do host; a porta `dwc2`/OTG_FS da TinyUSB é madura, serve descritores grandes sem truncar, e suporta reports OUT.
+- **Descritor:** o report descriptor HID PID Force-Feedback completo, **achatado a partir do OpenFFBoard** (`github.com/Ultrawipf/OpenFFBoard`, MIT, mesma família de VID `0x1209`) — 1196 bytes, gerado/validado por `tools/flatten_openffb_descriptor.py` + `tools/validate_ffb_descriptor.py`. Crédito: OpenFFBoard.
+- **Identidade do dispositivo:** composto **HID PID + CDC**, `VID 0x1209` / `PID 0x0001`, string de produto **"DriveLab Base"**. Definida via `build_flags` no `platformio.ini` (`USB_VID`/`USB_PID`/`USB_MANUFACTURER`/`USB_PRODUCT`) — **não** em runtime: o `begin()` da Adafruit reconstrói o device descriptor inteiro a partir dessas macros de build incondicionalmente, então uma chamada `TinyUSBDevice.setID()` em runtime antes do `begin()` é descartada silenciosamente (nos mordeu no Passo A v1: enumerou com o default da lib `0x239A/0xCAFE`).
+
+#### Status validado (2026-07-18, MKS ODRIVE-S V3.6 / STM32F405)
+- **Passo A — joystick mínimo ✅** — enumera como HID gamepad: o macOS monta como game controller, e o `joy.cpl` do Windows mostra **"DriveLab Base"** com um eixo se movendo ao vivo. *(o v1/shim nunca chegou até aqui.)*
+- **Passo B — descritor completo ✅** — o descritor HID PID completo de 1196 bytes sobe **intacto, sem truncamento** (confirmado via `dump_report_descriptor.py`, declared == received); o dispositivo continua reconhecido no `joy.cpl` do Windows. Nota: o `joy.cpl` não tem uma aba dedicada de Force Feedback por si só — isso é normal, o FFB mora no DirectInput, não no applet.
+- **Passo C — constant force recebido ✅** — enviar um output report HID cru (`Set Constant Force`, `mag=1000`) do Mac via `tools/ffb_send_constant_force.py` (hidapi) faz o firmware parsear e logar `FFB const block=1 mag=1000` pela CDC. Prova o cano FFB de ponta a ponta (efeito do host → USB → parser → log) no hardware real, sem precisar de Windows/DirectInput.
+
+#### Ainda em aberto (marco futuro)
+O handshake completo de inicialização PID do DirectInput (requests de Pool/Block Load, como um jogo real dirigiria) e transformar um efeito recebido em torque de motor (**M5**, atrás do cérebro + segurança) não fazem parte do M0.5. Nenhum motor é tocado aqui.
 
 #### Como gravar o M0.5
 ```bash
 pio run -e m05 -t upload      # ou selecione o env "m05" na barra do PlatformIO
 ```
-As libs (`USBLibrarySTM32` + `ArduinoJoystickWithFFBLibrary`) são baixadas via `lib_deps` (git) na primeira build. O `env:m05` **não** usa `USBD_USE_CDC` (o USB passa a ser o do shim).
+O `env:m05` **não** usa `USBD_USE_CDC` pro caminho do joystick — a CDC é composta junto com o HID pela própria TinyUSB (ver `platformio.ini`).
 
-#### Verificação (M0.5 ✅)
-Windows → *Painel de Controle → Dispositivos e Impressoras → (o dispositivo) → Configurações do controle de jogo → Propriedades*:
-- Aparece um **eixo de direção se movendo sozinho** (o sketch varre o steering) → **enumerou + eixo ok**.
-- Aba/botão de **Force Feedback / Testar** presente → o descriptor PID subiu.
+#### Ferramentas de bancada (`firmware-base/tools/`)
+- `validate_ffb_descriptor.py` — parseia/valida os bytes do descriptor HID PID (self-test, sem placa).
+- `flatten_openffb_descriptor.py` — gera o descriptor achatado a partir da fonte do OpenFFBoard.
+- `dump_report_descriptor.py` — lê o config + report descriptor do dispositivo real via pyusb (tamanho declarado vs. recebido — foi isso que pegou o truncamento do v1).
+- `ffb_send_constant_force.py` — envia um output report HID cru de Set Constant Force via hidapi, pra provar o cano FFB sem DirectInput/Windows.
 
-#### Pontos de incerteza a resolver na bancada (por ordem de risco)
-1. **Compilação das libs juntas** — o shim e a lib de FFB são AVR-origin; pode faltar/conflitar algum símbolo. Se não compilar, mande o erro — ajustamos (talvez copiar arquivos, não só `lib_deps`).
-2. **Nome do header do shim** (`#include <USBLibrarySTM32.h>`) — verificar o header real do repo.
-3. **`getUSBPID()` numa ISR** — na versão AVR roda dentro da ISR de USB; no rascunho chamamos em `loop()`. Se os efeitos não registrarem no teste de FFB, precisa hookar no callback/ISR de USB do shim.
-4. **Clock/USB** — 48 MHz (PLL48CLK); **desabilitar VBUS sensing** se bus-powered; o gotcha do cristal HSE (ver M0).
-5. **F405 não é oficialmente testado** pelo shim (só F401/F411, mesma família OTG_FS).
-
-Se travar de vez, os fallbacks já estão mapeados (**B1**: TinyUSB + PID próprio MIT; ou **2-MCU**: AVR 32u4 + STM32). Ver design §2.
+*(A gravação da placa F405/classe ODrive já está documentada acima, no M0 — ST-Link + OpenOCD; a mesma receita vale aqui, sem repetir.)*
 
 *(A prioridade da IRQ USB abaixo do timer do FOC só importa a partir do M1, quando o SimpleFOC entrar.)*
 
