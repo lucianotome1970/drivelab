@@ -167,7 +167,7 @@ static volatile bool g_dfuRequested = false; // true: A0_RID_CMD pediu EnterDfu 
 //     não-confiável na bancada (não foi o caso -- ver relatório).
 // ----------------------------------------------------------------------
 static const uint32_t kDfuMagic = 0xB007DF00;
-__attribute__((section(".noinit"))) static uint32_t g_dfuMagic;
+__attribute__((section(".noinit"))) static volatile uint32_t g_dfuMagic;
 
 // Salto mínimo pro bootloader de sistema da ST -- chamado SÓ no início de
 // setup() (ver checagem logo no topo de setup(), ANTES de qualquer init de
@@ -178,6 +178,16 @@ __attribute__((section(".noinit"))) static uint32_t g_dfuMagic;
 // trouxe a gente até aqui.
 static void jumpToBootloaderEarly()
 {
+    // O reset de sistema reinicia o NOSSO firmware, e o core do STM32duino já
+    // reconfigura o clock (HSE/PLL 168 MHz) antes do setup() -- então neste
+    // ponto o clock NÃO está no reset default. O bootloader por ROM (SW1/BOOT0)
+    // roda no HSI. Precisamos voltar o clock pro estado de reset (HSI, HSE/PLL
+    // off) e resetar os periféricos, senão a USB do bootloader não sobe (foi o
+    // que falhou na bancada). HAL_RCC_DeInit usa SysTick p/ timeout -> chamar
+    // ANTES de desligar SysTick/IRQ.
+    HAL_DeInit();
+    HAL_RCC_DeInit();
+
     __disable_irq();
 
     SysTick->CTRL = 0;
