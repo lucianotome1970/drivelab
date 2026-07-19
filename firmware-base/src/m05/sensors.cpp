@@ -17,11 +17,9 @@
 
 #include "sensor_convert.h"
 
-// Cache atualizado por sensorsSample(); lido pelos getters no envio da telemetria.
-static int8_t   s_mcuTempC = 0;
-static int8_t   s_fetTempC = 0;
-static uint16_t s_busMv    = 0;
-static bool     s_adcInit  = false;
+// Cache atualizado por sensorsSample(); lido pelo getter no envio da telemetria.
+static int8_t s_mcuTempC = 0;
+static bool   s_adcInit  = false;
 
 static int8_t clampToSbyte(int celsius)
 {
@@ -40,26 +38,16 @@ void sensorsSample()
         s_adcInit = true;
     }
 
-    // VDDA real (via VREFINT) — usado para escalar temp do MCU e VBUS.
+    // VDDA real (via VREFINT) — usado para escalar a tensão do sensor de temp.
     int vdda = vddaMilliVolts(static_cast<uint16_t>(analogRead(AVREF)));
 
-    // Temp do MCU (sensor interno).
+    // Temp do MCU (sensor interno do F405). Único sensor confiável no M0.5.
     int vsenseMv = adcCountsToMilliVolts(static_cast<uint16_t>(analogRead(ATEMP)), vdda);
     s_mcuTempC = clampToSbyte(mcuTempCFromSenseMv(vsenseMv));
 
-    // Tensão do barramento DC (lê ~0 sem a fonte ligada).
-    long busMv = busMilliVolts(static_cast<uint16_t>(analogRead(PA6)), vdda);
-    if (busMv < 0)      busMv = 0;
-    if (busMv > 65535)  busMv = 65535;
-    s_busMv = static_cast<uint16_t>(busMv);
-
-    // Temp dos FETs: máx(M0,M1) — pior caso p/ over-temp. Em centésimos, depois °C.
-    int m0Centi = fetThermistorCentiC(static_cast<uint16_t>(analogRead(PC5)));
-    int m1Centi = fetThermistorCentiC(static_cast<uint16_t>(analogRead(PA4)));
-    int maxCenti = (m0Centi > m1Centi) ? m0Centi : m1Centi;
-    s_fetTempC = clampToSbyte(maxCenti / 100);
+    // FET temp e bus voltage adiados p/ o M1 (ver nota em sensors.h): os pinos
+    // do clone MKS divergem do ODrive genuíno. As conversões puras já existem
+    // em sensor_convert.h; falta medir os pinos/escala reais com DC+motor.
 }
 
-int8_t   sensorMcuTempC()      { return s_mcuTempC; }
-int8_t   sensorFetTempC()      { return s_fetTempC; }
-uint16_t sensorBusMilliVolts() { return s_busMv; }
+int8_t sensorMcuTempC() { return s_mcuTempC; }

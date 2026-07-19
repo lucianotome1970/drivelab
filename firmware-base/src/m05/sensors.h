@@ -11,11 +11,16 @@
 
 #include <cstdint>
 
-// Lê todos os sensores por ADC e atualiza o cache. Chamar periodicamente
-// (~10 Hz) no loop() — não no envio de telemetria (que é mais frequente).
+// Lê os sensores por ADC e atualiza o cache. Chamar periodicamente (~10 Hz) no
+// loop() — não no envio de telemetria (que é mais frequente).
 void sensorsSample();
 
-// Valores do cache (clampados aos tipos do wire format da telemetria 0x21).
-int8_t   sensorMcuTempC();        // temp do die do MCU (°C)
-int8_t   sensorFetTempC();        // máx(M0,M1) dos NTC dos FETs (°C)
-uint16_t sensorBusMilliVolts();   // tensão do barramento DC (mV) — ~0 sem DC
+// Temp do die do MCU (°C) — sensor interno do F405, validado na bancada.
+int8_t sensorMcuTempC();
+
+// NOTA: temp dos FETs e tensão do barramento foram adiadas para o M1. Os NTC
+// onboard e o divisor do barramento da MKS ODRIVE-S (clone) divergem do ODrive
+// genuíno (na bancada o FET saturava em 127°C e o bus lia ~2.2V flutuante sem
+// DC). As conversões puras (fetThermistorCentiC/busMilliVolts) já estão prontas
+// e testadas em sensor_convert.h; faltam os pinos/escala reais do clone, que
+// serão medidos no M1 (com motor + DC ligados, quando viram úteis).

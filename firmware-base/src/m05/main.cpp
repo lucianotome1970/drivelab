@@ -804,11 +804,9 @@ void loop()
         payload[3] = DRVLAB_FW_VER_PATCH;
         payload[4] = 0; // flags
         // payload[5..12] = posição/ângulo/torque/corrente -- 0 até o M1 (motor).
-        payload[13] = (uint8_t)sensorFetTempC();    // FetTempC (sbyte): máx dos NTC onboard
+        // payload[13] = FetTempC, [15..16] = BusVoltageMv -- adiados p/ M1 (pinos
+        // do clone MKS divergem; ver sensors.h). Ficam 0 (placeholder honesto).
         payload[14] = 0;                            // error
-        uint16_t busMv = sensorBusMilliVolts();     // BusVoltageMv (uint16 LE): ~0 sem DC
-        payload[15] = (uint8_t)(busMv & 0xFF);
-        payload[16] = (uint8_t)(busMv >> 8);
         // payload[17] = MotorTempC -- 0 até M1 (thermistor de motor externo).
         payload[18] = (uint8_t)sensorMcuTempC();    // McuTempC (sbyte): sensor interno do F405
 
