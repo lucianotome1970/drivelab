@@ -165,27 +165,35 @@ Real sensor telemetry and turning settings into torque land with **M1/M5**. Firm
 
 ---
 
-### Firmware update over USB (DFU) — validated on hardware, app hardening in progress
+### Firmware update over USB (DFU) — working end-to-end via app + manual SW1 fallback
 
 **What it is:** the base can be re-flashed **over the data USB cable, without the ST-Link**, using the STM32 system bootloader (DFU). Two ways to get there:
-- **Software (from the app):** the app sends the A0 command `EnterDfu` (`Command 0x22`, `cmd=4`). The firmware writes a magic value to a `.noinit` RAM variable and calls `NVIC_SystemReset()`; an early check at the very top of `setup()` (before USB init) sees the magic, calls `HAL_RCC_DeInit()` (clock back to HSI) and jumps to the ST system bootloader at `0x1FFF0000` — the board re-enumerates as `0x0483:0xdf11` ("STM32 BOOTLOADER").
+- **Software (from the app):** the app sends the A0 command `EnterDfu` (`Command 0x22`, `cmd=4`). The firmware writes a magic value to a `.noinit` RAM variable and calls `NVIC_SystemReset()`; an early check at the very top of `setup()` (before USB init) sees the magic, calls `HAL_RCC_DeInit()` (clock back to HSI) and jumps to the ST system bootloader at `0x1FFF0000` — the board is meant to re-enumerate as `0x0483:0xdf11` ("STM32 BOOTLOADER").
 - **Hardware (reliable fallback):** the board's **`SW1 → DFU`** switch + a power-cycle boots the ROM bootloader directly, no firmware cooperation needed.
 
 Either way, `dfu-util -a 0 -s 0x08000000:leave -D firmware.bin` flashes the new image over USB; `:leave` reboots straight into it.
 
+**Root cause of the "software jump" failure on this bench board:** systematic on-device debugging (see `firmware-base/tools/enter_dfu.py` below) confirmed the `EnterDfu` command *does* reset the board — it disappears from USB as expected — but the ROM bootloader's USB peripheral then fails to enumerate after a **warm** jump on this specific board, because **its VBUS/5V USB power path is physically burnt**. The magic value in `.noinit` RAM does survive the reset fine (an RTC-backup-register trigger, considered earlier as a fix, would not help — that was never the problem). `SW1 → DFU` works because it's a **cold boot**, which doesn't hit the same USB-power state. This looks like a defect specific to this bench board's hardware; whether the automatic jump works on a healthy board is still to be re-validated.
+
 #### App module (DriveLab Studio)
-A new "Atualizar firmware" ("Update firmware") screen: pick the connected device → pick the `.bin` file → the app validates the file matches the device via an embedded **`DRVLABFW` signature** (8 ASCII bytes + `DeviceKind` + 3 version bytes, checked by `firmware-base/tools/check_fw_signature.py` on the bench and by `DeviceKind`/`FirmwareFile` on the app side) → send (`BaseUpdater`: `EnterDfu` over the current HID transport, wait for the DFU device to appear, then shell out to `dfu-util`).
+The "Atualizar firmware" ("Update firmware") screen: shows the detected device and its **currently running firmware version** (read live from the 0x21 telemetry) → pick the `.bin` file → the app validates the file matches the device via an embedded **`DRVLABFW` signature** (8 ASCII bytes + `DeviceKind` + 3 version bytes, checked by `firmware-base/tools/check_fw_signature.py` on the bench and by `DeviceKind`/`FirmwareFile` on the app side) → **Enviar/Send**.
+
+The send flow (`BaseUpdater`) first tries the automatic path: it sends `EnterDfu` over the current HID transport and waits ~8 s for the DFU device to appear. If it doesn't (the expected outcome on this bench board), the app falls into a **manual fallback mode**: it keeps exclusive USB access (pauses auto-connect and releases the HID handle) and prompts the user to set **`SW1 → DFU` and power-cycle** the board. A **Continuar/Continue** button re-scans for the DFU device and, once found, flashes it via `dfu-util`; **Cancelar/Cancel** aborts and resumes normal auto-connect. Either path — automatic or manual — flashes over the same data USB cable, no ST-Link.
+
+The firmware version itself is now a **single source of truth**: `DRVLAB_FW_VER_{MAJOR,MINOR,PATCH}` in `firmware-base/src/m05/fw_signature.h` feeds both the embedded `.bin` signature and the 0x21 telemetry payload (they used to disagree — telemetry reported 0.1.0 while the signature said 0.2.0). Bump the version only in `fw_signature.h`.
 
 #### Bootstrap
 The `EnterDfu` handler itself has to reach the board the old way once (ST-Link, or `SW1 → DFU` + `dfu-util`) — after that first flash, all further updates can go over USB with no ST-Link.
 
-> **Status (2026-07-19): validated on hardware ✅ (with known follow-ups)** — on an MKS ODRIVE-S / STM32F405: the **`EnterDfu` software jump was demonstrated** (the board jumps into DFU and comes back up running the newly flashed firmware), and **`dfu-util` flashing over USB works**, both via `EnterDfu` and via `SW1 → DFU`. The app module (signature validator, `BaseUpdater`, and the update screen) is built and unit-tested.
+#### Bench tool (`firmware-base/tools/`)
+- `enter_dfu.py` — isolated test of the firmware's DFU jump: sends `EnterDfu` via `hidapi` and watches `dfu-util -l` for the bootloader device to appear. Used to separate "does the firmware jump correctly?" from "does the app's send flow trigger and detect it correctly?" — this is what pinned the failure down to the ROM bootloader's USB not enumerating after a warm jump, rather than to the app or to the reset/magic logic.
+
+> **Status (2026-07-19): validated end-to-end on hardware ✅** — on the bench MKS ODRIVE-S / STM32F405, flashing the base **through DriveLab Studio** (Send → automatic attempt times out as expected → manual `SW1 → DFU` fallback → `dfu-util`) changed the board's **reported firmware version from 0.1.0 to 0.2.0**, confirmed by re-reading the 0x21 telemetry after the flash. This is the reliable update path on this board today: **app Send → automatic attempt (currently always falls through on this board) → `SW1 → DFU` manual fallback prompted by the app → flash**.
 >
-> **Known follow-ups (still being hardened, not yet 100% reliable end-to-end):**
-> 1. The software jump (magic in `.noinit` + `NVIC_SystemReset()`) showed some flakiness under rapid re-testing on the bench. A more robust trigger using an **RTC backup register** (guaranteed to survive any reset, unlike `.noinit` RAM) is planned. **Until then, `SW1 → DFU` is the 100%-reliable trigger.**
-> 2. The app's automatic DFU-device detection during the send flow (`BaseUpdater.WaitForBootloaderAsync`) needs timing/environment hardening — it works when the flow is run manually/step-by-step, but isn't yet solid as a hands-off one-click flow.
-> 3. **Windows:** bundling `dfu-util` and the WinUSB driver for the DFU device (`0483:df11`) is a later phase — everything above is validated on **macOS** only so far.
-> 4. The RP2040-based devices (pedal/handbrake/wheel) use **UF2/BOOTSEL**, not DFU — their updaters are a separate future phase.
+> **Known limitations:**
+> 1. The **fully hands-off automatic jump does not work on this bench board** — `EnterDfu` resets the board correctly, but the STM32 ROM bootloader's USB does not enumerate after a warm jump here, because this board's VBUS/5V USB path is physically burnt. This is believed to be a defect of this specific board, not of the jump mechanism itself; re-validating on a healthy board is a follow-up. The previously-planned RTC-backup-register trigger would not fix this — the magic already survives the reset today.
+> 2. **Windows:** bundling `dfu-util` and the WinUSB driver for the DFU device (`0483:df11`) is a later phase — everything above is validated on **macOS** only so far.
+> 3. The RP2040-based devices (pedal/handbrake/wheel) use **UF2/BOOTSEL**, not DFU — their updaters are a separate future phase.
 
 #### Bench tool (`firmware-base/tools/`)
 - `check_fw_signature.py` — verifies the `DRVLABFW` signature (magic + `DeviceKind` + version) is present and well-formed in a built `.bin`.
@@ -360,27 +368,35 @@ Telemetria real de sensores e transformar settings em torque ficam pro **M1/M5**
 
 ---
 
-### Atualização de firmware via USB (DFU) — validada no hardware, app em ajuste
+### Atualização de firmware via USB (DFU) — funcionando ponta a ponta via app + fallback manual SW1
 
 **O que é:** a base pode ser regravada **pelo próprio cabo USB de dados, sem o ST-Link**, usando o bootloader de sistema da ST (DFU). Dois jeitos de chegar lá:
-- **Por software (a partir do app):** o app manda o comando A0 `EnterDfu` (`Command 0x22`, `cmd=4`). O firmware grava um valor mágico numa variável de RAM `.noinit` e chama `NVIC_SystemReset()`; uma checagem bem no início do `setup()` (antes de iniciar a USB) vê o mágico, chama `HAL_RCC_DeInit()` (clock de volta pro HSI) e salta pro bootloader de sistema da ST em `0x1FFF0000` — a placa reenumera como `0x0483:0xdf11` ("STM32 BOOTLOADER").
+- **Por software (a partir do app):** o app manda o comando A0 `EnterDfu` (`Command 0x22`, `cmd=4`). O firmware grava um valor mágico numa variável de RAM `.noinit` e chama `NVIC_SystemReset()`; uma checagem bem no início do `setup()` (antes de iniciar a USB) vê o mágico, chama `HAL_RCC_DeInit()` (clock de volta pro HSI) e salta pro bootloader de sistema da ST em `0x1FFF0000` — a ideia é a placa reenumerar como `0x0483:0xdf11` ("STM32 BOOTLOADER").
 - **Por hardware (fallback confiável):** o switch **`SW1 → DFU`** da placa + um power-cycle sobe o bootloader da ROM direto, sem precisar de cooperação do firmware.
 
 De qualquer um dos dois jeitos, `dfu-util -a 0 -s 0x08000000:leave -D firmware.bin` grava a nova imagem pela USB; o `:leave` reinicia direto na imagem nova.
 
+**Causa raiz da falha do "salto por software" nesta placa de bancada:** uma depuração sistemática no próprio dispositivo (ver `firmware-base/tools/enter_dfu.py` abaixo) confirmou que o comando `EnterDfu` *de fato* reseta a placa — ela some da USB como esperado — mas depois a USB do bootloader da ROM não enumera após um salto **a quente** nesta placa específica, porque **o caminho de alimentação VBUS/5V da USB dela está fisicamente queimado**. O valor mágico na RAM `.noinit` sobrevive ao reset normalmente (um gatilho via registrador de backup do RTC, cogitado antes como correção, não resolveria isso — isso nunca foi o problema). O `SW1 → DFU` funciona porque é um **boot a frio**, que não passa pelo mesmo estado de alimentação da USB. Isso parece ser um defeito específico desta placa de bancada; se o salto automático funciona numa placa saudável ainda precisa ser revalidado.
+
 #### Módulo no app (DriveLab Studio)
-Uma nova tela "Atualizar firmware": escolher o dispositivo conectado → escolher o arquivo `.bin` → o app valida que o arquivo bate com o dispositivo via uma **assinatura `DRVLABFW`** embutida (8 bytes ASCII + `DeviceKind` + 3 bytes de versão, checada na bancada por `firmware-base/tools/check_fw_signature.py` e no app por `DeviceKind`/`FirmwareFile`) → enviar (`BaseUpdater`: `EnterDfu` pelo transporte HID atual, espera o dispositivo DFU aparecer, depois chama o `dfu-util`).
+A tela "Atualizar firmware": mostra o dispositivo detectado e a **versão do firmware rodando nele agora** (lida ao vivo da telemetria 0x21) → escolher o arquivo `.bin` → o app valida que o arquivo bate com o dispositivo via uma **assinatura `DRVLABFW`** embutida (8 bytes ASCII + `DeviceKind` + 3 bytes de versão, checada na bancada por `firmware-base/tools/check_fw_signature.py` e no app por `DeviceKind`/`FirmwareFile`) → **Enviar/Send**.
+
+O fluxo de envio (`BaseUpdater`) primeiro tenta o caminho automático: manda `EnterDfu` pelo transporte HID atual e espera ~8 s o dispositivo DFU aparecer. Se não aparecer (o resultado esperado nesta placa de bancada), o app entra num **modo de fallback manual**: mantém acesso exclusivo à USB (pausa o auto-connect e libera o handle HID) e pede ao usuário para colocar **`SW1 → DFU` e dar power-cycle** na placa. Um botão **Continuar/Continue** reescaneia em busca do dispositivo DFU e, ao encontrar, grava via `dfu-util`; **Cancelar/Cancel** aborta e retoma o auto-connect normal. Nos dois caminhos — automático ou manual — a gravação é pela mesma USB de dados, sem ST-Link.
+
+A versão do firmware em si agora é uma **fonte única de verdade**: `DRVLAB_FW_VER_{MAJOR,MINOR,PATCH}` em `firmware-base/src/m05/fw_signature.h` alimenta tanto a assinatura embutida no `.bin` quanto o payload de telemetria 0x21 (antes divergiam — a telemetria reportava 0.1.0 enquanto a assinatura dizia 0.2.0). Suba a versão só em `fw_signature.h`.
 
 #### Bootstrap
 O próprio handler do `EnterDfu` precisa chegar na placa do jeito antigo uma vez (ST-Link, ou `SW1 → DFU` + `dfu-util`) — depois dessa primeira gravação, as atualizações seguintes podem ir todas pela USB, sem ST-Link.
 
-> **Status (2026-07-19): validado no hardware ✅ (com pendências conhecidas)** — numa MKS ODRIVE-S / STM32F405: **o salto por software do `EnterDfu` foi demonstrado** (a placa salta pro DFU e volta rodando o firmware recém-gravado), e **a gravação via `dfu-util` pela USB funciona**, tanto via `EnterDfu` quanto via `SW1 → DFU`. O módulo do app (validador de assinatura, `BaseUpdater` e a tela de atualização) está pronto e com testes unitários.
+#### Ferramenta de bancada (`firmware-base/tools/`)
+- `enter_dfu.py` — teste isolado do salto DFU do firmware: manda `EnterDfu` via `hidapi` e observa `dfu-util -l` até o bootloader aparecer. Usada pra separar "o firmware salta certo?" de "o fluxo de envio do app dispara e detecta certo?" — foi isso que localizou a falha na USB do bootloader da ROM não enumerando após um salto a quente, e não no app nem na lógica de reset/mágico.
+
+> **Status (2026-07-19): validado ponta a ponta no hardware ✅** — na MKS ODRIVE-S / STM32F405 de bancada, gravar a base **pelo DriveLab Studio** (Enviar → tentativa automática expira como esperado → fallback manual `SW1 → DFU` → `dfu-util`) mudou a **versão de firmware reportada pela placa de 0.1.0 para 0.2.0**, confirmado relendo a telemetria 0x21 depois da gravação. Esse é o caminho de atualização confiável nesta placa hoje: **Enviar no app → tentativa automática (hoje sempre cai no fallback nesta placa) → fallback manual `SW1 → DFU` pedido pelo app → gravação**.
 >
-> **Pendências conhecidas (ainda em ajuste, fluxo ponta a ponta não é 100% confiável ainda):**
-> 1. O salto por software (mágico em `.noinit` + `NVIC_SystemReset()`) mostrou alguma instabilidade em retestes rápidos na bancada. Um gatilho mais robusto usando um **registrador de backup do RTC** (garantido sobreviver a qualquer reset, ao contrário da RAM `.noinit`) está planejado. **Até lá, o `SW1 → DFU` é o gatilho 100% confiável.**
-> 2. A detecção automática do dispositivo em modo DFU pelo app durante o envio (`BaseUpdater.WaitForBootloaderAsync`) precisa de ajuste fino de timing/ambiente — funciona quando o fluxo é rodado manualmente/passo a passo, mas ainda não está sólida como fluxo automático de um clique.
-> 3. **Windows:** empacotar o `dfu-util` e o driver WinUSB pro dispositivo DFU (`0483:df11`) é uma fase futura — tudo acima está validado só no **macOS** por enquanto.
-> 4. Os dispositivos baseados em RP2040 (pedal/handbrake/aro) usam **UF2/BOOTSEL**, não DFU — os atualizadores deles são uma fase futura separada.
+> **Limitações conhecidas:**
+> 1. O **salto automático totalmente sem intervenção não funciona nesta placa de bancada** — o `EnterDfu` reseta a placa corretamente, mas a USB do bootloader da ROM da STM32 não enumera depois de um salto a quente aqui, porque o caminho VBUS/5V da USB desta placa está fisicamente queimado. Acredita-se que seja um defeito específico desta placa, não do mecanismo de salto em si; revalidar numa placa saudável é um follow-up. O gatilho via registrador de backup do RTC, cogitado antes, não resolveria isso — o mágico já sobrevive ao reset hoje.
+> 2. **Windows:** empacotar o `dfu-util` e o driver WinUSB pro dispositivo DFU (`0483:df11`) é uma fase futura — tudo acima está validado só no **macOS** por enquanto.
+> 3. Os dispositivos baseados em RP2040 (pedal/handbrake/aro) usam **UF2/BOOTSEL**, não DFU — os atualizadores deles são uma fase futura separada.
 
 #### Ferramenta de bancada (`firmware-base/tools/`)
 - `check_fw_signature.py` — verifica se a assinatura `DRVLABFW` (mágico + `DeviceKind` + versão) está presente e bem formada num `.bin` gerado.
