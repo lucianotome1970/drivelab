@@ -91,11 +91,13 @@ def validate(desc: bytes) -> dict:
                 depth += 1
             elif tag == 12:  # End Collection (Main, tag 12)
                 depth -= 1
+                if depth < 0:  # fecha mais do que abriu → desbalanceado
+                    errors.append("End Collection sem Collection aberta (depth < 0)")
 
     end_depth = depth
 
-    # Validate balance
-    if depth == 0 and not any("truncado" in err.lower() for err in errors):
+    # Validate balance: depth zera no fim E nunca ficou negativo E sem truncamento
+    if depth == 0 and not errors:
         balanced = True
 
     return {
