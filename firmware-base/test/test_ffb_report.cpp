@@ -8,7 +8,7 @@
 //
 // Roda sem placa nenhuma: firmware-base/test/run.sh
 
-#include "../src/m05/ffb_report.h"
+#include "../lib/base_shared/ffb_report.h"
 #include "../include/ffb_hid_descriptor.h"
 
 #include <cstdio>
