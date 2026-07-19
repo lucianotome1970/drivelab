@@ -41,11 +41,10 @@
 
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
-#include <EEPROM.h>
 #include "ffb_hid_descriptor.h"
 #include "ffb_report.h"
 #include "a0_hid_descriptor.h"
-#include "base_cfg.h"
+#include "a0_channel.h"
 #include "fw_signature.h"
 #include "sensors.h"
 
@@ -85,20 +84,14 @@ static uint8_t g_nextEffectBlock = 1;    // último "Effect Block Index" alocado
 static uint8_t g_lastEffectBlock = 0;    // 0 = nenhum alocado ainda
 
 // ----------------------------------------------------------------------
-// Estado do canal A0 (config channel — Task 1/3): o modelo puro dos
-// settings da base (base_cfg.h/.cpp) e o estado "leitura pendente" usado
-// para responder A0_RID_SETVALUE (0x16) de forma DEFERIDA no loop() — a
-// regra do endpoint único (mesmo achado de bancada do Passo C/Task 2: só
-// dá pra ter um sendReport() "no ar" por vez no EP IN compartilhado por
-// FFB+A0) impede responder direto de dentro do callback de SET_REPORT.
-// Task 4 troca baseSeedDefaults() por um load da flash; por ora só semeia
-// os defaults do schema (ver setup()).
+// Canal A0 (config channel) — extraído para lib/base_usb/a0_channel.{h,cpp}
+// (M5 Stage 0, Task 2): framing de SET_REPORT (SETWRITE/SETREAD/CMD/
+// DIRECT), resposta deferida de leitura (0x16), telemetria periódica
+// DeviceState (0x21) e persistência do BaseCfg na flash — tudo dentro do
+// módulo agora, reusável por um futuro firmware M5 sem duplicar a lógica.
+// main.cpp só delega (ver hid_set_report_callback/setup/loop abaixo).
 // ----------------------------------------------------------------------
-static BaseCfg g_baseCfg;
-static bool g_pendingReadValue = false;  // true: loop() deve responder 0x16
-static uint8_t g_pendingField = 0;       // fieldId pedido pelo último 0x15
-static bool g_saveRequested = false;     // true: A0_RID_CMD pediu SaveSettings -> loop() grava na flash
-static volatile bool g_dfuRequested = false; // true: A0_RID_CMD pediu EnterDfu -> loop() salta pro bootloader
+static A0Channel g_a0;
 
 // ----------------------------------------------------------------------
 // EnterDfu, tentativa 2 (Task 2, redo pós-bancada) — "magic em RAM +
@@ -212,45 +205,10 @@ static void jumpToBootloaderEarly()
     }
 }
 
-// ----------------------------------------------------------------------
-// Persistência em flash (Task 4) — EEPROM emulada do STM32duino
-// (Arduino_Core_STM32/libraries/EEPROM). No F405 (sem DATA_EEPROM real) essa
-// lib emula a EEPROM na ÚLTIMA página de flash (E2END = FLASH_PAGE_SIZE-1 =
-// 8KB-1 em stm32_eeprom.h) usando HAL flash por baixo -- API é a "clássica"
-// Arduino AVR (EEPROM.get/put, sem begin()/commit(): cada EERef::operator=
-// já escreve na flash na hora via eeprom_write_byte/eeprom_buffered_write_*,
-// olhar EEPROMClass em EEPROM.h deste core). Isso é DIFERENTE do core RP2040
-// usado no firmware-pedal (main.cpp ~L214-231), que exige EEPROM.begin(N) +
-// EEPROM.commit() -- aqui não existem esses métodos na classe, então não são
-// chamados (tentar chamar não compilaria).
-// Layout: offset 0 = magic uint32 "DLB1" (0x444C4231, distinto do "DLP1" do
-// pedal), offset 4 = BaseCfg inteiro (EEPROM.put/get cobre a struct como
-// bytes crus -- mesmo padrão do pedal).
-// ----------------------------------------------------------------------
-static const uint32_t kBaseFlashMagic = 0x444C4231;  // "DLB1"
-static const int kBaseFlashMagicAddr = 0;
-static const int kBaseFlashCfgAddr = kBaseFlashMagicAddr + sizeof(kBaseFlashMagic);
-
-static void saveBaseCfg()
-{
-    EEPROM.put(kBaseFlashMagicAddr, kBaseFlashMagic);
-    EEPROM.put(kBaseFlashCfgAddr, g_baseCfg);
-}
-
-// Carrega g_baseCfg da flash se o magic bater. Retorna false (config
-// inalterado) se a flash estiver vazia/corrompida -- setup() deve então
-// chamar baseSeedDefaults().
-static bool loadBaseCfg()
-{
-    uint32_t magic = 0;
-    EEPROM.get(kBaseFlashMagicAddr, magic);
-    if (magic != kBaseFlashMagic)
-    {
-        return false;
-    }
-    EEPROM.get(kBaseFlashCfgAddr, g_baseCfg);
-    return true;
-}
+// Persistência em flash (EEPROM emulada do STM32duino) do canal A0 agora
+// vive em A0Channel::begin()/save() (lib/base_usb/a0_channel.cpp) — ver
+// comentário lá para o layout (magic "DLB1" + BaseCfg) e as notas sobre a
+// API EEPROM deste core (diferente do RP2040 do firmware-pedal).
 
 static const char *ffb_op_name(uint8_t op)
 {
@@ -316,73 +274,17 @@ static void hid_set_report_callback(uint8_t report_id,
         return;
     }
 
-    // Canal A0 (config, Task 3): mesmo caminho 1 (endpoint OUT) do FFB acima
-    // -- buffer[0] é o Report ID de verdade (confirmado pelo comentário da
-    // função e por ffb_parse_out logo abaixo, que também lê buffer[0]).
-    // A0_RID_SETWRITE/SETREAD/CMD/DIRECT são todos "Output" no descritor
-    // (a0_hid_report_desc), então chegam por aqui, nunca pelo caminho
-    // Feature. Layout (payload após o Report ID em buffer[0]):
-    //   0x14 SETWRITE: buffer[1]=fieldId buffer[2]=index(0) buffer[3]=type
-    //                  buffer[4..]=value LE (contrato SettingWrite do app).
-    //   0x15 SETREAD:  buffer[1]=fieldId buffer[2]=index(0).
-    //   0x22 CMD:      buffer[1]=cmd buffer[2]=arg.
-    //   0x10 DIRECT:   ignorado por ora (só log) -- sem uso definido ainda.
-    if (buffer[0] == A0_RID_SETWRITE)
+    // Canal A0 (config, lib/base_usb/a0_channel.{h,cpp}): mesmo caminho 1
+    // (endpoint OUT) do FFB acima -- buffer[0] é o Report ID de verdade
+    // (confirmado pelo comentário da função e por ffb_parse_out logo abaixo,
+    // que também lê buffer[0]). A0_RID_SETWRITE/SETREAD/CMD/DIRECT são todos
+    // "Output" no descritor (a0_hid_report_desc), então chegam por aqui,
+    // nunca pelo caminho Feature. handleOutReport() devolve true se
+    // consumiu o report (era A0) -- nesse caso não seguimos pra
+    // ffb_parse_out; o layout de bytes de cada Report ID está documentado
+    // junto de A0Channel::handleOutReport (a0_channel.cpp).
+    if (g_a0.handleOutReport(buffer, bufsize))
     {
-        if (bufsize >= 4)
-        {
-            uint8_t fieldId = buffer[1];
-            uint8_t type = buffer[3];
-            uint16_t valLen = bufsize - 4;
-            baseWriteField(g_baseCfg, fieldId, type, &buffer[4], valLen);
-            SerialTinyUSB.printf("A0 write field=%u type=%u len=%u\n", fieldId, type, valLen);
-        }
-        return;
-    }
-
-    if (buffer[0] == A0_RID_SETREAD)
-    {
-        if (bufsize >= 2)
-        {
-            g_pendingField = buffer[1];
-            g_pendingReadValue = true;
-            SerialTinyUSB.printf("A0 read field=%u\n", g_pendingField);
-        }
-        return;
-    }
-
-    if (buffer[0] == A0_RID_CMD)
-    {
-        if (bufsize >= 3)
-        {
-            uint8_t cmd = buffer[1];
-            uint8_t arg = buffer[2];
-            if (cmd == 2 /* SaveSettings */)
-            {
-                g_saveRequested = true;
-                SerialTinyUSB.printf("A0 cmd=%u (SaveSettings) arg=%u -> g_saveRequested\n", cmd, arg);
-            }
-            else if (cmd == 4 /* EnterDfu */)
-            {
-                // Só sinaliza -- o salto de verdade acontece no loop() (ver
-                // jumpToBootloader()), nunca aqui dentro do callback da
-                // pilha USB (mesma regra do g_saveRequested acima: nada de
-                // trabalho pesado/irreversível dentro do contexto de
-                // interrupção/callback do TinyUSB).
-                g_dfuRequested = true;
-                SerialTinyUSB.printf("A0 EnterDfu\n");
-            }
-            else
-            {
-                SerialTinyUSB.printf("A0 cmd=%u arg=%u (sem handler ainda)\n", cmd, arg);
-            }
-        }
-        return;
-    }
-
-    if (buffer[0] == A0_RID_DIRECT)
-    {
-        SerialTinyUSB.printf("A0 direct len=%u (ignorado por ora)\n", bufsize);
         return;
     }
 
@@ -620,14 +522,11 @@ void setup()
     // aqui é onde o Passo C liga o log de verdade.
     SerialTinyUSB.begin(115200);
 
-    // Canal A0 (Task 4): tenta carregar os settings persistidos na flash
-    // (ver loadBaseCfg()/saveBaseCfg() acima); se a flash estiver vazia ou
-    // com o magic errado (1º boot, ou versão antiga do firmware), volta pros
-    // defaults do schema (BaseSettingsSchema.cs via base_cfg.cpp).
-    if (!loadBaseCfg())
-    {
-        baseSeedDefaults(g_baseCfg);
-    }
+    // Canal A0: tenta carregar os settings persistidos na flash (ou volta
+    // pros defaults do schema se a flash estiver vazia/com magic errado —
+    // 1º boot, ou versão antiga do firmware). Ver A0Channel::begin()
+    // (lib/base_usb/a0_channel.cpp).
+    g_a0.begin();
 }
 
 // ----------------------------------------------------------------------
@@ -662,15 +561,30 @@ static void jumpToBootloader()
     }
 }
 
+// Wrapper de g_hid.sendReport() para o `sender` de A0Channel::serviceLoop()
+// (lib/base_usb/a0_channel.h) -- checa g_hid.ready() ele mesmo e só chama
+// sendReport() (e devolve true) se o endpoint IN estiver livre, senão
+// devolve false sem efeito colateral (o módulo tenta de novo na próxima
+// iteração do loop() -- mesmo padrão "um sendReport() por janela de EP" do
+// fix P0/HID EP, ver MEMORY).
+static bool a0SendReport(uint8_t reportId, const uint8_t *payload, uint16_t len)
+{
+    if (!g_hid.ready())
+    {
+        return false;
+    }
+    return g_hid.sendReport(reportId, payload, len);
+}
+
 void loop()
 {
-    // EnterDfu (Task 2): flag setada no callback de SET_REPORT
-    // (hid_set_report_callback, A0 cmd=4) -- o salto de verdade só
+    // EnterDfu: flag setada no callback de SET_REPORT (hid_set_report_callback
+    // -> A0Channel::handleOutReport, A0 cmd=4) -- o salto de verdade só
     // acontece aqui, fora do contexto de interrupção/callback USB (mesma
-    // regra do g_saveRequested acima). jumpToBootloader() não retorna.
-    if (g_dfuRequested)
+    // regra do saveRequested() abaixo). dfuRequested() consome a flag (só
+    // devolve true uma vez). jumpToBootloader() não retorna.
+    if (g_a0.dfuRequested())
     {
-        g_dfuRequested = false;
         jumpToBootloader();
     }
 
@@ -693,61 +607,26 @@ void loop()
         SerialTinyUSB.printf("DriveLab Base M0.5 Passo C — FFB pipe (parse + log CDC) ativo\n");
     }
 
-    // Canal A0 (Task 4): SaveSettings (0x22 cmd=2) chega no callback de
-    // SET_REPORT (hid_set_report_callback), que só seta a flag -- a escrita
-    // de fato na flash acontece aqui no loop(), fora do callback USB (mesma
-    // lógica de "não fazer trabalho pesado dentro do callback da pilha" já
-    // usada para a resposta deferida do 0x15/0x16 logo abaixo; aqui não há
-    // sendReport() envolvido, mas ainda assim EEPROM.put() bloqueia por um
-    // tempo -- melhor fora do contexto de interrupção/callback USB).
-    if (g_saveRequested)
+    // Canal A0: SaveSettings (0x22 cmd=2) chega no callback de SET_REPORT
+    // (hid_set_report_callback -> A0Channel::handleOutReport), que só seta a
+    // flag -- a escrita de fato na flash acontece aqui no loop(), fora do
+    // callback USB (mesma lógica de "não fazer trabalho pesado dentro do
+    // callback da pilha" já usada para a resposta deferida do 0x15/0x16
+    // dentro de A0Channel::serviceLoop; aqui não há sendReport() envolvido,
+    // mas ainda assim EEPROM.put() bloqueia por um tempo -- melhor fora do
+    // contexto de interrupção/callback USB).
+    if (g_a0.saveRequested())
     {
-        g_saveRequested = false;
-        saveBaseCfg();
+        g_a0.clearSave();
+        g_a0.save();
         SerialTinyUSB.printf("A0 saved\n");
     }
 
-    // Canal A0 (Task 3): resposta DEFERIDA de A0_RID_SETREAD (0x15) via
-    // A0_RID_SETVALUE (0x16) -- deferida porque o SET_REPORT do 0x15 chega
-    // dentro do callback da pilha USB, onde não é seguro empilhar mais um
-    // sendReport() (mesmo EP IN único, compartilhado com o Input do
-    // RID_JOYSTICK abaixo). Prioridade sobre o Input do joystick nesta
-    // iteração: só tenta o joystick se g_hid.ready() ainda estiver livre
-    // depois deste envio (mesmo padrão do fix P0/HID EP do firmware-pedal/
-    // wheel/handbrake -- ver MEMORY "Fix P0/HID EP").
-    if (g_pendingReadValue && g_hid.ready())
-    {
-        g_pendingReadValue = false;
-
-        uint8_t type = 0;
-        uint8_t val[8] = {0};
-        int n = baseReadField(g_baseCfg, g_pendingField, &type, val);
-
-        // Payload do Input (SEM o Report ID -- g_hid.sendReport() antepõe
-        // sozinho, igual ao RID_JOYSTICK abaixo): [0]=fieldId [1]=index(0)
-        // [2]=type [3..]=value LE (contrato SettingValue do app).
-        uint8_t payload[63] = {0};
-        payload[0] = g_pendingField;
-        payload[1] = 0;
-        payload[2] = type;
-        if (n > 0)
-        {
-            memcpy(&payload[3], val, n);
-        }
-
-        g_hid.sendReport(A0_RID_SETVALUE, payload, sizeof(payload));
-        SerialTinyUSB.printf("A0 reply field=%u type=%u len=%d\n", g_pendingField, type, n);
-    }
-
-    // Report de Input do RID_JOYSTICK: eixo X variando devagar (prova que o
-    // host VÊ o dispositivo se mexendo), demais campos zerados/centrados.
-    // Passo B não decodifica FFB ainda — só serve o descritor inteiro e
-    // mantém um Input válido fluindo.
-    static uint32_t lastSend = 0;
     uint32_t now = millis();
 
-    // Amostra os sensores por ADC a ~10 Hz num cache (a telemetria abaixo usa o
-    // cache). Fora do caminho do FFB/USB — leituras leves, read-only.
+    // Amostra os sensores por ADC a ~10 Hz num cache (a telemetria de dentro
+    // de A0Channel::serviceLoop usa o cache via sensorMcuTempC()). Fora do
+    // caminho do FFB/USB — leituras leves, read-only.
     static uint32_t lastSensor = 0;
     if (now - lastSensor >= 100)
     {
@@ -755,6 +634,23 @@ void loop()
         sensorsSample();
     }
 
+    // Canal A0: resposta DEFERIDA de A0_RID_SETREAD (0x15) via
+    // A0_RID_SETVALUE (0x16) + telemetria periódica DeviceState (0x21) --
+    // ambas dentro de A0Channel::serviceLoop (lib/base_usb/a0_channel.cpp),
+    // que já respeita a prioridade "0x16 deferido antes de 0x21" e só envia
+    // se a0SendReport() (acima) achar o endpoint IN livre. Chamado ANTES do
+    // Input do joystick abaixo -- mesma posição/prioridade que o 0x16 tinha
+    // no código original (é a resposta de uma ação de UI, prioridade mais
+    // alta que o joystick decorativo); só tenta o joystick se g_hid.ready()
+    // ainda estiver livre depois (mesmo padrão do fix P0/HID EP do
+    // firmware-pedal/wheel/handbrake -- ver MEMORY "Fix P0/HID EP").
+    g_a0.serviceLoop(now, &a0SendReport);
+
+    // Report de Input do RID_JOYSTICK: eixo X variando devagar (prova que o
+    // host VÊ o dispositivo se mexendo), demais campos zerados/centrados.
+    // Passo B não decodifica FFB ainda — só serve o descritor inteiro e
+    // mantém um Input válido fluindo.
+    static uint32_t lastSend = 0;
     if (g_hid.ready() && (now - lastSend >= 10))
     {
         lastSend = now;
@@ -764,52 +660,5 @@ void loop()
         report.axes[0] = (int16_t)(32767.0f * sinf(now / 1000.0f)); // X
 
         g_hid.sendReport(RID_JOYSTICK, &report, sizeof(report));
-    }
-
-    // Canal A0 (Task 5): telemetria periódica DeviceState (A0_RID_STATE /
-    // 0x21) -- é assim que o app (HidBaseTransport) sabe que a base está
-    // conectada e habilita o dashboard. Layout EXATO espelhado de
-    // app/DriveLab.Core/Protocol/BaseState.cs (ToBytes/Parse):
-    //   [0..3]   FirmwareVersion (ReleaseType, Major, Minor, Patch) -- 1
-    //            byte cada, SEM little-endian (WriteTo grava campo a campo).
-    //   [4]      flags (BaseFlags) -- 0 por ora (nenhuma flag definida ainda
-    //            usada pelo firmware).
-    //   [5..6]   Position (int16 LE)
-    //   [7..8]   AngleDeciDeg (int16 LE)
-    //   [9..10]  Torque (int16 LE)
-    //   [11..12] MotorCurrentMa (int16 LE)
-    //   [13]     FetTempC (sbyte)
-    //   [14]     ErrorCode (byte)
-    //   [15..16] BusVoltageMv (uint16 LE)
-    //   [17]     MotorTempC (sbyte)
-    //   [18]     McuTempC (sbyte)
-    //   [19..62] reservado -- zerado.
-    // M0.5 não tem motor/sensores ainda (M1): todos os campos de 5..18 ficam
-    // placeholder 0 (posição/ângulo/torque/corrente/temperaturas/barramento
-    // "zerados" em vez de lidos) -- só a versão de firmware e as flags/erro
-    // (também 0) são preenchidos de verdade.
-    // Prioridade: menor prioridade dos três sends do EP IN compartilhado
-    // (0x16 deferido > 0x01 joystick > 0x21 aqui) -- só tenta se g_hid.ready()
-    // ainda estiver livre depois dos dois envios acima nesta mesma iteração
-    // (mesmo padrão "um report por janela de EP" do fix P0/HID EP).
-    static uint32_t lastStateSend = 0;
-    if (g_hid.ready() && (now - lastStateSend >= 15))
-    {
-        lastStateSend = now;
-
-        uint8_t payload[63] = {0};
-        payload[0] = 0;                       // FirmwareVersion.ReleaseType (0 = dev)
-        payload[1] = DRVLAB_FW_VER_MAJOR;     // FONTE ÚNICA em fw_signature.h — bate com a assinatura do .bin
-        payload[2] = DRVLAB_FW_VER_MINOR;
-        payload[3] = DRVLAB_FW_VER_PATCH;
-        payload[4] = 0; // flags
-        // payload[5..12] = posição/ângulo/torque/corrente -- 0 até o M1 (motor).
-        // payload[13] = FetTempC, [15..16] = BusVoltageMv -- adiados p/ M1 (pinos
-        // do clone MKS divergem; ver sensors.h). Ficam 0 (placeholder honesto).
-        payload[14] = 0;                            // error
-        // payload[17] = MotorTempC -- 0 até M1 (thermistor de motor externo).
-        payload[18] = (uint8_t)sensorMcuTempC();    // McuTempC (sbyte): sensor interno do F405
-
-        g_hid.sendReport(A0_RID_STATE, payload, sizeof(payload));
     }
 }
