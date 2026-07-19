@@ -25,6 +25,14 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
     private readonly Dictionary<byte, TaskCompletionSource<SettingValue>> _pendingReads = new();
     private static readonly TimeSpan DefaultReadTimeout = TimeSpan.FromMilliseconds(500);
 
+    // O firmware da base tem UM único slot de read pendente (g_pendingField): um novo
+    // SettingReadRequest sobrescreve o anterior. Se vários VMs (as 3 abas de settings + o card do
+    // dash) disparam LoadAsync juntos no evento Connected, as leituras concorrentes se perdem e a
+    // maioria dá timeout (o módulo "não carrega nada"). Este gate serializa as leituras — uma
+    // ida-e-volta 0x15→0x16 por vez — casando com o slot único do firmware. (Escritas 0x14 são
+    // imediatas no firmware e disparadas pelo usuário uma a uma, então não precisam de gate.)
+    private readonly SemaphoreSlim _readGate = new(1, 1);
+
     public HidBaseTransport(IHidChannel channel)
     {
         _channel = channel;
@@ -113,19 +121,28 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
 
     public async Task<SettingValue> ReadSettingAsync(BaseSettingId id, TimeSpan timeout)
     {
-        var tcs = new TaskCompletionSource<SettingValue>(TaskCreationOptions.RunContinuationsAsynchronously);
-        lock (_pendingLock) _pendingReads[(byte)id] = tcs;
-
-        await _channel.WriteAsync(Frame(BaseReportIds.SettingReadRequest, new SettingReadRequestReport((byte)id, 0).ToBytes()));
-
-        using var cts = new CancellationTokenSource(timeout);
-        using (cts.Token.Register(() =>
+        // Serializa: uma leitura por vez (o firmware só guarda um read pendente).
+        await _readGate.WaitAsync();
+        try
         {
-            lock (_pendingLock) _pendingReads.Remove((byte)id);
-            tcs.TrySetException(new TimeoutException($"No SettingValue reply for field {(byte)id} within {timeout.TotalMilliseconds}ms"));
-        }))
+            var tcs = new TaskCompletionSource<SettingValue>(TaskCreationOptions.RunContinuationsAsynchronously);
+            lock (_pendingLock) _pendingReads[(byte)id] = tcs;
+
+            await _channel.WriteAsync(Frame(BaseReportIds.SettingReadRequest, new SettingReadRequestReport((byte)id, 0).ToBytes()));
+
+            using var cts = new CancellationTokenSource(timeout);
+            using (cts.Token.Register(() =>
+            {
+                lock (_pendingLock) _pendingReads.Remove((byte)id);
+                tcs.TrySetException(new TimeoutException($"No SettingValue reply for field {(byte)id} within {timeout.TotalMilliseconds}ms"));
+            }))
+            {
+                return await tcs.Task;
+            }
+        }
+        finally
         {
-            return await tcs.Task;
+            _readGate.Release();
         }
     }
 
