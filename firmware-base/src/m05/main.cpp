@@ -41,6 +41,7 @@
 
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
+#include <EEPROM.h>
 #include "ffb_hid_descriptor.h"
 #include "ffb_report.h"
 #include "a0_hid_descriptor.h"
@@ -94,7 +95,47 @@ static uint8_t g_lastEffectBlock = 0;    // 0 = nenhum alocado ainda
 static BaseCfg g_baseCfg;
 static bool g_pendingReadValue = false;  // true: loop() deve responder 0x16
 static uint8_t g_pendingField = 0;       // fieldId pedido pelo último 0x15
-static bool g_saveRequested = false;     // true: A0_RID_CMD pediu SaveSettings (Task 4 grava na flash)
+static bool g_saveRequested = false;     // true: A0_RID_CMD pediu SaveSettings -> loop() grava na flash
+
+// ----------------------------------------------------------------------
+// Persistência em flash (Task 4) — EEPROM emulada do STM32duino
+// (Arduino_Core_STM32/libraries/EEPROM). No F405 (sem DATA_EEPROM real) essa
+// lib emula a EEPROM na ÚLTIMA página de flash (E2END = FLASH_PAGE_SIZE-1 =
+// 8KB-1 em stm32_eeprom.h) usando HAL flash por baixo -- API é a "clássica"
+// Arduino AVR (EEPROM.get/put, sem begin()/commit(): cada EERef::operator=
+// já escreve na flash na hora via eeprom_write_byte/eeprom_buffered_write_*,
+// olhar EEPROMClass em EEPROM.h deste core). Isso é DIFERENTE do core RP2040
+// usado no firmware-pedal (main.cpp ~L214-231), que exige EEPROM.begin(N) +
+// EEPROM.commit() -- aqui não existem esses métodos na classe, então não são
+// chamados (tentar chamar não compilaria).
+// Layout: offset 0 = magic uint32 "DLB1" (0x444C4231, distinto do "DLP1" do
+// pedal), offset 4 = BaseCfg inteiro (EEPROM.put/get cobre a struct como
+// bytes crus -- mesmo padrão do pedal).
+// ----------------------------------------------------------------------
+static const uint32_t kBaseFlashMagic = 0x444C4231;  // "DLB1"
+static const int kBaseFlashMagicAddr = 0;
+static const int kBaseFlashCfgAddr = kBaseFlashMagicAddr + sizeof(kBaseFlashMagic);
+
+static void saveBaseCfg()
+{
+    EEPROM.put(kBaseFlashMagicAddr, kBaseFlashMagic);
+    EEPROM.put(kBaseFlashCfgAddr, g_baseCfg);
+}
+
+// Carrega g_baseCfg da flash se o magic bater. Retorna false (config
+// inalterado) se a flash estiver vazia/corrompida -- setup() deve então
+// chamar baseSeedDefaults().
+static bool loadBaseCfg()
+{
+    uint32_t magic = 0;
+    EEPROM.get(kBaseFlashMagicAddr, magic);
+    if (magic != kBaseFlashMagic)
+    {
+        return false;
+    }
+    EEPROM.get(kBaseFlashCfgAddr, g_baseCfg);
+    return true;
+}
 
 static const char *ffb_op_name(uint8_t op)
 {
@@ -408,10 +449,14 @@ void setup()
     // aqui é onde o Passo C liga o log de verdade.
     SerialTinyUSB.begin(115200);
 
-    // Canal A0 (Task 3): semeia os defaults do schema (BaseSettingsSchema.cs
-    // via base_cfg.cpp/baseSeedDefaults). Task 4 troca isso por um load da
-    // flash (com fallback pros defaults se a flash estiver vazia/corrompida).
-    baseSeedDefaults(g_baseCfg);
+    // Canal A0 (Task 4): tenta carregar os settings persistidos na flash
+    // (ver loadBaseCfg()/saveBaseCfg() acima); se a flash estiver vazia ou
+    // com o magic errado (1º boot, ou versão antiga do firmware), volta pros
+    // defaults do schema (BaseSettingsSchema.cs via base_cfg.cpp).
+    if (!loadBaseCfg())
+    {
+        baseSeedDefaults(g_baseCfg);
+    }
 }
 
 void loop()
@@ -433,6 +478,20 @@ void loop()
     {
         bannerSent = true;
         SerialTinyUSB.printf("DriveLab Base M0.5 Passo C — FFB pipe (parse + log CDC) ativo\n");
+    }
+
+    // Canal A0 (Task 4): SaveSettings (0x22 cmd=2) chega no callback de
+    // SET_REPORT (hid_set_report_callback), que só seta a flag -- a escrita
+    // de fato na flash acontece aqui no loop(), fora do callback USB (mesma
+    // lógica de "não fazer trabalho pesado dentro do callback da pilha" já
+    // usada para a resposta deferida do 0x15/0x16 logo abaixo; aqui não há
+    // sendReport() envolvido, mas ainda assim EEPROM.put() bloqueia por um
+    // tempo -- melhor fora do contexto de interrupção/callback USB).
+    if (g_saveRequested)
+    {
+        g_saveRequested = false;
+        saveBaseCfg();
+        SerialTinyUSB.printf("A0 saved\n");
     }
 
     // Canal A0 (Task 3): resposta DEFERIDA de A0_RID_SETREAD (0x15) via
