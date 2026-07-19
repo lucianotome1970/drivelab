@@ -31,6 +31,10 @@ public sealed class BaseUpdater : IDeviceUpdater
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
 
+    /// <summary>`dfu-util -l` match string for the STM32 bootloader, built from <see cref="BootloaderVendorId"/>/<see cref="BootloaderProductId"/> so it can't desync from them.</summary>
+    private static readonly string BootloaderDfuMatch =
+        $"{BootloaderVendorId:x4}:{BootloaderProductId:x4}";
+
     private readonly IBaseTransport _transport;
     private readonly string? _dfuUtilPathOverride;
 
@@ -80,7 +84,11 @@ public sealed class BaseUpdater : IDeviceUpdater
             if (await IsBootloaderPresentAsync().ConfigureAwait(false))
                 return true;
 
-            await Task.Delay(PollInterval).ConfigureAwait(false);
+            var remaining = deadline - DateTime.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+                break;
+
+            await Task.Delay(remaining < PollInterval ? remaining : PollInterval).ConfigureAwait(false);
         } while (DateTime.UtcNow < deadline);
 
         return await IsBootloaderPresentAsync().ConfigureAwait(false);
@@ -112,7 +120,7 @@ public sealed class BaseUpdater : IDeviceUpdater
             var stderr = await stderrTask.ConfigureAwait(false);
 
             var combined = stdout + stderr;
-            return combined.Contains("0483:df11", StringComparison.OrdinalIgnoreCase);
+            return combined.Contains(BootloaderDfuMatch, StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
@@ -136,16 +144,23 @@ public sealed class BaseUpdater : IDeviceUpdater
             ?? throw new InvalidOperationException(
                 "dfu-util não encontrado. Instale-o (ex.: 'brew install dfu-util' no macOS) e garanta que está no PATH.");
 
-        var psi = new ProcessStartInfo(dfuUtilPath, $"{DfuArgs} -D \"{filePath}\"")
+        var psi = new ProcessStartInfo(dfuUtilPath)
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        foreach (var arg in DfuArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            psi.ArgumentList.Add(arg);
+        psi.ArgumentList.Add("-D");
+        psi.ArgumentList.Add(filePath);
 
         using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
 
+        // process.OutputDataReceived and process.ErrorDataReceived fire concurrently on
+        // different thread-pool threads, so the shared state they touch must be guarded.
+        var outputLock = new object();
         var sawDone = false;
         var stderrLines = new List<string>();
 
@@ -154,14 +169,19 @@ public sealed class BaseUpdater : IDeviceUpdater
             if (string.IsNullOrEmpty(line))
                 return;
 
-            stderrLines.Add(line);
-            if (line.Contains("File downloaded successfully", StringComparison.OrdinalIgnoreCase) ||
-                line.Contains("Download done.", StringComparison.OrdinalIgnoreCase))
+            double? fraction;
+            lock (outputLock)
             {
-                sawDone = true;
+                stderrLines.Add(line);
+                if (line.Contains("File downloaded successfully", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("Download done.", StringComparison.OrdinalIgnoreCase))
+                {
+                    sawDone = true;
+                }
+
+                fraction = DfuUtilProgress.Parse(line);
             }
 
-            var fraction = DfuUtilProgress.Parse(line);
             if (fraction is not null)
                 progress?.Report(fraction.Value);
         }
@@ -193,15 +213,23 @@ public sealed class BaseUpdater : IDeviceUpdater
 
         ct.ThrowIfCancellationRequested();
 
+        bool sawDoneSnapshot;
+        string[] stderrSnapshot;
+        lock (outputLock)
+        {
+            sawDoneSnapshot = sawDone;
+            stderrSnapshot = stderrLines.ToArray();
+        }
+
         if (process.ExitCode != 0)
         {
-            var tail = string.Join('\n', stderrLines.TakeLast(10));
+            var tail = string.Join('\n', stderrSnapshot.TakeLast(10));
             throw new InvalidOperationException($"dfu-util falhou (exit code {process.ExitCode}):\n{tail}");
         }
 
-        if (!sawDone)
+        if (!sawDoneSnapshot)
         {
-            var tail = string.Join('\n', stderrLines.TakeLast(10));
+            var tail = string.Join('\n', stderrSnapshot.TakeLast(10));
             throw new InvalidOperationException($"dfu-util terminou sem confirmar o download:\n{tail}");
         }
 

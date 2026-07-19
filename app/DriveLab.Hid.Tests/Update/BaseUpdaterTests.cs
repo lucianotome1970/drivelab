@@ -125,4 +125,21 @@ public class BaseUpdaterTests
 
         Assert.False(found);
     }
+
+    [Fact]
+    public async Task WaitForBootloaderAsync_Respects_Small_Timeout_Instead_Of_Overrunning_To_Full_PollInterval()
+    {
+        // Pins the fix for the timeout-overrun bug: the poll loop used to always await a full
+        // 500ms Task.Delay regardless of how much of the requested timeout was left, so a
+        // 150ms timeout would actually take ~500ms+. The delay must now be clamped to the
+        // remaining time, so this should return well under the old 500ms poll interval.
+        var updater = new BaseUpdater(new FakeBaseTransport(), dfuUtilPathOverride: "/no/such/dfu-util");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        var found = await updater.WaitForBootloaderAsync(TimeSpan.FromMilliseconds(150));
+
+        sw.Stop();
+        Assert.False(found);
+        Assert.True(sw.ElapsedMilliseconds < 400, $"Expected < 400ms, took {sw.ElapsedMilliseconds}ms");
+    }
 }
