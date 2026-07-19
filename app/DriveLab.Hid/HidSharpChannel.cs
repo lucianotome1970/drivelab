@@ -28,7 +28,12 @@ public sealed class HidSharpChannel : IHidChannel
 
     public Task<bool> OpenAsync(int vendorId, int productId)
     {
-        var device = DeviceList.Local.GetHidDevices(vendorId, productId).FirstOrDefault();
+        // VID/PID pode enumerar mais de um HidDevice (uma top-level collection cada — ex.: a base
+        // 0x1209/0x0001 tem a collection FFB 0x01 e a vendor A0 0xFF00 na MESMA interface HID).
+        // Prefere a collection A0 quando existir; senão cai no comportamento antigo (primeiro device),
+        // que é o correto p/ pedaleira/freio/aro — cada um com seu próprio PID e uma única collection.
+        var devices = DeviceList.Local.GetHidDevices(vendorId, productId).ToList();
+        var device = devices.FirstOrDefault(HidBaseTransport.IsA0Device) ?? devices.FirstOrDefault();
         if (device == null || !device.TryOpen(out var stream))
             return Task.FromResult(false);
 

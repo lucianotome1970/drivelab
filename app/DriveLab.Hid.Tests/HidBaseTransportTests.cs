@@ -84,4 +84,17 @@ public class HidBaseTransportTests
         var ex = Record.Exception(() => channel.Emit(wire));
         Assert.Null(ex);
     }
+
+    // The base ships as ONE combined HID interface with two top-level collections: Generic-Desktop
+    // 0x01 (the FFB wheel) and vendor 0xFF00 (A0 config/telemetry). HidSharp enumerates one HidDevice
+    // per top-level collection for VID 0x1209/PID 0x0001, so the transport must pick the 0xFF00 one.
+    [Theory]
+    [InlineData(0xFF00, true)]
+    [InlineData(0x01, false)]  // Generic Desktop (FFB collection) — must NOT be selected
+    [InlineData(0x00, false)]
+    [InlineData(0xFF01, false)]
+    public void IsA0UsagePage_True_Only_For_Vendor_0xFF00(int usagePage, bool expected)
+    {
+        Assert.Equal(expected, HidBaseTransport.IsA0UsagePage(usagePage));
+    }
 }

@@ -9,8 +9,10 @@ namespace DriveLab.Core.Protocol;
 
 public static class BaseReportIds
 {
-    public const byte DeviceState = 0x01;
-    public const byte Command = 0x02;
+    // Remapped from 0x01/0x02: the base ships as ONE combined HID interface (FFB + A0 share it),
+    // so these must not collide with the FFB wheel's own DeviceState (0x01) / Command (0x02) reports.
+    public const byte DeviceState = 0x21;
+    public const byte Command = 0x22;
     public const byte DirectControl = 0x10;
     public const byte SettingWrite = 0x14;
     public const byte SettingReadRequest = 0x15;

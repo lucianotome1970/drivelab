@@ -36,15 +36,48 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
 
     public event EventHandler<BaseState>? StateReceived;
 
-    /// <summary>Varre o HID pelo VID/PID da base (autodetecção/hotplug). No macOS 26 o HidSharp
-    /// não enumera (retorna false); no Windows funciona.</summary>
+    /// <summary>Usage page (HID) do canal vendor A0 da base.</summary>
+    public const int A0UsagePage = 0xFF00;
+
+    /// <summary>
+    /// Predicado puro/testável: true só para a usage page do canal A0 (0xFF00). A base expõe UMA
+    /// interface HID combinada com duas top-level collections — Generic-Desktop 0x01 (o volante FFB)
+    /// e vendor 0xFF00 (A0 config/telemetria). O HidSharp enumera um <c>HidDevice</c> por top-level
+    /// collection para VID 0x1209/PID 0x0001, então o transporte precisa escolher a 0xFF00.
+    /// </summary>
+    public static bool IsA0UsagePage(int usagePage) => usagePage == A0UsagePage;
+
+    /// <summary>
+    /// Lê a usage page da primeira top-level collection do device (best-effort: qualquer falha do
+    /// parser do HidSharp vira 0 = "nenhuma usage page encontrada").
+    /// </summary>
+    internal static int GetTopUsagePage(HidDevice device)
+    {
+        try
+        {
+            var item = device.GetReportDescriptor().DeviceItems.FirstOrDefault();
+            var usage = item?.Usages.GetAllValues().FirstOrDefault() ?? 0;
+            return (int)(usage >> 16);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>True quando o HidDevice é a top-level collection do canal A0 (usage page 0xFF00).</summary>
+    internal static bool IsA0Device(HidDevice device) => IsA0UsagePage(GetTopUsagePage(device));
+
+    /// <summary>Varre o HID pelo VID/PID da base e confirma que a collection A0 (0xFF00) está
+    /// presente (autodetecção/hotplug). No macOS 26 o HidSharp não enumera (retorna false); no
+    /// Windows funciona.</summary>
     public static bool IsDevicePresent()
     {
         try
         {
             return DeviceList.Local
                 .GetHidDevices(BaseDeviceIdentity.VendorId, BaseDeviceIdentity.ProductId)
-                .Any();
+                .Any(IsA0Device);
         }
         catch
         {

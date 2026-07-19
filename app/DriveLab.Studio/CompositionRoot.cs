@@ -209,7 +209,7 @@ public static class CompositionRoot
 
     /// <summary>
     /// Detector de módulos do splash. Em modo simulador a base virtual conta como
-    /// conectada; em modo real a sonda da base é stub (firmware em bring-up).
+    /// conectada; em modo real a sonda usa presença HID real (canal A0, vendor 0xFF00).
     /// </summary>
     public static StartupDetector CreateStartupDetector(bool simulatorMode) =>
         new(
@@ -217,8 +217,5 @@ public static class CompositionRoot
             probePedals: () => Task.FromResult(false), // módulo de pedais em construção
             stepDelayMs: 450);
 
-    // STUB: firmware em bring-up (M0), a base ainda não enumera por USB de forma estável.
-    // Quando enumerar, trocar por:
-    //   DeviceList.Local.GetHidDevices(BaseDeviceIdentity.VendorId, BaseDeviceIdentity.ProductId).Any()
-    private static bool ProbeBaseHardware() => false;
+    private static bool ProbeBaseHardware() => HidBaseTransport.IsDevicePresent();
 }
