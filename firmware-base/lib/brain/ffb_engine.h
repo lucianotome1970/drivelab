@@ -26,8 +26,21 @@ namespace drivelab {
 
 using CoggingTable = CoggingMap<128>;   ///< 128 bins/rev; tabela mora na flash (calibrada por-motor)
 
+/// Ganho do watchdog de sinal FFB perdido: 1.0 enquanto o jogo reporta dentro do
+/// timeout; rampa linear 1→0 ao longo de decayMs após o timeout; 0.0 depois disso
+/// (força zerada — segurança). Pura, host-testável (sem motor/hardware).
+inline float ffbWatchdogGain(uint32_t dtSilentMs, uint32_t timeoutMs, uint32_t decayMs) {
+    if (dtSilentMs <= timeoutMs) return 1.0f;
+    uint32_t over = dtSilentMs - timeoutMs;
+    if (over >= decayMs) return 0.0f;
+    return 1.0f - (float)over / (float)decayMs;
+}
+
 class FfbEngine {
 public:
+    static constexpr uint32_t kFfbTimeoutMs = 500;  ///< silêncio tolerado antes de começar a decair (ms)
+    static constexpr uint32_t kFfbDecayMs   = 300;  ///< duração da rampa de decaimento até zero (ms)
+
     // --- configuração (blocos expostos p/ ajuste direto) ---
     ForceConfig        force;
     EffectConfig       effect;
@@ -52,6 +65,9 @@ public:
     /// misturar com millis() direto: precisam compartilhar um único relógio,
     /// senão phase/expiry dos efeitos ficam incoerentes).
     uint32_t nowMs() const { return m_nowMs; }
+
+    /// Chamar a cada report de FFB do host (m5) — reseta o relógio do watchdog.
+    void notifyFfbActivity() { m_lastFfbMs = m_nowMs; }
 
     /// Um tick do laço (dt em segundos). Retorna o torque comandado (Nm).
     float step(float dt, IEncoder& enc, ICurrentSense& cs,
@@ -91,6 +107,7 @@ public:
         float hostF = reconstructor.tick();                             // força do jogo reconstruída
         const float pos = enc.positionRad(), vel = enc.velocityRadPerSec();
         hostF += effects.computeForce(pos, vel, m_nowMs);                // soma aditiva dos efeitos PID (Constant já vem pelo reconstructor, pulado lá dentro)
+        hostF *= ffbWatchdogGain(m_nowMs - m_lastFfbMs, kFfbTimeoutMs, kFfbDecayMs); // sinal perdido → decai a zero
         float t = computeTorque(hostF, pos, vel, force, effect, endstop); // força+efeitos+soft-stop
         if (cogging) t += cogging->compensation(pos);                   // feed-forward de cogging
         t = outputFilter.process(t);                                    // notch/low-pass opcional
@@ -107,6 +124,7 @@ public:
 private:
     float _prev = 0.0f;      ///< torque anterior (slew-rate)
     uint32_t m_nowMs = 0;    ///< clock acumulado do engine (ms) — ver nowMs()
+    uint32_t m_lastFfbMs = 0; ///< timestamp do último report FFB (m_nowMs) — ver notifyFfbActivity()
 };
 
 }  // namespace drivelab
