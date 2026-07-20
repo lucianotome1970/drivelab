@@ -38,3 +38,7 @@ c++ -std=c++17 -I../lib/brain -I../lib/base_shared -Wall -Wextra -Werror -o "$ou
 out9="$(mktemp -d)/ffb_effects_test"
 c++ -std=c++17 -Wall -Wextra -Werror -o "$out9" test_ffb_effects.cpp ../lib/base_shared/ffb_effects.cpp
 "$out9"
+
+out10="$(mktemp -d)/effect_manager_test"
+c++ -std=c++17 -Wall -Wextra -Werror -o "$out10" test_effect_manager.cpp ../lib/base_shared/ffb_effects.cpp
+"$out10"
