@@ -30,3 +30,7 @@ c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out6" test_drv8301
 out7="$(mktemp -d)/velocity_estimator_test"
 c++ -std=c++17 -I../lib/brain -Wall -Wextra -Werror -o "$out7" test_velocity_estimator.cpp
 "$out7"
+
+out8="$(mktemp -d)/apply_cfg_test"
+c++ -std=c++17 -I../lib/brain -I../lib/base_shared -Wall -Wextra -Werror -o "$out8" test_apply_cfg.cpp ../lib/base_shared/base_cfg.cpp
+"$out8"
