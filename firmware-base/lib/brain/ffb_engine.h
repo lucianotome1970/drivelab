@@ -20,6 +20,7 @@
 #include "filters.h"
 #include "oscillation.h"
 #include "hal.h"
+#include "effect_manager.h"
 
 namespace drivelab {
 
@@ -37,6 +38,7 @@ public:
     Biquad             outputFilter;       ///< notch/low-pass na saída (default passa-tudo)
     const CoggingTable* cogging = nullptr; ///< feed-forward de cogging (opcional)
     OscillationDetector oscGuard;          ///< anti-tremor ativo (desinfla a força se detectar limit-cycle)
+    EffectManager       effects;           ///< banco de efeitos PID do jogo (Sub-projeto 2) — soma aditiva no hostF
     bool  oscGuardEnabled  = false;        ///< liga o detector de oscilação
     float currentLimitA    = 8.0f;
     float maxSlewNmPerStep  = 0.0f;
@@ -45,9 +47,20 @@ public:
     /// Força FFB do jogo (chamar quando chega um report; a reconstrução espalha entre os ticks).
     void setGameForce(float force255) { reconstructor.setTarget(force255); }
 
+    /// Clock acumulado do engine (ms), avançado a cada step() por dt — MESMA
+    /// base de tempo usada por effects.handleReport()/computeForce() (não
+    /// misturar com millis() direto: precisam compartilhar um único relógio,
+    /// senão phase/expiry dos efeitos ficam incoerentes).
+    uint32_t nowMs() const { return m_nowMs; }
+
     /// Um tick do laço (dt em segundos). Retorna o torque comandado (Nm).
     float step(float dt, IEncoder& enc, ICurrentSense& cs,
                IPowerSense& pw, IBrakeResistor& br, IMotor& motor) {
+        // Avança o clock acumulado do engine ANTES de qualquer uso — é a
+        // base de tempo compartilhada com effects.handleReport() (chamado
+        // pelo callback USB via nowMs()).
+        m_nowMs += (uint32_t)(dt * 1000.0f + 0.5f);
+
         // 1) Proteção de potência: brake resistor + avaliação de falha (sobretensão/sobretemp).
         guard.step(pw, br);
 
@@ -75,8 +88,9 @@ public:
         }
 
         // 4) Pipeline de força.
-        const float hostF = reconstructor.tick();                       // força do jogo reconstruída
+        float hostF = reconstructor.tick();                             // força do jogo reconstruída
         const float pos = enc.positionRad(), vel = enc.velocityRadPerSec();
+        hostF += effects.computeForce(pos, vel, m_nowMs);                // soma aditiva dos efeitos PID (Constant já vem pelo reconstructor, pulado lá dentro)
         float t = computeTorque(hostF, pos, vel, force, effect, endstop); // força+efeitos+soft-stop
         if (cogging) t += cogging->compensation(pos);                   // feed-forward de cogging
         t = outputFilter.process(t);                                    // notch/low-pass opcional
@@ -91,7 +105,8 @@ public:
     }
 
 private:
-    float _prev = 0.0f;   ///< torque anterior (slew-rate)
+    float _prev = 0.0f;      ///< torque anterior (slew-rate)
+    uint32_t m_nowMs = 0;    ///< clock acumulado do engine (ms) — ver nowMs()
 };
 
 }  // namespace drivelab

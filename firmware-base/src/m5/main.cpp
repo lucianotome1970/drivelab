@@ -211,6 +211,19 @@ static void hid_set_report_callback(uint8_t report_id,
         return;
     }
 
+    // Sub-projeto 2 (Parser de efeitos FFB, Task 4): roteia TODOS os OUT
+    // reports PID (SetEffect/Envelope/Condition/Periodic/Constant/Ramp,
+    // EffectOperation, BlockFree, DeviceControl) pro EffectManager, que
+    // mantém o banco de slots e soma as forças em engine.step() (efeitos
+    // Condition/Periodic/Ramp/etc.). nowMs() vem do clock ACUMULADO do
+    // engine (m_nowMs, avançado por dt em step()) — não millis() direto —
+    // pra compartilhar a mesma base de tempo usada por computeForce() e
+    // manter phase/expiry coerentes. Constant force (0x05) também passa por
+    // aqui, mas computeForce() pula FxType::Constant de propósito: essa
+    // força já flui pelo ForceReconstructor logo abaixo (setGameForce), e
+    // somar dos dois lados duplicaria a força constante do jogo.
+    engine.effects.handleReport(buffer, bufsize, engine.nowMs());
+
     FfbOut o = ffb_parse_out(buffer, bufsize);
     switch (o.type)
     {

@@ -34,3 +34,11 @@ c++ -std=c++17 -I../lib/brain -Wall -Wextra -Werror -o "$out7" test_velocity_est
 out8="$(mktemp -d)/apply_cfg_test"
 c++ -std=c++17 -I../lib/brain -I../lib/base_shared -Wall -Wextra -Werror -o "$out8" test_apply_cfg.cpp ../lib/base_shared/base_cfg.cpp
 "$out8"
+
+out9="$(mktemp -d)/ffb_effects_test"
+c++ -std=c++17 -Wall -Wextra -Werror -o "$out9" test_ffb_effects.cpp ../lib/base_shared/ffb_effects.cpp
+"$out9"
+
+out10="$(mktemp -d)/effect_manager_test"
+c++ -std=c++17 -Wall -Wextra -Werror -o "$out10" test_effect_manager.cpp ../lib/base_shared/ffb_effects.cpp
+"$out10"
