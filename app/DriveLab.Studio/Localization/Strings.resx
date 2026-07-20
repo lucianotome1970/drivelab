@@ -24,7 +24,7 @@
   <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Quit</value></data>
   <data name="Quit_Confirm_No" xml:space="preserve"><value>Cancel</value></data>
 
-  <data name="Wheel_Title" xml:space="preserve"><value>DriveLab Wheel</value></data>
+  <data name="Wheel_Title" xml:space="preserve"><value>Wheel</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Maximum angle</value></data>
   <data name="Wheel_Config" xml:space="preserve"><value>Wheel configuration</value></data>
   <data name="Wheel_Leds" xml:space="preserve"><value>Button colors</value></data>

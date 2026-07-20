@@ -24,7 +24,7 @@
   <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Sair</value></data>
   <data name="Quit_Confirm_No" xml:space="preserve"><value>Cancelar</value></data>
 
-  <data name="Wheel_Title" xml:space="preserve"><value>Volante DriveLab</value></data>
+  <data name="Wheel_Title" xml:space="preserve"><value>Volante</value></data>
   <data name="Wheel_MaxAngle" xml:space="preserve"><value>Ângulo máximo</value></data>
   <data name="Wheel_Config" xml:space="preserve"><value>Configuração do volante</value></data>
   <data name="Wheel_Leds" xml:space="preserve"><value>Cores dos botões</value></data>

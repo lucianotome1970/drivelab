@@ -21,6 +21,7 @@
 #include <Adafruit_TinyUSB.h>
 #include <HX711.h>
 #include <EEPROM.h>
+#include "fw_signature.h"
 
 // ===================== Constantes do contrato P0 (espelham DriveLab.Core) =====================
 static const uint8_t RID_JOYSTICK    = 0x01;
@@ -36,7 +37,7 @@ enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_F32 = 4 };
 enum { F_SENSOR = 0, F_INMIN = 1, F_INMAX = 2, F_INVERT = 3, F_SMOOTH = 4,
        F_CP0 = 5, F_CP5 = 10, F_LCSCALE = 11, F_DZLOW = 12, F_DZHIGH = 13 };
 // PedalCommandId
-enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4 };
+enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4, CMD_ENTER_BOOTLOADER = 0x5A };
 
 static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP HID de 64 c/ o report id)
 
@@ -260,6 +261,7 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
         if (g_calMax[arg] >= g_calMin[arg]) { g_cfg[arg].inputMin = g_calMin[arg]; g_cfg[arg].inputMax = g_calMax[arg]; }
       }
       else if (cmd == CMD_SAVE) { saveToFlash(); }  // M4: persiste a config atual
+      else if (cmd == CMD_ENTER_BOOTLOADER) { rp2040.rebootToBootloader(); }  // SP4: update UF2/BOOTSEL
       break;
     }
   }
@@ -267,6 +269,9 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
 
 // ===================== Setup / Loop =====================
 void setup() {
+  // Mantém a assinatura fw_signature no .uf2 mesmo com --gc-sections.
+  __asm__ __volatile__("" : : "r"(&fw_signature) : "memory");
+
   Serial.begin(115200);
   analogReadResolution(12);
 

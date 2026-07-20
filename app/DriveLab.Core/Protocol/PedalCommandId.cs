@@ -13,4 +13,5 @@ public enum PedalCommandId : byte
     CalibrateStop = 2,
     SaveToFlash = 3,
     LoadDefaults = 4,
+    EnterBootloader = 0x5A,   // pede ao RP2040 pra reiniciar em BOOTSEL (atualização por UF2)
 }
