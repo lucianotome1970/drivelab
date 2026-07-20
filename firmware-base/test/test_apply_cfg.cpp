@@ -130,6 +130,24 @@ int main() {
         CHECK(e.reconstructor.cfg.steps == 8);
     }
 
+    // ----- slewRate: 0 -> off (0), 100 -> kSlewMaxNmPerStep -----
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        c.slewRate = 0;
+        FfbEngine e;
+        applyCfgToEngine(c, e, kLoopHz);
+        CHECK(e.maxSlewNmPerStep == 0.0f);
+    }
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        c.slewRate = 100;
+        FfbEngine e;
+        applyCfgToEngine(c, e, kLoopHz);
+        CHECK(std::fabs(e.maxSlewNmPerStep - drivelab::kSlewMaxNmPerStep) < 1e-6f);
+    }
+
     std::printf("apply_cfg: %d checks, %d fails\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

@@ -38,6 +38,7 @@
 #define BID_ENDSTOP_DAMPING       23
 #define BID_LINEARITY             24
 #define BID_COGGING_ENABLE        25
+#define BID_SLEW_RATE             26
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -75,6 +76,7 @@ struct BaseCfg {
     uint8_t  endstopDamping;      // BID_ENDSTOP_DAMPING       UInt8 0..100
     uint8_t  linearity;           // BID_LINEARITY             UInt8 50..200 (÷100)
     uint8_t  coggingEnable;       // BID_COGGING_ENABLE        UInt8 0/1
+    uint8_t  slewRate;            // BID_SLEW_RATE             UInt8 0..100
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.

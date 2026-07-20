@@ -25,6 +25,7 @@ static constexpr float kDamperMax         = 0.5f;   // damper 100% → 0.5 Nm/(r
 static constexpr float kFrictionMaxNm     = 1.0f;   // friction 100% → 1.0 Nm
 static constexpr float kEndstopDampMax    = 0.5f;   // endstop damping 100% → 0.5 Nm/(rad/s)
 static constexpr float kGameForceHz       = 60.0f;  // taxa típica de FFB do jogo (p/ steps=auto)
+static constexpr float kSlewMaxNmPerStep  = 0.5f;   // slew rate 100% → 0.5 Nm/step. AJUSTAR na bancada.
 
 /// Aplica todos os settings relacionados a força de `c` em `e` (config, sem tocar em estado
 /// dinâmico do motor). `loopHz` é a taxa do laço de torque (usada p/ steps=auto e p/ o biquad).
@@ -54,6 +55,8 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
         : Biquad{}; // identidade (b0=1, resto=0 → passa-tudo)
 
     e.oscGuardEnabled = c.oscGuardEnable != 0;
+
+    e.maxSlewNmPerStep = (c.slewRate / 100.0f) * kSlewMaxNmPerStep;
 
     // cogging: apenas o on/off do setting; a tabela em si vem da calibração de bancada
     // (fora deste sub-projeto) — por isso `e.cogging` fica nullptr aqui mesmo com
