@@ -31,6 +31,13 @@
 #define BID_POWER_LIMIT           16
 #define BID_BRAKING_LIMIT         17
 #define BID_ENCODER_TYPE          18
+#define BID_RECONSTRUCTION_STEPS  19
+#define BID_RECONSTRUCTION_LPF    20
+#define BID_OUTPUT_FILTER_HZ      21
+#define BID_OSC_GUARD_ENABLE      22
+#define BID_ENDSTOP_DAMPING       23
+#define BID_LINEARITY             24
+#define BID_COGGING_ENABLE        25
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -61,6 +68,13 @@ struct BaseCfg {
     uint8_t  powerLimit;          // BID_POWER_LIMIT           UInt8
     uint8_t  brakingLimit;        // BID_BRAKING_LIMIT         UInt8
     uint8_t  encoderType;         // BID_ENCODER_TYPE          UInt8
+    uint8_t  reconstructionSteps; // BID_RECONSTRUCTION_STEPS  UInt8 (0=auto)
+    uint8_t  reconstructionLpf;   // BID_RECONSTRUCTION_LPF    UInt8 0..100
+    uint16_t outputFilterHz;      // BID_OUTPUT_FILTER_HZ      UInt16 (0=off)
+    uint8_t  oscGuardEnable;      // BID_OSC_GUARD_ENABLE      UInt8 0/1
+    uint8_t  endstopDamping;      // BID_ENDSTOP_DAMPING       UInt8 0..100
+    uint8_t  linearity;           // BID_LINEARITY             UInt8 50..200 (÷100)
+    uint8_t  coggingEnable;       // BID_COGGING_ENABLE        UInt8 0/1
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.

@@ -75,6 +75,7 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
             uint8_t type = buf[3];
             uint16_t valLen = len - 4;
             baseWriteField(m_cfg, fieldId, type, &buf[4], valLen);
+            m_cfgDirty = true;
             SerialTinyUSB.printf("A0 write field=%u type=%u len=%u\n", fieldId, type, valLen);
         }
         return true;

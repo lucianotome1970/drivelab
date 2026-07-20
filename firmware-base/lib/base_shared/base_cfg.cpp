@@ -15,6 +15,7 @@ uint8_t baseTypeForField(uint8_t id) {
     switch (id) {
         case BID_MOTION_RANGE:
         case BID_ENCODER_CPR:
+        case BID_OUTPUT_FILTER_HZ:
             return BT_UINT16;
         case BID_FORCE_DIRECTION:
         case BID_ENCODER_DIRECTION:
@@ -35,6 +36,12 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_POWER_LIMIT:
         case BID_BRAKING_LIMIT:
         case BID_ENCODER_TYPE:
+        case BID_RECONSTRUCTION_STEPS:
+        case BID_RECONSTRUCTION_LPF:
+        case BID_OSC_GUARD_ENABLE:
+        case BID_ENDSTOP_DAMPING:
+        case BID_LINEARITY:
+        case BID_COGGING_ENABLE:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -64,6 +71,13 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_POWER_LIMIT:          return &c.powerLimit;
         case BID_BRAKING_LIMIT:        return &c.brakingLimit;
         case BID_ENCODER_TYPE:         return &c.encoderType;
+        case BID_RECONSTRUCTION_STEPS: return &c.reconstructionSteps;
+        case BID_RECONSTRUCTION_LPF:   return &c.reconstructionLpf;
+        case BID_OUTPUT_FILTER_HZ:     return &c.outputFilterHz;
+        case BID_OSC_GUARD_ENABLE:     return &c.oscGuardEnable;
+        case BID_ENDSTOP_DAMPING:      return &c.endstopDamping;
+        case BID_LINEARITY:            return &c.linearity;
+        case BID_COGGING_ENABLE:       return &c.coggingEnable;
         default:                       return nullptr;
     }
 }
@@ -164,4 +178,11 @@ void baseSeedDefaults(BaseCfg& c) {
     c.powerLimit = 100;
     c.brakingLimit = 100;
     c.encoderType = 0;
+    c.reconstructionSteps = 0;
+    c.reconstructionLpf = 0;
+    c.outputFilterHz = 0;
+    c.oscGuardEnable = 0;
+    c.endstopDamping = 0;
+    c.linearity = 100;
+    c.coggingEnable = 0;
 }

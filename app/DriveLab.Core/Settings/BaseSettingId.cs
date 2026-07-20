@@ -28,4 +28,11 @@ public enum BaseSettingId : byte
     PowerLimit = 16,
     BrakingLimit = 17,
     EncoderType = 18,
+    ReconstructionSteps = 19,
+    ReconstructionLpf = 20,
+    OutputFilterHz = 21,
+    OscGuardEnable = 22,
+    EndstopDamping = 23,
+    Linearity = 24,
+    CoggingEnable = 25,
 }

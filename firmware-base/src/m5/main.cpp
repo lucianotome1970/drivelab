@@ -73,6 +73,14 @@
 #include "odrive_v36_pins.h"
 #include "motor_hal.h"
 #include "ffb_engine.h"
+#include "apply_cfg.h"
+
+// Taxa nominal do laço de torque -- usada por applyCfgToEngine() só para
+// mapear settings dependentes de frequência (steps=auto do reconstructor,
+// corte do biquad de outputFilterHz). AJUSTAR quando o laço de torque tiver
+// taxa fixa (P1-4) -- hoje o motor nem chega a rodar (g_calibrated=false),
+// então isto não afeta nenhum comportamento físico ainda.
+static constexpr float kLoopHz = 1000.0f;
 
 // ----------------------------------------------------------------------
 // Layout do report de Input do RID_JOYSTICK — idêntico ao m05 (ver
@@ -337,6 +345,16 @@ void setup()
     // Canal A0: carrega os settings persistidos (ou semeia defaults).
     g_a0.begin();
 
+    // Sub-projeto 1 (Feel ajustável ao vivo, Task 3): aplica os settings
+    // carregados por cima do que acabou de ser hardcoded acima. Ordem
+    // importa -- maxTorqueNm é constante de HARDWARE (fica setado antes),
+    // torqueLimitNm/demais campos de "feel" são SETTINGS e vêm de
+    // applyCfgToEngine() (sobrescreve o valor conservador fixo logo acima
+    // por um derivado de c.maxTorqueLimit%). busMinV/busMaxV/overVoltageV
+    // (guard/startup, safety-critical) NÃO são tocados por applyCfgToEngine
+    // -- continuam valendo os hardcoded acima.
+    applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
+
     SerialTinyUSB.printf("DriveLab M5 (Task 4) — DRV8301 configure()=%s ready=%s faulted=%s | motor OFF (sem init/enable/initFOC)\n",
                   drvOk ? "OK" : "FAIL",
                   drv.isReady() ? "true" : "false",
@@ -385,6 +403,16 @@ void loop()
 
     // Resposta deferida do A0 (0x16) + telemetria periódica (0x21).
     g_a0.serviceLoop(now, &UsbBase::sendReport);
+
+    // Sub-projeto 1 (Feel ajustável ao vivo, Task 3): ao vivo -- só reaplica
+    // quando algum SETWRITE (0x14) de fato mexeu no BaseCfg (cfgDirty()),
+    // nunca todo tick (applyCfgToEngine não é grátis: monta um Biquad
+    // sempre que chamado).
+    if (g_a0.cfgDirty())
+    {
+        applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
+        g_a0.clearCfgDirty();
+    }
 
     // ------------------------------------------------------------------
     // Gate do motor: a força só chegaria a virar torque se (a) o app armou
