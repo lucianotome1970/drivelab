@@ -39,6 +39,13 @@ public static class CompositionRoot
             BaseSettingId.PositionSmoothing,
             BaseSettingId.PowerLimit,
             BaseSettingId.BrakingLimit,
+            BaseSettingId.ReconstructionSteps,
+            BaseSettingId.ReconstructionLpf,
+            BaseSettingId.OutputFilterHz,
+            BaseSettingId.OscGuardEnable,
+            BaseSettingId.EndstopDamping,
+            BaseSettingId.Linearity,
+            BaseSettingId.CoggingEnable,
         }),
         new("Hardware", new[]
         {
