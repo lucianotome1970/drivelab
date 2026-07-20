@@ -40,11 +40,19 @@ Target rim: **10 push buttons (each RGB-lit)**, **5 rotary encoders** (with push
 
 > 32-button gamepad report: 31 buttons used (bit 31 spare) + 2 clutch axes. Games read it directly; the app drives the RGB over the P0 `WheelLed` (0x18) channel.
 
-**Wiring diagram** (block/bus view — exact per-pin detail is the table above):
+**Wiring diagram** (pictorial — the RP2040-Zero, both MCP23017 expanders and each input drawn part-by-part, with individual encoder A/B wires and orthogonal routing):
+
+![DriveLab wheel pictorial wiring diagram](docs/wiring-pictorial.svg)
+
+*Interactive, theme-aware version: [`docs/wiring-pictorial.html`](docs/wiring-pictorial.html) (open locally).*
+
+<details><summary>Block/bus view (compact overview)</summary>
 
 ![DriveLab wheel wiring diagram](docs/wiring.svg)
 
-*Interactive, theme-aware version: [`docs/wiring.html`](docs/wiring.html) (open locally).*
+*Interactive: [`docs/wiring.html`](docs/wiring.html). The exact per-pin detail is the table above.*
+
+</details>
 
 **Bill of materials (rim)**
 
@@ -134,11 +142,19 @@ Aro alvo: **10 botões de pressão (cada um com LED RGB)**, **5 encoders rotativ
 
 > Report de gamepad com 32 botões: 31 usados (bit 31 sobra) + 2 eixos de embreagem. Os jogos leem direto; o app manda as cores RGB pelo canal P0 `WheelLed` (0x18).
 
-**Diagrama de ligação** (visão de blocos/barramentos — o detalhe pino-a-pino está na tabela acima):
+**Diagrama de ligação** (pictórico — o RP2040-Zero, os dois expansores MCP23017 e cada entrada desenhados peça por peça, com os fios A/B de cada encoder individuais e roteamento ortogonal):
+
+![Diagrama pictórico de ligação do volante DriveLab](docs/wiring-pictorial.svg)
+
+*Versão interativa (tema claro/escuro): [`docs/wiring-pictorial.html`](docs/wiring-pictorial.html) (abrir localmente).*
+
+<details><summary>Visão de blocos/barramentos (resumo compacto)</summary>
 
 ![Diagrama de ligação do volante DriveLab](docs/wiring.svg)
 
-*Versão interativa (tema claro/escuro): [`docs/wiring.html`](docs/wiring.html) (abrir localmente).*
+*Interativa: [`docs/wiring.html`](docs/wiring.html). O detalhe pino-a-pino está na tabela acima.*
+
+</details>
 
 **Lista de materiais (aro)**
 
