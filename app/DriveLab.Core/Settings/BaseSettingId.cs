@@ -35,4 +35,5 @@ public enum BaseSettingId : byte
     EndstopDamping = 23,
     Linearity = 24,
     CoggingEnable = 25,
+    SlewRate = 26,
 }

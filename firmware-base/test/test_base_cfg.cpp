@@ -40,6 +40,7 @@ int main() {
         CHECK(c.endstopDamping == 0);
         CHECK(c.linearity == 100);
         CHECK(c.coggingEnable == 0);
+        CHECK(c.slewRate == 0);
     }
 
     // ----- baseTypeForField -----
@@ -156,6 +157,27 @@ int main() {
         n = baseReadField(c, BID_OUTPUT_FILTER_HZ, &type, buf);
         CHECK(n == 2);
         CHECK((buf[0] | (buf[1] << 8)) == 1234);
+    }
+
+    // ----- round-trip UInt8 (SlewRate) -----
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        uint8_t type, buf[8];
+
+        int n = baseReadField(c, BID_SLEW_RATE, &type, buf);
+        CHECK(n == 1);
+        CHECK(type == BT_UINT8);
+        CHECK(buf[0] == 0);
+
+        uint8_t newVal = 42;
+        uint8_t w[1] = { newVal };
+        baseWriteField(c, BID_SLEW_RATE, BT_UINT8, w, sizeof(w));
+        CHECK(c.slewRate == 42);
+
+        n = baseReadField(c, BID_SLEW_RATE, &type, buf);
+        CHECK(n == 1);
+        CHECK(buf[0] == 42);
     }
 
     // ----- guard: id desconhecido -----

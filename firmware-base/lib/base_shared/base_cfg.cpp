@@ -42,6 +42,7 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_ENDSTOP_DAMPING:
         case BID_LINEARITY:
         case BID_COGGING_ENABLE:
+        case BID_SLEW_RATE:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -78,6 +79,7 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_ENDSTOP_DAMPING:      return &c.endstopDamping;
         case BID_LINEARITY:            return &c.linearity;
         case BID_COGGING_ENABLE:       return &c.coggingEnable;
+        case BID_SLEW_RATE:            return &c.slewRate;
         default:                       return nullptr;
     }
 }
@@ -185,4 +187,5 @@ void baseSeedDefaults(BaseCfg& c) {
     c.endstopDamping = 0;
     c.linearity = 100;
     c.coggingEnable = 0;
+    c.slewRate = 0;
 }

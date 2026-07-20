@@ -46,6 +46,7 @@ public static class CompositionRoot
             BaseSettingId.EndstopDamping,
             BaseSettingId.Linearity,
             BaseSettingId.CoggingEnable,
+            BaseSettingId.SlewRate,
         }),
         new("Hardware", new[]
         {
