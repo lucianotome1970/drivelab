@@ -74,6 +74,15 @@ float FocCurrent::gainToVPerV(Drv8301Gain gain)
 float FocCurrent::countsToAmps(int counts) const
 {
     // amps = (counts - offset) * (VDDA / 4096) / (ganho_V/V * shunt_ohm)
+    //
+    // CONFIRMADO (M5 Task 4) contra o firmware oficial ODrive
+    // (phase_current_from_adcval): com o gain de fábrica G40 (40 V/V,
+    // gainToVPerV() abaixo) e o shunt de 500µΩ desta placa (kShuntOhm),
+    // esta fórmula reduz a amps = (counts-2048) * 0.0403 A/count —
+    //   (3.3/4096) * (1/40) * (1/500e-6) ≈ 0.0403.
+    // O offset (kOffsetCounts=2048, meio da escala do ADC de 12 bits) é só
+    // um placeholder até a calibração de bancada com o motor parado/sem
+    // corrente (ver comentário em motor_hal.h).
     const float voltsAtAmp = (static_cast<float>(counts) - static_cast<float>(kOffsetCounts))
                             * (kVddaNominalV / static_cast<float>(kAdcFullScale));
     return voltsAtAmp / (m_gainVPerV * kShuntOhm);
@@ -116,13 +125,18 @@ void FocMotor::disable() { m_motor.disable(); }
 // ----------------------------------------------------------------------------
 // FocBrake
 // ----------------------------------------------------------------------------
-void FocBrake::setDuty(float duty01)
+void FocBrake::setDuty(float /*duty01*/)
 {
-    if (kOdrivePinBrakeRes < 0)
-        return; // AJUSTAR — pino não confirmado, não aciona nada
-
-    const int duty = static_cast<int>(duty01 * 255.0f);
-    analogWrite(kOdrivePinBrakeRes, duty);
+    // NO-OP de propósito no v1 (M5 Task 4). O brake resistor do ODrive v3.6 /
+    // MKS ODRIVE-S é um MEIO-PONTE (half-bridge, AUX_L=PB10/AUX_H=PB11 em
+    // TIM2 — CONFIRMADO pela fonte de fábrica MKS v0.5.1, ver
+    // odrive_v36_pins.h), não um único MOSFET low-side acionável por
+    // analogWrite() de um pino só (suposição antiga, já corrigida). Ligar de
+    // verdade exige configurar um segundo canal PWM dedicado do TIM2 com
+    // dead-time próprio — trabalho de bancada adiado (fica para depois do
+    // Stage 1). A proteção de sobretensão (PowerGuard.overVoltageV) + a
+    // partida conservadora (torque baixo, rampa lenta) cobrem a segurança
+    // dos primeiros giros sem depender do brake resistor.
 }
 
 }  // namespace drivelab

@@ -123,11 +123,14 @@ private:
 };
 
 // ----------------------------------------------------------------------------
-// FocBrake — IBrakeResistor sobre o MOSFET do resistor de frenagem. O pino
-// físico (kOdrivePinBrakeRes, odrive_v36_pins.h) ainda não foi confirmado
-// (sentinela -1, só o timer/canais do firmware oficial são conhecidos — ver
-// comentário no pinmap) — setDuty() vira no-op defensivo enquanto isso, e
-// esta task não chama setDuty() de lugar nenhum de qualquer forma.
+// FocBrake — IBrakeResistor sobre o meio-ponte (half-bridge) do resistor de
+// frenagem. Os pinos físicos (kOdrivePinAuxBrakeL/H, odrive_v36_pins.h) FORAM
+// confirmados na M5 Task 4 (fonte de fábrica MKS v0.5.1), mas a PWM própria
+// desse half-bridge (canais/dead-time do TIM2 dedicados a AUX_L/AUX_H) ainda
+// não foi portada — é diferente de um único MOSFET low-side controlável via
+// analogWrite(), que era a suposição antiga. setDuty() continua NO-OP no v1
+// de propósito (ver comentário completo em motor_hal.cpp); esta task não
+// chama setDuty() de lugar nenhum de qualquer forma.
 // ----------------------------------------------------------------------------
 class FocBrake : public IBrakeResistor
 {
