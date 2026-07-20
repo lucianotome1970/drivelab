@@ -29,7 +29,7 @@ int main() {
         CHECK(c.motionRange == 900);
         CHECK(c.totalStrength == 100);
         CHECK(c.forceDirection == 1);
-        CHECK(c.encoderCpr == 10000);
+        CHECK(c.encoderCpr == 4000);
         CHECK(c.currentP > 0.0499f && c.currentP < 0.0501f);
         CHECK(c.currentI > 9.999f && c.currentI < 10.001f);
         CHECK(c.encoderType == 0);
@@ -53,7 +53,7 @@ int main() {
         int n = baseReadField(c, BID_ENCODER_CPR, &type, buf);
         CHECK(n == 2);
         CHECK(type == BT_UINT16);
-        CHECK((buf[0] | (buf[1] << 8)) == 10000);
+        CHECK((buf[0] | (buf[1] << 8)) == 4000);
 
         uint16_t newVal = 54321;
         uint8_t w[2] = { (uint8_t)(newVal & 0xFF), (uint8_t)((newVal >> 8) & 0xFF) };
