@@ -33,6 +33,13 @@ int main() {
         CHECK(c.currentP > 0.0499f && c.currentP < 0.0501f);
         CHECK(c.currentI > 9.999f && c.currentI < 10.001f);
         CHECK(c.encoderType == 0);
+        CHECK(c.reconstructionSteps == 0);
+        CHECK(c.reconstructionLpf == 0);
+        CHECK(c.outputFilterHz == 0);
+        CHECK(c.oscGuardEnable == 0);
+        CHECK(c.endstopDamping == 0);
+        CHECK(c.linearity == 100);
+        CHECK(c.coggingEnable == 0);
     }
 
     // ----- baseTypeForField -----
@@ -107,6 +114,48 @@ int main() {
         n = baseReadField(c, BID_CURRENT_P, &type, buf);
         std::memcpy(&got, buf, 4);
         CHECK(got > 3.7499f && got < 3.7501f);
+    }
+
+    // ----- round-trip UInt8 (Linearity) -----
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        uint8_t type, buf[8];
+
+        int n = baseReadField(c, BID_LINEARITY, &type, buf);
+        CHECK(n == 1);
+        CHECK(type == BT_UINT8);
+        CHECK(buf[0] == 100);
+
+        uint8_t newVal = 150;
+        uint8_t w[1] = { newVal };
+        baseWriteField(c, BID_LINEARITY, BT_UINT8, w, sizeof(w));
+        CHECK(c.linearity == 150);
+
+        n = baseReadField(c, BID_LINEARITY, &type, buf);
+        CHECK(n == 1);
+        CHECK(buf[0] == 150);
+    }
+
+    // ----- round-trip UInt16 LE (OutputFilterHz) -----
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        uint8_t type, buf[8];
+
+        int n = baseReadField(c, BID_OUTPUT_FILTER_HZ, &type, buf);
+        CHECK(n == 2);
+        CHECK(type == BT_UINT16);
+        CHECK((buf[0] | (buf[1] << 8)) == 0);
+
+        uint16_t newVal = 1234;
+        uint8_t w[2] = { (uint8_t)(newVal & 0xFF), (uint8_t)((newVal >> 8) & 0xFF) };
+        baseWriteField(c, BID_OUTPUT_FILTER_HZ, BT_UINT16, w, sizeof(w));
+        CHECK(c.outputFilterHz == 1234);
+
+        n = baseReadField(c, BID_OUTPUT_FILTER_HZ, &type, buf);
+        CHECK(n == 2);
+        CHECK((buf[0] | (buf[1] << 8)) == 1234);
     }
 
     // ----- guard: id desconhecido -----
