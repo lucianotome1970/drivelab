@@ -212,6 +212,12 @@ static void hid_set_report_callback(uint8_t report_id,
         return;
     }
 
+    // Chegou aqui = é um OUT report de FFB (não-A0) → o jogo está mandando FFB.
+    // Reseta o watchdog de perda de sinal (SP3): se pararem de chegar reports
+    // por >500ms, engine.step() decai a força a zero. Sem isto, o watchdog
+    // zeraria a força mesmo com FFB ativo assim que o Stage 1 ligar o motor.
+    engine.notifyFfbActivity();
+
     // Sub-projeto 2 (Parser de efeitos FFB, Task 4): roteia TODOS os OUT
     // reports PID (SetEffect/Envelope/Condition/Periodic/Constant/Ramp,
     // EffectOperation, BlockFree, DeviceControl) pro EffectManager, que
