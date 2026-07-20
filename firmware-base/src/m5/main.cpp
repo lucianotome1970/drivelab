@@ -64,6 +64,7 @@
 #include "ffb_hid_descriptor.h"
 #include "ffb_report.h"
 #include "a0_channel.h"
+#include "pid_state.h"
 #include "fw_signature.h"
 #include "sensors.h"
 #include "dfu_jump.h"
@@ -265,6 +266,27 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
                                          hid_report_type_t report_type,
                                          uint8_t *buffer, uint16_t reqlen)
 {
+    // PID State (0x02) é um report de INPUT (itens 0x81 no descritor), não
+    // FEATURE — tratamos antes do guard de FEATURE. Só respondemos a
+    // GET_REPORT; NÃO enviamos periodicamente (evita tráfego extra no IN
+    // endpoint dividido com FFB/A0).
+    if (report_type == HID_REPORT_TYPE_INPUT && report_id == RID_PID_STATE)
+    {
+        if (reqlen < 1)
+        {
+            return 0;
+        }
+        // 1 byte de status (bitfield, ver lib/base_usb/pid_state.h + descritor
+        // 0x85,0x02). M5 sem motor: não pausado, atuadores habilitados, safety
+        // ok, sem override, power presente.
+        buffer[0] = buildPidStateByte(false /*devicePaused*/,
+                                      true /*actuatorsEnabled*/,
+                                      true /*safetySwitch*/,
+                                      false /*actuatorOverride*/,
+                                      true /*actuatorPower*/);
+        return 1;
+    }
+
     if (report_type != HID_REPORT_TYPE_FEATURE)
     {
         return 0;
@@ -278,7 +300,12 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
         }
         buffer[0] = g_lastEffectBlock;
         buffer[1] = 1; // Block Load Success
-        uint16_t ramPoolAvailable = 0xFFFF;
+        // RAM pool disponível: número finito e coerente com o pool reportado
+        // no RID_PID_POOL. Modelamos um budget de 16 bytes por efeito
+        // (kMaxEffectBlocks*16) e descontamos um chunk por efeito já alocado.
+        // (M5 sem alocador real de RAM de efeito — valor plausível, não 0xFFFF.)
+        uint16_t ramPoolAvailable =
+            (uint16_t)(kMaxEffectBlocks * 16) - (uint16_t)(g_nextEffectBlock * 16);
         buffer[2] = (uint8_t)(ramPoolAvailable & 0xFF);
         buffer[3] = (uint8_t)(ramPoolAvailable >> 8);
         SerialTinyUSB.printf("FFB block-load -> block=%u status=success\n", g_lastEffectBlock);
@@ -291,10 +318,12 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
         {
             return 0;
         }
-        uint16_t ramPoolSize = 0xFFFF;
+        // Tamanho do RAM pool: valor finito e plausível (não 0xFFFF genérico).
+        // Budget de 16 bytes por slot de efeito -> kMaxEffectBlocks*16 = 640.
+        uint16_t ramPoolSize = (uint16_t)(kMaxEffectBlocks * 16);
         buffer[0] = (uint8_t)(ramPoolSize & 0xFF);
         buffer[1] = (uint8_t)(ramPoolSize >> 8);
-        buffer[2] = kSimultaneousEffectsMax;
+        buffer[2] = kSimultaneousEffectsMax; // efeitos simultâneos (Device Managed Pool)
         buffer[3] = 0;
         SerialTinyUSB.printf("FFB pool -> size=%u simultaneous=%u\n", ramPoolSize, kSimultaneousEffectsMax);
         return 4;

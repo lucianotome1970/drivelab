@@ -46,3 +46,7 @@ c++ -std=c++17 -Wall -Wextra -Werror -o "$out10" test_effect_manager.cpp ../lib/
 out11="$(mktemp -d)/ffb_engine_safety_test"
 c++ -std=c++17 -I../lib/brain -I../lib/base_shared -Wall -Wextra -Werror -o "$out11" test_ffb_engine_safety.cpp ../lib/base_shared/ffb_effects.cpp
 "$out11"
+
+out12="$(mktemp -d)/pid_state_test"
+c++ -std=c++17 -Wall -Wextra -Werror -o "$out12" test_pid_state.cpp
+"$out12"
