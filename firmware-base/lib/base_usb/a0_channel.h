@@ -60,6 +60,23 @@ public:
     bool saveRequested() const { return m_saveRequested; }
     void clearSave() { m_saveRequested = false; }
 
+    // Acesso somente-leitura ao BaseCfg atual (settings vivos, já carregados
+    // por begin() e atualizados por cada SETWRITE tratado em
+    // handleOutReport()). Usado pela ponte applyCfgToEngine (lib/base_shared/
+    // apply_cfg.h) tanto no boot (M5 setup()) quanto ao vivo (ver cfgDirty()
+    // abaixo). Não expõe mutação -- quem quiser mudar o cfg passa pelo canal
+    // A0 (SETWRITE) ou por baseSeedDefaults(), nunca por fora.
+    const BaseCfg& cfg() const { return m_cfg; }
+
+    // Setada dentro de handleOutReport() em CADA SETWRITE (0x14) tratado com
+    // sucesso -- sinaliza para o chamador (loop() do M5) que o BaseCfg mudou
+    // e precisa ser reaplicado no FfbEngine via applyCfgToEngine(). O
+    // chamador deve chamar clearCfgDirty() depois de reaplicar (mesmo padrão
+    // de saveRequested()/clearSave()). M0.5 não tem engine: nunca consome
+    // esta flag, o que é inócuo (fica true até a próxima leitura, sem custo).
+    bool cfgDirty() const { return m_cfgDirty; }
+    void clearCfgDirty() { m_cfgDirty = false; }
+
     // Persiste o BaseCfg atual na flash (magic+struct via EEPROM emulada).
     // Chamar do loop() quando saveRequested() for true, ANTES de clearSave().
     void save();
@@ -116,6 +133,7 @@ private:
     uint8_t m_pendingField = 0;
 
     bool m_saveRequested = false;
+    bool m_cfgDirty = false;
     bool m_dfuRequested = false;
     bool m_forceEnabled = true;
 
