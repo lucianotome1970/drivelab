@@ -155,7 +155,7 @@ void baseSeedDefaults(BaseCfg& c) {
     c.maxTorqueLimit = 80;
     c.forceDirection = 1;
     c.encoderDirection = 1;
-    c.encoderCpr = 10000;
+    c.encoderCpr = 4000;   // Omron E6B2-CWZ6C 1000 P/R × 4 (quadratura)
     c.polePairs = 15;
     c.currentP = 0.05f;
     c.currentI = 10.0f;

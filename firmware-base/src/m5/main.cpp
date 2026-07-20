@@ -113,7 +113,7 @@ static Drv8301 drv;
 
 // ===================== Parâmetros do motor — AJUSTAR NA BANCADA =====================
 static const int   POLE_PAIRS = 15;      // hoverboard in-wheel, ~15 pares — AJUSTAR na bancada
-static const float ENC_CPR    = 8192.0f; // AJUSTAR na bancada (encoder real do eixo M0)
+static const float ENC_CPR    = 4000.0f; // Omron E6B2-CWZ6C 1000 P/R × 4 (quadratura) = 4000 CPR
 static const float SUPPLY_V   = 56.0f;   // MKS ODRIVE-S V3.6-S6V — variante 56V (NÃO 24V)
 
 // ===================== SimpleFOC — construídos, NUNCA inicializados/ligados aqui =====================
