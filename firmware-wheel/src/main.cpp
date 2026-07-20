@@ -22,6 +22,7 @@
 #include <Adafruit_MCP23X17.h>
 #include <Wire.h>
 #include <EEPROM.h>
+#include "fw_signature.h"
 
 // ===================== Constantes do contrato P0 (espelham DriveLab.Core) =====================
 static const uint8_t RID_JOYSTICK  = 0x01;
@@ -40,7 +41,7 @@ enum { S_CL_MIN = 0, S_CL_MAX = 1, S_CR_MIN = 2, S_CR_MAX = 3,
        S_CL_INV = 4, S_CR_INV = 5, S_MODE = 6, S_BITE = 7,
        S_LED_BRIGHT = 8, S_LED_COUNT = 9 };
 // WheelCommandId
-enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4, CMD_SENDLEDS = 5 };
+enum { CMD_CAL_START = 1, CMD_CAL_STOP = 2, CMD_SAVE = 3, CMD_LOADDEF = 4, CMD_SENDLEDS = 5, CMD_ENTER_BOOTLOADER = 0x5A };
 
 static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP HID de 64 c/ report id)
 
@@ -326,6 +327,7 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
         }
       }
       else if (cmd == CMD_SAVE) saveToFlash();
+      else if (cmd == CMD_ENTER_BOOTLOADER) rp2040.rebootToBootloader();   // SP4: update UF2/BOOTSEL
       break;
     }
   }
@@ -333,6 +335,9 @@ static void onSetReport(uint8_t report_id, hid_report_type_t /*type*/, uint8_t c
 
 // ===================== Setup / Loop =====================
 void setup() {
+  // Mantém a assinatura fw_signature no .uf2 mesmo com --gc-sections.
+  __asm__ __volatile__("" : : "r"(&fw_signature) : "memory");
+
   Serial.begin(115200);
   analogReadResolution(12);
 
