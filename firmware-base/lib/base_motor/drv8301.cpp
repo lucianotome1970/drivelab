@@ -37,136 +37,120 @@
 
 #include "drv8301.h"
 
-class Drv8301
+// A DECLARAÇÃO da classe Drv8301 mora agora em drv8301.h (hoisted na Task 2
+// para que src/m5/main.cpp consiga instanciá-la) — aqui só os corpos dos
+// métodos, guardados por `#ifdef ARDUINO` no header. Comentários de fonte
+// completos no topo do arquivo e junto de cada trecho abaixo.
+
+void Drv8301::begin(SPIClass& spi, int csPin, int enGatePin, int nFaultPin, Drv8301Gain gain)
 {
-public:
-    // csPin/enGatePin/nFaultPin: GPIOs do MCU (ver pinout no spec de
-    // referência do M5: M0_nCS=PC13, EN_GATE=PB12, nFAULT=PD2 no ODrive
-    // v3.6 genuíno — confirmar no clone MKS antes de usar em bancada).
-    void begin(SPIClass& spi, int csPin, int enGatePin, int nFaultPin, Drv8301Gain gain)
+    spi_ = &spi;
+    csPin_ = csPin;
+    enGatePin_ = enGatePin;
+    nFaultPin_ = nFaultPin;
+    gain_ = gain;
+
+    pinMode(csPin_, OUTPUT);
+    digitalWrite(csPin_, HIGH); // CS idle alto (soft-NSS, ver spi_config_ do ODrive)
+    pinMode(enGatePin_, OUTPUT);
+    digitalWrite(enGatePin_, LOW); // mantém em reset até configure()
+    pinMode(nFaultPin_, INPUT_PULLUP);
+
+    ready_ = false;
+}
+
+bool Drv8301::configure()
+{
+    ready_ = false;
+
+    // 1. Reset via EN_GATE (também reseta a interface SPI do chip).
+    digitalWrite(enGatePin_, LOW);
+    delayMicroseconds(40); // mínimo do datasheet p/ reset completo: 20us
+    digitalWrite(enGatePin_, HIGH);
+    delay(20); // t_spi_ready (datasheet: até 10ms; ODrive usa 20ms de folga)
+
+    const uint16_t cr1 = drv8301ControlReg1();
+    const uint16_t cr2 = drv8301ControlReg2(gain_);
+
+    // 2. Control Register 1 cinco vezes (ver comentário do ODrive acima).
+    for (int i = 0; i < 5; ++i)
     {
-        spi_ = &spi;
-        csPin_ = csPin;
-        enGatePin_ = enGatePin;
-        nFaultPin_ = nFaultPin;
-        gain_ = gain;
-
-        pinMode(csPin_, OUTPUT);
-        digitalWrite(csPin_, HIGH); // CS idle alto (soft-NSS, ver spi_config_ do ODrive)
-        pinMode(enGatePin_, OUTPUT);
-        digitalWrite(enGatePin_, LOW); // mantém em reset até configure()
-        pinMode(nFaultPin_, INPUT_PULLUP);
-
-        ready_ = false;
+        if (!writeReg(kDrv8301RegControl1, cr1))
+            return false;
     }
 
-    // Roda a sequência de init completa (reset + CR1 x5 + CR2 x1 + readback +
-    // checagem de fault). Retorna true só se tudo bateu. Não habilita PWM.
-    bool configure()
-    {
-        ready_ = false;
+    // 3. Control Register 2 uma vez.
+    if (!writeReg(kDrv8301RegControl2, cr2))
+        return false;
 
-        // 1. Reset via EN_GATE (também reseta a interface SPI do chip).
-        digitalWrite(enGatePin_, LOW);
-        delayMicroseconds(40); // mínimo do datasheet p/ reset completo: 20us
-        digitalWrite(enGatePin_, HIGH);
-        delay(20); // t_spi_ready (datasheet: até 10ms; ODrive usa 20ms de folga)
+    // 4. Aguarda a config ser aplicada.
+    delayMicroseconds(100);
 
-        const uint16_t cr1 = drv8301ControlReg1();
-        const uint16_t cr2 = drv8301ControlReg2(gain_);
+    // 5. Readback — confirma que os registros bateram com o que foi escrito.
+    uint16_t rbCr1 = 0, rbCr2 = 0;
+    if (!readReg(kDrv8301RegControl1, rbCr1) || rbCr1 != cr1)
+        return false;
+    if (!readReg(kDrv8301RegControl2, rbCr2) || rbCr2 != cr2)
+        return false;
 
-        // 2. Control Register 1 cinco vezes (ver comentário do ODrive acima).
-        for (int i = 0; i < 5; ++i)
-        {
-            if (!writeReg(kDrv8301RegControl1, cr1))
-                return false;
-        }
+    // 6. Checa fault (Status Register 1/2) antes de declarar pronto.
+    if (faulted())
+        return false;
 
-        // 3. Control Register 2 uma vez.
-        if (!writeReg(kDrv8301RegControl2, cr2))
-            return false;
+    ready_ = true;
+    return true;
+}
 
-        // 4. Aguarda a config ser aplicada.
-        delayMicroseconds(100);
-
-        // 5. Readback — confirma que os registros bateram com o que foi escrito.
-        uint16_t rbCr1 = 0, rbCr2 = 0;
-        if (!readReg(kDrv8301RegControl1, rbCr1) || rbCr1 != cr1)
-            return false;
-        if (!readReg(kDrv8301RegControl2, rbCr2) || rbCr2 != cr2)
-            return false;
-
-        // 6. Checa fault (Status Register 1/2) antes de declarar pronto.
-        if (faulted())
-            return false;
-
-        ready_ = true;
+bool Drv8301::faulted()
+{
+    if (digitalRead(nFaultPin_) == LOW)
         return true;
-    }
 
-    // true se nFAULT estiver ativo (ativo baixo) OU se o Status Register 1/2
-    // reportar algum bit de fault setado.
-    bool faulted()
-    {
-        if (digitalRead(nFaultPin_) == LOW)
-            return true;
-
-        uint16_t status1 = 0, status2 = 0;
-        if (!readReg(kDrv8301RegStatus1, status1))
-            return true; // falha de comunicação SPI também conta como fault
-        if (!readReg(kDrv8301RegStatus2, status2))
-            return true;
-
-        // Status Register 1: bits [10:0] = flags de fault (fonte: drv8301.hpp,
-        // FaultType_e — todos os bits de Status1 são faults; NoFault = 0).
-        // Status Register 2: só o bit [7] (GVDD_OV) é fault; os demais bits
-        // desse registro são reservados/outra telemetria.
-        return status1 != 0 || (status2 & 0x0080) != 0;
-    }
-
-    bool isReady() const { return ready_; }
-
-private:
-    bool writeReg(uint8_t addr, uint16_t data)
-    {
-        uint16_t frame = drv8301Frame(false, addr, data);
-        transfer16(frame);
-        delayMicroseconds(1);
-        return true; // sem checagem de sucesso na escrita (mesmo comportamento do ODrive)
-    }
-
-    bool readReg(uint8_t addr, uint16_t& outData)
-    {
-        // DRV8301: a leitura precisa da word de comando mandada duas vezes —
-        // a primeira transação "arma" o endereço no chip, a resposta útil só
-        // vem na segunda (mesmo padrão de Drv8301::read_reg() do ODrive).
-        uint16_t cmd = drv8301Frame(true, addr, 0);
-        transfer16(cmd);
-        delayMicroseconds(1);
-        uint16_t rx = transfer16(cmd);
-        delayMicroseconds(1);
-
-        if (rx == 0xbeef) // sentinela de erro do driver (ver drv8301.cpp do ODrive)
-            return false;
-
-        outData = drv8301FrameData(rx);
+    uint16_t status1 = 0, status2 = 0;
+    if (!readReg(kDrv8301RegStatus1, status1))
+        return true; // falha de comunicação SPI também conta como fault
+    if (!readReg(kDrv8301RegStatus2, status2))
         return true;
-    }
 
-    uint16_t transfer16(uint16_t word)
-    {
-        spi_->beginTransaction(SPISettings(2600000, MSBFIRST, SPI_MODE1));
-        digitalWrite(csPin_, LOW);
-        uint16_t rx = spi_->transfer16(word);
-        digitalWrite(csPin_, HIGH);
-        spi_->endTransaction();
-        return rx;
-    }
+    // Status Register 1: bits [10:0] = flags de fault (fonte: drv8301.hpp,
+    // FaultType_e — todos os bits de Status1 são faults; NoFault = 0).
+    // Status Register 2: só o bit [7] (GVDD_OV) é fault; os demais bits
+    // desse registro são reservados/outra telemetria.
+    return status1 != 0 || (status2 & 0x0080) != 0;
+}
 
-    SPIClass* spi_ = nullptr;
-    int csPin_ = -1;
-    int enGatePin_ = -1;
-    int nFaultPin_ = -1;
-    Drv8301Gain gain_ = Drv8301Gain::G20;
-    bool ready_ = false;
-};
+bool Drv8301::writeReg(uint8_t addr, uint16_t data)
+{
+    uint16_t frame = drv8301Frame(false, addr, data);
+    transfer16(frame);
+    delayMicroseconds(1);
+    return true; // sem checagem de sucesso na escrita (mesmo comportamento do ODrive)
+}
+
+bool Drv8301::readReg(uint8_t addr, uint16_t& outData)
+{
+    // DRV8301: a leitura precisa da word de comando mandada duas vezes —
+    // a primeira transação "arma" o endereço no chip, a resposta útil só
+    // vem na segunda (mesmo padrão de Drv8301::read_reg() do ODrive).
+    uint16_t cmd = drv8301Frame(true, addr, 0);
+    transfer16(cmd);
+    delayMicroseconds(1);
+    uint16_t rx = transfer16(cmd);
+    delayMicroseconds(1);
+
+    if (rx == 0xbeef) // sentinela de erro do driver (ver drv8301.cpp do ODrive)
+        return false;
+
+    outData = drv8301FrameData(rx);
+    return true;
+}
+
+uint16_t Drv8301::transfer16(uint16_t word)
+{
+    spi_->beginTransaction(SPISettings(2600000, MSBFIRST, SPI_MODE1));
+    digitalWrite(csPin_, LOW);
+    uint16_t rx = spi_->transfer16(word);
+    digitalWrite(csPin_, HIGH);
+    spi_->endTransaction();
+    return rx;
+}

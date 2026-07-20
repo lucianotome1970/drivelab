@@ -122,3 +122,49 @@ inline uint16_t drv8301ControlReg2(Drv8301Gain gain,
          | (static_cast<uint16_t>(static_cast<uint8_t>(gain) & 0x03u) << 2)
          | (static_cast<uint16_t>(octwMode & 0x03u) << 0);
 }
+
+// ----------------------------------------------------------------------------
+// Classe de HARDWARE (SPI de verdade, EN_GATE, nFAULT) — guardada por
+// `#ifdef ARDUINO` para que este header continue compilando no host (o teste
+// de host, test/test_drv8301.cpp, só usa as funções puras acima e NÃO define
+// ARDUINO). Só a DECLARAÇÃO mora aqui; os corpos dos métodos (que usam
+// Arduino.h/SPI.h) ficam em drv8301.cpp — hoisted daqui para permitir que
+// src/m5/main.cpp instancie `Drv8301` (antes a classe só existia dentro de
+// drv8301.cpp, sem declaração em header nenhum). Ver drv8301.cpp para a
+// sequência de init completa e as fontes citadas linha a linha.
+// ----------------------------------------------------------------------------
+#ifdef ARDUINO
+
+class SPIClass; // forward decl — evita puxar SPI.h neste header
+
+class Drv8301
+{
+public:
+    // csPin/enGatePin/nFaultPin: GPIOs do MCU (ver odrive_v36_pins.h para os
+    // valores do ODrive v3.6 / MKS ODRIVE-S V3.6-S6V).
+    void begin(SPIClass& spi, int csPin, int enGatePin, int nFaultPin, Drv8301Gain gain);
+
+    // Roda a sequência de init completa (reset + CR1 x5 + CR2 x1 + readback +
+    // checagem de fault). Retorna true só se tudo bateu. Não habilita PWM.
+    bool configure();
+
+    // true se nFAULT estiver ativo (ativo baixo) OU se o Status Register 1/2
+    // reportar algum bit de fault setado.
+    bool faulted();
+
+    bool isReady() const { return ready_; }
+
+private:
+    bool writeReg(uint8_t addr, uint16_t data);
+    bool readReg(uint8_t addr, uint16_t& outData);
+    uint16_t transfer16(uint16_t word);
+
+    SPIClass* spi_ = nullptr;
+    int csPin_ = -1;
+    int enGatePin_ = -1;
+    int nFaultPin_ = -1;
+    Drv8301Gain gain_ = Drv8301Gain::G20;
+    bool ready_ = false;
+};
+
+#endif // ARDUINO
