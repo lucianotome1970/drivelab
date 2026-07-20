@@ -60,3 +60,16 @@ static constexpr int kOdrivePinShuntIB = PC0;
 static constexpr int kOdrivePinShuntIC = PC1;
 static constexpr int kOdrivePinVBus    = PA6;
 static constexpr int kOdrivePinNtcM0   = PC5;
+
+// ----------------------------------------------------------------------------
+// Brake resistor — dissipa a energia de regeneração via PWM num MOSFET
+// dedicado. A spec de pinmap (docs/superpowers/specs/2026-07-20-odrive-v36-
+// driver-pinmap.md, seção 1.5) só identificou o TIMER/canais do firmware
+// oficial (TIM2_CH3/CH4, `safety_critical_apply_brake_resistor_timings`),
+// NÃO o GPIO físico do MCU — a pesquisa não mapeou timer->pino para este
+// sinal. Confiança: BAIXA/AJUSTAR. Sentinela -1 até confirmar (datasheet/
+// esquemático/continuidade na bancada) — NENHUM código deste M5 deve chamar
+// analogWrite()/pinMode() com este valor enquanto for -1 (Task 3 do M5 só
+// declara o adapter FocBrake; ele já se protege contra o sentinela).
+// ----------------------------------------------------------------------------
+static constexpr int kOdrivePinBrakeRes = -1;  // AJUSTAR — pino não confirmado

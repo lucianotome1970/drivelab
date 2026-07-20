@@ -1,6 +1,8 @@
 // ============================================================================
 //  DriveLab Firmware
-//  main.cpp (m5) — Task 2: env m5 + pinmap ODrive v3.6 + config do DRV8301.
+//  main.cpp (m5) — Task 2 (env m5 + pinmap ODrive v3.6 + config do DRV8301)
+//  + Task 3 (HAL cérebro<->SimpleFOC, lib/base_motor/motor_hal.h, só
+//  CONSTRUÍDO — ver bloco "HAL cérebro<->SimpleFOC" abaixo).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -18,7 +20,12 @@
 //       arquivo de propósito.
 //     * Só o DRV8301 é de fato configurado (drv.begin()+drv.configure()),
 //       que é SPI puro (config de registro) — não gera PWM nas fases.
-//   USB/A0/engine (lib/brain) e o restante do SimpleFOC entram em tasks
+//     * Os adapters do HAL (focEncoder/focCurrent/focPower/focMotor/
+//       focBrake) também são só CONSTRUÍDOS — ninguém chama
+//       focMotor.setTorque()/engine.step() aqui. focCurrent lê ADC (leitura
+//       pura, sem drive) só para existir; o valor não é usado por nada
+//       ainda.
+//   USB/A0/engine (lib/brain, ligado ao HAL de verdade) entram em tasks
 //   futuras deste mesmo M5; aqui só CDC mínimo (TinyUSB) para log de status.
 
 // IMPORTANTE — ordem de include: Adafruit_TinyUSB.h TEM que vir antes de
@@ -44,6 +51,7 @@
 
 #include "drv8301.h"
 #include "odrive_v36_pins.h"
+#include "motor_hal.h"
 
 // ===================== Parâmetros do motor — AJUSTAR NA BANCADA =====================
 // Pole pairs: motor de hoverboard in-wheel tipicamente ~15 pares de polos
@@ -77,6 +85,20 @@ static BLDCDriver6PWM driver(kOdrivePinPhaseAH, kOdrivePinPhaseAL,
                               kOdrivePinEnGate);
 static BLDCMotor motor(POLE_PAIRS);
 static Encoder   encoder(kOdrivePinEncoderA, kOdrivePinEncoderB, ENC_CPR, kOdrivePinEncoderZ);
+
+// ===================== HAL cérebro<->SimpleFOC (Task 3) — só CONSTRUÍDOS =====================
+// Adapters de lib/base_motor/motor_hal.h que "costuram" o cérebro FFB
+// (lib/brain) ao SimpleFOC/ADCs acima. Igual ao bloco anterior: construir só
+// guarda referências/parâmetros, não toca hardware. NINGUÉM chama
+// engine.step()/setTorque()/loopFOC() aqui — isso é a Task 4 (que também
+// decidirá quem instancia o FfbEngine e como isto vira input dele). Ganho do
+// FocCurrent casado com o mesmo Drv8301Gain::G20 passado pro drv.begin()
+// acima.
+static drivelab::FocEncoder focEncoder(encoder);
+static drivelab::FocCurrent focCurrent(Drv8301Gain::G20);
+static drivelab::FocPower   focPower;
+static drivelab::FocMotor   focMotor(motor);
+static drivelab::FocBrake   focBrake;
 
 void setup()
 {
