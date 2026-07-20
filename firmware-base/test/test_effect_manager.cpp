@@ -213,7 +213,11 @@ int main() {
         CHECK(std::fabs(mgr.computeForce(0.0f, 0.0f, 0)) < 1e-3f);
     }
 
-    // ---- Constant mag=16384, gain=255 -> força ~= +127 ----
+    // ---- Constant mag=16384, gain=255 -> computeForce() PULA Constant (0
+    // de propósito) -- integração Task 4 (firmware-base/lib/brain/
+    // ffb_engine.h): a força constante já flui pelo ForceReconstructor
+    // (SP1, hostF), então o EffectManager a ignora aqui para não somar em
+    // dobro no engine. ----
     {
         EffectManager mgr;
         uint8_t setEffect[16] = {0};
@@ -227,7 +231,7 @@ int main() {
         mgr.operation(1, 1, 0); // start
 
         float f = mgr.computeForce(0.0f, 0.0f, 0);
-        CHECK(std::fabs(f - 127.0f) < 1.0f);
+        CHECK(std::fabs(f) < 1e-3f);
     }
 
     // ---- Sine mag16=32767, period=1000, t=250 (x=0.25) -> pico ~= +255 ----
@@ -299,27 +303,32 @@ int main() {
         CHECK(f < 0.0f);
     }
 
-    // ---- dois efeitos ativos -> soma ----
+    // ---- dois efeitos ativos -> soma (usa Ramp, não Constant -- Constant é
+    // pulado por computeForce() desde a integração Task 4, ver teste acima).
+    // Ramp com duration=0 -> p=1.0 sempre -> força = rampEnd (constante no
+    // tempo), útil aqui só para exercitar a soma de dois slots ativos. ----
     {
         EffectManager mgr;
         uint8_t setEffect1[16] = {0};
-        setEffect1[0] = 0x01; setEffect1[1] = 1; setEffect1[2] = 1; // Constant, block 1
+        setEffect1[0] = 0x01; setEffect1[1] = 1; setEffect1[2] = 2; // Ramp, block 1
         setEffect1[11] = 255;
         mgr.handleReport(setEffect1, sizeof(setEffect1), 0);
-        uint8_t setConst1[6] = {0};
-        setConst1[0] = 0x05; setConst1[1] = 1;
-        setConst1[2] = 0x00; setConst1[3] = 0x20; // magnitude = 8192
-        mgr.handleReport(setConst1, sizeof(setConst1), 0);
+        uint8_t setRamp1[6] = {0};
+        setRamp1[0] = 0x06; setRamp1[1] = 1;
+        setRamp1[2] = 0x00; setRamp1[3] = 0x20; // rampStart = 8192 (LE)
+        setRamp1[4] = 0x00; setRamp1[5] = 0x20; // rampEnd   = 8192 (LE)
+        mgr.handleReport(setRamp1, sizeof(setRamp1), 0);
         mgr.operation(1, 1, 0);
 
         uint8_t setEffect2[16] = {0};
-        setEffect2[0] = 0x01; setEffect2[1] = 2; setEffect2[2] = 1; // Constant, block 2
+        setEffect2[0] = 0x01; setEffect2[1] = 2; setEffect2[2] = 2; // Ramp, block 2
         setEffect2[11] = 255;
         mgr.handleReport(setEffect2, sizeof(setEffect2), 0);
-        uint8_t setConst2[6] = {0};
-        setConst2[0] = 0x05; setConst2[1] = 2;
-        setConst2[2] = 0x00; setConst2[3] = 0x20; // magnitude = 8192
-        mgr.handleReport(setConst2, sizeof(setConst2), 0);
+        uint8_t setRamp2[6] = {0};
+        setRamp2[0] = 0x06; setRamp2[1] = 2;
+        setRamp2[2] = 0x00; setRamp2[3] = 0x20; // rampStart = 8192 (LE)
+        setRamp2[4] = 0x00; setRamp2[5] = 0x20; // rampEnd   = 8192 (LE)
+        mgr.handleReport(setRamp2, sizeof(setRamp2), 0);
         mgr.operation(2, 1, 0);
 
         float f = mgr.computeForce(0.0f, 0.0f, 0);

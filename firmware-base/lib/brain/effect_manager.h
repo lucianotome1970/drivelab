@@ -289,9 +289,12 @@ public:
             if (!e.active) continue;
             if (e.durationMs > 0 && (nowMs - e.startMs) >= e.durationMs) continue; // expirado
 
+            // Constant force já flui pelo ForceReconstructor (hostF, SP1) —
+            // somá-lo de novo aqui duplicaria a força constante do jogo.
+            if (e.type == FxType::Constant) continue;
+
             float f;
             switch (e.type) {
-                case FxType::Constant:
                 case FxType::Ramp:
                 case FxType::Square:
                 case FxType::Sine:
