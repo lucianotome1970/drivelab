@@ -11,6 +11,7 @@
 
 #include "../lib/brain/effect_manager.h"
 
+#include <cmath>
 #include <cstdio>
 
 // ----- micro-harness (mesmo padrão de test_ffb_effects.cpp) -----
@@ -188,6 +189,159 @@ int main() {
         uint8_t buf[3] = {0xFF, 1, 1};
         mgr.handleReport(buf, sizeof(buf), 0);
         CHECK(mgr.slot(0).type == FxType::None);
+    }
+
+    // ==== computeForce ====
+
+    // ---- manager vazio -> 0 ----
+    {
+        EffectManager mgr;
+        CHECK(std::fabs(mgr.computeForce(0.0f, 0.0f, 0)) < 1e-3f);
+    }
+
+    // ---- slot inativo -> 0 ----
+    {
+        EffectManager mgr;
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 1; // Constant, block 1
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+        uint8_t setConst[6] = {0};
+        setConst[0] = 0x05; setConst[1] = 1;
+        setConst[2] = 0x00; setConst[3] = 0x40; // magnitude = 16384
+        mgr.handleReport(setConst, sizeof(setConst), 0);
+        // não ativado
+        CHECK(std::fabs(mgr.computeForce(0.0f, 0.0f, 0)) < 1e-3f);
+    }
+
+    // ---- Constant mag=16384, gain=255 -> força ~= +127 ----
+    {
+        EffectManager mgr;
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 1; // Constant, block 1
+        setEffect[11] = 255; // gain
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+        uint8_t setConst[6] = {0};
+        setConst[0] = 0x05; setConst[1] = 1;
+        setConst[2] = 0x00; setConst[3] = 0x40; // magnitude = 16384 (LE)
+        mgr.handleReport(setConst, sizeof(setConst), 0);
+        mgr.operation(1, 1, 0); // start
+
+        float f = mgr.computeForce(0.0f, 0.0f, 0);
+        CHECK(std::fabs(f - 127.0f) < 1.0f);
+    }
+
+    // ---- Sine mag16=32767, period=1000, t=250 (x=0.25) -> pico ~= +255 ----
+    {
+        EffectManager mgr;
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 4; // Sine, block 1
+        setEffect[11] = 255; // gain
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+
+        uint8_t setPeriodic[12] = {0};
+        setPeriodic[0] = 0x04; setPeriodic[1] = 1;
+        setPeriodic[2] = 0xFF; setPeriodic[3] = 0x7F; // magnitude16 = 32767
+        setPeriodic[4] = 0x00; setPeriodic[5] = 0x00; // offset = 0
+        setPeriodic[6] = 0x00; setPeriodic[7] = 0x00; // phase = 0
+        setPeriodic[8] = 0xE8; setPeriodic[9] = 0x03; setPeriodic[10] = 0x00; setPeriodic[11] = 0x00; // period = 1000
+        mgr.handleReport(setPeriodic, sizeof(setPeriodic), 0);
+        mgr.operation(1, 1, 0); // start at t=0
+
+        float fPeak = mgr.computeForce(0.0f, 0.0f, 250); // x = 0.25 -> sin(pi/2) = 1
+        CHECK(std::fabs(fPeak - 255.0f) < 1.0f);
+
+        float fZero = mgr.computeForce(0.0f, 0.0f, 500); // x = 0.5 -> sin(pi) = 0
+        CHECK(std::fabs(fZero) < 1.0f);
+    }
+
+    // ---- Spring posCoeff=32767, pos > center -> força negativa ----
+    {
+        EffectManager mgr;
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 8; // Spring, block 1
+        setEffect[11] = 255; // gain
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+
+        uint8_t setCond[15] = {0};
+        setCond[0] = 0x03; setCond[1] = 1;
+        setCond[3] = 0x00; setCond[4] = 0x00; // centerOffset = 0
+        setCond[5] = 0xFF; setCond[6] = 0x7F; // posCoeff = 32767
+        setCond[7] = 0x00; setCond[8] = 0x00; // negCoeff = 0
+        setCond[9] = 0xFF; setCond[10] = 0x7F;  // posSat = 32767
+        setCond[11] = 0xFF; setCond[12] = 0x7F; // negSat = 32767
+        setCond[13] = 0x00; setCond[14] = 0x00; // deadBand = 0
+        mgr.handleReport(setCond, sizeof(setCond), 0);
+        mgr.operation(1, 1, 0);
+
+        // posRad = kMaxPosRad/2 -> metric = 0.5
+        float f = mgr.computeForce(EffectManager::kMaxPosRad / 2.0f, 0.0f, 0);
+        CHECK(f < 0.0f);
+        CHECK(std::fabs(f - (-127.5f)) < 2.0f);
+    }
+
+    // ---- Damper vel>0 -> força negativa ----
+    {
+        EffectManager mgr;
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 9; // Damper, block 1
+        setEffect[11] = 255; // gain
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+
+        uint8_t setCond[15] = {0};
+        setCond[0] = 0x03; setCond[1] = 1;
+        setCond[5] = 0xFF; setCond[6] = 0x7F; // posCoeff = 32767
+        setCond[9] = 0xFF; setCond[10] = 0x7F;  // posSat = 32767
+        setCond[11] = 0xFF; setCond[12] = 0x7F; // negSat = 32767
+        mgr.handleReport(setCond, sizeof(setCond), 0);
+        mgr.operation(1, 1, 0);
+
+        float f = mgr.computeForce(0.0f, EffectManager::kMaxVel / 2.0f, 0);
+        CHECK(f < 0.0f);
+    }
+
+    // ---- dois efeitos ativos -> soma ----
+    {
+        EffectManager mgr;
+        uint8_t setEffect1[16] = {0};
+        setEffect1[0] = 0x01; setEffect1[1] = 1; setEffect1[2] = 1; // Constant, block 1
+        setEffect1[11] = 255;
+        mgr.handleReport(setEffect1, sizeof(setEffect1), 0);
+        uint8_t setConst1[6] = {0};
+        setConst1[0] = 0x05; setConst1[1] = 1;
+        setConst1[2] = 0x00; setConst1[3] = 0x20; // magnitude = 8192
+        mgr.handleReport(setConst1, sizeof(setConst1), 0);
+        mgr.operation(1, 1, 0);
+
+        uint8_t setEffect2[16] = {0};
+        setEffect2[0] = 0x01; setEffect2[1] = 2; setEffect2[2] = 1; // Constant, block 2
+        setEffect2[11] = 255;
+        mgr.handleReport(setEffect2, sizeof(setEffect2), 0);
+        uint8_t setConst2[6] = {0};
+        setConst2[0] = 0x05; setConst2[1] = 2;
+        setConst2[2] = 0x00; setConst2[3] = 0x20; // magnitude = 8192
+        mgr.handleReport(setConst2, sizeof(setConst2), 0);
+        mgr.operation(2, 1, 0);
+
+        float f = mgr.computeForce(0.0f, 0.0f, 0);
+        // cada um ~= 63.7 -> soma ~= 127.4
+        CHECK(std::fabs(f - 127.0f) < 1.0f);
+    }
+
+    // ---- efeito expirado (duration passou) -> não contribui ----
+    {
+        EffectManager mgr;
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 1; // Constant, block 1
+        setEffect[3] = 0x64; setEffect[4] = 0x00; // duration = 100
+        setEffect[11] = 255;
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+        uint8_t setConst[6] = {0};
+        setConst[0] = 0x05; setConst[1] = 1;
+        setConst[2] = 0x00; setConst[3] = 0x40; // magnitude = 16384
+        mgr.handleReport(setConst, sizeof(setConst), 0);
+        mgr.operation(1, 1, 0); // startMs = 0
+
+        CHECK(std::fabs(mgr.computeForce(0.0f, 0.0f, 200)) < 1e-3f); // 200 >= 100 -> expirado
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);

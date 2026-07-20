@@ -12,10 +12,149 @@
 
 #include "../base_shared/ffb_effects.h"
 
+#include <cmath>
+#include <cstdint>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 static constexpr int kEffectSlots = 20;
 
 class EffectManager {
     FxEffect m_slots[kEffectSlots];
+
+    // Estado p/ estimar aceleração (efeito Inertia) entre chamadas de
+    // computeForce — um único "sensor" compartilhado por todos os slots
+    // (não há um por-efeito porque pos/vel vêm do eixo físico único).
+    float m_prevVel = 0.0f;
+    uint32_t m_prevMs = 0;
+    bool m_hasPrev = false;
+
+    // ---- Normalização física (metric em [-1,1] p/ efeitos Condition) ----
+    // AJUSTAR na bancada: valores placeholder até medir o curso real do
+    // volante/pedal e a velocidade angular máxima observada.
+public:
+    static constexpr float kMaxPosRad = 3.14159265358979323846f; // AJUSTAR na bancada: curso físico (±180°) até endstop
+    static constexpr float kMaxVel = 20.0f;                       // AJUSTAR na bancada: velocidade angular máx. observada (rad/s)
+    static constexpr float kMaxAccel = 500.0f;                    // AJUSTAR na bancada: aceleração angular máx. observada (rad/s^2)
+
+private:
+    static float clamp1(float v) {
+        if (v > 1.0f) return 1.0f;
+        if (v < -1.0f) return -1.0f;
+        return v;
+    }
+
+    // Fator de envelope (0..1) — só se aplica a Constant/Ramp/Periodic.
+    // attackLevel/fadeLevel são frações [0,32767]->[0,1] do nível de partida
+    // (attack) / chegada (fade); sustain = 1.0 entre os dois trechos.
+    static float envelopeFactor(const FxEffect& e, uint32_t nowMs) {
+        if (e.attackMs == 0 && e.fadeMs == 0) return 1.0f;
+
+        const uint32_t t = nowMs - e.startMs;
+        float factor = 1.0f;
+
+        if (e.attackMs > 0 && t < e.attackMs) {
+            const float p = (float)t / (float)e.attackMs;
+            const float lvl = e.attackLevel / 32767.0f;
+            factor = lvl + p * (1.0f - lvl);
+        }
+
+        if (e.durationMs > 0 && e.fadeMs > 0) {
+            const uint32_t fadeStart = (e.fadeMs >= e.durationMs) ? 0 : (e.durationMs - e.fadeMs);
+            if (t >= fadeStart) {
+                float p = (float)(t - fadeStart) / (float)e.fadeMs;
+                if (p > 1.0f) p = 1.0f;
+                const float lvl = e.fadeLevel / 32767.0f;
+                factor = 1.0f + p * (lvl - 1.0f);
+            }
+        }
+
+        return factor;
+    }
+
+    // Força "crua" (±32767) de um efeito Constant/Ramp/Periodic, sem
+    // envelope/gain (aplicados depois, no chamador).
+    static float baseForceTimeDomain(const FxEffect& e, uint32_t nowMs) {
+        switch (e.type) {
+            case FxType::Constant:
+                return (float)e.magnitude;
+
+            case FxType::Ramp: {
+                float p = 1.0f;
+                if (e.durationMs > 0) {
+                    p = (float)(nowMs - e.startMs) / (float)e.durationMs;
+                    if (p < 0.0f) p = 0.0f;
+                    if (p > 1.0f) p = 1.0f;
+                }
+                return (float)e.rampStart + p * (float)(e.rampEnd - e.rampStart);
+            }
+
+            case FxType::Square:
+            case FxType::Sine:
+            case FxType::Triangle:
+            case FxType::SawtoothUp:
+            case FxType::SawtoothDown: {
+                double x = 0.0;
+                if (e.period > 0) {
+                    const uint32_t t = nowMs - e.startMs;
+                    const double phaseFrac = e.phase / 36000.0; // centideg -> voltas
+                    x = std::fmod((double)t / (double)e.period + phaseFrac, 1.0);
+                    if (x < 0.0) x += 1.0;
+                }
+
+                double w = 0.0;
+                switch (e.type) {
+                    case FxType::Sine:         w = std::sin(2.0 * M_PI * x); break;
+                    case FxType::Square:       w = (x < 0.5) ? 1.0 : -1.0; break;
+                    case FxType::Triangle:     w = (x < 0.5) ? (4.0 * x - 1.0) : (3.0 - 4.0 * x); break;
+                    case FxType::SawtoothUp:   w = 2.0 * x - 1.0; break;
+                    case FxType::SawtoothDown: w = 1.0 - 2.0 * x; break;
+                    default: break; // inalcançável (guardado pelo switch externo)
+                }
+
+                return (float)(w * (double)e.magnitude16) + (float)e.offset;
+            }
+
+            default:
+                return 0.0f;
+        }
+    }
+
+    // Força "crua" (±32767) de um efeito Condition (Spring/Damper/
+    // Friction/Inertia), usando posRad/velRadPerSec/accel já normalizados.
+    float conditionForce(const FxEffect& e, float posRad, float velRadPerSec, float accel) const {
+        float metric = 0.0f;
+
+        switch (e.type) {
+            case FxType::Spring:
+                metric = clamp1(posRad / kMaxPosRad - e.centerOffset / 32767.0f);
+                break;
+            case FxType::Damper:
+                metric = clamp1(velRadPerSec / kMaxVel);
+                break;
+            case FxType::Friction:
+                metric = (velRadPerSec > 0.0f) ? 1.0f : (velRadPerSec < 0.0f ? -1.0f : 0.0f);
+                break;
+            case FxType::Inertia:
+                metric = clamp1(accel / kMaxAccel);
+                break;
+            default:
+                return 0.0f;
+        }
+
+        const float deadThresh = e.deadBand / 32767.0f;
+        if (std::fabs(metric) < deadThresh) return 0.0f;
+
+        const float coeff = (metric > 0.0f) ? (float)e.posCoeff : (float)e.negCoeff;
+        float raw = -(coeff / 32767.0f) * metric * 32767.0f; // = -coeff*metric
+
+        const float sat = (raw >= 0.0f) ? (float)e.posSat : (float)e.negSat;
+        if (std::fabs(raw) > sat) raw = (raw >= 0.0f) ? sat : -sat;
+
+        return raw;
+    }
 
 public:
     // Roteia UM OUT report host->device pro slot certo (por effectBlockIndex
@@ -115,4 +254,74 @@ public:
     }
 
     const FxEffect& slot(int i) const { return m_slots[i]; } // p/ testes
+
+    // Avalia TODOS os slots ativos e não-expirados, soma suas forças e
+    // devolve o resultado na escala [-255,255] (mesma da força constante
+    // reconstruída, p/ o engine somar direto). Puro: nowMs é explícito, não
+    // lê clock nenhum — testável sem placa.
+    //
+    // posRad/velRadPerSec: posição/velocidade angulares do eixo (rad,
+    // rad/s), usadas só pelos efeitos Condition (Spring/Damper/Friction/
+    // Inertia); normalizadas por kMaxPosRad/kMaxVel/kMaxAccel (placeholders
+    // "AJUSTAR na bancada").
+    float computeForce(float posRad, float velRadPerSec, uint32_t nowMs) {
+        // Estima aceleração (p/ Inertia) a partir da velocidade da chamada
+        // anterior. Guarda o estado ANTES de perturbá-lo com este cálculo.
+        float accel = 0.0f;
+        if (m_hasPrev) {
+            const uint32_t dtMs = nowMs - m_prevMs;
+            if (dtMs > 0) {
+                accel = (velRadPerSec - m_prevVel) / ((float)dtMs / 1000.0f);
+            }
+        }
+        m_prevVel = velRadPerSec;
+        m_prevMs = nowMs;
+        m_hasPrev = true;
+
+        if (!std::isfinite(posRad)) posRad = 0.0f;
+        if (!std::isfinite(velRadPerSec)) velRadPerSec = 0.0f;
+        if (!std::isfinite(accel)) accel = 0.0f;
+
+        int32_t acc = 0;
+
+        for (int i = 0; i < kEffectSlots; ++i) {
+            const FxEffect& e = m_slots[i];
+            if (!e.active) continue;
+            if (e.durationMs > 0 && (nowMs - e.startMs) >= e.durationMs) continue; // expirado
+
+            float f;
+            switch (e.type) {
+                case FxType::Constant:
+                case FxType::Ramp:
+                case FxType::Square:
+                case FxType::Sine:
+                case FxType::Triangle:
+                case FxType::SawtoothUp:
+                case FxType::SawtoothDown:
+                    f = baseForceTimeDomain(e, nowMs) * envelopeFactor(e, nowMs);
+                    break;
+
+                case FxType::Spring:
+                case FxType::Damper:
+                case FxType::Friction:
+                case FxType::Inertia:
+                    f = conditionForce(e, posRad, velRadPerSec, accel);
+                    break;
+
+                default:
+                    f = 0.0f;
+                    break;
+            }
+
+            f *= e.gain / 255.0f;
+
+            if (!std::isfinite(f)) f = 0.0f;
+            acc += (int32_t)f;
+        }
+
+        if (acc > 32767) acc = 32767;
+        if (acc < -32767) acc = -32767;
+
+        return (float)acc * 255.0f / 32767.0f;
+    }
 };
