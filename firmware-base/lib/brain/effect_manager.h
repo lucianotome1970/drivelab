@@ -19,7 +19,10 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-static constexpr int kEffectSlots = 20;
+// Deve cobrir todo o espaço de effect-block que o handshake Create New Effect do
+// m5 distribui (kMaxEffectBlocks=40): se for menor, blocos além do limite viram
+// no-op silencioso (Block Load responde Success mas o efeito não gera força).
+static constexpr int kEffectSlots = 40;
 
 class EffectManager {
     FxEffect m_slots[kEffectSlots];
