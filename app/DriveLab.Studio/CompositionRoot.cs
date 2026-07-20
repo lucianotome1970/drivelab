@@ -5,6 +5,7 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
 using DriveLab.Core.Update;
@@ -87,6 +88,7 @@ public static class CompositionRoot
         var simagicReader = new SimagicHidSharpReader();
         PedalDeviceSession pedalSession;
         Func<bool>? pedalPresent = null;
+        bool pedalIsRp2040 = false; // só nossa pedaleira P0 (HID) aceita EnterBootloader/atualização UF2.
         if (simulatorMode)
             pedalSession = new PedalDeviceSession(new SimulatorPedalTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
         else if (simagicReader.IsPresent() && !HidPedalTransport.IsDevicePresent())
@@ -98,6 +100,7 @@ public static class CompositionRoot
         {
             pedalSession = new PedalDeviceSession(new HidPedalTransport(new HidSharpChannel()), dispatcher, L.Get("Pedal_Source_Detected"));
             pedalPresent = HidPedalTransport.IsDevicePresent;
+            pedalIsRp2040 = true;
         }
         var pedals = new PedalsViewModel(pedalSession, new JsonPedalProfileStorage(), simulatorMode,
             new JsonNamedProfileStore<PedalProfile>("pedals"));
@@ -111,12 +114,14 @@ public static class CompositionRoot
         // Freio de mão: simulador → simulador; real → HID 0x0003 + hotplug.
         HandbrakeDeviceSession handbrakeSession;
         Func<bool>? handbrakePresent = null;
+        bool handbrakeIsRp2040 = false; // só o freio de mão HID real aceita EnterBootloader/atualização UF2.
         if (simulatorMode)
             handbrakeSession = new HandbrakeDeviceSession(new SimulatorHandbrakeTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
         else
         {
             handbrakeSession = new HandbrakeDeviceSession(new HidHandbrakeTransport(new HidSharpChannel()), dispatcher, L.Get("Handbrake_Source_Detected"));
             handbrakePresent = HidHandbrakeTransport.IsDevicePresent;
+            handbrakeIsRp2040 = true;
         }
         var handbrake = new HandbrakeViewModel(handbrakeSession, new JsonHandbrakeProfileStorage(), simulatorMode,
             new JsonNamedProfileStore<HandbrakeProfile>("handbrake"));
@@ -139,6 +144,7 @@ public static class CompositionRoot
         // + hotplug + LED ao vivo. Criado ANTES do dash p/ o card "Volante" acender pela conexão do aro.
         WheelDeviceSession wheelSession;
         Func<bool>? wheelPresent = null;
+        bool wheelIsRp2040 = false; // só o aro HID real aceita EnterBootloader/atualização UF2.
         if (simulatorMode)
         {
             wheelSession = new WheelDeviceSession(new SimulatorWheelTransport(), dispatcher, L.Get("Pedal_Source_Simulator"));
@@ -147,6 +153,7 @@ public static class CompositionRoot
         {
             wheelSession = new WheelDeviceSession(new HidWheelTransport(new HidSharpChannel()), dispatcher, L.Get("Wheel_Source_Detected"));
             wheelPresent = HidWheelTransport.IsDevicePresent;
+            wheelIsRp2040 = true;
         }
 
         // Home (dash): card do volante (acende com o aro) + card da base (força total) + resumo
@@ -173,6 +180,20 @@ public static class CompositionRoot
         // na bancada por que o bootloader (não) apareceu. Best-effort — nunca deixa o update falhar.
         Action<string>? dfuLog = simulatorMode ? null : BuildDfuDebugLog();
         var updateDevices = new List<IDeviceUpdater> { new BaseUpdater(transport, diagnostics: dfuLog) };
+
+        // RP2040 (pedal/handbrake/aro): só entram no dropdown de update quando o transporte é o
+        // HID real — o EnterBootloader (0x5A) é enviado pela própria sessão. No simulador/Simagic
+        // não há BOOTSEL a acionar, então pulamos.
+        if (pedalIsRp2040)
+            updateDevices.Add(new Rp2040Updater(DeviceKind.Pedal,
+                () => pedalSession.SendCommandAsync(PedalCommandId.EnterBootloader)));
+        if (handbrakeIsRp2040)
+            updateDevices.Add(new Rp2040Updater(DeviceKind.Handbrake,
+                () => handbrakeSession.SendCommandAsync(PedalCommandId.EnterBootloader)));
+        if (wheelIsRp2040)
+            updateDevices.Add(new Rp2040Updater(DeviceKind.Wheel,
+                () => wheelSession.SendCommandAsync(WheelCommandId.EnterBootloader)));
+
         var update = new UpdateViewModel(updateDevices, coordinator: updateCoordinator, baseSession: session);
 
         var pages = new List<NavItem>
