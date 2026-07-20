@@ -36,6 +36,15 @@ inline float ffbWatchdogGain(uint32_t dtSilentMs, uint32_t timeoutMs, uint32_t d
     return 1.0f - (float)over / (float)decayMs;
 }
 
+/// Device Gain global do HID PID (report 0x0D): o host/OS manda 0-255 e
+/// escala a força TOTAL do dispositivo. 255 = neutro (fator 1.0, sem
+/// mudança); 0 = força zerada. Pura, host-testável (sem motor/hardware) —
+/// usada tanto no teste quanto dentro de step(), pra a matemática testada
+/// ser exatamente a mesma que roda na bancada.
+inline float applyDeviceGain(float force, uint8_t gain) {
+    return force * (float)gain / 255.0f;
+}
+
 class FfbEngine {
 public:
     static constexpr uint32_t kFfbTimeoutMs = 500;  ///< silêncio tolerado antes de começar a decair (ms)
@@ -68,6 +77,11 @@ public:
 
     /// Chamar a cada report de FFB do host (m5) — reseta o relógio do watchdog.
     void notifyFfbActivity() { m_lastFfbMs = m_nowMs; }
+
+    /// Device Gain global do HID PID (report 0x0D) — o host/OS manda 0-255 e
+    /// escala a força TOTAL. Chamar do roteamento de OUT reports (m5).
+    void setDeviceGain(uint8_t g) { m_deviceGain = g; }
+    uint8_t deviceGain() const { return m_deviceGain; }
 
     /// Um tick do laço (dt em segundos). Retorna o torque comandado (Nm).
     float step(float dt, IEncoder& enc, ICurrentSense& cs,
@@ -108,6 +122,7 @@ public:
         const float pos = enc.positionRad(), vel = enc.velocityRadPerSec();
         hostF += effects.computeForce(pos, vel, m_nowMs);                // soma aditiva dos efeitos PID (Constant já vem pelo reconstructor, pulado lá dentro)
         hostF *= ffbWatchdogGain(m_nowMs - m_lastFfbMs, kFfbTimeoutMs, kFfbDecayMs); // sinal perdido → decai a zero
+        hostF = applyDeviceGain(hostF, m_deviceGain);                    // Device Gain global do host (HID PID 0x0D)
         float t = computeTorque(hostF, pos, vel, force, effect, endstop); // força+efeitos+soft-stop
         if (cogging) t += cogging->compensation(pos);                   // feed-forward de cogging
         t = outputFilter.process(t);                                    // notch/low-pass opcional
@@ -125,6 +140,7 @@ private:
     float _prev = 0.0f;      ///< torque anterior (slew-rate)
     uint32_t m_nowMs = 0;    ///< clock acumulado do engine (ms) — ver nowMs()
     uint32_t m_lastFfbMs = 0; ///< timestamp do último report FFB (m_nowMs) — ver notifyFfbActivity()
+    uint8_t m_deviceGain = 255; ///< Device Gain global do host (HID PID 0x0D); 255 = neutro — ver setDeviceGain()
 };
 
 }  // namespace drivelab

@@ -15,6 +15,7 @@
 #include <cstdio>
 
 using drivelab::ffbWatchdogGain;
+using drivelab::applyDeviceGain;
 
 // ----- micro-harness (mesmo padrão de test_effect_manager.cpp) -----
 static int g_fails = 0, g_checks = 0;
@@ -34,6 +35,11 @@ int main() {
     // ---- além do decay: zero ----
     CHECK(ffbWatchdogGain(800, 500, 300) == 0.0f);
     CHECK(ffbWatchdogGain(2000, 500, 300) == 0.0f);
+
+    // ---- Device Gain (HID PID 0x0D): escala a força total ----
+    CHECK(applyDeviceGain(10.0f, 255) == 10.0f);                    // 255 = neutro (sem mudança)
+    CHECK(std::fabs(applyDeviceGain(10.0f, 128) - 5.02f) < 0.01f);  // 128 ≈ metade
+    CHECK(applyDeviceGain(10.0f, 0) == 0.0f);                       // 0 = força zerada
 
     if (g_fails == 0) std::printf("OK: %d checks\n", g_checks);
     return g_fails ? 1 : 0;

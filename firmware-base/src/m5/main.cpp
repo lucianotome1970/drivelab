@@ -224,6 +224,14 @@ static void hid_set_report_callback(uint8_t report_id,
     // somar dos dois lados duplicaria a força constante do jogo.
     engine.effects.handleReport(buffer, bufsize, engine.nowMs());
 
+    // Device Gain global (HID PID 0x0D): o host/OS manda 0-255 e escala a
+    // força TOTAL em step() (via applyDeviceGain). Separado do EffectManager
+    // — não é um efeito, é um ganho de dispositivo.
+    if (bufsize >= 2 && buffer[0] == RID_PID_DEVICE_GAIN)
+    {
+        engine.setDeviceGain(buffer[1]);
+    }
+
     FfbOut o = ffb_parse_out(buffer, bufsize);
     switch (o.type)
     {
