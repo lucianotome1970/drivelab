@@ -50,3 +50,7 @@ c++ -std=c++17 -I../lib/brain -I../lib/base_shared -Wall -Wextra -Werror -o "$ou
 out12="$(mktemp -d)/pid_state_test"
 c++ -std=c++17 -Wall -Wextra -Werror -o "$out12" test_pid_state.cpp
 "$out12"
+
+out13="$(mktemp -d)/clip_meter_test"
+c++ -std=c++17 -I../lib/brain -Wall -Wextra -Werror -o "$out13" test_clip_meter.cpp
+"$out13"

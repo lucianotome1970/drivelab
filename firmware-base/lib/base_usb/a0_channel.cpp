@@ -189,7 +189,7 @@ void A0Channel::serviceLoop(uint32_t nowMs, bool (*sender)(uint8_t, const uint8_
     if (nowMs - m_lastStateSendMs >= 15)
     {
         uint8_t payload[kA0PayloadLen];
-        uint16_t plen = buildDeviceStatePayload(payload, sensorMcuTempC());
+        uint16_t plen = buildDeviceStatePayload(payload, sensorMcuTempC(), m_clipping);
 
         if (sender(A0_RID_STATE, payload, plen))
         {

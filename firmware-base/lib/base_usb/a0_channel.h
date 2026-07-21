@@ -104,10 +104,11 @@ public:
     //   [15..16] BusVoltageMv — adiado (M1)
     //   [17]     MotorTempC — adiado (M1)
     //   [18]     McuTempC — único sensor real do M0.5 (sensorMcuTempC())
-    //   [19..62] reservado — zerado.
+    //   [19]     Clipping (0-255) — nível de corte do FFB (torque pedido além do teto); 0 sem placa/força
+    //   [20..62] reservado — zerado.
     // `out` deve ter >= kA0PayloadLen (63) bytes. Retorna o tamanho do
     // payload escrito (sempre kA0PayloadLen).
-    static uint16_t buildDeviceStatePayload(uint8_t* out, int8_t mcuTempC)
+    static uint16_t buildDeviceStatePayload(uint8_t* out, int8_t mcuTempC, uint8_t clipping = 0)
     {
         for (uint16_t i = 0; i < kA0PayloadLen; ++i)
         {
@@ -123,8 +124,12 @@ public:
         out[15] = 0; // BusVoltageMv (lo) — adiado (M1)
         out[16] = 0; // BusVoltageMv (hi) — adiado (M1)
         out[18] = static_cast<uint8_t>(mcuTempC);
+        out[19] = clipping;
         return kA0PayloadLen;
     }
+
+    /// Nível de clipping do FFB (0-255) a incluir na telemetria — alimentado pelo m5 com engine.clipping().
+    void setClipping(uint8_t c) { m_clipping = c; }
 
 private:
     BaseCfg m_cfg{};
@@ -136,6 +141,7 @@ private:
     bool m_cfgDirty = false;
     bool m_dfuRequested = false;
     bool m_forceEnabled = true;
+    uint8_t m_clipping = 0;   ///< último nível de clipping do FFB p/ a telemetria (setClipping)
 
     uint32_t m_lastStateSendMs = 0;
 };

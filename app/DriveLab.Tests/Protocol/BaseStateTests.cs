@@ -34,6 +34,7 @@ public class BaseStateTests
             BusVoltageMv = 23950,
             MotorTempC = 55,
             McuTempC = -128,
+            Clipping = 200,
         };
 
         var parsed = BaseState.Parse(state.ToBytes());
@@ -49,6 +50,8 @@ public class BaseStateTests
         Assert.Equal((ushort)23950, parsed.BusVoltageMv);
         Assert.Equal(55, parsed.MotorTempC);
         Assert.Equal(-128, parsed.McuTempC);
+        Assert.Equal(200, parsed.Clipping);
+        Assert.Equal(78, parsed.ClippingPercent);   // 200/255 ≈ 78%
     }
 
     [Fact]

@@ -24,10 +24,12 @@ public partial class HardwareMonitorViewModel : ViewModelBase
     [ObservableProperty] private string _fetTempText = "—";
     [ObservableProperty] private string _motorTempText = "—";
     [ObservableProperty] private string _mcuTempText = "—";
+    [ObservableProperty] private string _clippingText = "—";
     [ObservableProperty] private TelemetryLevel _busVoltageLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _fetTempLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _motorTempLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _mcuTempLevel = TelemetryLevel.Ok;
+    [ObservableProperty] private TelemetryLevel _clippingLevel = TelemetryLevel.Ok;
 
     public HardwareMonitorViewModel(BaseSession session)
     {
@@ -48,11 +50,19 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         FetTempText = TempText(s.FetTempC);
         MotorTempText = TempText(s.MotorTempC);
         McuTempText = TempText(s.McuTempC);
+        ClippingText = s.ClippingPercent + " %";
         BusVoltageLevel = VoltageLevel(s.BusVoltageMv);
         FetTempLevel = TempLevel(s.FetTempC);
         MotorTempLevel = TempLevel(s.MotorTempC);
         McuTempLevel = TempLevel(s.McuTempC);
+        ClippingLevel = ClipLevel(s.ClippingPercent);
     }
+
+    // Clipping: qualquer corte já é aviso (perda de detalhe); corte alto é crítico (baixar o ganho).
+    private static TelemetryLevel ClipLevel(int percent) =>
+        percent >= 50 ? TelemetryLevel.Critical
+        : percent >= 15 ? TelemetryLevel.Warning
+        : TelemetryLevel.Ok;
 
     private static string TempText(sbyte c) =>
         c == NoSensor ? LocalizationManager.Get("Monitor_NoSensor") : $"{c} {LocalizationManager.Get("Monitor_DegC")}";

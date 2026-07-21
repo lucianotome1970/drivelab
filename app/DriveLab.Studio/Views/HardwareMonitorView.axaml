@@ -17,7 +17,7 @@
     <Border Classes="card">
         <StackPanel Spacing="16">
             <TextBlock Text="{loc:Translate Monitor_Title}" Classes="h2" />
-            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate Monitor_BusVoltage}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding BusVoltageText}"
@@ -42,6 +42,11 @@
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding McuTempText}"
                            Foreground="{Binding McuTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Translate Monitor_Clipping}"
+                           Foreground="{DynamicResource DlText}" Margin="0,6" />
+                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ClippingText}"
+                           Foreground="{Binding ClippingLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
             </Grid>
         </StackPanel>
     </Border>

@@ -23,6 +23,13 @@ public sealed class BaseState
     public sbyte MotorTempC { get; set; }
     public sbyte McuTempC { get; set; }
 
+    /// <summary>Nível de clipping do FFB (0-255): quanto a força pedida pelo jogo passou do teto de torque e
+    /// foi cortada. 0 = sem corte. Preenchido pelo firmware (medidor no engine).</summary>
+    public byte Clipping { get; set; }
+
+    /// <summary>Clipping em 0..100% (derivado de <see cref="Clipping"/>).</summary>
+    public int ClippingPercent => (int)System.Math.Round(Clipping / 255.0 * 100);
+
     public byte[] ToBytes()
     {
         var buffer = new byte[ReportConstants.ReportSize];
@@ -38,6 +45,7 @@ public sealed class BaseState
         BinaryPrimitives.WriteUInt16LittleEndian(span.Slice(15, 2), BusVoltageMv);
         span[17] = (byte)MotorTempC;
         span[18] = (byte)McuTempC;
+        span[19] = Clipping;
         return buffer;
     }
 
@@ -54,5 +62,6 @@ public sealed class BaseState
         BusVoltageMv = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(15, 2)),
         MotorTempC = (sbyte)src[17],
         McuTempC = (sbyte)src[18],
+        Clipping = src[19],
     };
 }

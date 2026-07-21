@@ -63,6 +63,12 @@ int main()
     A0Channel::buildDeviceStatePayload(out2, -5);
     CHECK(static_cast<int8_t>(out2[18]) == -5);
 
+    // [19] Clipping — nível de corte do FFB (0-255), byte novo do medidor.
+    uint8_t out3[kA0PayloadLen];
+    A0Channel::buildDeviceStatePayload(out3, 28, 200);
+    CHECK(out3[19] == 200);
+    CHECK(out3[18] == 28);
+
     std::printf("a0_channel: %d checks, %d fails\n", g_checks, g_fails);
     return g_fails == 0 ? 0 : 1;
 }

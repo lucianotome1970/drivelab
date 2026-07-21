@@ -19,6 +19,7 @@
 #include "cogging.h"
 #include "filters.h"
 #include "oscillation.h"
+#include "clip_meter.h"
 #include "hal.h"
 #include "effect_manager.h"
 
@@ -61,6 +62,7 @@ public:
     const CoggingTable* cogging = nullptr; ///< feed-forward de cogging (opcional)
     OscillationDetector oscGuard;          ///< anti-tremor ativo (desinfla a força se detectar limit-cycle)
     EffectManager       effects;           ///< banco de efeitos PID do jogo (Sub-projeto 2) — soma aditiva no hostF
+    ClipMeter           clip;              ///< medidor de clipping (torque pedido além do teto) — exposto na telemetria
     bool  oscGuardEnabled  = false;        ///< liga o detector de oscilação
     float currentLimitA    = 8.0f;
     float maxSlewNmPerStep  = 0.0f;
@@ -83,6 +85,10 @@ public:
     void setDeviceGain(uint8_t g) { m_deviceGain = g; }
     uint8_t deviceGain() const { return m_deviceGain; }
 
+    /// Nível de clipping do FFB (0-255): quanto o torque pedido pelo jogo passou do teto e foi cortado.
+    /// 0 = sem corte; alto = baixar o ganho. Alimentado a cada step() e lido pela telemetria (m5).
+    uint8_t clipping() const { return clip.level255(); }
+
     /// Um tick do laço (dt em segundos). Retorna o torque comandado (Nm).
     float step(float dt, IEncoder& enc, ICurrentSense& cs,
                IPowerSense& pw, IBrakeResistor& br, IMotor& motor) {
@@ -101,6 +107,7 @@ public:
 
         if (!startup.forceEnabled()) {
             _prev = 0.0f;
+            clip.update(0.0f, force.torqueLimitNm, dt);     // sem força fluindo → o medidor decai a zero
             if (startup.state == MotorState::Aligning) {   // alinha o rotor open-loop
                 const float a = startup.alignTorque();
                 motor.setTorque(a);
@@ -114,16 +121,15 @@ public:
         float ia, ib, ic; cs.readPhaseCurrents(ia, ib, ic);
         if (overCurrent(ia, ib, ic, currentLimitA)) {
             guard.faulted = true; motor.disable(); _prev = 0.0f;
+            clip.update(0.0f, force.torqueLimitNm, dt);
             return 0.0f;
         }
 
         // 4) Pipeline de força.
-        float hostF = reconstructor.tick();                             // força do jogo reconstruída
         const float pos = enc.positionRad(), vel = enc.velocityRadPerSec();
-        hostF += effects.computeForce(pos, vel, m_nowMs);                // soma aditiva dos efeitos PID (Constant já vem pelo reconstructor, pulado lá dentro)
-        hostF *= ffbWatchdogGain(m_nowMs - m_lastFfbMs, kFfbTimeoutMs, kFfbDecayMs); // sinal perdido → decai a zero
-        hostF = applyDeviceGain(hostF, m_deviceGain);                    // Device Gain global do host (HID PID 0x0D)
-        float t = computeTorque(hostF, pos, vel, force, effect, endstop); // força+efeitos+soft-stop
+        const float demand = gameDemandTorque(pos, vel);                 // quanto o jogo pede (força+efeitos+soft-stop)
+        clip.update(demand, force.torqueLimitNm, dt);                    // clipping = demanda além do teto
+        float t = demand;
         if (cogging) t += cogging->compensation(pos);                   // feed-forward de cogging
         t = outputFilter.process(t);                                    // notch/low-pass opcional
         if (oscGuardEnabled) t *= oscGuard.update(vel, dt);             // anti-tremor ativo (desinfla se oscilar)
@@ -136,7 +142,26 @@ public:
         return t;
     }
 
+    /// Mede a demanda de força do jogo (alimenta o clip meter) SEM acionar o motor. Use no lugar de step()
+    /// enquanto o motor está desabilitado (bancada gated): assim o app já mostra o clipping da força que o
+    /// host manda (ex.: força constante da tela de Teste) sem girar nada. pos/vel opcionais (0 sem encoder).
+    void measureClipOnly(float dt, float pos = 0.0f, float vel = 0.0f) {
+        m_nowMs += (uint32_t)(dt * 1000.0f + 0.5f);
+        const float demand = gameDemandTorque(pos, vel);
+        clip.update(demand, force.torqueLimitNm, dt);
+    }
+
 private:
+    /// Demanda de torque do jogo: força reconstruída + efeitos PID + watchdog + device gain, passada por
+    /// computeTorque (força+efeitos+soft-stop). É o "quanto o jogo pede", antes de cogging/filtro/rampa/slew/teto.
+    float gameDemandTorque(float pos, float vel) {
+        float hostF = reconstructor.tick();                              // força do jogo reconstruída
+        hostF += effects.computeForce(pos, vel, m_nowMs);                // soma aditiva dos efeitos PID
+        hostF *= ffbWatchdogGain(m_nowMs - m_lastFfbMs, kFfbTimeoutMs, kFfbDecayMs); // sinal perdido → decai
+        hostF = applyDeviceGain(hostF, m_deviceGain);                    // Device Gain global do host (0x0D)
+        return computeTorque(hostF, pos, vel, force, effect, endstop);   // força+efeitos+soft-stop
+    }
+
     float _prev = 0.0f;      ///< torque anterior (slew-rate)
     uint32_t m_nowMs = 0;    ///< clock acumulado do engine (ms) — ver nowMs()
     uint32_t m_lastFfbMs = 0; ///< timestamp do último report FFB (m_nowMs) — ver notifyFfbActivity()

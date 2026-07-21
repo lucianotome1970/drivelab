@@ -167,6 +167,7 @@
   <data name="Monitor_FetTemp" xml:space="preserve"><value>Temperatura FET</value></data>
   <data name="Monitor_MotorTemp" xml:space="preserve"><value>Temperatura do motor</value></data>
   <data name="Monitor_McuTemp" xml:space="preserve"><value>Temperatura do MCU</value></data>
+  <data name="Monitor_Clipping" xml:space="preserve"><value>Clipping do FFB</value></data>
   <data name="Monitor_DegC" xml:space="preserve"><value>°C</value></data>
   <data name="Monitor_NoSensor" xml:space="preserve"><value>—</value></data>
 

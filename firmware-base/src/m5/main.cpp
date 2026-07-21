@@ -457,6 +457,20 @@ void loop()
         sensorsSample();
     }
 
+    // Medição de clipping do FFB mesmo com o motor OFF: mede a demanda do host (força constante da tela de
+    // Teste / efeitos PID do jogo) contra o teto de torque e publica na telemetria (byte 19). Deskside, sem
+    // 56V — o motor não gira; só medimos o quanto a força pedida passaria do teto. No Stage 1 (g_calibrated),
+    // é o próprio engine.step() que atualiza o clip meter; aqui só o publicamos.
+    {
+        static uint32_t lastClipUs = 0;
+        const uint32_t nowUs = micros();
+        const float clipDt = lastClipUs ? (nowUs - lastClipUs) * 1e-6f : 0.001f;
+        lastClipUs = nowUs;
+        if (!(g_calibrated && g_a0.forceEnabled()))
+            engine.measureClipOnly(clipDt);
+        g_a0.setClipping(engine.clipping());
+    }
+
     // Resposta deferida do A0 (0x16) + telemetria periódica (0x21).
     g_a0.serviceLoop(now, &UsbBase::sendReport);
 
