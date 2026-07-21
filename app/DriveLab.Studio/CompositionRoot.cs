@@ -220,7 +220,7 @@ public static class CompositionRoot
         releasesHttp.DefaultRequestHeaders.UserAgent.ParseAdd("DriveLab-Studio");
         var releaseClient = new DriveLab.Core.Update.GitHubReleaseClient(uri => releasesHttp.GetStringAsync(uri));
         var update = new UpdateViewModel(updateDevices, coordinator: updateCoordinator, baseSession: session,
-            releaseClient: releaseClient);
+            releaseClient: releaseClient, downloadBytes: uri => releasesHttp.GetByteArrayAsync(uri));
 
         // Auto-perfil por jogo: detecta o sim rodando (processo) e carrega o perfil casado em cada módulo,
         // setando ProfileLibrary.SelectedName (que já aplica). Mapa persistido em JSON.

@@ -35,6 +35,8 @@ public sealed partial class UpdateViewModel : ViewModelBase
     private readonly IDeviceAccessCoordinator? _coordinator;
     private readonly BaseSession? _baseSession;
     private readonly GitHubReleaseClient? _releaseClient;
+    private readonly Func<Uri, Task<byte[]>>? _downloadBytes;
+    private GitHubAsset? _pendingAsset;   // asset do último "verificar" p/ o "baixar e usar"
 
     // Estado que persiste entre Send (tentativa auto) e Continuar/Cancelar (etapa manual SW1→DFU):
     // qual dispositivo está sendo atualizado e se o acesso exclusivo à USB ainda está retido.
@@ -80,6 +82,11 @@ public sealed partial class UpdateViewModel : ViewModelBase
     public bool HasUpdateCheckMessage => !string.IsNullOrEmpty(UpdateCheckMessage);
     public bool CanCheckUpdates => _releaseClient is not null;
 
+    /// <summary>Há um asset baixável do último "verificar" (habilita "Baixar e usar").</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DownloadUpdateCommand))]
+    private bool _updateDownloadable;
+
     [ObservableProperty] private double _progress;
 
     [ObservableProperty]
@@ -98,7 +105,8 @@ public sealed partial class UpdateViewModel : ViewModelBase
 
     public UpdateViewModel(IReadOnlyList<IDeviceUpdater> devices, IFilePicker? filePicker = null,
         Func<string, Task<byte[]>>? readFile = null, IDeviceAccessCoordinator? coordinator = null,
-        BaseSession? baseSession = null, GitHubReleaseClient? releaseClient = null)
+        BaseSession? baseSession = null, GitHubReleaseClient? releaseClient = null,
+        Func<Uri, Task<byte[]>>? downloadBytes = null)
     {
         Devices = devices;
         _filePicker = filePicker ?? new AvaloniaFilePicker();
@@ -106,6 +114,7 @@ public sealed partial class UpdateViewModel : ViewModelBase
         _coordinator = coordinator;
         _baseSession = baseSession;
         _releaseClient = releaseClient;
+        _downloadBytes = downloadBytes;
         _selectedDevice = devices.Count > 0 ? devices[0] : null;
 
         if (_baseSession is not null)
@@ -137,6 +146,8 @@ public sealed partial class UpdateViewModel : ViewModelBase
     {
         RevalidateCurrentFile();
         UpdateCheckMessage = "";   // resultado do check é por-dispositivo
+        UpdateDownloadable = false;
+        _pendingAsset = null;
     }
 
     /// <summary>Consulta o GitHub e informa a última versão do dispositivo selecionado (e se é mais nova que a
@@ -147,6 +158,8 @@ public sealed partial class UpdateViewModel : ViewModelBase
         if (_releaseClient is null || SelectedDevice is null) return;
         var device = SelectedDevice;
         UpdateCheckMessage = "Verificando…";
+        UpdateDownloadable = false;
+        _pendingAsset = null;
         try
         {
             var releases = await _releaseClient.ListReleasesAsync();
@@ -169,12 +182,40 @@ public sealed partial class UpdateViewModel : ViewModelBase
             {
                 UpdateCheckMessage = $"Última no GitHub: v{v.Major}.{v.Minor}.{v.Patch}.";
             }
+
+            // Habilita "Baixar e usar" se o release traz o asset certo (.bin/.uf2) e sabemos baixar.
+            _pendingAsset = GitHubReleaseClient.AssetFor(latest, device.Kind);
+            UpdateDownloadable = _pendingAsset is not null && _downloadBytes is not null;
         }
         catch (Exception ex)
         {
             UpdateCheckMessage = $"Falha ao verificar: {ex.Message}";
         }
     }
+
+    /// <summary>Baixa o asset do release para um arquivo temporário e o carrega no fluxo de flash (valida na hora;
+    /// depois é só clicar Enviar). Não flasheia sozinho — o usuário confirma no botão Enviar.</summary>
+    [RelayCommand(CanExecute = nameof(CanDownloadUpdate))]
+    private async Task DownloadUpdateAsync()
+    {
+        if (_downloadBytes is null || _pendingAsset is null) return;
+        UpdateCheckMessage = "Baixando…";
+        try
+        {
+            var bytes = await _downloadBytes(new Uri(_pendingAsset.DownloadUrl));
+            var dest = Path.Combine(Path.GetTempPath(), _pendingAsset.Name);
+            await File.WriteAllBytesAsync(dest, bytes);
+            FirmwarePath = dest;
+            await ValidateAsync(dest);
+            UpdateCheckMessage = $"Baixado: {_pendingAsset.Name} — confira e clique Enviar.";
+        }
+        catch (Exception ex)
+        {
+            UpdateCheckMessage = $"Falha ao baixar: {ex.Message}";
+        }
+    }
+
+    private bool CanDownloadUpdate() => _downloadBytes is not null && _pendingAsset is not null && !IsSending;
 
     [RelayCommand]
     private async Task SelectFile()

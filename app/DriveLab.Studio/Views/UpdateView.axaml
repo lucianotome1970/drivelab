@@ -41,6 +41,8 @@
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button Content="{loc:Translate Update_Check}" Command="{Binding CheckUpdatesCommand}"
                             IsEnabled="{Binding !IsSending}" />
+                    <Button Classes="accent" Content="{loc:Translate Update_Download}" Command="{Binding DownloadUpdateCommand}"
+                            IsVisible="{Binding UpdateDownloadable}" />
                     <TextBlock Text="{Binding UpdateCheckMessage}" Classes="muted" VerticalAlignment="Center"
                                TextWrapping="Wrap" MaxWidth="420" IsVisible="{Binding HasUpdateCheckMessage}" />
                 </StackPanel>
