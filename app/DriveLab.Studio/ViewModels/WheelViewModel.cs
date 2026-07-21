@@ -26,9 +26,14 @@ public partial class WheelViewModel : ViewModelBase
 {
     private readonly IWheelProfileStorage _storage;
     private readonly WheelDeviceSession? _session;
+    private readonly DriveLab.Core.Telemetry.GameTelemetryService? _revService;
 
     /// <summary>Perfis nomeados do módulo (selecionar aplica; salvar como/renomear/excluir).</summary>
     public ProfileLibraryViewModel<WheelProfile> ProfileLibrary { get; }
+
+    /// <summary>Painel de rev-lights por telemetria (injetado após a construção pelo CompositionRoot).
+    /// Null quando não há serviço de telemetria (ex.: alguns testes).</summary>
+    public RevLightsViewModel? RevLights { get; set; }
 
     /// <summary>Só em modo /simulator o clique simula pressionar (acende). Em modo real o "aceso"
     /// vem da telemetria do firmware (via SetControlPressed), não do mouse.</summary>
@@ -112,11 +117,13 @@ public partial class WheelViewModel : ViewModelBase
     public bool ShowBottomPair => PaddleCount == 4;
 
     public WheelViewModel(IWheelProfileStorage storage, bool simulatorMode = false,
-                          WheelDeviceSession? session = null, INamedProfileStore<WheelProfile>? library = null)
+                          WheelDeviceSession? session = null, INamedProfileStore<WheelProfile>? library = null,
+                          DriveLab.Core.Telemetry.GameTelemetryService? revService = null)
     {
         _storage = storage;
         IsSimulator = simulatorMode;
         _session = session;
+        _revService = revService;
         SourceLabel = session?.SourceLabel ?? "";
         ProfileLibrary = new ProfileLibraryViewModel<WheelProfile>(library, Export, ApplyProfileToDevice);
         // Nome, posição normalizada (0-1 sobre a imagem quadrada wheel.png), cor padrão.
@@ -309,12 +316,25 @@ public partial class WheelViewModel : ViewModelBase
         IsConnected = _session?.IsConnected ?? false;
     }
 
-    /// <summary>Monta o WheelLed com as cores dos botões (pixels 0..N) e envia ao vivo.</summary>
+    /// <summary>Monta o WheelLed com as cores dos botões (pixels 0..N) e envia ao vivo. Quando os rev-lights
+    /// estão ativos, apenas atualiza as cores de botão do serviço — o laço de telemetria é quem envia o frame
+    /// completo (botões + barra), para não brigar pelo cordão de LEDs.</summary>
+    public void PushLedsNow() => PushLeds();
+
     private void PushLeds()
     {
+        var colors = Buttons.Select(b => HexToColor(b.ColorHex)).ToArray();
+
+        if (_revService is not null)
+        {
+            _revService.SetButtonColors(colors);
+            _revService.Brightness = LedBrightness;
+            if (_revService.IsRunning)
+                return;   // o laço de rev-lights é o dono da saída enquanto roda
+        }
+
         if (_session is null || !_session.IsConnected)
             return;
-        var colors = Buttons.Select(b => HexToColor(b.ColorHex)).ToArray();
         _ = _session.SendLedAsync(new WheelLedReport(LedBrightness, colors));
     }
 

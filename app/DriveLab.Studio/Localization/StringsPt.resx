@@ -30,6 +30,12 @@
   <data name="Wheel_Leds" xml:space="preserve"><value>Cores dos botões</value></data>
   <data name="Wheel_ConnectToEditColors" xml:space="preserve"><value>Conecte o volante para alterar as cores dos LEDs.</value></data>
   <data name="Wheel_Brightness" xml:space="preserve"><value>Brilho dos LEDs</value></data>
+  <data name="Wheel_RevLights" xml:space="preserve"><value>Rev-lights (telemetria)</value></data>
+  <data name="Wheel_RevLights_Desc" xml:space="preserve"><value>A barra de LEDs reage ao RPM do jogo (ACC/AC hoje; iRacing/rF2 em breve).</value></data>
+  <data name="Wheel_RevLights_Enable" xml:space="preserve"><value>Ativar</value></data>
+  <data name="Wheel_RevLights_Test" xml:space="preserve"><value>Modo de teste (varredura simulada)</value></data>
+  <data name="Wheel_RevLights_Source" xml:space="preserve"><value>Fonte</value></data>
+  <data name="Wheel_RevLights_Gear" xml:space="preserve"><value>Marcha</value></data>
   <data name="Profile_Label" xml:space="preserve"><value>Perfil</value></data>
   <data name="Profile_Placeholder" xml:space="preserve"><value>Selecione…</value></data>
   <data name="Profile_NameWatermark" xml:space="preserve"><value>Nome do perfil</value></data>

@@ -186,6 +186,23 @@
                             </StackPanel>
                             </StackPanel>
 
+                            <!-- Rev-lights por telemetria de jogo: liga a barra de LEDs ao RPM.
+                                 "Modo de teste" varre o RPM (validação de mesa, aro no USB, sem jogo). -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{loc:Translate Wheel_RevLights}" Classes="h2" />
+                                <TextBlock Text="{loc:Translate Wheel_RevLights_Desc}" Classes="muted" TextWrapping="Wrap" />
+                                <CheckBox IsChecked="{Binding RevLights.Enabled}" Content="{loc:Translate Wheel_RevLights_Enable}" />
+                                <CheckBox IsChecked="{Binding RevLights.TestMode}" Content="{loc:Translate Wheel_RevLights_Test}" />
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" IsVisible="{Binding RevLights.Enabled}">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate Wheel_RevLights_Source}" Classes="muted" Margin="0,0,12,2" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding RevLights.ActiveSource}" Margin="0,0,0,2" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="RPM" Classes="muted" Margin="0,0,12,2" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding RevLights.Rpm}" Margin="0,0,0,2" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate Wheel_RevLights_Gear}" Classes="muted" Margin="0,0,12,0" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding RevLights.Gear}" />
+                                </Grid>
+                            </StackPanel>
+
                             <!-- Pás (abaixo das cores). Desabilitada sem o aro conectado. -->
                             <StackPanel Spacing="10" IsEnabled="{Binding IsConnected}">
                             <TextBlock Text="{loc:Translate Wheel_Paddles}" Classes="h2" />

@@ -160,8 +160,22 @@ public static class CompositionRoot
         // ao vivo dos pedais e do freio de mão. Base usa a MESMA sessão FFB.
         var home = new HomeViewModel(new DashboardViewModel(session, wheelSession), pedals, handbrake, new BaseViewModel(session));
 
+        // Rev-lights por telemetria de jogo: serviço que lê a telemetria (ACC/AC hoje; iRacing/rF2 depois) e
+        // dirige a barra de LEDs do aro. Relógio monotônico compartilhado (varredura simulada + piscar do shift).
+        // Só envia quando o aro está conectado; degrada em silêncio sem jogo/fora do Windows.
+        var revClock = System.Diagnostics.Stopwatch.StartNew();
+        var revService = new DriveLab.Core.Telemetry.GameTelemetryService(
+            new DriveLab.Core.Telemetry.IGameTelemetrySource[]
+            {
+                new DriveLab.Core.Telemetry.Sources.AccSharedMemorySource(),
+            },
+            report => wheelSession.IsConnected ? wheelSession.SendLedAsync(report) : Task.CompletedTask,
+            () => revClock.Elapsed.TotalSeconds);
+
         var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode, wheelSession,
-            new JsonNamedProfileStore<WheelProfile>("wheel"));
+            new JsonNamedProfileStore<WheelProfile>("wheel"), revService);
+        wheel.RevLights = new RevLightsViewModel(revService, dispatcher,
+            () => revClock.Elapsed.TotalSeconds, wheel.PushLedsNow);
         if (wheelPresent is not null)
         {
             System.Console.WriteLine($"[DriveLab] Volante presente no arranque (HidSharp 0x1209:0x0004): {wheelPresent()}");

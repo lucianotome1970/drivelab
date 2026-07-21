@@ -30,6 +30,12 @@
   <data name="Wheel_Leds" xml:space="preserve"><value>Button colors</value></data>
   <data name="Wheel_ConnectToEditColors" xml:space="preserve"><value>Connect the wheel to change LED colors.</value></data>
   <data name="Wheel_Brightness" xml:space="preserve"><value>LED brightness</value></data>
+  <data name="Wheel_RevLights" xml:space="preserve"><value>Rev-lights (telemetry)</value></data>
+  <data name="Wheel_RevLights_Desc" xml:space="preserve"><value>The LED bar reacts to the game's RPM (ACC/AC now; iRacing/rF2 soon).</value></data>
+  <data name="Wheel_RevLights_Enable" xml:space="preserve"><value>Enable</value></data>
+  <data name="Wheel_RevLights_Test" xml:space="preserve"><value>Test mode (simulated sweep)</value></data>
+  <data name="Wheel_RevLights_Source" xml:space="preserve"><value>Source</value></data>
+  <data name="Wheel_RevLights_Gear" xml:space="preserve"><value>Gear</value></data>
   <data name="Profile_Label" xml:space="preserve"><value>Profile</value></data>
   <data name="Profile_Placeholder" xml:space="preserve"><value>Select…</value></data>
   <data name="Profile_NameWatermark" xml:space="preserve"><value>Profile name</value></data>
