@@ -188,6 +188,7 @@
   <data name="Update_Title" xml:space="preserve"><value>Atualizar firmware</value></data>
   <data name="Update_Device" xml:space="preserve"><value>Dispositivo</value></data>
   <data name="Update_SelectFile" xml:space="preserve"><value>Selecionar arquivo…</value></data>
+  <data name="Update_Check" xml:space="preserve"><value>Verificar atualizações</value></data>
   <data name="Update_NoFileSelected" xml:space="preserve"><value>Nenhum arquivo selecionado.</value></data>
   <data name="Update_Send" xml:space="preserve"><value>Enviar</value></data>
   <data name="Update_Warning" xml:space="preserve"><value>Não desconecte o dispositivo durante a atualização — interromper o flash pode deixá-lo inutilizável.</value></data>

@@ -189,6 +189,7 @@
   <data name="Update_Title" xml:space="preserve"><value>Firmware update</value></data>
   <data name="Update_Device" xml:space="preserve"><value>Device</value></data>
   <data name="Update_SelectFile" xml:space="preserve"><value>Select file…</value></data>
+  <data name="Update_Check" xml:space="preserve"><value>Check for updates</value></data>
   <data name="Update_NoFileSelected" xml:space="preserve"><value>No file selected.</value></data>
   <data name="Update_Send" xml:space="preserve"><value>Send</value></data>
   <data name="Update_Warning" xml:space="preserve"><value>Do not disconnect the device while updating — interrupting the flash can leave it unusable.</value></data>

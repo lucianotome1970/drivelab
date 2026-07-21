@@ -34,6 +34,7 @@ public sealed partial class UpdateViewModel : ViewModelBase
     private readonly Func<string, Task<byte[]>> _readFile;
     private readonly IDeviceAccessCoordinator? _coordinator;
     private readonly BaseSession? _baseSession;
+    private readonly GitHubReleaseClient? _releaseClient;
 
     // Estado que persiste entre Send (tentativa auto) e Continuar/Cancelar (etapa manual SW1→DFU):
     // qual dispositivo está sendo atualizado e se o acesso exclusivo à USB ainda está retido.
@@ -72,6 +73,13 @@ public sealed partial class UpdateViewModel : ViewModelBase
     public bool HasValidationMessage => !string.IsNullOrEmpty(ValidationMessage);
     public bool HasStatusMessage => !string.IsNullOrEmpty(StatusMessage);
 
+    /// <summary>Resultado do "verificar atualizações" no GitHub (última versão / nova disponível / erro).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdateCheckMessage))]
+    private string _updateCheckMessage = "";
+    public bool HasUpdateCheckMessage => !string.IsNullOrEmpty(UpdateCheckMessage);
+    public bool CanCheckUpdates => _releaseClient is not null;
+
     [ObservableProperty] private double _progress;
 
     [ObservableProperty]
@@ -90,13 +98,14 @@ public sealed partial class UpdateViewModel : ViewModelBase
 
     public UpdateViewModel(IReadOnlyList<IDeviceUpdater> devices, IFilePicker? filePicker = null,
         Func<string, Task<byte[]>>? readFile = null, IDeviceAccessCoordinator? coordinator = null,
-        BaseSession? baseSession = null)
+        BaseSession? baseSession = null, GitHubReleaseClient? releaseClient = null)
     {
         Devices = devices;
         _filePicker = filePicker ?? new AvaloniaFilePicker();
         _readFile = readFile ?? (path => File.ReadAllBytesAsync(path));
         _coordinator = coordinator;
         _baseSession = baseSession;
+        _releaseClient = releaseClient;
         _selectedDevice = devices.Count > 0 ? devices[0] : null;
 
         if (_baseSession is not null)
@@ -124,7 +133,48 @@ public sealed partial class UpdateViewModel : ViewModelBase
         ConnectedDeviceInfo = $"DriveLab Base detectada — firmware v{v.Major}.{v.Minor}.{v.Patch}";
     }
 
-    partial void OnSelectedDeviceChanged(IDeviceUpdater? value) => RevalidateCurrentFile();
+    partial void OnSelectedDeviceChanged(IDeviceUpdater? value)
+    {
+        RevalidateCurrentFile();
+        UpdateCheckMessage = "";   // resultado do check é por-dispositivo
+    }
+
+    /// <summary>Consulta o GitHub e informa a última versão do dispositivo selecionado (e se é mais nova que a
+    /// instalada, quando dá pra comparar — hoje só a base tem a versão via telemetria).</summary>
+    [RelayCommand]
+    private async Task CheckUpdatesAsync()
+    {
+        if (_releaseClient is null || SelectedDevice is null) return;
+        var device = SelectedDevice;
+        UpdateCheckMessage = "Verificando…";
+        try
+        {
+            var releases = await _releaseClient.ListReleasesAsync();
+            var prefix = GitHubReleaseClient.TagPrefixFor(device.Kind);
+            var latest = GitHubReleaseClient.LatestFor(releases, prefix);
+            if (latest is null)
+            {
+                UpdateCheckMessage = $"Nenhum release publicado para {device.Kind}.";
+                return;
+            }
+            GitHubReleaseClient.TryParseVersion(latest.TagName, prefix, out var v);
+            if (device.Kind == DeviceKind.Base && _baseSession is { IsConnected: true })
+            {
+                var inst = _baseSession.FirmwareVersion;
+                UpdateCheckMessage = GitHubReleaseClient.IsNewer(v, inst)
+                    ? $"⬆ Nova versão: v{v.Major}.{v.Minor}.{v.Patch} (instalada v{inst.Major}.{inst.Minor}.{inst.Patch})."
+                    : $"✓ Está atualizado (v{inst.Major}.{inst.Minor}.{inst.Patch}).";
+            }
+            else
+            {
+                UpdateCheckMessage = $"Última no GitHub: v{v.Major}.{v.Minor}.{v.Patch}.";
+            }
+        }
+        catch (Exception ex)
+        {
+            UpdateCheckMessage = $"Falha ao verificar: {ex.Message}";
+        }
+    }
 
     [RelayCommand]
     private async Task SelectFile()
