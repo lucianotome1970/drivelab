@@ -36,6 +36,10 @@
   <data name="Wheel_RevLights_Test" xml:space="preserve"><value>Modo de teste (varredura simulada)</value></data>
   <data name="Wheel_RevLights_Source" xml:space="preserve"><value>Fonte</value></data>
   <data name="Wheel_RevLights_Gear" xml:space="preserve"><value>Marcha</value></data>
+  <data name="Wheel_Effects" xml:space="preserve"><value>Efeitos por telemetria (FFB)</value></data>
+  <data name="Wheel_Effects_Desc" xml:space="preserve"><value>Efeitos enviados à base a partir da telemetria do jogo (RPM, marcha, ABS, escorregamento).</value></data>
+  <data name="Wheel_Effects_Master" xml:space="preserve"><value>Ganho geral</value></data>
+  <data name="Wheel_Effects_Force" xml:space="preserve"><value>Força enviada</value></data>
   <data name="Profile_Label" xml:space="preserve"><value>Perfil</value></data>
   <data name="Profile_Placeholder" xml:space="preserve"><value>Selecione…</value></data>
   <data name="Profile_NameWatermark" xml:space="preserve"><value>Nome do perfil</value></data>

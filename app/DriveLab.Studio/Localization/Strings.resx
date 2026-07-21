@@ -36,6 +36,10 @@
   <data name="Wheel_RevLights_Test" xml:space="preserve"><value>Test mode (simulated sweep)</value></data>
   <data name="Wheel_RevLights_Source" xml:space="preserve"><value>Source</value></data>
   <data name="Wheel_RevLights_Gear" xml:space="preserve"><value>Gear</value></data>
+  <data name="Wheel_Effects" xml:space="preserve"><value>Telemetry effects (FFB)</value></data>
+  <data name="Wheel_Effects_Desc" xml:space="preserve"><value>Effects sent to the base from the game's telemetry (RPM, gear, ABS, slip).</value></data>
+  <data name="Wheel_Effects_Master" xml:space="preserve"><value>Master gain</value></data>
+  <data name="Wheel_Effects_Force" xml:space="preserve"><value>Force sent</value></data>
   <data name="Profile_Label" xml:space="preserve"><value>Profile</value></data>
   <data name="Profile_Placeholder" xml:space="preserve"><value>Select…</value></data>
   <data name="Profile_NameWatermark" xml:space="preserve"><value>Profile name</value></data>

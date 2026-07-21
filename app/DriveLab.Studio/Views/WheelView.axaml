@@ -203,6 +203,40 @@
                                 </Grid>
                             </StackPanel>
 
+                            <!-- Efeitos de FFB por telemetria (vão para a BASE): master + por efeito. -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{loc:Translate Wheel_Effects}" Classes="h2" />
+                                <TextBlock Text="{loc:Translate Wheel_Effects_Desc}" Classes="muted" TextWrapping="Wrap" />
+                                <CheckBox IsChecked="{Binding TelemetryEffects.Enabled}" Content="{loc:Translate Wheel_RevLights_Enable}" />
+                                <StackPanel Spacing="6" IsVisible="{Binding TelemetryEffects.Enabled}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Effects_Master}" Classes="muted" VerticalAlignment="Center" />
+                                        <Border Grid.Column="1" Classes="valueBox">
+                                            <TextBlock Text="{Binding TelemetryEffects.MasterGainPercent, StringFormat={}{0}%}" />
+                                        </Border>
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding TelemetryEffects.MasterGainPercent}" />
+                                    <ItemsControl ItemsSource="{Binding TelemetryEffects.Effects}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:TelemetryEffectViewModel">
+                                                <Grid ColumnDefinitions="Auto,64,*,Auto" Margin="0,4">
+                                                    <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                                                    <Slider Grid.Column="2" Minimum="0" Maximum="200" Value="{Binding GainPercent}" VerticalAlignment="Center" Margin="8,0" />
+                                                    <Border Grid.Column="3" Classes="valueBox" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding GainPercent, StringFormat={}{0}%}" />
+                                                    </Border>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                        <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Effects_Force}" Classes="muted" />
+                                        <TextBlock Grid.Column="1" Text="{Binding TelemetryEffects.ForcePercent, StringFormat={}{0}%}" />
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+
                             <!-- Pás (abaixo das cores). Desabilitada sem o aro conectado. -->
                             <StackPanel Spacing="10" IsEnabled="{Binding IsConnected}">
                             <TextBlock Text="{loc:Translate Wheel_Paddles}" Classes="h2" />

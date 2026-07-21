@@ -182,6 +182,7 @@ public static class CompositionRoot
             new JsonNamedProfileStore<WheelProfile>("wheel"), revService);
         wheel.RevLights = new RevLightsViewModel(revService, dispatcher,
             () => revClock.Elapsed.TotalSeconds, wheel.PushLedsNow);
+        wheel.TelemetryEffects = new TelemetryEffectsViewModel(revService, dispatcher);
         if (wheelPresent is not null)
         {
             System.Console.WriteLine($"[DriveLab] Volante presente no arranque (HidSharp 0x1209:0x0004): {wheelPresent()}");

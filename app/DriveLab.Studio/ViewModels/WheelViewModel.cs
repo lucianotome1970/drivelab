@@ -35,6 +35,10 @@ public partial class WheelViewModel : ViewModelBase
     /// Null quando não há serviço de telemetria (ex.: alguns testes).</summary>
     public RevLightsViewModel? RevLights { get; set; }
 
+    /// <summary>Painel dos efeitos de FFB por telemetria (injetado após a construção). Compartilha o mesmo
+    /// serviço de telemetria dos rev-lights; a força vai para a BASE.</summary>
+    public TelemetryEffectsViewModel? TelemetryEffects { get; set; }
+
     /// <summary>Só em modo /simulator o clique simula pressionar (acende). Em modo real o "aceso"
     /// vem da telemetria do firmware (via SetControlPressed), não do mouse.</summary>
     public bool IsSimulator { get; }
