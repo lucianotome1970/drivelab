@@ -43,6 +43,7 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_LINEARITY:
         case BID_COGGING_ENABLE:
         case BID_SLEW_RATE:
+        case BID_BUS_NOMINAL_V:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -80,6 +81,7 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_LINEARITY:            return &c.linearity;
         case BID_COGGING_ENABLE:       return &c.coggingEnable;
         case BID_SLEW_RATE:            return &c.slewRate;
+        case BID_BUS_NOMINAL_V:        return &c.busNominalV;
         default:                       return nullptr;
     }
 }
@@ -188,4 +190,5 @@ void baseSeedDefaults(BaseCfg& c) {
     c.linearity = 100;
     c.coggingEnable = 0;
     c.slewRate = 0;
+    c.busNominalV = 56;   // variante 56V da placa; o usuário ajusta conforme a fonte
 }

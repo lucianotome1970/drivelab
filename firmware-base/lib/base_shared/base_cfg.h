@@ -39,6 +39,7 @@
 #define BID_LINEARITY             24
 #define BID_COGGING_ENABLE        25
 #define BID_SLEW_RATE             26
+#define BID_BUS_NOMINAL_V         27
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -77,6 +78,7 @@ struct BaseCfg {
     uint8_t  linearity;           // BID_LINEARITY             UInt8 50..200 (÷100)
     uint8_t  coggingEnable;       // BID_COGGING_ENABLE        UInt8 0/1
     uint8_t  slewRate;            // BID_SLEW_RATE             UInt8 0..100
+    uint8_t  busNominalV;         // BID_BUS_NOMINAL_V         UInt8 (V nominal da fonte; deriva a janela busMin/max/over)
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.

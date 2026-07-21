@@ -148,6 +148,30 @@ int main() {
         CHECK(std::fabs(e.maxSlewNmPerStep - drivelab::kSlewMaxNmPerStep) < 1e-6f);
     }
 
+    // ----- tensão nominal → janela derivada (busMin/busMax/overVoltage) -----
+    {
+        // 56V (default da placa): min=39.2; over=56*1.08=60.48 → capado no teto 60; max=over.
+        BaseCfg c; baseSeedDefaults(c); c.busNominalV = 56;
+        FfbEngine e; applyCfgToEngine(c, e, kLoopHz);
+        CHECK(std::fabs(e.startup.cfg.busMinV - 39.2f) < 1e-3f);
+        CHECK(std::fabs(e.guard.overVoltageV - 60.0f) < 1e-3f);        // capado no teto do hardware
+        CHECK(std::fabs(e.startup.cfg.busMaxV - e.guard.overVoltageV) < 1e-6f);
+    }
+    {
+        // 24V: min=16.8; over=25.92 (abaixo do teto → sem cap).
+        BaseCfg c; baseSeedDefaults(c); c.busNominalV = 24;
+        FfbEngine e; applyCfgToEngine(c, e, kLoopHz);
+        CHECK(std::fabs(e.startup.cfg.busMinV - 16.8f) < 1e-3f);
+        CHECK(std::fabs(e.guard.overVoltageV - 25.92f) < 1e-3f);
+    }
+    {
+        // 48V: min=33.6; over=51.84.
+        BaseCfg c; baseSeedDefaults(c); c.busNominalV = 48;
+        FfbEngine e; applyCfgToEngine(c, e, kLoopHz);
+        CHECK(std::fabs(e.startup.cfg.busMinV - 33.6f) < 1e-3f);
+        CHECK(std::fabs(e.guard.overVoltageV - 51.84f) < 1e-3f);
+    }
+
     std::printf("apply_cfg: %d checks, %d fails\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

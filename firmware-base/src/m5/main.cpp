@@ -385,14 +385,13 @@ void setup()
     // objeto para esse dia.
     motor.voltage_limit = 2.0f;
 
-    // ---- Config do "cérebro" (lib/brain) — 56V, CONSERVADORA ----
+    // ---- Config do "cérebro" (lib/brain) — CONSERVADORA ----
     engine.force.maxTorqueNm   = 2.5f;  // nominal placeholder — AJUSTAR na bancada
     engine.force.torqueLimitNm = 1.0f;  // teto DURO de segurança, baixo neste passo
-    engine.startup.cfg.busMinV = 40.0f; // faixa 56V — abaixo disso, sem energia suficiente
-    engine.startup.cfg.busMaxV = 60.0f; // acima disso, já perto do limite de sobretensão
-    engine.guard.overVoltageV  = 60.0f; // corte duro de sobretensão (sistema 56V)
     engine.currentLimitA       = 1.5f;  // corte por sobrecorrente bem conservador
     engine.enableRequested     = false; // NUNCA setado true neste arquivo
+    // A janela de tensão (busMin/busMax/overVoltage) NÃO é mais hardcode: vem da tensão nominal escolhida pelo
+    // usuário (BID_BUS_NOMINAL_V), aplicada por applyCfgToEngine() abaixo — o DIYer casa com a fonte dele.
 
     // ---- USB (HID FFB+A0 combinado + CDC) — lib/base_usb/usb_base.{h,cpp} ----
     UsbBase::setReportCallbacks(hid_get_report_callback, hid_set_report_callback);

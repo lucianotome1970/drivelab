@@ -26,6 +26,10 @@ static constexpr float kFrictionMaxNm     = 1.0f;   // friction 100% → 1.0 Nm
 static constexpr float kEndstopDampMax    = 0.5f;   // endstop damping 100% → 0.5 Nm/(rad/s)
 static constexpr float kGameForceHz       = 60.0f;  // taxa típica de FFB do jogo (p/ steps=auto)
 static constexpr float kSlewMaxNmPerStep  = 0.5f;   // slew rate 100% → 0.5 Nm/step. AJUSTAR na bancada.
+// Tensão do barramento: o usuário escolhe a NOMINAL (fonte) e derivamos a janela segura.
+static constexpr float kBusMinFraction    = 0.70f;  // motor não liga abaixo de 70% da nominal (tolera sag)
+static constexpr float kBusOverFraction   = 1.08f;  // corte de sobretensão a 108% da nominal (headroom p/ regen)
+static constexpr float kBusHardCeilingV   = 60.0f;  // TETO ABSOLUTO do hardware (FETs da placa 56V) — nunca passar
 
 /// Aplica todos os settings relacionados a força de `c` em `e` (config, sem tocar em estado
 /// dinâmico do motor). `loopHz` é a taxa do laço de torque (usada p/ steps=auto e p/ o biquad).
@@ -62,6 +66,15 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
     // (fora deste sub-projeto) — por isso `e.cogging` fica nullptr aqui mesmo com
     // coggingEnable=1. Quem carregar a tabela decide se/quando atribuir e.cogging.
     (void)c.coggingEnable;
+
+    // Janela de tensão do barramento derivada da nominal escolhida pelo usuário (fonte 24/36/48/56V…):
+    // busMin permite sag (motor não liga abaixo dela); a sobretensão é o corte duro (regen), SEMPRE limitado
+    // ao teto do hardware (FETs). Assim a tensão é escolha do usuário, não mais hardcode.
+    const float nominal = static_cast<float>(c.busNominalV);
+    e.startup.cfg.busMinV = nominal * kBusMinFraction;
+    const float over = nominal * kBusOverFraction;
+    e.guard.overVoltageV  = over < kBusHardCeilingV ? over : kBusHardCeilingV;
+    e.startup.cfg.busMaxV = e.guard.overVoltageV;
 }
 
 }  // namespace drivelab

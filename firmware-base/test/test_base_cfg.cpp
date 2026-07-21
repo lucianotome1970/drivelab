@@ -41,6 +41,22 @@ int main() {
         CHECK(c.linearity == 100);
         CHECK(c.coggingEnable == 0);
         CHECK(c.slewRate == 0);
+        CHECK(c.busNominalV == 56);
+    }
+
+    // round-trip do BID novo (tensão nominal): tipo UInt8, escreve/lê 48.
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        CHECK(baseTypeForField(BID_BUS_NOMINAL_V) == BT_UINT8);
+        uint8_t w[1] = { 48 };
+        baseWriteField(c, BID_BUS_NOMINAL_V, BT_UINT8, w, sizeof(w));
+        CHECK(c.busNominalV == 48);
+        uint8_t type = 0xFF, buf[4] = {0};
+        int n = baseReadField(c, BID_BUS_NOMINAL_V, &type, buf);
+        CHECK(n == 1);
+        CHECK(type == BT_UINT8);
+        CHECK(buf[0] == 48);
     }
 
     // ----- baseTypeForField -----

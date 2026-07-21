@@ -36,4 +36,5 @@ public enum BaseSettingId : byte
     Linearity = 24,
     CoggingEnable = 25,
     SlewRate = 26,
+    BusNominalV = 27,
 }
