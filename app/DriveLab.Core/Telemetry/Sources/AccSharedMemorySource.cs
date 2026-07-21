@@ -19,10 +19,13 @@ namespace DriveLab.Core.Telemetry.Sources;
 /// </summary>
 public sealed class AccSharedMemorySource : IGameTelemetrySource
 {
-    // Offsets (bytes) — SPageFilePhysics
-    private const int PhysicsGear = 16;   // int: 0=ré, 1=neutro, 2=1ª…
-    private const int PhysicsRpms = 20;   // int
-    private const int PhysicsSpeedKmh = 28;   // float
+    // Offsets (bytes) — SPageFilePhysics (campos estáveis compartilhados por AC e ACC)
+    private const int PhysicsGear = 16;    // int: 0=ré, 1=neutro, 2=1ª…
+    private const int PhysicsRpms = 20;    // int
+    private const int PhysicsSpeedKmh = 28;    // float
+    private const int PhysicsWheelSlip = 56;   // float[4] — escorregamento por roda
+    private const int PhysicsPitLimiter = 248; // int — limitador de pit
+    private const int PhysicsAbs = 252;    // float — intensidade do ABS atuando
     // SPageFileStatic
     private const int StaticMaxRpm = 410;  // int
     // SPageFileGraphics
@@ -50,6 +53,16 @@ public sealed class AccSharedMemorySource : IGameTelemetrySource
             int rpms = _physics.ReadInt32(PhysicsRpms);
             float speed = _physics.ReadSingle(PhysicsSpeedKmh);
             int maxRpm = _static.ReadInt32(StaticMaxRpm);
+            float absIntensity = _physics.ReadSingle(PhysicsAbs);
+            int pitLimiter = _physics.ReadInt32(PhysicsPitLimiter);
+
+            // Escorregamento: maior das 4 rodas (float[4] em PhysicsWheelSlip).
+            float slip = 0f;
+            for (int i = 0; i < 4; i++)
+            {
+                float s = _physics.ReadSingle(PhysicsWheelSlip + i * 4);
+                if (s > slip) slip = s;
+            }
 
             telemetry = new GameTelemetry
             {
@@ -59,7 +72,9 @@ public sealed class AccSharedMemorySource : IGameTelemetrySource
                 Gear = rawGear - 1,          // 0=ré→-1, 1=neutro→0, 2=1ª→1
                 SpeedKmh = speed,
                 Flag = GameFlag.None,        // TODO: mapear AC_FLAG_TYPE (offset validado no rig)
-                PitLimiter = false,
+                PitLimiter = pitLimiter != 0,
+                Abs = absIntensity,
+                Slip = slip,
                 HasData = status == StatusLive && maxRpm > 0,
             };
             return true;
