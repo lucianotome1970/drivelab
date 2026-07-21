@@ -131,7 +131,13 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
 
     if (buf[0] == A0_RID_DIRECT)
     {
-        SerialTinyUSB.printf("A0 direct len=%u (ignorado por ora)\n", len);
+        // Report DIRECT (0x10): payload espelha BaseDirectControl. Só usamos, por ora, a força ADITIVA de
+        // efeitos por telemetria (int16 em [9..10] do payload = buf[10..11], depois do report id em buf[0]).
+        if (len >= 12)
+        {
+            m_telemetryForce = (int16_t)((uint16_t)buf[10] | ((uint16_t)buf[11] << 8));
+            m_hasNewDirect = true;
+        }
         return true;
     }
 

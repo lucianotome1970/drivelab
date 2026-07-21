@@ -171,6 +171,12 @@ public static class CompositionRoot
             },
             report => wheelSession.IsConnected ? wheelSession.SendLedAsync(report) : Task.CompletedTask,
             () => revClock.Elapsed.TotalSeconds);
+        // Efeitos de FFB por telemetria (ABS/slip/marcha/RPM): o mesmo tick calcula a força aditiva e a manda
+        // à BASE pelo report DIRECT (o firmware soma via engine.setTelemetryForce). Só chega força se a base
+        // estiver conectada; no motor OFF aparece no medidor de clipping, no Stage 1 vira força real.
+        revService.EffectMixer = DriveLab.Core.Telemetry.Effects.TelemetryEffectMixer.CreateDefault();
+        revService.SendTelemetryForce = f => session.SendDirectControlAsync(
+            new BaseDirectControl { TelemetryForce = (short)System.Math.Clamp(f, -255f, 255f) });
 
         var wheel = new WheelViewModel(new JsonWheelProfileStorage(), simulatorMode, wheelSession,
             new JsonNamedProfileStore<WheelProfile>("wheel"), revService);

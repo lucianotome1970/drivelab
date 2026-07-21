@@ -6,6 +6,7 @@
 // ============================================================================
 
 using DriveLab.Core.Protocol;
+using DriveLab.Core.Telemetry.Effects;
 
 namespace DriveLab.Core.Telemetry;
 
@@ -44,6 +45,22 @@ public sealed class GameTelemetryService : IDisposable
 
     /// <summary>Fonte forçada (ex.: simulada) — quando definida, ignora a auto-seleção das fontes reais.</summary>
     public IGameTelemetrySource? ForcedSource { get; set; }
+
+    /// <summary>Mixer de efeitos por telemetria (ABS/slip/marcha/RPM). Quando definido junto de
+    /// <see cref="SendTelemetryForce"/> e <see cref="EffectsEnabled"/>, cada tick envia a força aditiva à base.</summary>
+    public TelemetryEffectMixer? EffectMixer { get; set; }
+
+    /// <summary>Sink da força aditiva de telemetria (−255..255) → base (report DIRECT). Null = não envia.</summary>
+    public Func<float, Task>? SendTelemetryForce { get; set; }
+
+    /// <summary>Liga/desliga o envio dos efeitos por telemetria (independente dos rev-lights).</summary>
+    public bool EffectsEnabled { get; set; } = true;
+
+    /// <summary>Escala −1..1 → force255 aplicada à saída do mixer.</summary>
+    public float MaxTelemetryForce { get; set; } = 255f;
+
+    /// <summary>Última força de efeitos enviada (para exibição/depuração).</summary>
+    public float LastEffectForce { get; private set; }
 
     /// <summary>Nome da fonte que produziu o último tick (null = nenhuma disponível).</summary>
     public string? ActiveSourceName { get; private set; }
@@ -88,12 +105,22 @@ public sealed class GameTelemetryService : IDisposable
         return RevLightFrame.Build(buttons, bar, Brightness);
     }
 
-    /// <summary>Um passo: monta o frame e o envia. Retorna a telemetria lida.</summary>
+    /// <summary>Um passo: monta o frame dos LEDs, envia; se houver mixer+sink, calcula e envia a força de
+    /// efeitos por telemetria. Retorna a telemetria lida.</summary>
     public async Task<GameTelemetry> TickAsync()
     {
-        var report = BuildFrame(_nowSeconds(), out var t);
+        double now = _nowSeconds();
+        var report = BuildFrame(now, out var t);
         LastTelemetry = t;
         await _sendLeds(report).ConfigureAwait(false);
+
+        if (EffectsEnabled && EffectMixer is not null && SendTelemetryForce is not null)
+        {
+            float f = Math.Clamp(EffectMixer.Compute(t, now) * MaxTelemetryForce, -255f, 255f);
+            LastEffectForce = f;
+            await SendTelemetryForce(f).ConfigureAwait(false);
+        }
+
         TelemetryUpdated?.Invoke(this, t);
         return t;
     }

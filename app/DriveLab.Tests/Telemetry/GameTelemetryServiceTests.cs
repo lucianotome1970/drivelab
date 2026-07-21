@@ -7,6 +7,7 @@
 
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Telemetry;
+using DriveLab.Core.Telemetry.Effects;
 
 namespace DriveLab.Tests.Telemetry;
 
@@ -80,6 +81,37 @@ public class GameTelemetryServiceTests
         Assert.Equal(new WheelLedColor(10, 0, 0), report.Leds[9]);
         Assert.Equal(svc.Settings.ShiftColor, report.Leds[10]);     // barra no shift (redline, t=0 → aceso)
         Assert.Equal("ACC", svc.ActiveSourceName);
+    }
+
+    [Fact]
+    public async Task TickAsync_WithMixer_SendsTelemetryForce()
+    {
+        // Fonte com ABS=1 → AbsPulseEffect (gain 1) em t=0 → +1 → força 255.
+        var frame = new GameTelemetry { Rpm = 3000, MaxRpm = 8000, Abs = 1f, HasData = true };
+        var svc = Service(out _, new FakeSource("ACC", true, frame));
+        svc.EffectMixer = new TelemetryEffectMixer(new ITelemetryEffect[] { new AbsPulseEffect { Gain = 1f } });
+        float? sentForce = null;
+        svc.SendTelemetryForce = f => { sentForce = f; return Task.CompletedTask; };
+
+        await svc.TickAsync();
+
+        Assert.True(sentForce.HasValue);
+        Assert.Equal(255f, sentForce!.Value, 1f);
+        Assert.Equal(255f, svc.LastEffectForce, 1f);
+    }
+
+    [Fact]
+    public async Task TickAsync_EffectsDisabled_DoesNotSendForce()
+    {
+        var svc = Service(out _, new FakeSource("ACC", true, Redline()));
+        svc.EffectMixer = TelemetryEffectMixer.CreateDefault();
+        svc.EffectsEnabled = false;
+        bool sent = false;
+        svc.SendTelemetryForce = _ => { sent = true; return Task.CompletedTask; };
+
+        await svc.TickAsync();
+
+        Assert.False(sent);
     }
 
     [Fact]

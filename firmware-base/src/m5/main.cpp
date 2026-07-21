@@ -457,6 +457,23 @@ void loop()
         sensorsSample();
     }
 
+    // Força aditiva de efeitos por telemetria (app → report DIRECT 0x10). Aplica quando chega um valor novo e
+    // zera por timeout se o app parar de enviar (jogo fechado / efeitos desligados) — não deixa força presa.
+    {
+        static uint32_t lastDirectMs = 0;
+        int16_t tf;
+        if (g_a0.consumeTelemetryForce(tf))
+        {
+            engine.setTelemetryForce((float)tf);
+            lastDirectMs = now;
+        }
+        else if (lastDirectMs != 0 && now - lastDirectMs > 250)
+        {
+            engine.setTelemetryForce(0.0f);
+            lastDirectMs = 0;
+        }
+    }
+
     // Medição de clipping do FFB mesmo com o motor OFF: mede a demanda do host (força constante da tela de
     // Teste / efeitos PID do jogo) contra o teto de torque e publica na telemetria (byte 19). Deskside, sem
     // 56V — o motor não gira; só medimos o quanto a força pedida passaria do teto. No Stage 1 (g_calibrated),

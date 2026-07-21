@@ -17,6 +17,10 @@ public sealed class BaseDirectControl
     public short DamperForce { get; set; }
     public byte ForceDrop { get; set; }
 
+    /// <summary>Força aditiva de efeitos por telemetria (−255..255, unidades force255). O firmware a soma à
+    /// demanda (engine.setTelemetryForce), convivendo com o FFB do jogo. Ver <see cref="Telemetry.Effects"/>.</summary>
+    public short TelemetryForce { get; set; }
+
     public byte[] ToBytes()
     {
         var buffer = new byte[ReportConstants.ReportSize];
@@ -26,6 +30,7 @@ public sealed class BaseDirectControl
         BinaryPrimitives.WriteInt16LittleEndian(span.Slice(4, 2), PeriodicForce);
         BinaryPrimitives.WriteInt16LittleEndian(span.Slice(6, 2), DamperForce);
         span[8] = ForceDrop;
+        BinaryPrimitives.WriteInt16LittleEndian(span.Slice(9, 2), TelemetryForce);
         return buffer;
     }
 
@@ -36,5 +41,6 @@ public sealed class BaseDirectControl
         PeriodicForce = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(4, 2)),
         DamperForce = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(6, 2)),
         ForceDrop = src[8],
+        TelemetryForce = BinaryPrimitives.ReadInt16LittleEndian(src.Slice(9, 2)),
     };
 }

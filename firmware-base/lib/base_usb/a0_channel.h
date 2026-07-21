@@ -131,6 +131,17 @@ public:
     /// Nível de clipping do FFB (0-255) a incluir na telemetria — alimentado pelo m5 com engine.clipping().
     void setClipping(uint8_t c) { m_clipping = c; }
 
+    /// Consome a última força ADITIVA de telemetria recebida no report DIRECT (0x10). Retorna true (e o valor
+    /// em `out`, unidades force255) só quando chegou um report novo desde a última chamada — o m5 usa isso para
+    /// aplicar engine.setTelemetryForce e, no silêncio, zerar por timeout.
+    bool consumeTelemetryForce(int16_t& out)
+    {
+        if (!m_hasNewDirect) return false;
+        m_hasNewDirect = false;
+        out = m_telemetryForce;
+        return true;
+    }
+
 private:
     BaseCfg m_cfg{};
 
@@ -142,6 +153,8 @@ private:
     bool m_dfuRequested = false;
     bool m_forceEnabled = true;
     uint8_t m_clipping = 0;   ///< último nível de clipping do FFB p/ a telemetria (setClipping)
+    int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
+    bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()
 
     uint32_t m_lastStateSendMs = 0;
 };
