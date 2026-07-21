@@ -22,6 +22,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public ConnectionViewModel Connection { get; }
     public IReadOnlyList<NavItem> Pages { get; }
     public TestViewModel Test { get; }
+
+    /// <summary>Parada de emergência sempre acessível no topo (corta a força da base).</summary>
+    public EmergencyStopViewModel EStop { get; }
     public bool SimulatorMode { get; }
     public object CurrentPage => SelectedPage.Page;
     public string Title => "DriveLab Studio";
@@ -41,6 +44,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SimulatorMode = simulatorMode;
         _autoConnectors = autoConnectors ?? Array.Empty<IDisposable>();
         _selectedPage = pages[0];
+        EStop = new EmergencyStopViewModel(session);
     }
 
     partial void OnSelectedPageChanged(NavItem value)

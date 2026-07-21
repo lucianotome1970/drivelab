@@ -101,6 +101,21 @@
                             <TextBlock Text="{loc:Translate Badge_Simulator}" Foreground="#111111" FontSize="11" FontWeight="Bold" LetterSpacing="1" />
                         </Border>
                     </StackPanel>
+
+                    <!-- Parada de emergência: sempre acessível no topo; corta a força da base (SetForceEnabled=0). -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0"
+                                DataContext="{Binding #Root.((vm:MainWindowViewModel)DataContext).EStop}" x:DataType="vm:EmergencyStopViewModel">
+                        <Button Command="{Binding StopCommand}" IsVisible="{Binding !Engaged}"
+                                Background="#D63A3A" Foreground="White" FontWeight="Bold" CornerRadius="8" Padding="14,7"
+                                Content="{loc:Translate EStop_Stop}" ToolTip.Tip="{loc:Translate EStop_Tooltip}" />
+                        <Border IsVisible="{Binding Engaged}" Background="#D63A3A" CornerRadius="8" Padding="10,5">
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <TextBlock Text="{loc:Translate EStop_Engaged}" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" />
+                                <Button Command="{Binding RearmCommand}" Content="{loc:Translate EStop_Rearm}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
                     <!-- Sem status global de conexão: cada módulo (base, pedais, freio de mão, aro) conecta seu próprio dispositivo. -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
                         <Button Content="{loc:Translate Test_Button}" Click="OpenTest_Click" ToolTip.Tip="{loc:Translate Test_Tooltip}"

@@ -25,6 +25,10 @@
   <data name="AutoProfile_Enable" xml:space="preserve"><value>Enable auto-switch</value></data>
   <data name="AutoProfile_CurrentGame" xml:space="preserve"><value>Current game:</value></data>
   <data name="AutoProfile_Game" xml:space="preserve"><value>Game</value></data>
+  <data name="EStop_Stop" xml:space="preserve"><value>⏹ STOP</value></data>
+  <data name="EStop_Tooltip" xml:space="preserve"><value>Emergency stop: cuts the base force immediately.</value></data>
+  <data name="EStop_Engaged" xml:space="preserve"><value>FORCE STOPPED</value></data>
+  <data name="EStop_Rearm" xml:space="preserve"><value>Re-arm</value></data>
   <data name="Nav_Quit" xml:space="preserve"><value>Quit</value></data>
   <data name="Quit_Confirm_Message" xml:space="preserve"><value>Quit DriveLab Studio?</value></data>
   <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Quit</value></data>
