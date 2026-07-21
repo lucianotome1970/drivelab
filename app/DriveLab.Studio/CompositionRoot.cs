@@ -217,9 +217,26 @@ public static class CompositionRoot
 
         var update = new UpdateViewModel(updateDevices, coordinator: updateCoordinator, baseSession: session);
 
+        // Auto-perfil por jogo: detecta o sim rodando (processo) e carrega o perfil casado em cada módulo,
+        // setando ProfileLibrary.SelectedName (que já aplica). Mapa persistido em JSON.
+        var autoProfileStore = new JsonGameProfileMapStore();
+        var autoProfileMap = autoProfileStore.Load();
+        var gameDetector = new DriveLab.Core.Games.GameDetector(
+            () => System.Diagnostics.Process.GetProcesses().Select(p => p.ProcessName).ToList());
+        var autoProfileService = new AutoProfileService(gameDetector, () => autoProfileMap, dispatcher,
+            name => basePage.ProfileLibrary.SelectedName = name,
+            name => wheel.ProfileLibrary.SelectedName = name,
+            name => pedals.ProfileLibrary.SelectedName = name,
+            name => handbrake.ProfileLibrary.SelectedName = name);
+        var autoProfile = new AutoProfileViewModel(autoProfileService, autoProfileMap, autoProfileStore, dispatcher,
+            basePage.ProfileLibrary.Profiles, wheel.ProfileLibrary.Profiles,
+            pedals.ProfileLibrary.Profiles, handbrake.ProfileLibrary.Profiles);
+        autoProfileService.Enabled = autoProfileMap.Enabled;
+        if (autoProfileMap.Enabled) autoProfileService.Start();
+
         var pages = new List<NavItem>
         {
-            // Ordem da sidebar: Home · Base · Volante · Pedais · Freio de mão · Atualizar firmware
+            // Ordem da sidebar: Home · Base · Volante · Pedais · Freio de mão · Atualizar firmware · Auto-perfil
             // (o volante vem logo após a base). Os ícones em MainWindow.axaml seguem estes índices.
             new(L.Get("Nav_Home"), "\U0001F39B", home),
             new(L.Get("Nav_WheelBase"), "base", basePage, L.Get("Page_WheelBase")),
@@ -227,6 +244,7 @@ public static class CompositionRoot
             new(L.Get("Nav_Pedals"), "\U0001F9B6", pedals, L.Get("Pedal_Title")),
             new(L.Get("Nav_Handbrake"), "handbrake", handbrake, L.Get("Handbrake_Title")),
             new(L.Get("Nav_Update"), "update", update, L.Get("Update_Title")),
+            new(L.Get("Nav_AutoProfile"), "autoprofile", autoProfile, L.Get("AutoProfile_Title")),
         };
 
         // Teste (controle direto de força) não é uma aba: abre num modal à parte,

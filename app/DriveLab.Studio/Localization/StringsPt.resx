@@ -19,6 +19,12 @@
   <data name="Nav_Handbrake" xml:space="preserve"><value>Freio de mão</value></data>
   <data name="Nav_Wheel" xml:space="preserve"><value>Volante</value></data>
   <data name="Nav_Update" xml:space="preserve"><value>Atualizar firmware</value></data>
+  <data name="Nav_AutoProfile" xml:space="preserve"><value>Auto-perfil</value></data>
+  <data name="AutoProfile_Title" xml:space="preserve"><value>Auto-perfil por jogo</value></data>
+  <data name="AutoProfile_Desc" xml:space="preserve"><value>Detecta o sim rodando e carrega automaticamente o perfil escolhido em cada módulo. Deixe em branco para não trocar aquele módulo.</value></data>
+  <data name="AutoProfile_Enable" xml:space="preserve"><value>Ativar troca automática</value></data>
+  <data name="AutoProfile_CurrentGame" xml:space="preserve"><value>Jogo atual:</value></data>
+  <data name="AutoProfile_Game" xml:space="preserve"><value>Jogo</value></data>
   <data name="Nav_Quit" xml:space="preserve"><value>Sair</value></data>
   <data name="Quit_Confirm_Message" xml:space="preserve"><value>Deseja sair do DriveLab Studio?</value></data>
   <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Sair</value></data>

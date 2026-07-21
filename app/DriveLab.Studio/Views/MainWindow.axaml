@@ -61,6 +61,12 @@
                     </Viewbox>
                 </Button>
 
+                <!-- Auto-perfil por jogo -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[6].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[6]}">
+                    <TextBlock Text="&#x1F3AE;" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+
                 <!-- Separador antes da ação de sair -->
                 <Border Height="1" Width="28" Background="{DynamicResource DlBorder}" Margin="0,4" />
 

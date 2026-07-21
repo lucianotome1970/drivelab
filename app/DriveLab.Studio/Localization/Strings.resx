@@ -19,6 +19,12 @@
   <data name="Nav_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
   <data name="Nav_Wheel" xml:space="preserve"><value>Wheel</value></data>
   <data name="Nav_Update" xml:space="preserve"><value>Firmware update</value></data>
+  <data name="Nav_AutoProfile" xml:space="preserve"><value>Auto-profile</value></data>
+  <data name="AutoProfile_Title" xml:space="preserve"><value>Auto-profile per game</value></data>
+  <data name="AutoProfile_Desc" xml:space="preserve"><value>Detects the running sim and automatically loads the chosen profile in each module. Leave blank to keep that module unchanged.</value></data>
+  <data name="AutoProfile_Enable" xml:space="preserve"><value>Enable auto-switch</value></data>
+  <data name="AutoProfile_CurrentGame" xml:space="preserve"><value>Current game:</value></data>
+  <data name="AutoProfile_Game" xml:space="preserve"><value>Game</value></data>
   <data name="Nav_Quit" xml:space="preserve"><value>Quit</value></data>
   <data name="Quit_Confirm_Message" xml:space="preserve"><value>Quit DriveLab Studio?</value></data>
   <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Quit</value></data>

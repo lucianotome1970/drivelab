@@ -22,6 +22,9 @@ public sealed class ModuleProfiles
 /// <summary>Mapa persistível de <c>gameId</c> → <see cref="ModuleProfiles"/>. Serializa como JSON simples.</summary>
 public sealed class GameProfileMap
 {
+    /// <summary>Se a troca automática está ligada (persistido junto dos bindings).</summary>
+    public bool Enabled { get; set; }
+
     public Dictionary<string, ModuleProfiles> Bindings { get; set; } = new();
 
     /// <summary>Perfis mapeados para o jogo, ou null se não houver binding.</summary>
