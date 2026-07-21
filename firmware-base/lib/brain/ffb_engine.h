@@ -89,6 +89,13 @@ public:
     /// 0 = sem corte; alto = baixar o ganho. Alimentado a cada step() e lido pela telemetria (m5).
     uint8_t clipping() const { return clip.level255(); }
 
+    /// Força ADITIVA de efeitos por telemetria (SimHub-like), gerada pelo APP a partir da telemetria do jogo
+    /// (ABS/slip/marcha/RPM) e enviada à base. Somada à demanda em unidades de force255 (-255..255), depois do
+    /// device gain e SEM o watchdog do FFB do jogo — convive com o FFB do jogo, não o substitui. Respeita o
+    /// teto duro de torque como qualquer força. Chamar do roteamento de OUT reports (m5).
+    void setTelemetryForce(float force255) { m_telemetryForce = force255; }
+    float telemetryForce() const { return m_telemetryForce; }
+
     /// Um tick do laço (dt em segundos). Retorna o torque comandado (Nm).
     float step(float dt, IEncoder& enc, ICurrentSense& cs,
                IPowerSense& pw, IBrakeResistor& br, IMotor& motor) {
@@ -127,9 +134,9 @@ public:
 
         // 4) Pipeline de força.
         const float pos = enc.positionRad(), vel = enc.velocityRadPerSec();
-        const float demand = gameDemandTorque(pos, vel);                 // quanto o jogo pede (força+efeitos+soft-stop)
-        clip.update(demand, force.torqueLimitNm, dt);                    // clipping = demanda além do teto
-        float t = demand;
+        const float raw = gameDemandRaw(pos, vel);                       // demanda CRUA (sem teto): força+efeitos+soft-stop
+        clip.update(raw, force.torqueLimitNm, dt);                       // clipping = demanda crua além do teto
+        float t = clampf(raw, -force.torqueLimitNm, force.torqueLimitNm);// recorta ao teto (== computeTorque)
         if (cogging) t += cogging->compensation(pos);                   // feed-forward de cogging
         t = outputFilter.process(t);                                    // notch/low-pass opcional
         if (oscGuardEnabled) t *= oscGuard.update(vel, dt);             // anti-tremor ativo (desinfla se oscilar)
@@ -147,25 +154,28 @@ public:
     /// host manda (ex.: força constante da tela de Teste) sem girar nada. pos/vel opcionais (0 sem encoder).
     void measureClipOnly(float dt, float pos = 0.0f, float vel = 0.0f) {
         m_nowMs += (uint32_t)(dt * 1000.0f + 0.5f);
-        const float demand = gameDemandTorque(pos, vel);
-        clip.update(demand, force.torqueLimitNm, dt);
+        const float raw = gameDemandRaw(pos, vel);
+        clip.update(raw, force.torqueLimitNm, dt);
     }
 
 private:
-    /// Demanda de torque do jogo: força reconstruída + efeitos PID + watchdog + device gain, passada por
-    /// computeTorque (força+efeitos+soft-stop). É o "quanto o jogo pede", antes de cogging/filtro/rampa/slew/teto.
-    float gameDemandTorque(float pos, float vel) {
+    /// Demanda CRUA de torque (sem o teto): força reconstruída + efeitos PID + watchdog + device gain +
+    /// força de telemetria, passada por computeTorqueRaw. É o "quanto o jogo/efeitos pedem" — a base para
+    /// medir clipping. O teto é aplicado depois (em step()).
+    float gameDemandRaw(float pos, float vel) {
         float hostF = reconstructor.tick();                              // força do jogo reconstruída
         hostF += effects.computeForce(pos, vel, m_nowMs);                // soma aditiva dos efeitos PID
         hostF *= ffbWatchdogGain(m_nowMs - m_lastFfbMs, kFfbTimeoutMs, kFfbDecayMs); // sinal perdido → decai
         hostF = applyDeviceGain(hostF, m_deviceGain);                    // Device Gain global do host (0x0D)
-        return computeTorque(hostF, pos, vel, force, effect, endstop);   // força+efeitos+soft-stop
+        hostF += m_telemetryForce;                                       // efeitos por telemetria (app), aditivos, sem watchdog
+        return computeTorqueRaw(hostF, pos, vel, force, effect, endstop);// SEM teto (medição de clipping)
     }
 
     float _prev = 0.0f;      ///< torque anterior (slew-rate)
     uint32_t m_nowMs = 0;    ///< clock acumulado do engine (ms) — ver nowMs()
     uint32_t m_lastFfbMs = 0; ///< timestamp do último report FFB (m_nowMs) — ver notifyFfbActivity()
     uint8_t m_deviceGain = 255; ///< Device Gain global do host (HID PID 0x0D); 255 = neutro — ver setDeviceGain()
+    float m_telemetryForce = 0.0f; ///< força aditiva de efeitos por telemetria (app) — ver setTelemetryForce()
 };
 
 }  // namespace drivelab

@@ -112,8 +112,10 @@ inline float slewLimit(float target, float prev, float maxDelta) {
 /// Pipeline M5 (sem estado): força do jogo (direção+curva+ganho→Nm) + efeitos do device
 /// (mola/damper/atrito, do encoder) + soft-stop, com o teto duro sempre por último.
 /// hostForce em [-255,255] como FLOAT — aceita a força já reconstruída (contínua, não só o inteiro).
-inline float computeTorque(float hostForce, float positionRad, float velRadPerSec,
-                           const ForceConfig& fc, const EffectConfig& ef, const EndstopConfig& ec) {
+/// Igual ao computeTorque, mas SEM o teto duro final — devolve a demanda "crua" de torque (o quanto o jogo +
+/// efeitos pediram). Serve para MEDIR clipping (demanda crua vs teto): se |raw| > torqueLimitNm, cortou.
+inline float computeTorqueRaw(float hostForce, float positionRad, float velRadPerSec,
+                              const ForceConfig& fc, const EffectConfig& ef, const EndstopConfig& ec) {
     float norm = clampf(hostForce / 255.0f * fc.direction, -1.0f, 1.0f);
     norm = responseCurve(norm, fc.linearity);
     float t = norm * (fc.totalStrengthPct / 100.0f) * fc.maxTorqueNm;   // força do jogo → Nm
@@ -122,7 +124,13 @@ inline float computeTorque(float hostForce, float positionRad, float velRadPerSe
     t += frictionTorque(velRadPerSec, ef.frictionNm);
     t += endstopTorque(positionRad, ec);                                // fim de curso (mola)
     t += endstopDamping(positionRad, velRadPerSec, ec);                 // + amortecimento (não quica)
-    return clampf(t, -fc.torqueLimitNm, fc.torqueLimitNm);              // teto duro por último
+    return t;                                                           // SEM teto (para medir clipping)
+}
+
+inline float computeTorque(float hostForce, float positionRad, float velRadPerSec,
+                           const ForceConfig& fc, const EffectConfig& ef, const EndstopConfig& ec) {
+    return clampf(computeTorqueRaw(hostForce, positionRad, velRadPerSec, fc, ef, ec),
+                  -fc.torqueLimitNm, fc.torqueLimitNm);                 // teto duro por último
 }
 
 }  // namespace drivelab
