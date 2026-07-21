@@ -49,6 +49,13 @@ public readonly record struct GameTelemetry
     /// <summary>Limitador de pit engatado.</summary>
     public bool PitLimiter { get; init; }
 
+    /// <summary>Intensidade do ABS atuando (0 = inativo, ~1 = cortando forte). Usado pelo efeito de ABS pulsante.</summary>
+    public float Abs { get; init; }
+
+    /// <summary>Escorregamento das rodas (0 = aderência total; cresce ao perder aderência). Máx. das 4 rodas.
+    /// Usado pelo efeito de slip.</summary>
+    public float Slip { get; init; }
+
     /// <summary>Quadro válido (carro na pista, dados frescos). Fontes devem zerar isto no menu/replay parado.</summary>
     public bool HasData { get; init; }
 }
