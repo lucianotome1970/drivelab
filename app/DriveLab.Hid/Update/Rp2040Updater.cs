@@ -129,15 +129,21 @@ public sealed class Rp2040Updater : IDeviceUpdater
             volumeDir => Directory.Exists(volumeDir)));
 
     /// <summary>
-    /// Escreve o arquivo por stream puro. NÃO usar File.Copy: no Unix ele também tenta copiar
-    /// permissões/atributos para o destino, e o volume FAT do bootloader RP2040 rejeita isso com
-    /// "Access to the path is denied" (validado na bancada). Um write simples é o que o `cp`/drag-and-drop faz.
+    /// Escreve o arquivo do jeito mais "burro" possível — igual ao que `cp`/drag-and-drop fazem. Dois
+    /// achados de bancada (macOS 26, volume do bootloader montado como <c>msdos … fskit</c>):
+    /// <list type="number">
+    /// <item>NÃO usar <c>File.Copy</c>: no Unix ele também aplica permissões/atributos no destino, e o
+    /// volume FAT (montado <c>noowners</c>) rejeita → "Access to the path is denied".</item>
+    /// <item>NÃO pedir <see cref="FileShare.None"/>: isso faz o .NET tentar um lock exclusivo (flock) no
+    /// arquivo, que o FSKit/msdos não suporta → EPERM → o MESMO "Access denied".</item>
+    /// </list>
+    /// Por isso: abrir sem lock (<see cref="FileShare.ReadWrite"/>) e só escrever os bytes.
     /// </summary>
     private static void StreamCopy(string src, string dst)
     {
-        using var input = File.OpenRead(src);
-        using var output = new FileStream(dst, FileMode.Create, FileAccess.Write, FileShare.None);
-        input.CopyTo(output);
+        var bytes = File.ReadAllBytes(src);
+        using var output = new FileStream(dst, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+        output.Write(bytes, 0, bytes.Length);
         output.Flush();
     }
 
