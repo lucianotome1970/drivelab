@@ -195,6 +195,29 @@ public class Rp2040UpdaterTests
             updater.FlashAsync("/no/such/file.uf2", progress: null));
     }
 
+    [Fact]
+    public async Task FlashAsync_DefaultCopy_WritesFirmwareIntoVolume()
+    {
+        // SEM injetar copyFile → exercita o caminho REAL (StreamCopy), o mesmo usado no RPI-RP2.
+        // Guarda contra a regressão do File.Copy, que falhava com "Access denied" no volume FAT do bootloader.
+        var volume = Directory.CreateTempSubdirectory().FullName;
+        var srcPath = Path.Combine(Path.GetTempPath(), $"fw-{Guid.NewGuid():N}.uf2");
+        var bytes = BuildSignature(DeviceKind.Pedal);
+        await File.WriteAllBytesAsync(srcPath, bytes);
+        try
+        {
+            var updater = new Rp2040Updater(DeviceKind.Pedal, () => Task.CompletedTask, findVolume: () => volume);
+
+            await updater.FlashAsync(srcPath, progress: null);
+
+            Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(volume, "firmware.uf2")));
+        }
+        finally
+        {
+            try { File.Delete(srcPath); Directory.Delete(volume, recursive: true); } catch { /* limpeza best-effort */ }
+        }
+    }
+
     // --- Tolerância à ejeção do volume durante a gravação do .uf2 ---
 
     [Fact]

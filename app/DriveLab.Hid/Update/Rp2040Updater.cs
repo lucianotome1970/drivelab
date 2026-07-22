@@ -125,8 +125,21 @@ public sealed class Rp2040Updater : IDeviceUpdater
 
     private static Task DefaultCopyFile(string src, string dst) => Task.Run(() =>
         CopyToleratingEject(dst,
-            () => File.Copy(src, dst, overwrite: true),
+            () => StreamCopy(src, dst),
             volumeDir => Directory.Exists(volumeDir)));
+
+    /// <summary>
+    /// Escreve o arquivo por stream puro. NÃO usar File.Copy: no Unix ele também tenta copiar
+    /// permissões/atributos para o destino, e o volume FAT do bootloader RP2040 rejeita isso com
+    /// "Access to the path is denied" (validado na bancada). Um write simples é o que o `cp`/drag-and-drop faz.
+    /// </summary>
+    private static void StreamCopy(string src, string dst)
+    {
+        using var input = File.OpenRead(src);
+        using var output = new FileStream(dst, FileMode.Create, FileAccess.Write, FileShare.None);
+        input.CopyTo(output);
+        output.Flush();
+    }
 
     /// <summary>
     /// Copia tolerando a ejeção do volume: ao receber o .uf2, o bootloader RP2040 grava a flash e EJETA o
