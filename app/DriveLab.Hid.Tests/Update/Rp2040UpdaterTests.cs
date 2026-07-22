@@ -194,4 +194,35 @@ public class Rp2040UpdaterTests
         await Assert.ThrowsAsync<FileNotFoundException>(() =>
             updater.FlashAsync("/no/such/file.uf2", progress: null));
     }
+
+    // --- Tolerância à ejeção do volume durante a gravação do .uf2 ---
+
+    [Fact]
+    public void CopyToleratingEject_Success_When_CopyDoesNotThrow()
+    {
+        var ex = Record.Exception(() =>
+            Rp2040Updater.CopyToleratingEject("/Volumes/RPI-RP2/firmware.uf2", copy: () => { }, volumeExists: _ => true));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void CopyToleratingEject_Success_When_VolumeEjectedMidCopy()
+    {
+        // Copy lança IOException (volume sumiu no flush) E o volume não existe mais → é sucesso (gravou/reiniciou).
+        var ex = Record.Exception(() => Rp2040Updater.CopyToleratingEject(
+            "/Volumes/RPI-RP2/firmware.uf2",
+            copy: () => throw new IOException("device not configured"),
+            volumeExists: _ => false));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void CopyToleratingEject_Rethrows_When_VolumeStillMounted()
+    {
+        // Erro de verdade: copy falhou mas o volume continua montado → repropaga.
+        Assert.Throws<IOException>(() => Rp2040Updater.CopyToleratingEject(
+            "/Volumes/RPI-RP2/firmware.uf2",
+            copy: () => throw new IOException("disco cheio"),
+            volumeExists: _ => true));
+    }
 }

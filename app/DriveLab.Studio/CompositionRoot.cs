@@ -220,7 +220,20 @@ public static class CompositionRoot
         releasesHttp.DefaultRequestHeaders.UserAgent.ParseAdd("DriveLab-Studio");
         var releaseClient = new DriveLab.Core.Update.GitHubReleaseClient(uri => releasesHttp.GetStringAsync(uri));
         var update = new UpdateViewModel(updateDevices, coordinator: updateCoordinator, baseSession: session,
-            releaseClient: releaseClient, downloadBytes: uri => releasesHttp.GetByteArrayAsync(uri));
+            releaseClient: releaseClient, downloadBytes: uri => releasesHttp.GetByteArrayAsync(uri),
+            deviceStatus: kind => kind switch
+            {
+                DeviceKind.Pedal => (pedalSession.IsConnected, pedalSession.FirmwareVersion),
+                DeviceKind.Handbrake => (handbrakeSession.IsConnected, handbrakeSession.FirmwareVersion),
+                DeviceKind.Wheel => (wheelSession.IsConnected, wheelSession.FirmwareVersion),
+                _ => (session.IsConnected, session.FirmwareVersion),   // Base
+            });
+        // Selo do módulo Update reflete o dispositivo SELECIONADO: refresca quando qualquer módulo conecta/
+        // desconecta (a base já é escutada dentro do VM). Evita mostrar "sem conexão" da base ao atualizar o pedal.
+        void RefreshUpdateStatus(object? s, EventArgs e) => dispatcher.Post(update.RefreshStatus);
+        pedalSession.Connected += RefreshUpdateStatus; pedalSession.Disconnected += RefreshUpdateStatus;
+        handbrakeSession.Connected += RefreshUpdateStatus; handbrakeSession.Disconnected += RefreshUpdateStatus;
+        wheelSession.Connected += RefreshUpdateStatus; wheelSession.Disconnected += RefreshUpdateStatus;
 
         // Auto-perfil por jogo: detecta o sim rodando (processo) e carrega o perfil casado em cada módulo,
         // setando ProfileLibrary.SelectedName (que já aplica). Mapa persistido em JSON.

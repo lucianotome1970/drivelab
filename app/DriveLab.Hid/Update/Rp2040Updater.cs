@@ -123,6 +123,29 @@ public sealed class Rp2040Updater : IDeviceUpdater
         }
     }
 
-    private static Task DefaultCopyFile(string src, string dst) =>
-        Task.Run(() => File.Copy(src, dst, overwrite: true));
+    private static Task DefaultCopyFile(string src, string dst) => Task.Run(() =>
+        CopyToleratingEject(dst,
+            () => File.Copy(src, dst, overwrite: true),
+            volumeDir => Directory.Exists(volumeDir)));
+
+    /// <summary>
+    /// Copia tolerando a ejeção do volume: ao receber o .uf2, o bootloader RP2040 grava a flash e EJETA o
+    /// volume NO MEIO da cópia — a cópia então lança no flush/close (comportamento NORMAL do UF2, não falha).
+    /// Se o volume sumiu, o firmware foi aceito e a placa reiniciou = sucesso; se o volume AINDA existe, foi
+    /// erro de verdade → repropaga. Injetável para teste (copy + verificação de existência do volume).
+    /// </summary>
+    public static void CopyToleratingEject(string destPath, Action copy, Func<string, bool> volumeExists)
+    {
+        try
+        {
+            copy();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            var volumeDir = Path.GetDirectoryName(destPath);
+            if (volumeDir is not null && volumeExists(volumeDir))
+                throw;   // volume ainda montado → erro real
+            // volume ejetou → gravou e reiniciou. OK.
+        }
+    }
 }

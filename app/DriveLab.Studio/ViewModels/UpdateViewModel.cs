@@ -37,6 +37,7 @@ public sealed partial class UpdateViewModel : ViewModelBase
     private readonly GitHubReleaseClient? _releaseClient;
     private readonly Func<Uri, Task<byte[]>>? _downloadBytes;
     private GitHubAsset? _pendingAsset;   // asset do último "verificar" p/ o "baixar e usar"
+    private readonly Func<DeviceKind, (bool Connected, FirmwareVersion Version)>? _deviceStatus;
 
     // Estado que persiste entre Send (tentativa auto) e Continuar/Cancelar (etapa manual SW1→DFU):
     // qual dispositivo está sendo atualizado e se o acesso exclusivo à USB ainda está retido.
@@ -103,10 +104,14 @@ public sealed partial class UpdateViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(CancelDfuCommand))]
     private bool _needsManualDfu;
 
+    /// <summary>Instruções da etapa manual, específicas do dispositivo (RP2040 = BOOTSEL; base = SW1→DFU).</summary>
+    [ObservableProperty] private string _manualInstructions = "";
+
     public UpdateViewModel(IReadOnlyList<IDeviceUpdater> devices, IFilePicker? filePicker = null,
         Func<string, Task<byte[]>>? readFile = null, IDeviceAccessCoordinator? coordinator = null,
         BaseSession? baseSession = null, GitHubReleaseClient? releaseClient = null,
-        Func<Uri, Task<byte[]>>? downloadBytes = null)
+        Func<Uri, Task<byte[]>>? downloadBytes = null,
+        Func<DeviceKind, (bool, FirmwareVersion)>? deviceStatus = null)
     {
         Devices = devices;
         _filePicker = filePicker ?? new AvaloniaFilePicker();
@@ -115,6 +120,7 @@ public sealed partial class UpdateViewModel : ViewModelBase
         _baseSession = baseSession;
         _releaseClient = releaseClient;
         _downloadBytes = downloadBytes;
+        _deviceStatus = deviceStatus;
         _selectedDevice = devices.Count > 0 ? devices[0] : null;
 
         if (_baseSession is not null)
@@ -124,23 +130,59 @@ public sealed partial class UpdateViewModel : ViewModelBase
             _baseSession.Connected += OnBaseConnectionChanged;
             _baseSession.Disconnected += OnBaseConnectionChanged;
             _baseSession.StateReceived += OnBaseStateReceived;
-            RefreshConnectedInfo();
         }
+        RefreshStatus();
     }
 
-    private void OnBaseConnectionChanged(object? sender, EventArgs e) => RefreshConnectedInfo();
-    private void OnBaseStateReceived(object? sender, BaseState e) => RefreshConnectedInfo();
+    private void OnBaseConnectionChanged(object? sender, EventArgs e) => RefreshStatus();
+    private void OnBaseStateReceived(object? sender, BaseState e) => RefreshStatus();
 
-    private void RefreshConnectedInfo()
+    /// <summary>Atualiza o selo de status para refletir o DISPOSITIVO SELECIONADO (não só a base). Chamado ao
+    /// trocar de dispositivo e nos eventos de conexão das sessões (a base internamente; as demais via
+    /// CompositionRoot). Sem provider (`deviceStatus` null), cai no comportamento antigo (só a base).</summary>
+    public void RefreshStatus()
     {
-        if (_baseSession is null || !_baseSession.IsConnected)
+        var kind = SelectedDevice?.Kind;
+        if (kind is null)
         {
-            ConnectedDeviceInfo = "Nenhuma placa detectada.";
+            ConnectedDeviceInfo = "Selecione um dispositivo.";
             return;
         }
-        var v = _baseSession.FirmwareVersion;
-        ConnectedDeviceInfo = $"DriveLab Base detectada — firmware v{v.Major}.{v.Minor}.{v.Patch}";
+
+        if (_deviceStatus is null)
+        {
+            // Fallback (sem provider): comportamento antigo, só a base.
+            if (_baseSession is null || !_baseSession.IsConnected)
+            {
+                ConnectedDeviceInfo = "Nenhuma placa detectada.";
+                return;
+            }
+            var vb = _baseSession.FirmwareVersion;
+            ConnectedDeviceInfo = $"DriveLab Base detectada — firmware v{vb.Major}.{vb.Minor}.{vb.Patch}";
+            return;
+        }
+
+        var (connected, v) = _deviceStatus(kind.Value);
+        var label = DeviceLabel(kind.Value);
+        if (!connected)
+        {
+            ConnectedDeviceInfo = $"{label}: sem conexão.";
+            return;
+        }
+        bool hasVersion = v.Major != 0 || v.Minor != 0 || v.Patch != 0;
+        ConnectedDeviceInfo = hasVersion
+            ? $"{label} conectado — firmware v{v.Major}.{v.Minor}.{v.Patch}"
+            : $"{label} conectado.";
     }
+
+    private static string DeviceLabel(DeviceKind kind) => kind switch
+    {
+        DeviceKind.Base => "Base",
+        DeviceKind.Pedal => "Pedal",
+        DeviceKind.Handbrake => "Freio de mão",
+        DeviceKind.Wheel => "Volante",
+        _ => kind.ToString(),
+    };
 
     partial void OnSelectedDeviceChanged(IDeviceUpdater? value)
     {
@@ -148,6 +190,7 @@ public sealed partial class UpdateViewModel : ViewModelBase
         UpdateCheckMessage = "";   // resultado do check é por-dispositivo
         UpdateDownloadable = false;
         _pendingAsset = null;
+        RefreshStatus();           // selo reflete o dispositivo agora selecionado
     }
 
     /// <summary>Consulta o GitHub e informa a última versão do dispositivo selecionado (e se é mais nova que a
@@ -301,10 +344,9 @@ public sealed partial class UpdateViewModel : ViewModelBase
             }
             else
             {
-                // O salto por software não subiu o bootloader (conhecido nesta placa). Cai pro
-                // gatilho manual: mantém o acesso exclusivo retido e pede SW1→DFU + power-cycle.
-                NeedsManualDfu = true;
-                StatusMessage = "A placa não entrou em DFU sozinha. Coloque a chave SW1 em DFU, faça um power-cycle (RESET/energia) e clique em Continuar.";
+                // O salto por software não subiu o bootloader. Cai pro gatilho manual: mantém o acesso
+                // exclusivo retido e mostra a instrução CERTA do dispositivo (SW1→DFU na base; BOOTSEL no RP2040).
+                EnterManualMode(device);
             }
         }
         catch (Exception ex)
@@ -340,8 +382,10 @@ public sealed partial class UpdateViewModel : ViewModelBase
             }
             else
             {
-                // Continua na etapa manual — deixa o usuário conferir a chave/reset e tentar de novo.
-                StatusMessage = "Ainda não vejo o bootloader (0483:df11). Confirme SW1 em DFU + power-cycle e clique em Continuar de novo.";
+                // Continua na etapa manual — deixa o usuário conferir e tentar de novo (texto por dispositivo).
+                StatusMessage = device.Kind == DeviceKind.Base
+                    ? "Ainda não vejo o bootloader (0483:df11). Confirme SW1 em DFU + power-cycle e clique em Continuar de novo."
+                    : "Ainda não vejo o volume RPI-RP2. Confirme o BOOTSEL e clique em Continuar de novo.";
             }
         }
         catch (Exception ex)
@@ -363,6 +407,23 @@ public sealed partial class UpdateViewModel : ViewModelBase
         StatusMessage = "Atualização cancelada.";
         NeedsManualDfu = false;
         await ReleaseExclusiveAsync();
+    }
+
+    /// <summary>Entra na etapa manual com a instrução CERTA do dispositivo: base = SW1→DFU (STM32);
+    /// RP2040 (pedal/freio/aro) = BOOTSEL (RPI-RP2).</summary>
+    private void EnterManualMode(IDeviceUpdater device)
+    {
+        NeedsManualDfu = true;
+        if (device.Kind == DeviceKind.Base)
+        {
+            StatusMessage = "A placa não entrou em DFU sozinha. Coloque a chave SW1 em DFU, faça um power-cycle (RESET/energia) e clique em Continuar.";
+            ManualInstructions = "1) Coloque a chave SW1 da placa em DFU.\n2) Faça um power-cycle (RESET ou tire/recoloque a energia).\n3) Clique em Continuar.";
+        }
+        else
+        {
+            StatusMessage = "O dispositivo não entrou em BOOTSEL sozinho (firmware antigo, sem o comando?). Coloque-o em BOOTSEL e clique em Continuar.";
+            ManualInstructions = "1) Segure o botão BOOT da placa e conecte o USB (ou, já plugado: segure BOOT, aperte e solte RESET, solte BOOT).\n2) O volume RPI-RP2 deve aparecer no Finder.\n3) Clique em Continuar.";
+        }
     }
 
     private async Task FlashAndReportAsync(IDeviceUpdater device)
