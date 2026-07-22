@@ -29,7 +29,7 @@
 // ----------------------------------------------------------------------
 namespace
 {
-constexpr uint32_t kBaseFlashMagic = 0x444C4232; // "DLB2" (bump: BaseCfg ganhou busNominalV → reseed defaults)
+constexpr uint32_t kBaseFlashMagic = 0x444C4233; // "DLB3" (bump: BaseCfg ganhou ffbCurve[5] → reseed defaults)
 constexpr int kBaseFlashMagicAddr = 0;
 constexpr int kBaseFlashCfgAddr = kBaseFlashMagicAddr + sizeof(kBaseFlashMagic);
 } // namespace

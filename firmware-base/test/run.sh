@@ -58,3 +58,7 @@ c++ -std=c++17 -I../lib/brain -Wall -Wextra -Werror -o "$out13" test_clip_meter.
 out14="$(mktemp -d)/telemetry_force_test"
 c++ -std=c++17 -I../lib/brain -I../lib/base_shared -Wall -Wextra -Werror -o "$out14" test_telemetry_force.cpp ../lib/base_shared/ffb_effects.cpp
 "$out14"
+
+out15="$(mktemp -d)/force_curve_test"
+c++ -std=c++17 -I../lib/brain -Wall -Wextra -Werror -o "$out15" test_force_curve.cpp
+"$out15"

@@ -16,6 +16,36 @@
 
 namespace drivelab {
 
+/// Curva de resposta POR PONTOS da força do jogo: 5 pontos fixos na entrada (0/25/50/75/100%) com a saída
+/// em 0..100%. Molda o feel com muito mais liberdade que a `linearity` (que é um gamma só). Aplicada ao
+/// MÓDULO da força, preservando o sinal (o FFB é bidirecional e simétrico). Default = linear (identidade),
+/// então quem não mexer não sente diferença nenhuma.
+struct ForceCurve {
+    uint8_t p[5] = {0, 25, 50, 75, 100};
+
+    /// Curva default (linear)? Nesse caso o pipeline pula o cálculo inteiro.
+    bool isLinear() const {
+        return p[0] == 0 && p[1] == 25 && p[2] == 50 && p[3] == 75 && p[4] == 100;
+    }
+};
+
+/// Interpola a curva por pontos em `norm` (-1..1). Segmentos lineares entre os 5 pontos.
+inline float applyForceCurve(float norm, const ForceCurve& c) {
+    if (c.isLinear()) return norm;
+
+    float a = std::fabs(norm);
+    if (a > 1.0f) a = 1.0f;
+
+    const float x = a * 4.0f;              // 0..4 → posição entre os 5 pontos
+    int i = static_cast<int>(x);
+    if (i > 3) i = 3;                      // último segmento quando a == 1
+    const float t = x - static_cast<float>(i);
+    const float y = (static_cast<float>(c.p[i]) +
+                     (static_cast<float>(c.p[i + 1]) - static_cast<float>(c.p[i])) * t) / 100.0f;
+
+    return norm < 0.0f ? -y : y;
+}
+
 /// Ganhos/limites de força — espelham os settings da base (BaseSettingId).
 struct ForceConfig {
     float totalStrengthPct = 100.0f;  ///< 0..100 força total, o "gain" (TotalStrength)
@@ -23,6 +53,7 @@ struct ForceConfig {
     float torqueLimitNm    = 2.5f;    ///< teto DURO de segurança (MaxTorqueLimit; nunca ultrapassar)
     float direction        = 1.0f;    ///< +1 normal, -1 invertido (ForceDirection)
     float linearity        = 1.0f;    ///< curva de resposta |x|^linearity·sinal(x): 1=linear, >1 suaviza o leve, <1 realça o leve
+    ForceCurve curve{};               ///< curva por pontos aplicada DEPOIS da linearity (default = identidade)
 };
 
 /// Efeitos de condição SEMPRE-ativos calculados no device a partir do encoder (somados à força do
@@ -118,6 +149,7 @@ inline float computeTorqueRaw(float hostForce, float positionRad, float velRadPe
                               const ForceConfig& fc, const EffectConfig& ef, const EndstopConfig& ec) {
     float norm = clampf(hostForce / 255.0f * fc.direction, -1.0f, 1.0f);
     norm = responseCurve(norm, fc.linearity);
+    norm = applyForceCurve(norm, fc.curve);                             // curva por pontos (default: identidade)
     float t = norm * (fc.totalStrengthPct / 100.0f) * fc.maxTorqueNm;   // força do jogo → Nm
     t += springTorque(positionRad, ef.springNmPerRad);                  // efeitos always-on (encoder)
     t += damperTorque(velRadPerSec, ef.damperNmPerRadPerSec);

@@ -44,6 +44,11 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_COGGING_ENABLE:
         case BID_SLEW_RATE:
         case BID_BUS_NOMINAL_V:
+        case BID_FFB_CURVE_0:
+        case BID_FFB_CURVE_1:
+        case BID_FFB_CURVE_2:
+        case BID_FFB_CURVE_3:
+        case BID_FFB_CURVE_4:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -82,6 +87,11 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_COGGING_ENABLE:       return &c.coggingEnable;
         case BID_SLEW_RATE:            return &c.slewRate;
         case BID_BUS_NOMINAL_V:        return &c.busNominalV;
+        case BID_FFB_CURVE_0:          return &c.ffbCurve[0];
+        case BID_FFB_CURVE_1:          return &c.ffbCurve[1];
+        case BID_FFB_CURVE_2:          return &c.ffbCurve[2];
+        case BID_FFB_CURVE_3:          return &c.ffbCurve[3];
+        case BID_FFB_CURVE_4:          return &c.ffbCurve[4];
         default:                       return nullptr;
     }
 }
@@ -191,4 +201,6 @@ void baseSeedDefaults(BaseCfg& c) {
     c.coggingEnable = 0;
     c.slewRate = 0;
     c.busNominalV = 56;   // variante 56V da placa; o usuário ajusta conforme a fonte
+    // Curva de resposta da força: linear por padrão (identidade — não altera o feel de quem não mexer).
+    c.ffbCurve[0] = 0; c.ffbCurve[1] = 25; c.ffbCurve[2] = 50; c.ffbCurve[3] = 75; c.ffbCurve[4] = 100;
 }

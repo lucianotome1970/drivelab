@@ -39,6 +39,7 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
     e.force.torqueLimitNm    = (c.maxTorqueLimit / 100.0f) * e.force.maxTorqueNm;
     e.force.direction        = c.forceDirection >= 0 ? 1.0f : -1.0f;
     e.force.linearity        = c.linearity / 100.0f;
+    for (int i = 0; i < 5; ++i) e.force.curve.p[i] = c.ffbCurve[i];   // curva de resposta por pontos
 
     e.effect.springNmPerRad       = (c.springStrength / 100.0f) * kSpringMaxNmPerRad;
     e.effect.damperNmPerRadPerSec = (c.damperStrength / 100.0f) * kDamperMax;

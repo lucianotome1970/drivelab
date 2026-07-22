@@ -40,6 +40,11 @@
 #define BID_COGGING_ENABLE        25
 #define BID_SLEW_RATE             26
 #define BID_BUS_NOMINAL_V         27
+#define BID_FFB_CURVE_0           28
+#define BID_FFB_CURVE_1           29
+#define BID_FFB_CURVE_2           30
+#define BID_FFB_CURVE_3           31
+#define BID_FFB_CURVE_4           32
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -79,6 +84,7 @@ struct BaseCfg {
     uint8_t  coggingEnable;       // BID_COGGING_ENABLE        UInt8 0/1
     uint8_t  slewRate;            // BID_SLEW_RATE             UInt8 0..100
     uint8_t  busNominalV;         // BID_BUS_NOMINAL_V         UInt8 (V nominal da fonte; deriva a janela busMin/max/over)
+    uint8_t  ffbCurve[5];         // BID_FFB_CURVE_0..4        UInt8 0..100 — curva de resposta da força (5 pontos)
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.

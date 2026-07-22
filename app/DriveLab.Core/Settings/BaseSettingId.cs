@@ -37,4 +37,9 @@ public enum BaseSettingId : byte
     CoggingEnable = 25,
     SlewRate = 26,
     BusNominalV = 27,
+    FfbCurve0 = 28,
+    FfbCurve1 = 29,
+    FfbCurve2 = 30,
+    FfbCurve3 = 31,
+    FfbCurve4 = 32,
 }
