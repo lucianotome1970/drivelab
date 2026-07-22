@@ -44,6 +44,9 @@ public partial class GameBindingViewModel : ViewModelBase
     public string GameId { get; }
     public string GameName { get; }
 
+    /// <summary>Jogo adicionado pelo usuário (pode ser removido; os do catálogo não).</summary>
+    public bool IsCustom { get; init; }
+
     public ObservableCollection<string> BaseProfiles { get; }
     public ObservableCollection<string> WheelProfiles { get; }
     public ObservableCollection<string> PedalsProfiles { get; }

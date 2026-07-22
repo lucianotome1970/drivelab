@@ -51,6 +51,14 @@ public sealed class AutoProfileService
     /// <summary>Liga/desliga a troca automática.</summary>
     public bool Enabled { get; set; }
 
+    /// <summary>Consulta se HÁ alterações não salvas em algum módulo. Quando true, a troca automática é PULADA
+    /// (em vez de sobrescrever silenciosamente o que o usuário estava ajustando) e <see cref="LastSwitchSkipped"/>
+    /// fica true para a UI avisar. Null = sem guarda.</summary>
+    public Func<bool>? HasUnsavedChanges { get; set; }
+
+    /// <summary>A última troca detectada foi pulada por haver alterações não salvas.</summary>
+    public bool LastSwitchSkipped { get; private set; }
+
     /// <summary>Jogo detectado no último tick (null = nenhum).</summary>
     public KnownGame? CurrentGame { get; private set; }
 
@@ -68,6 +76,14 @@ public sealed class AutoProfileService
         CurrentGame = game;
         GameChanged?.Invoke(this, game);
         if (game is null) return;
+
+        // Guarda: não descartar ajustes não salvos por causa de uma troca automática.
+        if (HasUnsavedChanges?.Invoke() == true)
+        {
+            LastSwitchSkipped = true;
+            return;
+        }
+        LastSwitchSkipped = false;
 
         var profiles = _map().For(game.Id);
         if (profiles is null) return;

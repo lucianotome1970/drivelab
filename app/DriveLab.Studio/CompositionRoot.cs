@@ -239,8 +239,10 @@ public static class CompositionRoot
         // setando ProfileLibrary.SelectedName (que já aplica). Mapa persistido em JSON.
         var autoProfileStore = new JsonGameProfileMapStore();
         var autoProfileMap = autoProfileStore.Load();
+        // Catálogo resolvido a cada detecção = embutido + jogos que o usuário adicionou (valem na hora).
         var gameDetector = new DriveLab.Core.Games.GameDetector(
-            () => System.Diagnostics.Process.GetProcesses().Select(p => p.ProcessName).ToList());
+            () => System.Diagnostics.Process.GetProcesses().Select(p => p.ProcessName).ToList(),
+            () => DriveLab.Core.Games.GameCatalog.WithCustom(autoProfileMap.CustomGames));
         var autoProfileService = new AutoProfileService(gameDetector, () => autoProfileMap, dispatcher,
             name => basePage.ProfileLibrary.SelectedName = name,
             name => wheel.ProfileLibrary.SelectedName = name,
@@ -249,8 +251,19 @@ public static class CompositionRoot
         var autoProfile = new AutoProfileViewModel(autoProfileService, autoProfileMap, autoProfileStore, dispatcher,
             basePage.ProfileLibrary.Profiles, wheel.ProfileLibrary.Profiles,
             pedals.ProfileLibrary.Profiles, handbrake.ProfileLibrary.Profiles);
+        // Guarda: uma troca automática não pode descartar ajustes não salvos de nenhum módulo.
+        autoProfileService.HasUnsavedChanges = () =>
+            basePage.ProfileLibrary.IsModified || wheel.ProfileLibrary.IsModified ||
+            pedals.ProfileLibrary.IsModified || handbrake.ProfileLibrary.IsModified;
         autoProfileService.Enabled = autoProfileMap.Enabled;
         if (autoProfileMap.Enabled) autoProfileService.Start();
+
+        // Exportar/importar perfis (arquivo .json) — habilitado nos 4 módulos.
+        var profilePicker = new AvaloniaProfileFilePicker();
+        basePage.ProfileLibrary.EnableFileExchange(profilePicker, "base");
+        wheel.ProfileLibrary.EnableFileExchange(profilePicker, "wheel");
+        pedals.ProfileLibrary.EnableFileExchange(profilePicker, "pedals");
+        handbrake.ProfileLibrary.EnableFileExchange(profilePicker, "handbrake");
 
         var pages = new List<NavItem>
         {

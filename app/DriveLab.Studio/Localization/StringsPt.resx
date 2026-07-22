@@ -25,6 +25,10 @@
   <data name="AutoProfile_Enable" xml:space="preserve"><value>Ativar troca automática</value></data>
   <data name="AutoProfile_CurrentGame" xml:space="preserve"><value>Jogo atual:</value></data>
   <data name="AutoProfile_Game" xml:space="preserve"><value>Jogo</value></data>
+  <data name="AutoProfile_NewName" xml:space="preserve"><value>Nome (opcional)</value></data>
+  <data name="AutoProfile_NewExe" xml:space="preserve"><value>Executável (ex.: acc)</value></data>
+  <data name="AutoProfile_Add" xml:space="preserve"><value>Adicionar</value></data>
+  <data name="AutoProfile_Remove" xml:space="preserve"><value>Remover jogo</value></data>
   <data name="EStop_Stop" xml:space="preserve"><value>⏹ PARAR</value></data>
   <data name="EStop_Tooltip" xml:space="preserve"><value>Parada de emergência: corta a força da base imediatamente.</value></data>
   <data name="EStop_Engaged" xml:space="preserve"><value>FORÇA PARADA</value></data>
@@ -57,6 +61,8 @@
   <data name="Profile_SaveAs" xml:space="preserve"><value>Salvar como</value></data>
   <data name="Profile_Rename" xml:space="preserve"><value>Renomear</value></data>
   <data name="Profile_Delete" xml:space="preserve"><value>Excluir</value></data>
+  <data name="Profile_Export" xml:space="preserve"><value>Exportar</value></data>
+  <data name="Profile_Import" xml:space="preserve"><value>Importar</value></data>
   <data name="Pedal_Title" xml:space="preserve"><value>Pedais</value></data>
   <data name="Diag_Record" xml:space="preserve"><value>Gravar diagnóstico</value></data>
   <data name="Diag_Stop" xml:space="preserve"><value>Parar</value></data>

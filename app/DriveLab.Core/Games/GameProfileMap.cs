@@ -20,10 +20,22 @@ public sealed class ModuleProfiles
 }
 
 /// <summary>Mapa persistível de <c>gameId</c> → <see cref="ModuleProfiles"/>. Serializa como JSON simples.</summary>
+/// <summary>Jogo adicionado pelo usuário (fora do <see cref="GameCatalog"/>): nome livre + executável a casar.
+/// Permite mapear qualquer sim que não esteja no catálogo — sem depender de a gente listar.</summary>
+public sealed class CustomGame
+{
+    public string Id { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public string ProcessName { get; set; } = "";
+}
+
 public sealed class GameProfileMap
 {
     /// <summary>Se a troca automática está ligada (persistido junto dos bindings).</summary>
     public bool Enabled { get; set; }
+
+    /// <summary>Jogos adicionados pelo usuário, somados ao catálogo embutido.</summary>
+    public List<CustomGame> CustomGames { get; set; } = new();
 
     public Dictionary<string, ModuleProfiles> Bindings { get; set; } = new();
 

@@ -20,9 +20,21 @@
                     <TextBlock Text="{loc:Translate AutoProfile_CurrentGame}" Classes="muted" VerticalAlignment="Center" />
                     <Border Classes="valueBox"><TextBlock Text="{Binding CurrentGame}" /></Border>
                 </StackPanel>
+
+                <!-- Troca pulada por alterações não salvas -->
+                <Border Classes="statusBadge" HorizontalAlignment="Left" IsVisible="{Binding HasSkippedMessage}">
+                    <TextBlock Text="{Binding SkippedMessage}" TextWrapping="Wrap" MaxWidth="620" />
+                </Border>
+
+                <!-- Adicionar um jogo que não está no catálogo -->
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                    <TextBox Width="180" Watermark="{loc:Translate AutoProfile_NewName}" Text="{Binding NewGameName}" />
+                    <TextBox Width="180" Watermark="{loc:Translate AutoProfile_NewExe}" Text="{Binding NewGameExe}" />
+                    <Button Content="{loc:Translate AutoProfile_Add}" Command="{Binding AddCustomGameCommand}" />
+                </StackPanel>
             </StackPanel>
 
-            <Grid Grid.Row="1" ColumnDefinitions="170,*,*,*,*" Margin="0,16,0,4">
+            <Grid Grid.Row="1" ColumnDefinitions="170,*,*,*,*,Auto" Margin="0,16,0,4">
                 <TextBlock Grid.Column="0" Text="{loc:Translate AutoProfile_Game}" Classes="muted" />
                 <TextBlock Grid.Column="1" Text="{loc:Translate Nav_WheelBase}" Classes="muted" Margin="2,0" />
                 <TextBlock Grid.Column="2" Text="{loc:Translate Nav_Wheel}" Classes="muted" Margin="2,0" />
@@ -34,7 +46,7 @@
                 <ItemsControl ItemsSource="{Binding Games}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:GameBindingViewModel">
-                            <Grid ColumnDefinitions="170,*,*,*,*" Margin="0,3">
+                            <Grid ColumnDefinitions="170,*,*,*,*,Auto" Margin="0,3">
                                 <TextBlock Grid.Column="0" Text="{Binding GameName}" VerticalAlignment="Center" />
                                 <ComboBox Grid.Column="1" Margin="2,0" HorizontalAlignment="Stretch"
                                           ItemsSource="{Binding BaseProfiles}" SelectedItem="{Binding BaseProfile}" />
@@ -44,6 +56,11 @@
                                           ItemsSource="{Binding PedalsProfiles}" SelectedItem="{Binding PedalsProfile}" />
                                 <ComboBox Grid.Column="4" Margin="2,0" HorizontalAlignment="Stretch"
                                           ItemsSource="{Binding HandbrakeProfiles}" SelectedItem="{Binding HandbrakeProfile}" />
+                                <!-- Só jogos adicionados pelo usuário podem ser removidos -->
+                                <Button Grid.Column="5" Content="✕" Margin="6,0,0,0" IsVisible="{Binding IsCustom}"
+                                        ToolTip.Tip="{loc:Translate AutoProfile_Remove}"
+                                        Command="{Binding $parent[ItemsControl].((vm:AutoProfileViewModel)DataContext).RemoveCustomGameCommand}"
+                                        CommandParameter="{Binding}" />
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

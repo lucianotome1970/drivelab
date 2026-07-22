@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Games;
 using DriveLab.Studio.Services;
 
@@ -37,13 +38,33 @@ public partial class AutoProfileViewModel : ViewModelBase
         _dispatcher = dispatcher;
         _enabled = map.Enabled;
 
-        Games = GameCatalog.All.Select(g => new GameBindingViewModel(
-            g, map.For(g.Id), baseProfiles, wheelProfiles, pedalsProfiles, handbrakeProfiles, Persist)).ToList();
+        _baseProfiles = baseProfiles;
+        _wheelProfiles = wheelProfiles;
+        _pedalsProfiles = pedalsProfiles;
+        _handbrakeProfiles = handbrakeProfiles;
+
+        foreach (var g in GameCatalog.WithCustom(map.CustomGames))
+            Games.Add(NewBinding(g, map.CustomGames.Any(c => c.Id == g.Id)));
 
         _currentGame = service.CurrentGame?.DisplayName ?? "—";
-        _service.GameChanged += (_, game) =>
-            _dispatcher.Post(() => CurrentGame = game?.DisplayName ?? "—");
+        _service.GameChanged += (_, game) => _dispatcher.Post(() =>
+        {
+            CurrentGame = game?.DisplayName ?? "—";
+            // Se a troca foi pulada por alterações não salvas, avisa em vez de falhar em silêncio.
+            SkippedMessage = _service.LastSwitchSkipped
+                ? "Troca automática pausada: há alterações não salvas em algum módulo. Salve ou descarte para trocar."
+                : "";
+        });
     }
+
+    private readonly ObservableCollection<string> _baseProfiles;
+    private readonly ObservableCollection<string> _wheelProfiles;
+    private readonly ObservableCollection<string> _pedalsProfiles;
+    private readonly ObservableCollection<string> _handbrakeProfiles;
+
+    private GameBindingViewModel NewBinding(KnownGame g, bool isCustom) =>
+        new(g, _map.For(g.Id), _baseProfiles, _wheelProfiles, _pedalsProfiles, _handbrakeProfiles, Persist)
+        { IsCustom = isCustom };
 
     /// <summary>Liga/desliga a troca automática.</summary>
     [ObservableProperty] private bool _enabled;
@@ -51,7 +72,54 @@ public partial class AutoProfileViewModel : ViewModelBase
     /// <summary>Jogo detectado ao vivo.</summary>
     [ObservableProperty] private string _currentGame = "—";
 
-    public IReadOnlyList<GameBindingViewModel> Games { get; }
+    /// <summary>Uma linha por jogo (catálogo embutido + os que o usuário adicionou).</summary>
+    public ObservableCollection<GameBindingViewModel> Games { get; } = new();
+
+    /// <summary>Aviso quando a troca automática foi pulada (alterações não salvas em algum módulo).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSkippedMessage))]
+    private string _skippedMessage = "";
+    public bool HasSkippedMessage => !string.IsNullOrEmpty(SkippedMessage);
+
+    // ---- adicionar um jogo que não está no catálogo ----
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCustomGameCommand))]
+    private string _newGameName = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCustomGameCommand))]
+    private string _newGameExe = "";
+
+    [RelayCommand(CanExecute = nameof(CanAddCustomGame))]
+    private void AddCustomGame()
+    {
+        var exe = NewGameExe.Trim();
+        var name = string.IsNullOrWhiteSpace(NewGameName) ? exe : NewGameName.Trim();
+        var custom = new CustomGame
+        {
+            Id = "custom:" + exe.ToLowerInvariant(),
+            DisplayName = name,
+            ProcessName = exe,
+        };
+        if (_map.CustomGames.Any(c => c.Id == custom.Id)) return;   // já mapeado
+
+        _map.CustomGames.Add(custom);
+        Games.Add(NewBinding(new KnownGame(custom.Id, custom.DisplayName, new[] { custom.ProcessName }), isCustom: true));
+        NewGameName = "";
+        NewGameExe = "";
+        Persist();
+    }
+    private bool CanAddCustomGame() => !string.IsNullOrWhiteSpace(NewGameExe);
+
+    [RelayCommand]
+    private void RemoveCustomGame(GameBindingViewModel? game)
+    {
+        if (game is null || !game.IsCustom) return;
+        _map.CustomGames.RemoveAll(c => c.Id == game.GameId);
+        _map.Bindings.Remove(game.GameId);
+        Games.Remove(game);
+        Persist();
+    }
 
     partial void OnEnabledChanged(bool value)
     {

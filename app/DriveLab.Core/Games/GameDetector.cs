@@ -19,12 +19,17 @@ namespace DriveLab.Core.Games;
 public sealed class GameDetector
 {
     private readonly Func<IReadOnlyList<string>> _runningProcessNames;
-    private readonly IReadOnlyList<KnownGame> _catalog;
+    private readonly Func<IReadOnlyList<KnownGame>> _catalog;
 
     public GameDetector(Func<IReadOnlyList<string>> runningProcessNames, IReadOnlyList<KnownGame>? catalog = null)
+        : this(runningProcessNames, () => catalog ?? GameCatalog.All) { }
+
+    /// <summary>Catálogo resolvido a cada detecção — assim jogos adicionados pelo usuário em runtime passam a
+    /// valer sem recriar o detector.</summary>
+    public GameDetector(Func<IReadOnlyList<string>> runningProcessNames, Func<IReadOnlyList<KnownGame>> catalog)
     {
         _runningProcessNames = runningProcessNames;
-        _catalog = catalog ?? GameCatalog.All;
+        _catalog = catalog;
     }
 
     /// <summary>Primeiro sim do catálogo cujo processo está ativo, ou null se nenhum. Comparação sem caixa.</summary>
@@ -34,7 +39,7 @@ public sealed class GameDetector
             _runningProcessNames().Select(n => n.ToLowerInvariant()),
             StringComparer.Ordinal);
 
-        foreach (var game in _catalog)
+        foreach (var game in _catalog())
             if (game.ProcessNames.Any(p => running.Contains(p.ToLowerInvariant())))
                 return game;
         return null;

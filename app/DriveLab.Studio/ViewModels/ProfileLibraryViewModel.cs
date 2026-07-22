@@ -6,7 +6,10 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -27,6 +30,8 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
     private readonly INamedProfileStore<T>? _store;
     private readonly Func<T> _capture;
     private readonly Action<T> _apply;
+    private IProfileFilePicker? _filePicker;
+    private string _module = "";
     private bool _suppressApply;   // evita aplicar ao repovoar a lista
     private string? _baseline;     // JSON do perfil aplicado/salvo — referência p/ detectar alteração
 
@@ -37,6 +42,20 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
         _apply = apply;
         Refresh();
     }
+
+    /// <summary>Habilita exportar/importar perfis em arquivo. Injetado pelo CompositionRoot depois da
+    /// construção (os VMs de módulo criam a biblioteca sozinhos). <paramref name="module"/> ("base"/"wheel"/
+    /// "pedals"/"handbrake") vai no arquivo e impede importar perfil de um módulo noutro.</summary>
+    public void EnableFileExchange(IProfileFilePicker picker, string module)
+    {
+        _filePicker = picker;
+        _module = module;
+        ExportCommand.NotifyCanExecuteChanged();
+        ImportCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Exportar/importar disponível (para a UI mostrar os botões).</summary>
+    public bool CanExchangeFiles => _store is not null && _filePicker is not null;
 
     public ObservableCollection<string> Profiles { get; } = new();
 
@@ -145,4 +164,68 @@ public sealed partial class ProfileLibraryViewModel<T> : ObservableObject where 
         Refresh(select: name);
     }
     private bool CanRename() => _store is not null && SelectedName is not null && !string.IsNullOrWhiteSpace(NewName);
+
+    // ---------------- Exportar / importar (compartilhar perfis) ----------------
+
+    /// <summary>Exporta os perfis do módulo para um .json (todos, ou só o selecionado se houver seleção).</summary>
+    [RelayCommand(CanExecute = nameof(CanExchange))]
+    private async Task Export()
+    {
+        if (_store is null || _filePicker is null)
+            return;
+
+        var names = SelectedName is not null ? new[] { SelectedName } : _store.ListNames().ToArray();
+        if (names.Length == 0)
+            return;
+
+        var loaded = new List<(string, T)>();
+        foreach (var name in names)
+        {
+            var data = await _store.LoadAsync(name);
+            if (data is not null) loaded.Add((name, data));
+        }
+        if (loaded.Count == 0)
+            return;
+
+        var suggested = $"drivelab-{_module}-{(loaded.Count == 1 ? loaded[0].Item1 : "perfis")}.json";
+        var path = await _filePicker.PickSaveAsync(SafeFileName(suggested));
+        if (path is null)
+            return;
+
+        var json = ProfileExchange.Serialize(_module, loaded, DateTimeOffset.Now);
+        await File.WriteAllTextAsync(path, json);
+    }
+
+    /// <summary>Importa perfis de um .json. Nomes já existentes ganham sufixo — nunca sobrescreve.</summary>
+    [RelayCommand(CanExecute = nameof(CanExchange))]
+    private async Task Import()
+    {
+        if (_store is null || _filePicker is null)
+            return;
+
+        var path = await _filePicker.PickOpenAsync();
+        if (path is null)
+            return;
+
+        var envelope = ProfileExchange.Deserialize<T>(await File.ReadAllTextAsync(path));
+        if (!string.IsNullOrEmpty(envelope.Module) && !string.IsNullOrEmpty(_module) &&
+            !string.Equals(envelope.Module, _module, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"Este arquivo é de perfis de '{envelope.Module}', não de '{_module}'.");
+
+        string? last = null;
+        foreach (var entry in envelope.Profiles)
+        {
+            if (entry.Data is null) continue;
+            var name = ProfileExchange.UniqueName(_store.ListNames(), entry.Name);
+            await _store.SaveAsync(name, entry.Data);
+            last = name;
+        }
+        if (last is not null) Refresh(select: last);
+    }
+
+    private bool CanExchange() => _store is not null && _filePicker is not null;
+
+    private static string SafeFileName(string name) =>
+        string.Concat(name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
 }

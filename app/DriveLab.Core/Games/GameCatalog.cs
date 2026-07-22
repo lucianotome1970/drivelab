@@ -29,4 +29,17 @@ public static class GameCatalog
     };
 
     public static KnownGame? ById(string id) => All.FirstOrDefault(g => g.Id == id);
+
+    /// <summary>Catálogo efetivo = embutido + os jogos que o usuário adicionou. Entradas customizadas sem
+    /// executável são ignoradas (não daria pra casar processo nenhum).</summary>
+    public static IReadOnlyList<KnownGame> WithCustom(IEnumerable<CustomGame>? custom)
+    {
+        if (custom is null) return All;
+        var extra = custom
+            .Where(c => !string.IsNullOrWhiteSpace(c.ProcessName) && !string.IsNullOrWhiteSpace(c.Id))
+            .Select(c => new KnownGame(c.Id,
+                string.IsNullOrWhiteSpace(c.DisplayName) ? c.ProcessName : c.DisplayName,
+                new[] { c.ProcessName.Trim() }));
+        return All.Concat(extra).ToList();
+    }
 }

@@ -52,6 +52,11 @@
                         <Button Content="{loc:Translate Profile_SaveAs}" Command="{Binding ProfileLibrary.SaveAsCommand}" />
                         <Button Content="{loc:Translate Profile_Rename}" Command="{Binding ProfileLibrary.RenameCommand}" />
                         <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
+                        <!-- Compartilhar perfis: exporta (selecionado ou todos) e importa sem sobrescrever -->
+                        <Button Content="{loc:Translate Profile_Export}" Command="{Binding ProfileLibrary.ExportCommand}"
+                                IsVisible="{Binding ProfileLibrary.CanExchangeFiles}" />
+                        <Button Content="{loc:Translate Profile_Import}" Command="{Binding ProfileLibrary.ImportCommand}"
+                                IsVisible="{Binding ProfileLibrary.CanExchangeFiles}" />
                 </StackPanel>
 
                 <!-- Ações à direita (Padrão/Salvar no controlador) + selo de status. -->

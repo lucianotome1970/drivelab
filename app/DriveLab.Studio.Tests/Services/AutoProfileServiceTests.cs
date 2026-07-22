@@ -70,6 +70,35 @@ public class AutoProfileServiceTests
     }
 
     [Fact]
+    public void UnsavedChanges_SkipsSwitch_InsteadOfClobbering()
+    {
+        var (svc, applied, map) = Build(() => new[] { "acc" });
+        map.Set("acc", new ModuleProfiles { Base = "GT3" });
+        svc.Enabled = true;
+        svc.HasUnsavedChanges = () => true;   // usuário está no meio de um ajuste
+
+        svc.Tick();
+
+        Assert.Empty(applied);                 // NÃO aplicou por cima
+        Assert.True(svc.LastSwitchSkipped);
+        Assert.Equal("acc", svc.CurrentGame?.Id);   // mas detectou o jogo (UI mostra)
+    }
+
+    [Fact]
+    public void NoUnsavedChanges_AppliesNormally()
+    {
+        var (svc, applied, map) = Build(() => new[] { "acc" });
+        map.Set("acc", new ModuleProfiles { Base = "GT3" });
+        svc.Enabled = true;
+        svc.HasUnsavedChanges = () => false;
+
+        svc.Tick();
+
+        Assert.Contains("base:GT3", applied);
+        Assert.False(svc.LastSwitchSkipped);
+    }
+
+    [Fact]
     public void GameClosed_ClearsCurrentAndDoesNotApply()
     {
         var running = new List<string> { "acc" };
