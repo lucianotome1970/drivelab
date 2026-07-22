@@ -163,7 +163,17 @@ public sealed class Rp2040Updater : IDeviceUpdater
         {
             var volumeDir = Path.GetDirectoryName(destPath);
             if (volumeDir is not null && volumeExists(volumeDir))
-                throw;   // volume ainda montado → erro real
+            {
+                // Volume ainda montado → erro real. O caso MAIS comum no macOS é permissão: o processo do app
+                // não tem acesso a volumes removíveis (achado de bancada: rodando pela IDE dava "Access denied";
+                // pelo Terminal, que tem a permissão, gravava). Troca o erro cru do .NET por um acionável.
+                if (ex is UnauthorizedAccessException)
+                    throw new UnauthorizedAccessException(
+                        $"O sistema negou acesso ao volume do bootloader ({volumeDir}). No macOS, dê ao app " +
+                        "permissão de volumes removíveis (Ajustes → Privacidade e Segurança → Arquivos e Pastas, " +
+                        "ou Acesso Total ao Disco para quem lança o app) — ou rode o app pelo Terminal.", ex);
+                throw;
+            }
             // volume ejetou → gravou e reiniciou. OK.
         }
     }

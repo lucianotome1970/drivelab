@@ -25,7 +25,7 @@
 // Versão do firmware da pedaleira.
 #define DRVLAB_FW_VER_MAJOR 0
 #define DRVLAB_FW_VER_MINOR 1
-#define DRVLAB_FW_VER_PATCH 0
+#define DRVLAB_FW_VER_PATCH 3
 
 struct FwSignature {
     char magic[8];
