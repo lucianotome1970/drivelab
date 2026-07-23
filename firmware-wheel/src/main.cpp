@@ -50,12 +50,26 @@ static const int PAYLOAD = 63;  // ReportConstants.ReportSize (63 = cabe no EP H
 // Orçamento de pinos da RP2040-Zero: 5 encoders já usam 10 GPIOs, então os botões lentos
 // (10 push + 2 marcha + 4 D-pad + 5 push de rotativo = 21) vão em 2× MCP23017 no I2C.
 static const int      NUM_ENC = 5;                      // encoders rotativos
+#if defined(BOARD_PICO_SHIELD)
+// Raspberry Pi Pico + Waveshare Expansion Shield Base (zero-solda, conectores plug). Aproveita os DOIS
+// conectores I2C0 dedicados (GP8/GP9 = SDA/SCL) — um MCP23017 em cada; encoders nos GPIO 10..19 (headers
+// 3-pin); pás no ADC GP26/GP27 (pot de 3 fios = header S/V/G perfeito); WS2812 em GP28 — mas alimente a
+// FITA pelo header Vusb (5V); o "V" dos headers de 3-pin é 3,3V (bom pro MCP, insuficiente p/ a fita).
+static const uint8_t  kEncPinA[NUM_ENC] = { 10, 12, 14, 16, 18 };
+static const uint8_t  kEncPinB[NUM_ENC] = { 11, 13, 15, 17, 19 };
+static const uint8_t  kClutchPin[2] = { A0, A1 };       // GP26/GP27 (embreagem esq./dir.)
+static const uint8_t  kLedDataPin   = 28;               // WS2812 dados (GP28); 5V da fita pelo header Vusb
+static const uint8_t  kI2cSdaPin    = 8, kI2cSclPin = 9; // I2C0 nos conectores I2C0-1/I2C0-2 (1 MCP cada)
+static const uint8_t  kMcpAddr[2]   = { 0x20, 0x21 };   // #0 = push/marcha/D-pad, #1 = push dos rotativos
+#else
+// Waveshare RP2040-Zero (padrão). Orçamento de pinos apertado: encoders em GP2..11, I2C em GP0/GP1.
 static const uint8_t  kEncPinA[NUM_ENC] = { 2, 4, 6, 8, 10 };
 static const uint8_t  kEncPinB[NUM_ENC] = { 3, 5, 7, 9, 11 };
 static const uint8_t  kClutchPin[2] = { A0, A1 };       // GP26/GP27 (embreagem esq./dir.)
 static const uint8_t  kLedDataPin   = 28;               // WS2812 externo (10 botões + barra), GP28
 static const uint8_t  kI2cSdaPin    = 0, kI2cSclPin = 1; // I2C0 p/ os MCP23017
 static const uint8_t  kMcpAddr[2]   = { 0x20, 0x21 };   // #0 = push/marcha/D-pad, #1 = push dos rotativos
+#endif
 
 // Mapeamento MCP #0 (16 pinos 0..15) -> bit do gamepad:
 //   pinos 0..9   = 10 botões de pressão      -> bits 0..9
