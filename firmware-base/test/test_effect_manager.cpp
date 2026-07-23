@@ -283,6 +283,31 @@ int main() {
         CHECK(std::fabs(f - (-127.5f)) < 2.0f);
     }
 
+    // ---- setPosRange: normalização do Spring casa com a DOR configurada (não com o default π) ----
+    {
+        EffectManager mgr;
+        mgr.setPosRange(10.0f);            // curso do eixo = ±10 rad (ex.: DOR grande)
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 8; // Spring, block 1
+        setEffect[11] = 255;
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+
+        uint8_t setCond[15] = {0};
+        setCond[0] = 0x03; setCond[1] = 1;
+        setCond[5] = 0xFF; setCond[6] = 0x7F; // posCoeff = 32767
+        setCond[9] = 0xFF; setCond[10] = 0x7F;  // posSat
+        setCond[11] = 0xFF; setCond[12] = 0x7F; // negSat
+        mgr.handleReport(setCond, sizeof(setCond), 0);
+        mgr.operation(1, 1, 0);
+
+        // Com range=10: posRad=5 -> metric=0.5 (mesma ~127.5). No default (π) isso saturaria (5 >> π).
+        float f = mgr.computeForce(5.0f, 0.0f, 0);
+        CHECK(f < 0.0f);
+        CHECK(std::fabs(f - (-127.5f)) < 2.0f);
+        // sanity: bem além do curso satura em -255
+        CHECK(mgr.computeForce(10.0f, 0.0f, 0) < -250.0f);
+    }
+
     // ---- Damper vel>0 -> força negativa ----
     {
         EffectManager mgr;

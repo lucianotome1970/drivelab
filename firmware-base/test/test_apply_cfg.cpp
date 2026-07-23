@@ -112,14 +112,15 @@ int main() {
         CHECK(e.cogging == nullptr);
     }
 
-    // ----- reconstructionSteps: 0 = auto (round(loopHz/kGameForceHz)), 8 = direto -----
+    // ----- reconstructionSteps: 0 = ADAPTATIVO (steps=0, fallback=round(loopHz/kGameForceHz)), 8 = fixo -----
     {
         BaseCfg c;
         baseSeedDefaults(c);
         c.reconstructionSteps = 0;
         FfbEngine e;
         applyCfgToEngine(c, e, kLoopHz);
-        CHECK(e.reconstructor.cfg.steps == 133); // round(8000/60) = 133
+        CHECK(e.reconstructor.cfg.steps == 0);          // 0 = adaptativo
+        CHECK(e.reconstructor.cfg.fallbackSteps == 133); // round(8000/60) = 133
     }
     {
         BaseCfg c;
@@ -127,7 +128,18 @@ int main() {
         c.reconstructionSteps = 8;
         FfbEngine e;
         applyCfgToEngine(c, e, kLoopHz);
-        CHECK(e.reconstructor.cfg.steps == 8);
+        CHECK(e.reconstructor.cfg.steps == 8);          // janela fixa
+    }
+
+    // ----- setPosRange: a normalização do effect manager casa com a DOR (meia-faixa em rad) -----
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        c.motionRange = 900;                 // ±450° = 7.854 rad
+        FfbEngine e;
+        applyCfgToEngine(c, e, kLoopHz);
+        // endstop.rangeRad = 450° em rad; effects deve normalizar por esse curso, não por π.
+        CHECK(std::fabs(e.endstop.rangeRad - 7.85398f) < 1e-3f);
     }
 
     // ----- slewRate: 0 -> off (0), 100 -> kSlewMaxNmPerStep -----

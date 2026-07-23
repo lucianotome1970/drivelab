@@ -49,10 +49,19 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
     e.endstop.stiffnessNm           = (c.softStopStrength / 100.0f) * 3.0f;
     e.endstop.dampingNmPerRadPerSec = (c.endstopDamping / 100.0f) * kEndstopDampMax;
 
+    // A normalização dos efeitos Condition do JOGO (Spring/Damper/Inertia) tem que casar com a DOR real do
+    // eixo: kMaxPosRad = curso (meia-faixa em rad). Sem isto a mola do jogo satura no ângulo errado.
+    e.effects.setPosRange(e.endstop.rangeRad);
+
+    // Reconstrução: reconstructionSteps>0 = janela FIXA de interpolação; 0 = ADAPTATIVA (o reconstructor
+    // mede o intervalo real entre reports — 60 Hz do ACC ou 360 Hz do iRacing — em vez de assumir 60 fixo).
+    // fallbackSteps = estimativa loopHz/60 usada até a 1ª medição existir.
     e.reconstructor.cfg.steps = c.reconstructionSteps > 0
         ? static_cast<int>(c.reconstructionSteps)
-        : static_cast<int>(loopHz / kGameForceHz + 0.5f);
-    if (e.reconstructor.cfg.steps < 1) e.reconstructor.cfg.steps = 1;
+        : 0; // 0 = adaptativo
+    int fallback = static_cast<int>(loopHz / kGameForceHz + 0.5f);
+    if (fallback < 1) fallback = 1;
+    e.reconstructor.cfg.fallbackSteps = fallback;
     e.reconstructor.cfg.lpfAlpha = c.reconstructionLpf / 100.0f;
 
     e.outputFilter = c.outputFilterHz > 0

@@ -126,8 +126,16 @@ inline float responseCurve(float norm, float linearity) {
 inline float springTorque(float positionRad, float nmPerRad)         { return -nmPerRad * positionRad; }
 inline float damperTorque(float velRadPerSec, float nmPerRadPerSec)  { return -nmPerRadPerSec * velRadPerSec; }
 
-/// Atrito estático: torque constante opondo-se ao movimento (0 se parado).
-inline float frictionTorque(float velRadPerSec, float nm) {
+/// Escala de velocidade (rad/s) da suavização do atrito estático perto de v=0 (evita chatter). AJUSTAR
+/// na bancada: menor = transição mais "seca"/rápida (mais perto do Coulomb ideal), maior = zona morta maior.
+static constexpr float kFrictionSmoothVel = 0.3f;
+
+/// Atrito estático: torque ~constante opondo-se ao movimento.
+/// vScale<=0 → Coulomb "duro" (degrau no zero). vScale>0 → Coulomb REGULARIZADO por tanh: a força cresce
+/// suavemente de 0 até ±nm ao longo de ~vScale, matando o chatter que o degrau causa quando a velocidade
+/// estimada oscila em torno de zero (mãos paradas). Satura em ±nm bem antes de 1 rad/s com o default.
+inline float frictionTorque(float velRadPerSec, float nm, float vScale = 0.0f) {
+    if (vScale > 0.0f) return -nm * std::tanh(velRadPerSec / vScale);
     const float eps = 1e-3f;
     if (velRadPerSec >  eps) return -nm;
     if (velRadPerSec < -eps) return  nm;
@@ -153,7 +161,7 @@ inline float computeTorqueRaw(float hostForce, float positionRad, float velRadPe
     float t = norm * (fc.totalStrengthPct / 100.0f) * fc.maxTorqueNm;   // força do jogo → Nm
     t += springTorque(positionRad, ef.springNmPerRad);                  // efeitos always-on (encoder)
     t += damperTorque(velRadPerSec, ef.damperNmPerRadPerSec);
-    t += frictionTorque(velRadPerSec, ef.frictionNm);
+    t += frictionTorque(velRadPerSec, ef.frictionNm, kFrictionSmoothVel);   // Coulomb suave (sem chatter no zero)
     t += endstopTorque(positionRad, ec);                                // fim de curso (mola)
     t += endstopDamping(positionRad, velRadPerSec, ec);                 // + amortecimento (não quica)
     return t;                                                           // SEM teto (para medir clipping)

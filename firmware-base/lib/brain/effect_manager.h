@@ -35,14 +35,25 @@ class EffectManager {
     bool m_hasPrev = false;
 
     // ---- Normalização física (metric em [-1,1] p/ efeitos Condition) ----
-    // AJUSTAR na bancada: valores placeholder até medir o curso real do
-    // volante/pedal e a velocidade angular máxima observada.
 public:
-    static constexpr float kMaxPosRad = 3.14159265358979323846f; // AJUSTAR na bancada: curso físico (±180°) até endstop
-    static constexpr float kMaxVel = 20.0f;                       // AJUSTAR na bancada: velocidade angular máx. observada (rad/s)
-    static constexpr float kMaxAccel = 500.0f;                    // AJUSTAR na bancada: aceleração angular máx. observada (rad/s^2)
+    // Defaults das escalas de normalização. Públicos p/ referência/testes; o ponto de partida quando
+    // ninguém configura. AJUSTAR na bancada os de velocidade/aceleração.
+    static constexpr float kMaxPosRad = 3.14159265358979323846f; // curso físico default (±180°)
+    static constexpr float kMaxVel = 20.0f;                       // velocidade angular máx. default (rad/s)
+    static constexpr float kMaxAccel = 500.0f;                    // aceleração angular máx. default (rad/s^2)
+
+    // Configura as escalas em runtime. kMaxPosRad DEVE casar com a DOR (endstop.rangeRad = curso REAL do
+    // eixo até o batente) — senão o Spring/Damper do JOGO saem com magnitude errada (saturam no lugar
+    // errado). applyCfgToEngine chama setPosRange(rangeRad). Ignora valores não-positivos.
+    void setPosRange(float maxPosRad)  { if (maxPosRad > 1e-4f) m_maxPosRad = maxPosRad; }
+    void setVelRange(float maxVel)     { if (maxVel > 1e-4f)    m_maxVel = maxVel; }
+    void setAccelRange(float maxAccel) { if (maxAccel > 1e-4f)  m_maxAccel = maxAccel; }
 
 private:
+    float m_maxPosRad = kMaxPosRad;   // curso do eixo (DOR/2) — setPosRange() casa com a config
+    float m_maxVel    = kMaxVel;
+    float m_maxAccel  = kMaxAccel;
+
     static float clamp1(float v) {
         if (v > 1.0f) return 1.0f;
         if (v < -1.0f) return -1.0f;
@@ -132,16 +143,16 @@ private:
 
         switch (e.type) {
             case FxType::Spring:
-                metric = clamp1(posRad / kMaxPosRad - e.centerOffset / 32767.0f);
+                metric = clamp1(posRad / m_maxPosRad - e.centerOffset / 32767.0f);
                 break;
             case FxType::Damper:
-                metric = clamp1(velRadPerSec / kMaxVel);
+                metric = clamp1(velRadPerSec / m_maxVel);
                 break;
             case FxType::Friction:
                 metric = (velRadPerSec > 0.0f) ? 1.0f : (velRadPerSec < 0.0f ? -1.0f : 0.0f);
                 break;
             case FxType::Inertia:
-                metric = clamp1(accel / kMaxAccel);
+                metric = clamp1(accel / m_maxAccel);
                 break;
             default:
                 return 0.0f;

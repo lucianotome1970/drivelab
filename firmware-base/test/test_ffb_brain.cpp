@@ -308,6 +308,54 @@ int main() {
         CHECK(a > 0.0f && a < b && b < c && c < 10.0f);   // sobe monotonicamente rumo ao alvo
     }
 
+    // 13b) Reconstrução ADAPTATIVA (cfg.steps<=0): mede o intervalo real entre reports (ticks) e
+    //      ajusta a janela sozinha — casa com 60 Hz (janela grande) ou 360 Hz (janela pequena).
+    {
+        // Simula o jogo mandando um report a cada 10 ticks do laço. A janela deve convergir p/ ~10.
+        ForceReconstructor r; r.cfg.steps = 0; r.cfg.fallbackSteps = 4;
+        r.setTarget(1.0f);
+        CHECK(r.window() == 4);            // 1ª vez sem histórico → fallback
+        for (int rep = 0; rep < 40; ++rep) {
+            for (int i = 0; i < 10; ++i) r.tick();   // 10 ticks entre reports
+            r.setTarget((rep % 2) ? 1.0f : -1.0f);
+        }
+        CHECK(r.window() >= 9 && r.window() <= 11);  // convergiu p/ o intervalo medido (~10)
+
+        // Taxa mais alta (jogo a cada 3 ticks) → janela menor (menos latência).
+        ForceReconstructor r2; r2.cfg.steps = 0; r2.cfg.fallbackSteps = 16;
+        r2.setTarget(0.0f);
+        for (int rep = 0; rep < 40; ++rep) {
+            for (int i = 0; i < 3; ++i) r2.tick();
+            r2.setTarget((rep % 2) ? 1.0f : -1.0f);
+        }
+        CHECK(r2.window() >= 2 && r2.window() <= 4);
+
+        // Janela FIXA (cfg.steps>0) ignora a medição — comportamento antigo intacto.
+        ForceReconstructor r3; r3.cfg.steps = 8; r3.cfg.fallbackSteps = 99;
+        r3.setTarget(1.0f);
+        for (int i = 0; i < 20; ++i) r3.tick();
+        r3.setTarget(0.0f);
+        CHECK(r3.window() == 8);
+    }
+
+    // 13c) Atrito estático suave (Coulomb regularizado por tanh): sem degrau no zero, satura em ±nm.
+    {
+        // vScale=0 (default) → comportamento "duro" antigo (compat com os testes diretos acima).
+        CHECK(approx(frictionTorque(0.5f, 1.0f), -1.0f));   // duro
+        CHECK(approx(frictionTorque(0.0f, 1.0f), 0.0f));
+
+        // vScale>0 → suave: v=0 dá 0, cresce monotonicamente, satura perto de ±nm em alta velocidade.
+        const float vs = 0.3f;
+        CHECK(approx(frictionTorque(0.0f, 1.0f, vs), 0.0f));         // parado = 0 (sem chatter)
+        const float fSmall = frictionTorque(0.05f, 1.0f, vs);        // pouca velocidade → pouca força
+        const float fMed   = frictionTorque(0.3f,  1.0f, vs);
+        const float fBig   = frictionTorque(3.0f,  1.0f, vs);        // rápido → satura
+        CHECK(fSmall < 0.0f && fSmall > -0.3f);                      // opõe o movimento, mas suave no zero
+        CHECK(fMed < fSmall);                                        // cresce (mais negativo) com a velocidade
+        CHECK(fBig < -0.99f && fBig >= -1.0f);                       // satura em -nm
+        CHECK(approx(frictionTorque(-3.0f, 1.0f, vs), 1.0f, 1e-2f)); // simétrico
+    }
+
     // 14) Cogging: interpolação/wrap do mapa + calibração reconstrói e CANCELA um ripple sintético
     {
         const float twoPi = 6.28318530718f;
