@@ -30,6 +30,12 @@ static constexpr float kSlewMaxNmPerStep  = 0.5f;   // slew rate 100% → 0.5 Nm
 static constexpr float kBusMinFraction    = 0.70f;  // motor não liga abaixo de 70% da nominal (tolera sag)
 static constexpr float kBusOverFraction   = 1.08f;  // corte de sobretensão a 108% da nominal (headroom p/ regen)
 static constexpr float kBusHardCeilingV   = 60.0f;  // TETO ABSOLUTO do hardware (FETs da placa 56V) — nunca passar
+// Brake resistor (chopper): frações da nominal p/ os limiares (histerese off<on<full<over) + resistor.
+static constexpr float kBrakeOffFraction  = 1.03f;  // desliga o chopper (bus voltou ao normal)
+static constexpr float kBrakeOnFraction   = 1.05f;  // liga o chopper (regen elevou o bus acima da nominal)
+static constexpr float kBrakeFullFraction = 1.07f;  // duty 100% (fica < overVoltageV = corte duro)
+static constexpr float kBrakeResistanceOhm = 2.0f;  // resistor de frenagem (= brake_resistance) — 2Ω da bancada
+static constexpr float kBrakeMaxCurrentA   = 12.0f; // limite de corrente de pico no MOSFET/resistor — AJUSTAR na bancada
 
 /// Aplica todos os settings relacionados a força de `c` em `e` (config, sem tocar em estado
 /// dinâmico do motor). `loopHz` é a taxa do laço de torque (usada p/ steps=auto e p/ o biquad).
@@ -85,6 +91,18 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
     const float over = nominal * kBusOverFraction;
     e.guard.overVoltageV  = over < kBusHardCeilingV ? over : kBusHardCeilingV;
     e.startup.cfg.busMaxV = e.guard.overVoltageV;
+
+    // Brake resistor (chopper): limiares derivados da MESMA nominal (antes eram fixos da era 24V — num bus
+    // de 56V mandariam dissipar a tensão normal). O chopper engaja quando a regen passa da nominal e chega a
+    // 100% ANTES do corte duro (fullVoltage < overVoltageV). resistanceOhm/maxCurrentA = equivalente ao
+    // brake_resistance da ODrive: limita a corrente de pico no MOSFET AUX/resistor (AJUSTAR na bancada).
+    e.guard.brake.cfg.offVoltage    = nominal * kBrakeOffFraction;
+    e.guard.brake.cfg.onVoltage     = nominal * kBrakeOnFraction;
+    float brakeFull = nominal * kBrakeFullFraction;
+    if (brakeFull > e.guard.overVoltageV) brakeFull = e.guard.overVoltageV; // nunca no/acima do corte duro
+    e.guard.brake.cfg.fullVoltage   = brakeFull;
+    e.guard.brake.cfg.resistanceOhm = kBrakeResistanceOhm;
+    e.guard.brake.cfg.maxCurrentA   = kBrakeMaxCurrentA;
 }
 
 }  // namespace drivelab

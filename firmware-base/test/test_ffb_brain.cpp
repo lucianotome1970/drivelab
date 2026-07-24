@@ -195,6 +195,25 @@ int main() {
         CHECK(approx(b.update(24), 0.0f) && !b.isOn());    // <off → desliga
     }
 
+    // 10b) M2 — brake resistor: clamp de corrente (brake_resistance). duty limitado p/ I_pico ≤ maxCurrentA.
+    {
+        // Bus 56V, resistor 2Ω, limite 12A → maxDuty = 12*2/56 = 0.4286. Sem o clamp, 56V daria duty 1.0.
+        BrakeController b;
+        b.cfg.offVoltage = 57; b.cfg.onVoltage = 58; b.cfg.fullVoltage = 60;
+        b.cfg.resistanceOhm = 2.0f; b.cfg.maxCurrentA = 12.0f;
+        const float d = b.update(59.0f);                   // liga (59>58) e pediria duty proporcional alto
+        CHECK(d > 0.0f);
+        CHECK(approx(d, 12.0f * 2.0f / 59.0f, 1e-3f));     // limitado pelo clamp de corrente (~0.407)
+        // I_pico resultante = busV*duty/R ≈ maxCurrentA
+        CHECK(approx(59.0f * d / 2.0f, 12.0f, 1e-2f));
+
+        // maxCurrentA = 0 → sem clamp (comportamento antigo intacto)
+        BrakeController b2;
+        b2.cfg.offVoltage = 57; b2.cfg.onVoltage = 58; b2.cfg.fullVoltage = 60;
+        b2.cfg.resistanceOhm = 2.0f; b2.cfg.maxCurrentA = 0.0f;
+        CHECK(approx(b2.update(60.0f), 1.0f));             // sem limite → duty pleno
+    }
+
     // 11) M2 — PowerGuard: dump de regeneração + falha latched por sobretensão/sobretemperatura
     {
         PowerGuard g; g.overVoltageV = 30; g.overTempC = 80;

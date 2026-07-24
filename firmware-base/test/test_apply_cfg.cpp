@@ -184,6 +184,28 @@ int main() {
         CHECK(std::fabs(e.guard.overVoltageV - 51.84f) < 1e-3f);
     }
 
+    // ----- Brake resistor (chopper): limiares derivados da nominal + histerese off<on<full<over -----
+    {
+        // 48V: off=49.44, on=50.4, full=51.36 (< over=51.84). resistor 2Ω, limite 12A.
+        BaseCfg c; baseSeedDefaults(c); c.busNominalV = 48;
+        FfbEngine e; applyCfgToEngine(c, e, kLoopHz);
+        CHECK(std::fabs(e.guard.brake.cfg.offVoltage  - 49.44f) < 1e-2f);
+        CHECK(std::fabs(e.guard.brake.cfg.onVoltage   - 50.40f) < 1e-2f);
+        CHECK(std::fabs(e.guard.brake.cfg.fullVoltage - 51.36f) < 1e-2f);
+        CHECK(e.guard.brake.cfg.fullVoltage < e.guard.overVoltageV);   // 100% ANTES do corte duro
+        CHECK(e.guard.brake.cfg.offVoltage  < e.guard.brake.cfg.onVoltage);
+        CHECK(e.guard.brake.cfg.onVoltage   < e.guard.brake.cfg.fullVoltage);
+        CHECK(std::fabs(e.guard.brake.cfg.resistanceOhm - 2.0f) < 1e-6f);
+        CHECK(std::fabs(e.guard.brake.cfg.maxCurrentA  - 12.0f) < 1e-6f);
+    }
+    {
+        // 56V: full = 56*1.07 = 59.92 fica ABAIXO do teto (60) → não é capado; segue < overVoltageV.
+        BaseCfg c; baseSeedDefaults(c); c.busNominalV = 56;
+        FfbEngine e; applyCfgToEngine(c, e, kLoopHz);
+        CHECK(std::fabs(e.guard.brake.cfg.fullVoltage - 59.92f) < 1e-2f);
+        CHECK(e.guard.brake.cfg.fullVoltage < e.guard.overVoltageV);   // 59.92 < 60
+    }
+
     std::printf("apply_cfg: %d checks, %d fails\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

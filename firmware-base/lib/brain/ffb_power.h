@@ -18,10 +18,18 @@ namespace drivelab {
 
 /// Limiares do brake resistor. Com histerese: liga acima de onVoltage, só desliga abaixo de
 /// offVoltage; entre onVoltage e fullVoltage o duty é proporcional (0→1).
+///
+/// resistanceOhm/maxCurrentA são o equivalente ao `brake_resistance` da ODrive stock + a policy de
+/// "não empurrar regen pra fonte" (max_regen_current=0, implícito num chopper por tensão): o resistor
+/// dissipa tudo, mas o duty é LIMITADO para a corrente de pico (busV·duty/R) não passar de maxCurrentA —
+/// protege o MOSFET AUX e o resistor. Se o clamp impedir de segurar o bus, o corte duro (overVoltageV)
+/// desabilita o motor — cascata de segurança correta.
 struct BrakeConfig {
-    float onVoltage   = 26.0f;   ///< começa a dissipar (regen elevou a tensão)
-    float fullVoltage = 30.0f;   ///< duty 100%
-    float offVoltage  = 25.0f;   ///< histerese: desliga abaixo disso
+    float onVoltage     = 26.0f;   ///< começa a dissipar (regen elevou a tensão)
+    float fullVoltage   = 30.0f;   ///< duty 100%
+    float offVoltage    = 25.0f;   ///< histerese: desliga abaixo disso
+    float resistanceOhm = 2.0f;    ///< ohms do resistor (= brake_resistance) — p/ limitar a corrente de pico
+    float maxCurrentA   = 0.0f;    ///< limite de corrente de pico no resistor/MOSFET (0 = sem limite)
 };
 
 /// Controlador do brake resistor (stateful por causa da histerese).
@@ -35,7 +43,13 @@ public:
         else     { if (busVoltage > cfg.onVoltage)  _on = true;  }
         if (!_on) return 0.0f;
         const float span = cfg.fullVoltage - cfg.onVoltage;
-        const float duty = span > 0.0f ? (busVoltage - cfg.onVoltage) / span : 1.0f;
+        float duty = span > 0.0f ? (busVoltage - cfg.onVoltage) / span : 1.0f;
+        duty = clampf(duty, 0.0f, 1.0f);
+        // Clamp de corrente (brake_resistance): I_pico = busV·duty/R ≤ maxCurrentA → duty ≤ maxCurrentA·R/busV.
+        if (cfg.maxCurrentA > 0.0f && cfg.resistanceOhm > 0.0f && busVoltage > 0.0f) {
+            const float maxDuty = cfg.maxCurrentA * cfg.resistanceOhm / busVoltage;
+            if (duty > maxDuty) duty = maxDuty;
+        }
         return clampf(duty, 0.0f, 1.0f);
     }
 
