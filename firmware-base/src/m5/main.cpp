@@ -498,6 +498,13 @@ void loop()
         const long counts  = lroundf(angRad * (ENC_CPR / (2.0f * 3.14159265358979323846f)));
         const int16_t pos  = static_cast<int16_t>(counts > 32767 ? 32767 : (counts < -32768 ? -32768 : counts));
         g_a0.setWheelTelemetry(pos, deci);
+
+        // Tensão do barramento (ADC PA6) → telemetria. Leitura passiva (motor OFF ok). A escala do divisor
+        // ainda é placeholder (item A1 do registro de validação) — este valor serve p/ calibrar vs multímetro.
+        const float busV = focPower.busVoltage();
+        uint16_t busMv = 0;
+        if (busV > 0.0f) { const float mv = busV * 1000.0f; busMv = mv > 65535.0f ? 65535u : static_cast<uint16_t>(mv + 0.5f); }
+        g_a0.setBusVoltageMv(busMv);
     }
 
     // Medição de clipping do FFB mesmo com o motor OFF: mede a demanda do host (força constante da tela de

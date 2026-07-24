@@ -203,7 +203,7 @@ void A0Channel::serviceLoop(uint32_t nowMs, bool (*sender)(uint8_t, const uint8_
     {
         uint8_t payload[kA0PayloadLen];
         uint16_t plen = buildDeviceStatePayload(payload, sensorMcuTempC(), m_clipping,
-                                                m_wheelPos, m_wheelAngleDeci);
+                                                m_wheelPos, m_wheelAngleDeci, m_busVoltageMv);
 
         if (sender(A0_RID_STATE, payload, plen))
         {

@@ -76,6 +76,12 @@ int main()
     CHECK(static_cast<int16_t>(out4[7] | (out4[8] << 8)) == 900);   // 90.0°
     CHECK(out4[19] == 0);
 
+    // [15..16] BusVoltageMv (uint16 LE, mV) — tensão do barramento.
+    uint8_t out5[kA0PayloadLen];
+    A0Channel::buildDeviceStatePayload(out5, 28, 0, 0, 0, /*busVoltageMv=*/56000);
+    CHECK(static_cast<uint16_t>(out5[15] | (out5[16] << 8)) == 56000); // 56.000 V
+    CHECK(out5[18] == 28);                                             // mcuTemp intacto
+
     // angleDeciDegFromRad: rad → 0.1°, com saturação em int16.
     CHECK(A0Channel::angleDeciDegFromRad(0.0f) == 0);
     CHECK(A0Channel::angleDeciDegFromRad(3.14159265358979323846f) == 1800);   // π rad = 180.0°

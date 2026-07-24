@@ -103,7 +103,7 @@ public:
     //   [9..12]  Torque/MotorCurrentMa — adiado (M1)
     //   [13]     FetTempC — adiado (M1, pinos do clone MKS divergem)
     //   [14]     ErrorCode — 0
-    //   [15..16] BusVoltageMv — adiado (M1)
+    //   [15..16] BusVoltageMv (uint16 LE, mV) — tensão do barramento (FocPower::busVoltage, PA6)
     //   [17]     MotorTempC — adiado (M1)
     //   [18]     McuTempC — único sensor real do M0.5 (sensorMcuTempC())
     //   [19]     Clipping (0-255) — nível de corte do FFB (torque pedido além do teto); 0 sem placa/força
@@ -111,7 +111,8 @@ public:
     // `out` deve ter >= kA0PayloadLen (63) bytes. Retorna o tamanho do
     // payload escrito (sempre kA0PayloadLen).
     static uint16_t buildDeviceStatePayload(uint8_t* out, int8_t mcuTempC, uint8_t clipping = 0,
-                                            int16_t position = 0, int16_t angleDeciDeg = 0)
+                                            int16_t position = 0, int16_t angleDeciDeg = 0,
+                                            uint16_t busVoltageMv = 0)
     {
         for (uint16_t i = 0; i < kA0PayloadLen; ++i)
         {
@@ -128,8 +129,8 @@ public:
         out[8] = static_cast<uint8_t>((angleDeciDeg >> 8) & 0xFF); // AngleDeciDeg (hi)
         out[13] = 0; // FetTempC — adiado (M1)
         out[14] = 0; // ErrorCode
-        out[15] = 0; // BusVoltageMv (lo) — adiado (M1)
-        out[16] = 0; // BusVoltageMv (hi) — adiado (M1)
+        out[15] = static_cast<uint8_t>(busVoltageMv & 0xFF);        // BusVoltageMv (lo)
+        out[16] = static_cast<uint8_t>((busVoltageMv >> 8) & 0xFF); // BusVoltageMv (hi)
         out[18] = static_cast<uint8_t>(mcuTempC);
         out[19] = clipping;
         return kA0PayloadLen;
@@ -147,6 +148,11 @@ public:
 
     /// Nível de clipping do FFB (0-255) a incluir na telemetria — alimentado pelo m5 com engine.clipping().
     void setClipping(uint8_t c) { m_clipping = c; }
+
+    /// Tensão do barramento (mV) p/ a telemetria — alimentado pelo m5 com FocPower::busVoltage() (leitura do
+    /// ADC no PA6). É só leitura (motor OFF ok). A ESCALA do divisor ainda é placeholder — ver item A1 do
+    /// registro de validação: use este valor na tela p/ calibrar contra o multímetro.
+    void setBusVoltageMv(uint16_t mv) { m_busVoltageMv = mv; }
 
     /// Telemetria do volante (set-center): posição em contagens + ângulo em 0.1°, já relativos ao centro.
     /// Alimentado pelo m5 a cada loop a partir do FocEncoder (motor OFF — é só leitura).
@@ -188,6 +194,7 @@ private:
     uint8_t m_clipping = 0;   ///< último nível de clipping do FFB p/ a telemetria (setClipping)
     int16_t m_wheelPos = 0;       ///< posição do volante (contagens, rel. centro) p/ a telemetria (setWheelTelemetry)
     int16_t m_wheelAngleDeci = 0; ///< ângulo do volante (0.1°, rel. centro) p/ a telemetria (setWheelTelemetry)
+    uint16_t m_busVoltageMv = 0;  ///< tensão do barramento (mV) p/ a telemetria (setBusVoltageMv)
     bool m_centerRequested = false; ///< pedido pendente de ResetCenter (cmd 3), consumido por centerRequested()
     int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
     bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()
