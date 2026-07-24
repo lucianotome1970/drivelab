@@ -410,6 +410,10 @@ void setup()
     encoder.init();
     encoder.enableInterrupts(doEncoderA, doEncoderB);
 
+    // Brake chopper (TIM2): configura no estado DESARMADO/seguro. NO-OP no build padrão (só age se
+    // DRVLAB_BRAKE_CHOPPER_HW estiver definido) — e mesmo então não dissipa até arm() (passo de bancada).
+    focBrake.begin();
+
     // Canal A0: carrega os settings persistidos (ou semeia defaults).
     g_a0.begin();
 

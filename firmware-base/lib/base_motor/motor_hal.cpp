@@ -13,6 +13,7 @@
 #include "motor_hal.h"
 #include "odrive_v36_pins.h"
 #include "sensor_convert.h"
+#include "brake_pwm.h"
 
 namespace drivelab {
 
@@ -125,20 +126,98 @@ void FocMotor::setTorque(float nm) { m_motor.move(nm); }
 void FocMotor::disable() { m_motor.disable(); }
 
 // ----------------------------------------------------------------------------
-// FocBrake
+// FocBrake — chopper do brake resistor (meio-ponte AUX_L=PB10/AUX_H=PB11, TIM2).
+//
+// Portado 1:1 do fork MKS v0.5.1 (Board/v3/Src/tim.c + MotorControl/low_level.cpp): TIM2 center-aligned,
+// CH3=low-side (PWM2/pol LOW), CH4=high-side (PWM2/pol HIGH), dead-time por SOFTWARE (brake_pwm.h). A
+// matemática duty→timings é pura/testada em brake_pwm.h; aqui só o acionamento dos registradores.
+//
+// SEGURANÇA DUPLA:
+//  1) tudo atrás de DRVLAB_BRAKE_CHOPPER_HW — no build PADRÃO nada disto compila e o TIM2 fica INTOCADO
+//     (comportamento idêntico ao NO-OP antigo). Habilitar é passo de bancada (definir a flag + escopo).
+//  2) DESARMADO por padrão (m_armed=false) — mesmo com HW e begin(), setDuty() só mantém o estado seguro
+//     até arm() ser chamado DELIBERADAMENTE (com os gates verificados no osciloscópio).
 // ----------------------------------------------------------------------------
-void FocBrake::setDuty(float /*duty01*/)
+#ifdef DRVLAB_BRAKE_CHOPPER_HW
+static TIM_HandleTypeDef s_htim2;
+static bool s_tim2Ready = false;
+
+// Estado seguro nos compares: CCR3=0, CCR4=period+1 → resistor NÃO conduz (idem safety_critical_*_brake).
+static inline void brakeSafeRegisters()
 {
-    // NO-OP de propósito no v1 (M5 Task 4). O brake resistor do ODrive v3.6 /
-    // MKS ODRIVE-S é um MEIO-PONTE (half-bridge, AUX_L=PB10/AUX_H=PB11 em
-    // TIM2 — CONFIRMADO pela fonte de fábrica MKS v0.5.1, ver
-    // odrive_v36_pins.h), não um único MOSFET low-side acionável por
-    // analogWrite() de um pino só (suposição antiga, já corrigida). Ligar de
-    // verdade exige configurar um segundo canal PWM dedicado do TIM2 com
-    // dead-time próprio — trabalho de bancada adiado (fica para depois do
-    // Stage 1). A proteção de sobretensão (PowerGuard.overVoltageV) + a
-    // partida conservadora (torque baixo, rampa lenta) cobrem a segurança
-    // dos primeiros giros sem depender do brake resistor.
+    TIM2->CCR3 = 0;
+    TIM2->CCR4 = kBrakePeriodClocks + 1;
+}
+#endif
+
+void FocBrake::begin()
+{
+#ifdef DRVLAB_BRAKE_CHOPPER_HW
+    __HAL_RCC_TIM2_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+
+    GPIO_InitTypeDef g = {};
+    g.Pin       = GPIO_PIN_10 | GPIO_PIN_11;   // PB10=TIM2_CH3 (low), PB11=TIM2_CH4 (high)
+    g.Mode      = GPIO_MODE_AF_PP;
+    g.Pull      = GPIO_NOPULL;
+    g.Speed     = GPIO_SPEED_FREQ_LOW;
+    g.Alternate = GPIO_AF1_TIM2;
+    HAL_GPIO_Init(GPIOB, &g);
+
+    s_htim2.Instance               = TIM2;
+    s_htim2.Init.Prescaler         = 0;
+    s_htim2.Init.CounterMode       = TIM_COUNTERMODE_CENTERALIGNED3;
+    s_htim2.Init.Period            = kBrakePeriodClocks;
+    s_htim2.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
+    s_htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    HAL_TIM_PWM_Init(&s_htim2);
+
+    TIM_OC_InitTypeDef oc = {};
+    oc.OCMode     = TIM_OCMODE_PWM2;
+    oc.OCFastMode = TIM_OCFAST_DISABLE;
+
+    oc.Pulse       = 0;                          // CH3 low-side: pol LOW, estado seguro
+    oc.OCPolarity  = TIM_OCPOLARITY_LOW;
+    HAL_TIM_PWM_ConfigChannel(&s_htim2, &oc, TIM_CHANNEL_3);
+
+    oc.Pulse       = kBrakePeriodClocks + 1;     // CH4 high-side: pol HIGH, estado seguro
+    oc.OCPolarity  = TIM_OCPOLARITY_HIGH;
+    HAL_TIM_PWM_ConfigChannel(&s_htim2, &oc, TIM_CHANNEL_4);
+
+    brakeSafeRegisters();                         // garante o estado seguro ANTES de habilitar as saídas
+    HAL_TIM_PWM_Start(&s_htim2, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&s_htim2, TIM_CHANNEL_4);
+    s_tim2Ready = true;
+#endif
+    m_armed = false;   // SEMPRE começa desarmado
+}
+
+void FocBrake::arm() { m_armed = true; }
+
+void FocBrake::disarm()
+{
+    m_armed = false;
+#ifdef DRVLAB_BRAKE_CHOPPER_HW
+    if (s_tim2Ready) brakeSafeRegisters();
+#endif
+}
+
+void FocBrake::setDuty(float duty01)
+{
+#ifdef DRVLAB_BRAKE_CHOPPER_HW
+    if (!s_tim2Ready) return;
+    if (!m_armed) { brakeSafeRegisters(); return; }        // desarmado → resistor não conduz
+
+    const BrakeTimings t = brakeDutyToTimings(duty01);
+    if (!brakeDeadtimeOk(t)) { brakeSafeRegisters(); return; } // recusa violação de dead-time (shoot-through)
+
+    // Atualização segura (idem ODrive): volta ao estado seguro e então aplica os dois compares.
+    brakeSafeRegisters();
+    TIM2->CCR3 = t.lowOff;   // CH3 low-side
+    TIM2->CCR4 = t.highOn;   // CH4 high-side
+#else
+    (void)duty01;   // build PADRÃO: NO-OP — TIM2 intocado (mesma segurança do v1)
+#endif
 }
 
 }  // namespace drivelab

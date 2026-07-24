@@ -15,7 +15,7 @@ Legenda de risco: 🔴 segurança (antes do motor) · 🟠 gated (ativa no Stage
 - [ ] **Proteção de sobrecorrente** (`FocCurrent`) — offset 2048 counts + VDDA nominal são chutes (`motor_hal.h`). Calibrar o offset com o motor **parado/sem corrente** antes de confiar na proteção.
 - [ ] **POLE_PAIRS** (=15, `m5/main.cpp`) — confirmar com o motor real (senão o FOC comuta errado → treme/trava).
 - [ ] **ENC_CPR** (=10000, E6B2 2500 P/R × 4) — confirmar girando 90° físicos e conferindo 90° na tela.
-- [ ] **Brake chopper PWM** (meio-ponte AUX_L/AUX_H, TIM2 — `FocBrake::setDuty` é **NO-OP**) — portar a PWM real (ref.: fork ODrive v0.5.1 da MKS em `~/Downloads`). Até lá, a regen sustentada não é dissipada de fato.
+- [~] **Brake chopper PWM** (meio-ponte AUX_L/AUX_H, TIM2) — **PORTADO** (fiel ao fork MKS v0.5.1): lógica pura `duty→timings` testada (`brake_pwm.h`, 101 pts de dead-time) + acionamento HW em `FocBrake` (TIM2 center-aligned, CH3 low/CH4 high, dead-time por SW). **Segurança dupla:** atrás da flag `DRVLAB_BRAKE_CHOPPER_HW` (build padrão = TIM2 intocado) **e** desarmado por padrão (`arm()` é passo deliberado). **Falta na bancada:** (1) definir a flag e rebuildar; (2) **escopo nos gates PB10/PB11** no estado desarmado (confirmar sem shoot-through) com resistor desconectado/baixa tensão; (3) wire do `arm()` a um gatilho do Stage 1; (4) validar `kBrakeMaxCurrentA`/2Ω.
 - [ ] **`kBrakeMaxCurrentA`=12 / `kBrakeResistanceOhm`=2** (`apply_cfg.h`) — confirmar contra o resistor real e o limite do MOSFET AUX.
 
 ### 🟠 B. Gated — codado, nunca rodou em hardware (ativa no Stage 1, `g_calibrated`)
@@ -90,7 +90,7 @@ Legenda de risco: 🔴 segurança (antes do motor) · 🟠 gated (ativa no Stage
 
 ## Ordem sugerida (o que fazer primeiro)
 1. **Agora, sem bancada:** validar 🟢E (set-center, telemetria, update na base) e ⚪F (gravar handbrake/wheel).
-2. **Portar, sem bancada:** brake chopper TIM2 (código) + plugar `BusVoltageMv` na telemetria (🔵D).
+2. **Portar, sem bancada:** ✅ brake chopper TIM2 (portado, atrás de flag/desarmado) + ✅ `BusVoltageMv` na telemetria (🔵D).
 3. **Bancada, dia do motor:** seguir a Parte 2 na ordem, marcando 🔴A → 🟠B → 🟡C.
 
 <sub>DriveLab — Autor: Luciano Tomé — Licença MIT</sub>

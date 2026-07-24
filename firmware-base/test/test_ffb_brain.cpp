@@ -19,6 +19,7 @@
 #include "cogging.h"
 #include "filters.h"
 #include "oscillation.h"
+#include "brake_pwm.h"
 #include "ffb_engine.h"
 
 #include <cstdio>
@@ -212,6 +213,38 @@ int main() {
         b2.cfg.offVoltage = 57; b2.cfg.onVoltage = 58; b2.cfg.fullVoltage = 60;
         b2.cfg.resistanceOhm = 2.0f; b2.cfg.maxCurrentA = 0.0f;
         CHECK(approx(b2.update(60.0f), 1.0f));             // sem limite → duty pleno
+    }
+
+    // 10c) M2 — brake chopper PWM (TIM2): duty → timings (CCR3 low / CCR4 high) portado 1:1 do ODrive.
+    {
+        const uint32_t P = kBrakePeriodClocks;     // 4096
+        const uint32_t DT = kBrakeDeadtimeClocks;  // 40
+
+        // Desarmado/seguro: CCR3=0, CCR4=period+1 (resistor não conduz).
+        BrakeTimings safe = brakeSafeTimings();
+        CHECK(safe.lowOff == 0 && safe.highOn == P + 1);
+
+        // duty=0: high_on = period (100% do ciclo alto = low-side desligado); gap = dead-time.
+        BrakeTimings d0 = brakeDutyToTimings(0.0f);
+        CHECK(d0.highOn == P && d0.lowOff == P - DT);
+        CHECK(brakeDeadtimeOk(d0));
+
+        // duty=0.5: high_on = period*0.5 = 2048; low_off = 2048-40 = 2008.
+        BrakeTimings d5 = brakeDutyToTimings(0.5f);
+        CHECK(d5.highOn == P / 2 && d5.lowOff == P / 2 - DT);
+        CHECK(brakeDeadtimeOk(d5));
+
+        // Saturação em 0.95: high_on = 4096*0.05 = 204 (>= dead-time, seguro).
+        BrakeTimings dmax = brakeDutyToTimings(1.0f);      // pede 100%, satura em 0.95
+        CHECK(dmax.highOn == static_cast<uint32_t>(P * 0.05f));
+        CHECK(dmax.highOn >= DT && brakeDeadtimeOk(dmax));
+
+        // Monotônico: mais duty → high_on menor (mais tempo com o resistor conduzindo).
+        CHECK(brakeDutyToTimings(0.8f).highOn < brakeDutyToTimings(0.2f).highOn);
+
+        // O gap é SEMPRE >= dead-time em toda a faixa válida (proteção contra shoot-through).
+        for (int i = 0; i <= 100; ++i)
+            CHECK(brakeDeadtimeOk(brakeDutyToTimings(i / 100.0f)));
     }
 
     // 11) M2 — PowerGuard: dump de regeneração + falha latched por sobretensão/sobretemperatura

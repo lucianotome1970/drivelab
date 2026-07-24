@@ -142,7 +142,23 @@ private:
 class FocBrake : public IBrakeResistor
 {
 public:
+    // Configura o TIM2 (CH3=PB10 low-side / CH4=PB11 high-side) center-aligned no estado DESARMADO
+    // (resistor não conduz). Portado 1:1 do fork MKS v0.5.1 (Board/v3/Src/tim.c). Chamar no setup().
+    // SÓ toca o TIM2 se DRVLAB_BRAKE_CHOPPER_HW estiver definido — no build padrão é NO-OP (TIM2 intocado).
+    void begin();
+
+    // Arma/desarma o chopper. DESARMADO por padrão: setDuty() só aplica timing real depois de arm() —
+    // que é um passo DELIBERADO de bancada (validar os gates no escopo antes). disarm() volta ao seguro.
+    void arm();
+    void disarm();
+    bool armed() const { return m_armed; }
+
+    // Aplica o duty (0..1). Desarmado ou sem HW → mantém o estado seguro. Portado do ODrive
+    // (update_brake_current): duty→timings (brake_pwm.h) → CCR3/CCR4 do TIM2, com checagem de dead-time.
     void setDuty(float duty01) override;
+
+private:
+    bool m_armed = false;
 };
 
 }  // namespace drivelab
