@@ -52,14 +52,21 @@ public:
     // taxa assumida aqui).
     explicit FocEncoder(Encoder& encoder, float lpfHz = 30.0f, float expectedSampleRateHz = 1000.0f);
 
+    // positionRad() já devolve o ângulo RELATIVO ao centro (subtrai o offset do set-center).
     float positionRad() override;
     float velocityRadPerSec() override;
 
-    void reset() { m_velEst.reset(); }
+    // Set-center (BaseCommand.ResetCenter): captura o ângulo cru ATUAL como o novo zero do volante. Como o
+    // encoder é incremental, getAngle() é contínuo/multi-turn a partir do boot — guardar esse valor como
+    // offset resolve o centro em qualquer DOR (900°/1440° = 2,5/4 voltas). Só leitura: não mexe no motor.
+    void setCenterHere();
+
+    void reset() { m_velEst.reset(); m_centerOffsetRad = 0.0f; }
 
 private:
     Encoder& m_encoder;
     VelocityEstimator m_velEst;
+    float m_centerOffsetRad = 0.0f;  ///< ângulo cru guardado como centro (0 = centro no ponto de boot)
 };
 
 // ----------------------------------------------------------------------------

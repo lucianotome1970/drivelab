@@ -25,7 +25,9 @@ FocEncoder::FocEncoder(Encoder& encoder, float lpfHz, float expectedSampleRateHz
     m_velEst.lpf = makeLowPass(lpfHz, expectedSampleRateHz, 0.707f);
 }
 
-float FocEncoder::positionRad() { return m_encoder.getAngle(); }
+float FocEncoder::positionRad() { return m_encoder.getAngle() - m_centerOffsetRad; }
+
+void FocEncoder::setCenterHere() { m_centerOffsetRad = m_encoder.getAngle(); }
 
 float FocEncoder::velocityRadPerSec()
 {

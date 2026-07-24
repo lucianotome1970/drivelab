@@ -98,7 +98,9 @@ public:
     // app/DriveLab.Core/Protocol/BaseState.cs (ToBytes/Parse):
     //   [0..3]   FirmwareVersion (ReleaseType=0/dev, Major, Minor, Patch)
     //   [4]      flags (BaseFlags) — 0 (nenhuma flag definida ainda)
-    //   [5..12]  Position/AngleDeciDeg/Torque/MotorCurrentMa — adiado (M1)
+    //   [5..6]   Position (int16 LE) — posição do volante em contagens, relativa ao centro (set-center)
+    //   [7..8]   AngleDeciDeg (int16 LE) — ângulo do volante em 0.1°, relativo ao centro (o "0°" do app)
+    //   [9..12]  Torque/MotorCurrentMa — adiado (M1)
     //   [13]     FetTempC — adiado (M1, pinos do clone MKS divergem)
     //   [14]     ErrorCode — 0
     //   [15..16] BusVoltageMv — adiado (M1)
@@ -108,7 +110,8 @@ public:
     //   [20..62] reservado — zerado.
     // `out` deve ter >= kA0PayloadLen (63) bytes. Retorna o tamanho do
     // payload escrito (sempre kA0PayloadLen).
-    static uint16_t buildDeviceStatePayload(uint8_t* out, int8_t mcuTempC, uint8_t clipping = 0)
+    static uint16_t buildDeviceStatePayload(uint8_t* out, int8_t mcuTempC, uint8_t clipping = 0,
+                                            int16_t position = 0, int16_t angleDeciDeg = 0)
     {
         for (uint16_t i = 0; i < kA0PayloadLen; ++i)
         {
@@ -119,6 +122,10 @@ public:
         out[2] = DRVLAB_FW_VER_MINOR;
         out[3] = DRVLAB_FW_VER_PATCH;
         out[4] = 0;  // flags
+        out[5] = static_cast<uint8_t>(position & 0xFF);            // Position (lo)
+        out[6] = static_cast<uint8_t>((position >> 8) & 0xFF);     // Position (hi)
+        out[7] = static_cast<uint8_t>(angleDeciDeg & 0xFF);        // AngleDeciDeg (lo)
+        out[8] = static_cast<uint8_t>((angleDeciDeg >> 8) & 0xFF); // AngleDeciDeg (hi)
         out[13] = 0; // FetTempC — adiado (M1)
         out[14] = 0; // ErrorCode
         out[15] = 0; // BusVoltageMv (lo) — adiado (M1)
@@ -128,8 +135,34 @@ public:
         return kA0PayloadLen;
     }
 
+    /// Converte ângulo (rad) em deci-graus (0.1°), saturando em int16 — p/ o campo AngleDeciDeg da telemetria.
+    /// Pura/testável no host (não toca hardware).
+    static int16_t angleDeciDegFromRad(float rad)
+    {
+        float dd = rad * (1800.0f / 3.14159265358979323846f); // rad → 0.1°
+        if (dd >  32767.0f) dd =  32767.0f;
+        if (dd < -32768.0f) dd = -32768.0f;
+        return static_cast<int16_t>(dd >= 0.0f ? dd + 0.5f : dd - 0.5f);
+    }
+
     /// Nível de clipping do FFB (0-255) a incluir na telemetria — alimentado pelo m5 com engine.clipping().
     void setClipping(uint8_t c) { m_clipping = c; }
+
+    /// Telemetria do volante (set-center): posição em contagens + ângulo em 0.1°, já relativos ao centro.
+    /// Alimentado pelo m5 a cada loop a partir do FocEncoder (motor OFF — é só leitura).
+    void setWheelTelemetry(int16_t position, int16_t angleDeciDeg)
+    {
+        m_wheelPos = position;
+        m_wheelAngleDeci = angleDeciDeg;
+    }
+
+    /// Consome um pedido de "centralizar" (BaseCommand.ResetCenter / cmd 3). Retorna true UMA vez por pedido —
+    /// o m5 usa isso para chamar FocEncoder::setCenterHere() fora do callback USB.
+    bool centerRequested()
+    {
+        if (m_centerRequested) { m_centerRequested = false; return true; }
+        return false;
+    }
 
     /// Consome a última força ADITIVA de telemetria recebida no report DIRECT (0x10). Retorna true (e o valor
     /// em `out`, unidades force255) só quando chegou um report novo desde a última chamada — o m5 usa isso para
@@ -153,6 +186,9 @@ private:
     bool m_dfuRequested = false;
     bool m_forceEnabled = true;
     uint8_t m_clipping = 0;   ///< último nível de clipping do FFB p/ a telemetria (setClipping)
+    int16_t m_wheelPos = 0;       ///< posição do volante (contagens, rel. centro) p/ a telemetria (setWheelTelemetry)
+    int16_t m_wheelAngleDeci = 0; ///< ângulo do volante (0.1°, rel. centro) p/ a telemetria (setWheelTelemetry)
+    bool m_centerRequested = false; ///< pedido pendente de ResetCenter (cmd 3), consumido por centerRequested()
     int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
     bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()
 

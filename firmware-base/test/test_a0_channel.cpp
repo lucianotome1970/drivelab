@@ -69,6 +69,21 @@ int main()
     CHECK(out3[19] == 200);
     CHECK(out3[18] == 28);
 
+    // [5..6] Position (int16 LE) + [7..8] AngleDeciDeg (int16 LE) — set-center do volante.
+    uint8_t out4[kA0PayloadLen];
+    A0Channel::buildDeviceStatePayload(out4, 28, 0, /*position=*/-3000, /*angleDeciDeg=*/900);
+    CHECK(static_cast<int16_t>(out4[5] | (out4[6] << 8)) == -3000); // negativo (LE) intacto
+    CHECK(static_cast<int16_t>(out4[7] | (out4[8] << 8)) == 900);   // 90.0°
+    CHECK(out4[19] == 0);
+
+    // angleDeciDegFromRad: rad → 0.1°, com saturação em int16.
+    CHECK(A0Channel::angleDeciDegFromRad(0.0f) == 0);
+    CHECK(A0Channel::angleDeciDegFromRad(3.14159265358979323846f) == 1800);   // π rad = 180.0°
+    CHECK(A0Channel::angleDeciDegFromRad(-3.14159265358979323846f) == -1800); // simétrico
+    CHECK(A0Channel::angleDeciDegFromRad(1.5707963f) == 900);                 // π/2 = 90.0°
+    CHECK(A0Channel::angleDeciDegFromRad(1000.0f) == 32767);                  // satura (int16 max)
+    CHECK(A0Channel::angleDeciDegFromRad(-1000.0f) == -32768);               // satura (int16 min)
+
     std::printf("a0_channel: %d checks, %d fails\n", g_checks, g_fails);
     return g_fails == 0 ? 0 : 1;
 }

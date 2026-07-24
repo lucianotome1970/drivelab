@@ -112,6 +112,13 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 m_dfuRequested = true;
                 SerialTinyUSB.printf("A0 EnterDfu\n");
             }
+            else if (cmd == 3 /* ResetCenter */)
+            {
+                // BaseCommand.ResetCenter: só marca — o m5 captura a posição atual do encoder como centro
+                // fora deste callback USB (nada de trabalho no contexto do SET_REPORT do TinyUSB).
+                m_centerRequested = true;
+                SerialTinyUSB.printf("A0 cmd=%u (ResetCenter) -> m_centerRequested\n", cmd);
+            }
             else if (cmd == 6 /* SetForceEnabled */)
             {
                 // BaseCommand.SetForceEnabled (app/DriveLab.Core/Transport/
@@ -195,7 +202,8 @@ void A0Channel::serviceLoop(uint32_t nowMs, bool (*sender)(uint8_t, const uint8_
     if (nowMs - m_lastStateSendMs >= 15)
     {
         uint8_t payload[kA0PayloadLen];
-        uint16_t plen = buildDeviceStatePayload(payload, sensorMcuTempC(), m_clipping);
+        uint16_t plen = buildDeviceStatePayload(payload, sensorMcuTempC(), m_clipping,
+                                                m_wheelPos, m_wheelAngleDeci);
 
         if (sender(A0_RID_STATE, payload, plen))
         {

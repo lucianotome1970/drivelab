@@ -122,7 +122,7 @@ static Drv8301 drv;
 
 // ===================== Parâmetros do motor — AJUSTAR NA BANCADA =====================
 static const int   POLE_PAIRS = 15;      // hoverboard in-wheel, ~15 pares — AJUSTAR na bancada
-static const float ENC_CPR    = 4000.0f; // Omron E6B2-CWZ6C 1000 P/R × 4 (quadratura) = 4000 CPR
+static const float ENC_CPR    = 10000.0f; // Omron E6B2-CWZ6C 2500 P/R × 4 (quadratura) = 10000 CPR
 static const float SUPPLY_V   = 56.0f;   // MKS ODRIVE-S V3.6-S6V — variante 56V (NÃO 24V)
 
 // ===================== SimpleFOC — construídos, NUNCA inicializados/ligados aqui =====================
@@ -134,6 +134,12 @@ static BLDCDriver6PWM driver(kOdrivePinPhaseAH, kOdrivePinPhaseAL,
                               kOdrivePinEnGate);
 static BLDCMotor motor(POLE_PAIRS);
 static Encoder   encoder(kOdrivePinEncoderA, kOdrivePinEncoderB, ENC_CPR, kOdrivePinEncoderZ);
+
+// ISRs de quadratura (A/B) do SimpleFOC — só LEITURA do encoder (contagem), NÃO ligam o motor. O índice Z
+// NÃO é habilitado de propósito: o handleIndex() do SimpleFOC ancora full_rotations no índice, o que
+// atrapalharia a contagem multi-turn de que o set-center depende (900°/1440° > 1 volta). Z fica p/ refino.
+static void doEncoderA() { encoder.handleA(); }
+static void doEncoderB() { encoder.handleB(); }
 
 // ===================== HAL cérebro<->SimpleFOC (Task 3) — só CONSTRUÍDOS =====================
 static drivelab::FocEncoder focEncoder(encoder);
@@ -397,6 +403,13 @@ void setup()
     UsbBase::setReportCallbacks(hid_get_report_callback, hid_set_report_callback);
     g_hid = &UsbBase::begin();
 
+    // Encoder: LEITURA habilitada (contagem A/B por interrupção). Isto NÃO liga o motor — não toca no
+    // gate/PWM do DRV8301, só configura os pinos do encoder e as ISRs. Permite ler posição/velocidade e o
+    // set-center com o motor OFF (validação de bancada sem 56V). init() é não-bloqueante (ao contrário do
+    // initFOC(), que faz varredura e continua fora de escopo aqui).
+    encoder.init();
+    encoder.enableInterrupts(doEncoderA, doEncoderB);
+
     // Canal A0: carrega os settings persistidos (ou semeia defaults).
     g_a0.begin();
 
@@ -471,6 +484,20 @@ void loop()
             engine.setTelemetryForce(0.0f);
             lastDirectMs = 0;
         }
+    }
+
+    // Encoder + set-center (motor OFF): atualiza a contagem, atende o pedido de "centralizar"
+    // (BaseCommand.ResetCenter) e publica posição/ângulo RELATIVOS ao centro na telemetria (o "0°" do app).
+    // Puro leitura — não liga o motor.
+    {
+        encoder.update();
+        if (g_a0.centerRequested())
+            focEncoder.setCenterHere();
+        const float angRad = focEncoder.positionRad();                       // já relativo ao centro
+        const int16_t deci = A0Channel::angleDeciDegFromRad(angRad);
+        const long counts  = lroundf(angRad * (ENC_CPR / (2.0f * 3.14159265358979323846f)));
+        const int16_t pos  = static_cast<int16_t>(counts > 32767 ? 32767 : (counts < -32768 ? -32768 : counts));
+        g_a0.setWheelTelemetry(pos, deci);
     }
 
     // Medição de clipping do FFB mesmo com o motor OFF: mede a demanda do host (força constante da tela de
