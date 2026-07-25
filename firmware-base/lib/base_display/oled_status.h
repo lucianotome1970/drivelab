@@ -22,6 +22,7 @@ static constexpr int kOledNumPages = 3;   ///< Geral, Volante, Sobre
 struct OledStatus {
     uint8_t verMajor = 0, verMinor = 0, verPatch = 0;
     int  busMilliV = 0;          ///< tensão do barramento (mV) — BusVoltageMv
+    int  fetTempC = -128;        ///< temperatura dos FETs (°C); -128 = sem sensor
     int  mcuTempC = 0;           ///< temperatura do MCU (°C)
     int  clippingPct = 0;        ///< clipping do FFB (0..100 %)
     int  angleDeciDeg = 0;       ///< ângulo do volante (0.1°), relativo ao centro
@@ -54,10 +55,14 @@ inline void renderStatus(OledCanvas& c, const OledStatus& s, int page) {
             const int v10 = (s.busMilliV + 50) / 100;   // mV → 0.1V arredondado
             std::snprintf(b, sizeof b, "BUS   %d.%dV", v10 / 10, v10 % 10);
             c.textLine(2, b);
-            std::snprintf(b, sizeof b, "MCU   %dC", s.mcuTempC);
+            // FET: -128 = sem sensor → mostra "--"
+            if (s.fetTempC <= -128) std::snprintf(b, sizeof b, "FET   --");
+            else                    std::snprintf(b, sizeof b, "FET   %dC", s.fetTempC);
             c.textLine(3, b);
-            std::snprintf(b, sizeof b, "CLIP  %d%%", s.clippingPct);
+            std::snprintf(b, sizeof b, "MCU   %dC", s.mcuTempC);
             c.textLine(4, b);
+            std::snprintf(b, sizeof b, "CLIP  %d%%", s.clippingPct);
+            c.textLine(5, b);
             break;
         }
         case 1: {  // ---- VOLANTE ----

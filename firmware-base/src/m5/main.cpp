@@ -426,6 +426,8 @@ void setup()
     // gate/PWM do DRV8301, só configura os pinos do encoder e as ISRs. Permite ler posição/velocidade e o
     // set-center com o motor OFF (validação de bancada sem 56V). init() é não-bloqueante (ao contrário do
     // initFOC(), que faz varredura e continua fora de escopo aqui).
+    analogReadResolution(12);   // ADC de 12 bits (0..4095) — as conversões (bus, NTC) assumem 4096 de fundo
+
     encoder.init();
     encoder.enableInterrupts(doEncoderA, doEncoderB);
 
@@ -541,6 +543,12 @@ void loop()
         if (busV > 0.0f) { const float mv = busV * 1000.0f; busMv = mv > 65535.0f ? 65535u : static_cast<uint16_t>(mv + 0.5f); }
         g_a0.setBusVoltageMv(busMv);
 
+        // Temperatura dos FETs (NTC no PC5) → telemetria. Leitura passiva (motor OFF ok); -128 = sem sensor.
+        // Escala/constantes do NTC a validar na bancada (o clone MKS pode divergir do ODrive genuíno).
+        long fetC = lroundf(focPower.mosfetTempC());
+        if (fetC > 127) fetC = 127; else if (fetC < -128) fetC = -128;
+        g_a0.setFetTempC(static_cast<int8_t>(fetC));
+
         // Plausibilidade: com o bus energizado, avisa se a tensão lida não bate com a variante escolhida
         // (provável 24V/56V errado). Só AVISA (flag) — não corrige a seleção; ver resposta ao usuário.
         const uint8_t flags = busVoltageImplausible(busV, g_a0.cfg().busNominalV)
@@ -579,6 +587,7 @@ void loop()
             st.verPatch = DRVLAB_FW_VER_PATCH;
             const float bv = focPower.busVoltage();
             st.busMilliV   = bv > 0.0f ? static_cast<int>(bv * 1000.0f) : 0;
+            st.fetTempC    = static_cast<int>(lroundf(focPower.mosfetTempC()));
             st.mcuTempC    = sensorMcuTempC();
             st.clippingPct = static_cast<int>(engine.clipping()) * 100 / 255;
             st.angleDeciDeg = A0Channel::angleDeciDegFromRad(focEncoder.positionRad());

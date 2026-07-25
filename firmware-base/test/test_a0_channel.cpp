@@ -82,6 +82,13 @@ int main()
     CHECK(static_cast<uint16_t>(out5[15] | (out5[16] << 8)) == 56000); // 56.000 V
     CHECK(out5[18] == 28);                                             // mcuTemp intacto
 
+    // [13] FetTempC (int8) — NTC dos FETs; -128 = sem sensor.
+    uint8_t out6[kA0PayloadLen];
+    A0Channel::buildDeviceStatePayload(out6, 28, 0, 0, 0, 0, 0, /*fetTempC=*/42);
+    CHECK(static_cast<int8_t>(out6[13]) == 42);
+    A0Channel::buildDeviceStatePayload(out6, 28, 0, 0, 0, 0, 0, /*fetTempC=*/-128);
+    CHECK(static_cast<int8_t>(out6[13]) == -128);                      // sem sensor
+
     // angleDeciDegFromRad: rad → 0.1°, com saturação em int16.
     CHECK(A0Channel::angleDeciDegFromRad(0.0f) == 0);
     CHECK(A0Channel::angleDeciDegFromRad(3.14159265358979323846f) == 1800);   // π rad = 180.0°

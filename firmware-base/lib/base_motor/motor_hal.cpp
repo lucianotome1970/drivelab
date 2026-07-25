@@ -103,13 +103,12 @@ float FocPower::busVoltage()
 
 float FocPower::mosfetTempC()
 {
-    // AJUSTAR: as constantes do NTC dos FETs em sensor_convert.h
-    // (kNtcR25/kNtcBeta/kNtcRload) foram conferidas contra o firmware ODrive
-    // GENUÍNO; a MKS ODRIVE-S (clone) pode divergir em valores de pull-up/
-    // NTC — risco documentado, não bloqueante para este passo (a leitura de
-    // kOdrivePinNtcM0 nem entra em uso real até a Task 4). Placeholder
-    // seguro até a calibração de bancada.
-    return 25.0f;
+    // NTC onboard dos FETs (PC5 / kOdrivePinNtcM0), convertido pela fórmula Beta (fetThermistorCentiC).
+    // Leitura PASSIVA (motor OFF ok). AJUSTAR na bancada: as constantes kNtcR25/kNtcBeta/kNtcRload foram
+    // conferidas contra o ODrive GENUÍNO; a MKS (clone) pode divergir no pull-up/NTC — validar contra um
+    // termômetro. Sensor aberto/curto → fetThermistorCentiC devolve -128.00°C (o app mostra "sem sensor").
+    const int centiC = fetThermistorCentiC(static_cast<uint16_t>(analogRead(kOdrivePinNtcM0)));
+    return static_cast<float>(centiC) / 100.0f;
 }
 
 float FocPower::motorTempC()

@@ -35,7 +35,7 @@ Legenda de risco: 🔴 segurança (antes do motor) · 🟠 gated (ativa no Stage
 
 ### 🔵 D. Telemetria adiada p/ M1 — campos ainda em 0
 - [ ] `Torque`, `MotorCurrentMa` — sem malha de corrente rodando.
-- [ ] `FetTempC` — NTC dos FETs (pinos do clone MKS podem divergir).
+- [~] `FetTempC` — **habilitado** (NTC no PC5 → `fetThermistorCentiC`, na telemetria + OLED). Leitura passiva, motor-OFF. **Falta validar** as constantes do NTC (kNtcR25/Beta/Rload) contra um termômetro — o clone MKS pode divergir do ODrive genuíno. -128 = sem sensor.
 - [x] `BusVoltageMv` — **plugado na telemetria** (v0.3.2): m5 lê `FocPower::busVoltage()` (PA6) e envia em `[15..16]`. ⚠️ A **escala do divisor** ainda é placeholder → calibrar vs multímetro (item 🔴A1).
 - [ ] `MotorTempC` — sem NTC dedicado confirmado.
 - [x] `McuTempC` — único sensor real hoje. ✅
