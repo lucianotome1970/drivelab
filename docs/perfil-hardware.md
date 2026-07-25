@@ -53,10 +53,15 @@ o perfil e **reaplica** após o update — a config de hardware não se perde.
 - **Confirmar com o usuário** (mostrar os valores) — nunca aplicar em silêncio.
 - Identidade textual (`vendor`) pra o usuário saber a origem.
 
+## Instalador Windows (profissional)
+O criador gera um `setup.exe` (Inno Setup) que instala o app **+ o `hardware-profile.json` dele junto** — o
+comprador só dá duplo-clique, nada manual. O app lê o perfil **ao lado do .exe** (precedência sobre o AppData),
+e sem `advanced.flag` a aba Hardware fica escondida. Ver `installer/windows/` (`DriveLab.iss` + `README.md`) e
+o CI `.github/workflows/windows-installer.yml` (gera o `.exe` num runner Windows — útil pra quem está no Mac).
+
 ## Fora do v1
 - "Lock" forte (impedir edição dos campos de hardware) — v1 só separa + esconde a aba no modo simples.
-- Assinatura criptográfica do perfil.
-- Bundle automático no instalador do construtor (por ora: arquivo na pasta do app / import manual).
+- Assinatura criptográfica do perfil + code-signing do instalador (SmartScreen).
 
 ## Estado
 - [x] Núcleo: `HardwareProfile` + `HardwareProfileService` (build/validate/serialize) — DriveLab.Core, testado.

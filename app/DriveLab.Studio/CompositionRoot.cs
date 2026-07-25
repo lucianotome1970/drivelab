@@ -204,8 +204,10 @@ public static class CompositionRoot
         // aplica os parâmetros de hardware do construtor. (v1: aplica + LOGA no console; o diálogo de
         // confirmação vem a seguir.) Reaplica ao conectar (a placa recarrega da flash no connect).
         var hwStore = new JsonHardwareProfileStore();
-        System.Console.WriteLine($"[DriveLab][HW] Procurando perfil de hardware em: {hwStore.Path}");
+        System.Console.WriteLine($"[DriveLab][HW] Procurando perfil de hardware — bundled: {hwStore.BundledPath} | appdata: {hwStore.AppDataPath}");
         var hwProfile = hwStore.Load();
+        if (hwProfile is not null)
+            System.Console.WriteLine($"[DriveLab][HW] Usando: {hwStore.EffectivePath}");
         if (hwProfile is null)
         {
             System.Console.WriteLine("[DriveLab][HW] Nenhum perfil de hardware encontrado (ok).");

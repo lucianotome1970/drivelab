@@ -1,0 +1,62 @@
+# ============================================================================
+#  DriveLab — CI do instalador Windows.
+#  Publica o app (self-contained x64) + compila o Inno Setup num runner Windows e sobe o setup.exe como
+#  artefato. Permite gerar o instalador SEM ter Windows (útil pra quem desenvolve no Mac).
+#  Dispare manualmente (Actions -> "Windows installer" -> Run) ou por tag studio-v*.
+# ============================================================================
+name: Windows installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão do instalador (ex.: 1.0.0)"
+        required: true
+        default: "1.0.0"
+  push:
+    tags:
+      - "studio-v*"
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish (self-contained win-x64)
+        run: >
+          dotnet publish app/DriveLab.Studio/DriveLab.Studio.csproj -c Release -r win-x64
+          --self-contained true -o installer/windows/publish
+
+      # Inclui o perfil de hardware do criador (se commitado em installer/windows/) ao lado do .exe.
+      - name: Bundle hardware profile (se existir)
+        shell: pwsh
+        run: |
+          if (Test-Path installer/windows/hardware-profile.json) {
+            Copy-Item installer/windows/hardware-profile.json installer/windows/publish/ -Force
+            Write-Host "hardware-profile.json incluído no pacote."
+          } else {
+            Write-Host "Sem hardware-profile.json — instalador genérico (aba Hardware aparece se rodar com --advanced)."
+          }
+
+      - name: Instalar Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Compilar instalador
+        shell: pwsh
+        run: |
+          $ver = "${{ github.event.inputs.version }}"
+          if (-not $ver) { $ver = "0.0.0-ci" }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$ver" installer/windows/DriveLab.iss
+
+      - name: Upload do setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: DriveLab-Windows-Installer
+          path: installer/windows/output/*.exe
+          if-no-files-found: error

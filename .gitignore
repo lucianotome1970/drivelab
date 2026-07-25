@@ -12,3 +12,8 @@ tools/hidp0
 
 # Claude Code local settings
 .claude/
+
+# Artefatos do instalador Windows
+installer/windows/publish/
+installer/windows/output/
+installer/windows/hardware-profile.json
