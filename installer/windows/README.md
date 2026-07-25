@@ -9,19 +9,20 @@ O que o instalador faz:
 - **Não** inclui `advanced.flag` → a aba **Hardware fica escondida** pro usuário final.
 - Cria atalhos (Menu Iniciar / Área de trabalho) e desinstalador.
 
-## Pré-requisitos no Windows (o criador de DD compila no Windows)
-- **.NET 8 SDK** — https://dotnet.microsoft.com/download
-- **Inno Setup 6** — https://jrsoftware.org/isdl.php
+## Pré-requisitos no Windows
+- **Só internet** — o script **baixa e instala sozinho** o .NET 8 SDK (local, sem admin) e o Inno Setup se
+  faltarem. (A instalação do Inno pode pedir UAC/admin na 1ª vez.)
+- Levar a **pasta do projeto** (mantendo `app\` e `installer\` na estrutura do repo).
 
-## Jeito fácil: o script faz tudo (recomendado)
+## Jeito fácil: um comando faz TUDO (recomendado)
 1. **Configure o seu DD no app** (modo avançado): rode `DriveLab.Studio.exe --advanced`, abra a aba
    **Hardware**, ajuste tudo e clique **"Exportar perfil de hardware"** → salve como `hardware-profile.json`.
 2. **Coloque esse `hardware-profile.json` em `installer\windows\`** (esta pasta).
-3. No **PowerShell**, nesta pasta, rode:
+3. No **PowerShell**, nesta pasta, rode (ou dê duplo-clique em `build-installer.bat`):
    ```powershell
    .\build-installer.ps1 -Version 1.0.0
    ```
-   O script **publica o app + inclui o seu perfil + compila o instalador**. Sai em
+   O script **baixa as dependências → publica o app → inclui o seu perfil → compila o instalador**. Sai em
    `installer\windows\output\DriveLab-Setup-1.0.0.exe`.
 4. **Envie** esse `setup.exe` pros seus compradores. 🎉 (Antes, edite `DriveLab.iss` p/ pôr sua marca em
    `MyAppPublisher`.)

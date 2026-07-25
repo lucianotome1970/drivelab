@@ -17,3 +17,5 @@ tools/hidp0
 installer/windows/publish/
 installer/windows/output/
 installer/windows/hardware-profile.json
+installer/windows/.dotnet/
+installer/windows/dotnet-install.ps1
