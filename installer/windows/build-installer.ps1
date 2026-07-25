@@ -1,5 +1,5 @@
 # ============================================================================
-#  DriveLab — build TUDO-EM-UM do instalador Windows (para o CRIADOR de DD).
+#  DriveLab - build TUDO-EM-UM do instalador Windows (para o CRIADOR de DD).
 #  Leve a pasta do projeto pro Windows e rode este script. Ele:
 #    1) baixa/instala o .NET 8 SDK (local, sem admin) se faltar;
 #    2) baixa/instala o Inno Setup se faltar;
@@ -9,16 +9,17 @@
 #
 #  Uso (PowerShell, nesta pasta installer\windows\):
 #     .\build-installer.ps1 -Version 1.0.0
-#  Coloque o SEU hardware-profile.json nesta pasta antes de rodar (exporte pelo app em modo --advanced).
-#  Requisito de rede: acesso à internet (pra baixar as ferramentas na 1ª vez).
-#  Autor: Luciano Tomé — Licença MIT
+#  Coloque o SEU hardware-profile.json nesta pasta antes de rodar (exporte pelo app com --advanced).
+#  Requisito de rede: acesso a internet (pra baixar as ferramentas na 1a vez).
+#  NOTA: mantido em ASCII puro de proposito (o Windows PowerShell 5.1 quebra com acentos sem BOM).
+#  Autor: Luciano Tome - Licenca MIT
 # ============================================================================
 param(
     [string]$Version = "1.0.0",
     [string]$Profile = "hardware-profile.json"
 )
 $ErrorActionPreference = "Stop"
-$ProgressPreference = "SilentlyContinue"   # Invoke-WebRequest MUITO mais rápido sem a barra de progresso
+$ProgressPreference = "SilentlyContinue"   # Invoke-WebRequest muito mais rapido sem a barra de progresso
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $here
@@ -29,7 +30,7 @@ if (-not (Test-Path $proj)) {
 }
 
 # ---------------------------------------------------------------------------
-# 1) .NET 8 SDK — usa o que houver no PATH; senao instala local (sem admin).
+# 1) .NET 8 SDK - usa o que houver no PATH; senao instala local (sem admin).
 # ---------------------------------------------------------------------------
 function Test-Sdk8 {
     if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { return $false }
@@ -47,7 +48,7 @@ if (-not (Test-Sdk8)) {
 Write-Host "==> .NET: usando '$dotnet'" -ForegroundColor DarkGray
 
 # ---------------------------------------------------------------------------
-# 2) Inno Setup — acha o ISCC; senao tenta winget; senao baixa e instala silencioso.
+# 2) Inno Setup - acha o ISCC; senao tenta winget; senao baixa e instala silencioso.
 # ---------------------------------------------------------------------------
 $isccDefault = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 function Find-Iscc {
@@ -78,21 +79,21 @@ if (-not $iscc) {
 Write-Host "==> Inno Setup: usando '$iscc'" -ForegroundColor DarkGray
 
 # ---------------------------------------------------------------------------
-# 3) Publica o app (self-contained → o comprador nao precisa instalar .NET).
+# 3) Publica o app (self-contained -> o comprador nao precisa instalar .NET).
 # ---------------------------------------------------------------------------
 Write-Host "==> Publicando o app (win-x64, self-contained)..." -ForegroundColor Cyan
 & $dotnet publish $proj -c Release -r win-x64 --self-contained true -o (Join-Path $here "publish")
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish falhou." }
 
 # ---------------------------------------------------------------------------
-# 4) Inclui o perfil de hardware do criador (ao lado do .exe → auto-carrega; aba Hardware escondida).
+# 4) Inclui o perfil de hardware do criador (ao lado do .exe -> auto-carrega; aba Hardware escondida).
 # ---------------------------------------------------------------------------
 $profPath = Join-Path $here $Profile
 if (Test-Path $profPath) {
     Copy-Item $profPath (Join-Path $here "publish\hardware-profile.json") -Force
     Write-Host "==> Perfil de hardware incluido: $Profile" -ForegroundColor Green
 } else {
-    Write-Warning "Perfil '$Profile' nao encontrado nesta pasta — instalador SEM config (aba Hardware so com --advanced)."
+    Write-Warning "Perfil '$Profile' nao encontrado nesta pasta - instalador SEM config (aba Hardware so com --advanced)."
 }
 # Garante que NAO vai um advanced.flag no pacote (senao o comprador veria o Hardware).
 Remove-Item (Join-Path $here "publish\advanced.flag") -ErrorAction SilentlyContinue
