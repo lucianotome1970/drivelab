@@ -1,7 +1,7 @@
 <!-- ============================================================================
      DriveLab
-     HardwareTabView.axaml — Aba de hardware: monitor no topo, settings no meio e, no rodapé, o export do
-     perfil de hardware num Expander recolhido (não come o espaço dos parâmetros). Só o criador vê esta aba.
+     HardwareTabView.axaml — Aba de hardware: monitor no topo (fixo) e, abaixo, os settings + o export do
+     perfil de hardware NO MESMO scroll (o export rola junto com os parâmetros). Só o criador vê esta aba.
      Autor: Luciano Tomé — Licença MIT
 ============================================================================ -->
 <UserControl xmlns="https://github.com/avaloniaui"
@@ -14,28 +14,30 @@
     <DockPanel>
         <views:HardwareMonitorView DockPanel.Dock="Top" Margin="0,0,0,16" DataContext="{Binding Monitor}" />
 
-        <!-- Exportar perfil de hardware: Expander RECOLHIDO por padrão — fica só um cabeçalho fino no rodapé,
-             deixando o espaço pros parâmetros. O criador abre quando for exportar. -->
-        <Expander DockPanel.Dock="Bottom" Header="Exportar perfil de hardware" IsExpanded="False"
-                  Margin="0,12,0,0" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="8" Margin="0,8,0,0">
-                <TextBlock Classes="muted" TextWrapping="Wrap"
-                           Text="Gera o hardware-profile.json com os valores atuais — para embutir no instalador do seu DD (o comprador recebe já configurado)." />
-                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Marca (vendor)" VerticalAlignment="Center" Classes="muted" Margin="0,0,0,6" />
-                    <TextBox   Grid.Row="0" Grid.Column="1" Text="{Binding Vendor}" Watermark="Ex.: Fulano DD" Margin="10,0,0,6" />
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Modelo (device)" VerticalAlignment="Center" Classes="muted" Margin="0,0,0,6" />
-                    <TextBox   Grid.Row="1" Grid.Column="1" Text="{Binding Device}" Watermark="Ex.: DD 56V 12Nm" Margin="10,0,0,6" />
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Notas" VerticalAlignment="Center" Classes="muted" />
-                    <TextBox   Grid.Row="2" Grid.Column="1" Text="{Binding Notes}" Watermark="Motor, brake, etc. (opcional)" Margin="10,0,0,0" />
-                </Grid>
-                <Button Classes="accent" Content="Exportar perfil de hardware"
-                        Command="{Binding ExportProfileCommand}" HorizontalAlignment="Left" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding ExportStatus}"
-                           IsVisible="{Binding ExportStatus, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}" />
-            </StackPanel>
-        </Expander>
-
-        <views:SettingsGroupView />
+        <!-- Os settings de hardware + o export (como Footer) ficam no MESMO ScrollViewer: o export rola junto. -->
+        <views:SettingsGroupView>
+            <views:SettingsGroupView.Footer>
+                <!-- Expander recolhido por padrão: não ocupa espaço até o criador abrir p/ exportar. -->
+                <Expander Header="Exportar perfil de hardware" IsExpanded="False"
+                          Margin="0,12,0,0" HorizontalAlignment="Stretch">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Gera o hardware-profile.json com os valores atuais — para embutir no instalador do seu DD (o comprador recebe já configurado)." />
+                        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Marca (vendor)" VerticalAlignment="Center" Classes="muted" Margin="0,0,0,6" />
+                            <TextBox   Grid.Row="0" Grid.Column="1" Text="{Binding Vendor}" Watermark="Ex.: Fulano DD" Margin="10,0,0,6" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Modelo (device)" VerticalAlignment="Center" Classes="muted" Margin="0,0,0,6" />
+                            <TextBox   Grid.Row="1" Grid.Column="1" Text="{Binding Device}" Watermark="Ex.: DD 56V 12Nm" Margin="10,0,0,6" />
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Notas" VerticalAlignment="Center" Classes="muted" />
+                            <TextBox   Grid.Row="2" Grid.Column="1" Text="{Binding Notes}" Watermark="Motor, brake, etc. (opcional)" Margin="10,0,0,0" />
+                        </Grid>
+                        <Button Classes="accent" Content="Exportar perfil de hardware"
+                                Command="{Binding ExportProfileCommand}" HorizontalAlignment="Left" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding ExportStatus}"
+                                   IsVisible="{Binding ExportStatus, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Expander>
+            </views:SettingsGroupView.Footer>
+        </views:SettingsGroupView>
     </DockPanel>
 </UserControl>
