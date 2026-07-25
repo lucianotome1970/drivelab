@@ -68,5 +68,6 @@ o CI `.github/workflows/windows-installer.yml` (gera o `.exe` num runner Windows
 - [x] Store (`ApplicationData/DriveLab/hardware-profile.json`) + auto-load no start.
 - [x] Aplicar (autoritativo na sessão ao conectar; reflete na UI do criador).
 - [x] Modo distribuição (`--distribution` / `distribution.flag`) — esconde a aba Hardware.
+- [x] Botão "Exportar perfil de hardware" (aba Hardware, modo avançado) — vendor/device/notas + salvar .json.
+- [x] Instalador Windows (Inno Setup) + CI que embute a config.
 - [ ] Diálogo de confirmação ("Aplicar perfil de [vendor]?") — hoje aplica + loga.
-- [ ] Botão "Exportar perfil de hardware" (no app do criador).
