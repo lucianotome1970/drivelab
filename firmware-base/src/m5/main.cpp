@@ -77,6 +77,12 @@
 #include "ffb_engine.h"
 #include "apply_cfg.h"
 
+#ifdef DRVLAB_OLED
+#include "ssd1306_i2c.h"     // visor OLED (I2C bit-bang no header GPIO)
+#include "oled_status.h"     // composição das telas de status
+#include "button_debounce.h" // botão que cicla as telas
+#endif
+
 // Taxa nominal do laço de torque -- usada por applyCfgToEngine() só para
 // mapear settings dependentes de frequência (steps=auto do reconstructor,
 // corte do biquad de outputFilterHz). AJUSTAR quando o laço de torque tiver
@@ -146,6 +152,18 @@ static void doEncoderB() { encoder.handleB(); }
 static drivelab::FocEncoder focEncoder(encoder);
 static drivelab::FocCurrent focCurrent(Drv8301Gain::G40);
 static drivelab::FocPower   focPower;
+
+#ifdef DRVLAB_OLED
+// Visor OLED SSD1306 no header GPIO da MKS: SDA=GPIO1(PA0), SCL=GPIO2(PA1), botão=GPIO3(PA2).
+// Energia do 3.3V do header SPI (ABZ fica só pro encoder). Bit-bang I2C — pinos livres no firmware.
+static constexpr int kOledPinSda    = PA0;
+static constexpr int kOledPinScl    = PA1;
+static constexpr int kOledPinButton = PA2;
+static drivelab::Ssd1306I2c g_oled(kOledPinSda, kOledPinScl);
+static drivelab::OledCanvas g_oledCanvas;
+static drivelab::ButtonDebounce g_oledButton;
+static int g_oledPage = 0;
+#endif
 static drivelab::FocMotor   focMotor(motor);
 static drivelab::FocBrake   focBrake;
 
@@ -415,6 +433,13 @@ void setup()
     // DRVLAB_BRAKE_CHOPPER_HW estiver definido) — e mesmo então não dissipa até arm() (passo de bancada).
     focBrake.begin();
 
+#ifdef DRVLAB_OLED
+    // Visor OLED (opcional): botão com pull-up interno + init do display. begin() detecta presença por
+    // ACK — se o OLED não estiver ligado, vira NO-OP e o firmware segue normal (não trava).
+    pinMode(kOledPinButton, INPUT_PULLUP);
+    g_oled.begin();
+#endif
+
     // Canal A0: carrega os settings persistidos (ou semeia defaults).
     g_a0.begin();
 
@@ -536,6 +561,34 @@ void loop()
             engine.measureClipOnly(clipDt);
         g_a0.setClipping(engine.clipping());
     }
+
+#ifdef DRVLAB_OLED
+    // Visor OLED: o botão (PA2) cicla as telas TODO loop (não perde clique); o refresh é throttled (~4Hz)
+    // e só roda quando a força NÃO está ativa — assim nunca rouba tempo do loop de torque no Stage 1
+    // (agora, motor OFF, atualiza sempre). NO-OP se o OLED não respondeu no begin().
+    {
+        if (g_oledButton.update(digitalRead(kOledPinButton) == LOW, now))
+            g_oledPage = drivelab::oledWrapPage(g_oledPage + 1);
+
+        static uint32_t lastOledMs = 0;
+        if (g_oled.present() && (now - lastOledMs) >= 250 && !(g_calibrated && g_a0.forceEnabled())) {
+            lastOledMs = now;
+            drivelab::OledStatus st;
+            st.verMajor = DRVLAB_FW_VER_MAJOR;
+            st.verMinor = DRVLAB_FW_VER_MINOR;
+            st.verPatch = DRVLAB_FW_VER_PATCH;
+            const float bv = focPower.busVoltage();
+            st.busMilliV   = bv > 0.0f ? static_cast<int>(bv * 1000.0f) : 0;
+            st.mcuTempC    = sensorMcuTempC();
+            st.clippingPct = static_cast<int>(engine.clipping()) * 100 / 255;
+            st.angleDeciDeg = A0Channel::angleDeciDegFromRad(focEncoder.positionRad());
+            st.forceActive = g_calibrated && g_a0.forceEnabled();
+            st.voltageImplausible = busVoltageImplausible(bv, g_a0.cfg().busNominalV);
+            drivelab::renderStatus(g_oledCanvas, st, g_oledPage);
+            g_oled.flush(g_oledCanvas);
+        }
+    }
+#endif
 
     // Resposta deferida do A0 (0x16) + telemetria periódica (0x21).
     g_a0.serviceLoop(now, &UsbBase::sendReport);

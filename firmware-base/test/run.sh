@@ -62,3 +62,7 @@ c++ -std=c++17 -I../lib/brain -I../lib/base_shared -Wall -Wextra -Werror -o "$ou
 out15="$(mktemp -d)/force_curve_test"
 c++ -std=c++17 -I../lib/brain -Wall -Wextra -Werror -o "$out15" test_force_curve.cpp
 "$out15"
+
+out16="$(mktemp -d)/oled_test"
+c++ -std=c++17 -I../lib/base_display -Wall -Wextra -Werror -o "$out16" test_oled.cpp
+"$out16"
