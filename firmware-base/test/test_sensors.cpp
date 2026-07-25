@@ -47,6 +47,23 @@ int main()
         CHECK(busMilliVolts(2048, 3300) > 31000 && busMilliVolts(2048, 3300) < 31600);
     }
 
+    // ----- divisor por variante (24V/56V) — um binário atende as duas sem recompilar -----
+    {
+        CHECK(vbusDividerRatioFor(24) == 11);   // placa 24V
+        CHECK(vbusDividerRatioFor(48) == 19);   // placa 48/56V
+        CHECK(vbusDividerRatioFor(56) == 19);
+        CHECK(vbusDividerRatioFor(12) == 11);   // baixa nominal → variante 24V
+
+        // O ratio passado muda a leitura: mesmos counts, tensão proporcional ao divisor.
+        long r19 = busMilliVolts(2048, 3300, 19);
+        long r11 = busMilliVolts(2048, 3300, 11);
+        CHECK(r19 > r11);
+        CHECK(busMilliVolts(2048, 3300) == r19);            // default = 19 (compat)
+        // 24V: full-scale ~ counts*11 fica na casa dos 36V (coerente c/ placa 24V + headroom)
+        long full24 = busMilliVolts(4095, 3300, 11);
+        CHECK(full24 > 35000 && full24 < 37000);
+    }
+
     // ----- mcuTempCFromSenseMv (V25=760, slope 2.5mV/°C) -----
     {
         CHECK(mcuTempCFromSenseMv(760) == 25);

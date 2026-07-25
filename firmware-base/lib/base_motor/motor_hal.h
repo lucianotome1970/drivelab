@@ -110,6 +110,13 @@ public:
     float busVoltage() override;
     float mosfetTempC() override;
     float motorTempC() override;
+
+    // Divisor do VBUS por variante do v3.6 (24V→11, 56V→19). O m5 seta a partir da nominal escolhida
+    // (vbusDividerRatioFor(busNominalV)) — um binário só atende 24V e 56V sem recompilar.
+    void setDividerRatio(int ratio) { if (ratio > 0) m_dividerRatio = ratio; }
+
+private:
+    int m_dividerRatio = 19;   // default 56V; setDividerRatio() casa com a variante escolhida
 };
 
 // ----------------------------------------------------------------------------

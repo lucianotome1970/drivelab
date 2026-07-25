@@ -97,7 +97,7 @@ float FocCurrent::countsToAmps(int counts) const
 float FocPower::busVoltage()
 {
     // Mesmo VDDA nominal do FocCurrent (v1 simplificado — sem medir VREFINT).
-    const long mv = busMilliVolts(static_cast<uint16_t>(analogRead(kOdrivePinVBus)), 3300);
+    const long mv = busMilliVolts(static_cast<uint16_t>(analogRead(kOdrivePinVBus)), 3300, m_dividerRatio);
     return static_cast<float>(mv) / 1000.0f;
 }
 

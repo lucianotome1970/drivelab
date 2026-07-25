@@ -16,10 +16,17 @@
 // ADC de 12 bits (0..4095), escala cheia 4096.
 static constexpr int kAdcFullScale = 4096;
 
-// Divisor do barramento DC do ODrive v3.6 na variante 56V (VBUS_S_DIVIDER_RATIO).
-// É o parâmetro que um clone (MKS ODRIVE-S) tem mais chance de mudar -> verificar
-// na bancada aplicando uma tensão conhecida quando ligar a DC.
+// Divisor do barramento DC do ODrive v3.6. O fork MKS (main.h) define VBUS_S_DIVIDER_RATIO por VARIANTE
+// de tensão: 19 p/ placa 48/56V e 11 p/ placa 24V — é o ÚNICO parâmetro que muda entre 24V e 56V. Mantido
+// como default (56V) p/ compat; o valor efetivo vem de vbusDividerRatioFor() derivado da nominal escolhida
+// no app, pra UM binário atender 24V e 56V sem recompilar. Ainda assim, verificar na bancada com tensão
+// conhecida (clone pode divergir) — ver item A1 do registro de validação.
 static constexpr int kVbusDividerRatio = 19;
+
+// Divisor efetivo por variante, derivado da tensão nominal escolhida (BusNominalV). Um binário só:
+// placa 24V (nominal ≤24) → 11; placa 48/56V (nominal ≥36) → 19. Puro/host-testável. (Combo raro "placa
+// 56V rodando ≤24V" pediria um override explícito — deixado p/ depois; ver A1.)
+inline int vbusDividerRatioFor(int nominalV) { return nominalV >= 36 ? 19 : 11; }
 
 // NTC onboard dos FETs (ODrive v3.6): 10k a 25°C, Beta 3434, pull-up 3k3 a VDDA,
 // NTC na perna de baixo -> divisor ratiométrico (v = counts/4096 = Vadc/VDDA).
@@ -44,10 +51,11 @@ inline int adcCountsToMilliVolts(uint16_t counts, int vddaMv)
     return static_cast<int>(static_cast<long>(counts) * vddaMv / kAdcFullScale);
 }
 
-// Tensão do barramento DC (mV) = tensão no pino * ratio do divisor.
-inline long busMilliVolts(uint16_t counts, int vddaMv)
+// Tensão do barramento DC (mV) = tensão no pino * ratio do divisor. O ratio é parâmetro (default 56V=19),
+// pra o mesmo binário atender 24V (11) e 56V (19) — quem passa o valor é o FocPower, derivado da nominal.
+inline long busMilliVolts(uint16_t counts, int vddaMv, int dividerRatio = kVbusDividerRatio)
 {
-    return static_cast<long>(adcCountsToMilliVolts(counts, vddaMv)) * kVbusDividerRatio;
+    return static_cast<long>(adcCountsToMilliVolts(counts, vddaMv)) * dividerRatio;
 }
 
 // Temperatura do sensor interno do MCU (°C) a partir da tensão do sensor (mV).
