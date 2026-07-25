@@ -16,7 +16,8 @@
 # ============================================================================
 param(
     [string]$Version = "1.0.0",
-    [string]$Profile = "hardware-profile.json"
+    [string]$Profile = "hardware-profile.json",
+    [string]$IsccPath = ""   # opcional: caminho do ISCC.exe do Inno Setup, se a deteccao automatica falhar
 )
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"   # Invoke-WebRequest muito mais rapido sem a barra de progresso
@@ -51,24 +52,39 @@ Write-Host "==> .NET: usando '$dotnet'" -ForegroundColor DarkGray
 # 2) Inno Setup - acha o ISCC; senao tenta winget; senao baixa e instala silencioso.
 # ---------------------------------------------------------------------------
 function Find-Iscc {
-    foreach ($p in @("C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
-                     "C:\Program Files\Inno Setup 6\ISCC.exe")) {
-        if (Test-Path $p) { return $p }
-    }
-    # registro (chave de desinstalacao do Inno Setup 6) - pega o InstallLocation onde quer que tenha ido.
-    foreach ($k in @("HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1",
-                     "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1")) {
+    # (1) caminhos conhecidos: Program Files, Program Files (x86) E instalacao POR-USUARIO (sem admin).
+    $paths = @(
+        "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+    )
+    foreach ($p in $paths) { if ($p -and (Test-Path $p)) { return $p } }
+    # (2) registro: HKLM (WOW e nativo) E HKCU (instalacao por-usuario).
+    $keys = @(
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1"
+    )
+    foreach ($k in $keys) {
         $r = Get-ItemProperty $k -ErrorAction SilentlyContinue
         if ($r -and $r.InstallLocation) {
             $p = Join-Path $r.InstallLocation "ISCC.exe"
             if (Test-Path $p) { return $p }
         }
     }
+    # (3) PATH.
     $c = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     if ($c) { return $c.Source }
+    # (4) ultima cartada: busca recursiva nos roots provaveis.
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, "$env:LOCALAPPDATA\Programs")) {
+        if ($root -and (Test-Path $root)) {
+            $hit = Get-ChildItem -Path $root -Filter "ISCC.exe" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($hit) { return $hit.FullName }
+        }
+    }
     return $null
 }
-$iscc = Find-Iscc
+$iscc = if ($IsccPath -and (Test-Path $IsccPath)) { $IsccPath } else { Find-Iscc }
 if (-not $iscc) {
     Write-Host "==> Inno Setup nao encontrado. Instalando..." -ForegroundColor Cyan
     # (a) winget, se existir.
@@ -119,10 +135,11 @@ if (-not $iscc) {
     }
     if (-not $iscc) {
         Write-Host ""
-        Write-Host "!! Nao consegui instalar o Inno Setup automaticamente (rede/mirror)." -ForegroundColor Yellow
-        Write-Host "   Instale manualmente (1 minuto): https://jrsoftware.org/isdl.php" -ForegroundColor Yellow
-        Write-Host "   Depois rode este script de novo - ele detecta o Inno e continua do publish." -ForegroundColor Yellow
-        try { Start-Process "https://jrsoftware.org/isdl.php" } catch {}
+        Write-Host "!! Inno Setup nao encontrado (nem depois de instalar)." -ForegroundColor Yellow
+        Write-Host "   Ache o ISCC.exe:  Get-ChildItem C:\ -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue" -ForegroundColor Yellow
+        Write-Host "   E rode apontando o caminho:" -ForegroundColor Yellow
+        Write-Host "     .\build-installer.ps1 -IsccPath 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'" -ForegroundColor Yellow
+        Write-Host "   (Se ainda nao instalou: https://jrsoftware.org/isdl.php )" -ForegroundColor Yellow
         exit 1
     }
 }
