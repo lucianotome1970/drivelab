@@ -75,8 +75,10 @@ if (-not $iscc) {
     # (c) download direto do site oficial.
     if (-not $iscc) {
         $isSetup = Join-Path $here "innosetup-latest.exe"
-        # O '?site=N' faz o download.php REDIRECIONAR pro binario do mirror (sem ele, devolve HTML).
+        # GitHub releases = binario direto e confiavel (primeira opcao). O '?site=N' do jrsoftware faz o
+        # download.php REDIRECIONAR pro mirror (sem ele, devolve HTML) - fallback.
         $urls = @(
+            "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe",
             "https://jrsoftware.org/download.php/is.exe?site=2",
             "https://jrsoftware.org/download.php/is.exe?site=1"
         )
