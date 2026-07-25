@@ -35,14 +35,14 @@
    — **nunca aplica calado**.
 4. Confirmou → grava via `BaseSession.WriteSettingAsync` (e no controlador).
 
-## Modo distribuição (opção só do criador)
-- Por **padrão** o app é o **do criador**: a aba **Hardware aparece** (ele configura/exporta).
-- Ao empacotar a versão **de distribuição** pro usuário final, o criador ativa o **modo distribuição** — a aba
-  **Hardware some** (o leigo nunca vê/mexe nos parâmetros perigosos). Não há toggle na UI: é decisão do criador.
-- Ativado por: flag `--distribution` **ou** um arquivo marcador `distribution.flag` na pasta do executável
-  (que o criador inclui no pacote). O usuário final nunca passa o flag → nunca vê o Hardware.
-- No modo distribuição o perfil ainda é **gravado no dispositivo** (direto na sessão por BID, ao conectar),
-  mesmo sem a aba.
+## Modo avançado (opção só do criador)
+- Por **padrão (sem flag)** a aba **Hardware fica ESCONDIDA** — fail-safe: o usuário final que só roda o app
+  nunca vê/mexe nos parâmetros perigosos (eles vêm do perfil de hardware do criador).
+- O **CRIADOR** ativa o modo avançado explicitamente pra ver/editar o Hardware. Não há toggle na UI.
+- Ativado por: flag `--advanced` **ou** um arquivo marcador `advanced.flag` na pasta do executável (que o
+  criador deixa só no ambiente dele). O usuário final nunca passa o flag → aba escondida.
+- Em qualquer modo o perfil é **gravado no dispositivo** (direto na sessão por BID, ao conectar), mesmo com
+  a aba escondida.
 
 ## Durabilidade (o ponto forte)
 Um update de firmware pode **re-semear a flash** (o flash magic muda quando a struct cresce). O app **guarda**

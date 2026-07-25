@@ -24,14 +24,14 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var simulatorMode = CompositionRoot.IsSimulatorRequested(desktop.Args);
-            var distributionMode = CompositionRoot.IsDistributionMode(desktop.Args);
+            var advancedMode = CompositionRoot.IsAdvancedMode(desktop.Args);
 
             var splashVm = new SplashViewModel();
             var splash = new SplashWindow { DataContext = splashVm };
             splash.Show();
             splash.Activate(); // pede foreground: sem isso o SO às vezes deixa o splash atrás
 
-            _ = RunStartupAsync(desktop, splash, splashVm, simulatorMode, distributionMode);
+            _ = RunStartupAsync(desktop, splash, splashVm, simulatorMode, advancedMode);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -42,7 +42,7 @@ public partial class App : Application
         SplashWindow splash,
         SplashViewModel splashVm,
         bool simulatorMode,
-        bool distributionMode)
+        bool advancedMode)
     {
         try
         {
@@ -60,7 +60,7 @@ public partial class App : Application
         }
 
         IBaseTransport? transport = simulatorMode ? null : CompositionRoot.CreateHidTransport();
-        var viewModel = CompositionRoot.CreateMainWindowViewModel(transport, simulatorMode, distributionMode);
+        var viewModel = CompositionRoot.CreateMainWindowViewModel(transport, simulatorMode, advancedMode);
         var main = new MainWindow { DataContext = viewModel };
         desktop.MainWindow = main;
         desktop.Exit += (_, _) => viewModel.Dispose();

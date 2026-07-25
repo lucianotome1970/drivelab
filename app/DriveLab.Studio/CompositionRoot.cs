@@ -63,7 +63,7 @@ public static class CompositionRoot
         }),
     };
 
-    public static MainWindowViewModel CreateMainWindowViewModel(IBaseTransport? transport = null, bool simulatorMode = false, bool distributionMode = false)
+    public static MainWindowViewModel CreateMainWindowViewModel(IBaseTransport? transport = null, bool simulatorMode = false, bool advancedMode = false)
     {
         transport ??= new SimulatorBaseTransport();
         var dispatcher = new AvaloniaUiDispatcher();
@@ -135,10 +135,10 @@ public static class CompositionRoot
                 handbrakePresent, dispatcher));
 
         // Base do Volante: abas de settings + Telemetria como última aba.
-        // Modo distribuição: a aba Hardware é OMITIDA (o usuário final não vê os parâmetros perigosos —
-        // eles vêm do perfil de hardware do criador). No app do criador (padrão) a aba aparece normalmente.
+        // A aba Hardware só aparece no modo AVANÇADO (criador). Por padrão fica ESCONDIDA — o usuário final
+        // não vê os parâmetros perigosos; eles vêm do perfil de hardware do criador.
         var wheelBaseTabs = WheelBaseTabs
-            .Where(t => !(distributionMode && t.Header == "Hardware"))
+            .Where(t => t.Header != "Hardware" || advancedMode)
             .Select(t => new PageTab(L.Get($"Tab_{t.Header}"), t.Header == "Hardware"
                 ? new HardwareTabViewModel(session, t.Header, t.Ids)
                 : new SettingsGroupViewModel(session, t.Header, t.Ids)))
@@ -383,20 +383,19 @@ public static class CompositionRoot
         args is not null && args.Any(a =>
             a.TrimStart('/', '-').Equals("simulator", StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Modo DISTRIBUIÇÃO: o app foi empacotado pelo CRIADOR do DD para entregar ao usuário final —
-    /// a aba Hardware fica ESCONDIDA (o leigo nunca vê/mexe nos parâmetros perigosos). Por padrão (app do
-    /// criador) a aba aparece. Detectado por: (a) flag de linha de comando <c>--distribution</c>, ou
-    /// (b) um arquivo marcador <c>distribution.flag</c> na pasta do executável — que o criador inclui no
-    /// pacote distribuído. Assim o usuário final NÃO tem como acessar o Hardware; é opção só do criador.</summary>
-    public static bool IsDistributionMode(string[]? args)
+    /// <summary>Modo AVANÇADO/criador — habilita a aba Hardware. Por PADRÃO (sem flag) a aba fica ESCONDIDA
+    /// (fail-safe: o usuário final que só roda o app nunca vê os parâmetros perigosos). O CRIADOR do DD ativa
+    /// explicitamente por: (a) flag <c>--advanced</c>, ou (b) um arquivo marcador <c>advanced.flag</c> na pasta
+    /// do executável (que ele deixa só no ambiente dele). O usuário final nunca passa o flag → aba escondida.</summary>
+    public static bool IsAdvancedMode(string[]? args)
     {
         if (args is not null && args.Any(a =>
-                a.TrimStart('/', '-').Equals("distribution", StringComparison.OrdinalIgnoreCase)))
+                a.TrimStart('/', '-').Equals("advanced", StringComparison.OrdinalIgnoreCase)))
             return true;
         try
         {
             return System.IO.File.Exists(
-                System.IO.Path.Combine(AppContext.BaseDirectory, "distribution.flag"));
+                System.IO.Path.Combine(AppContext.BaseDirectory, "advanced.flag"));
         }
         catch { return false; }
     }

@@ -36,21 +36,21 @@ public class CommandLineTests
     }
 
     [Theory]
-    [InlineData("/distribution")]
-    [InlineData("--distribution")]
-    [InlineData("-distribution")]
-    [InlineData("--DISTRIBUTION")]
-    public void Recognizes_Distribution_Flag(string arg)
+    [InlineData("/advanced")]
+    [InlineData("--advanced")]
+    [InlineData("-advanced")]
+    [InlineData("--ADVANCED")]
+    public void Recognizes_Advanced_Flag(string arg)
     {
-        Assert.True(CompositionRoot.IsDistributionMode(new[] { arg }));
+        Assert.True(CompositionRoot.IsAdvancedMode(new[] { arg }));
     }
 
     [Fact]
-    public void No_Distribution_Flag_Means_Creator_App()
+    public void No_Advanced_Flag_Hides_Hardware()
     {
-        // padrão = app do criador (Hardware visível). Sem flag e sem arquivo marcador → false.
-        Assert.False(CompositionRoot.IsDistributionMode(Array.Empty<string>()));
-        Assert.False(CompositionRoot.IsDistributionMode(new[] { "--simulator" }));
-        Assert.False(CompositionRoot.IsDistributionMode(null));
+        // padrão (sem flag) = usuário final, aba Hardware escondida. Sem flag e sem arquivo marcador → false.
+        Assert.False(CompositionRoot.IsAdvancedMode(Array.Empty<string>()));
+        Assert.False(CompositionRoot.IsAdvancedMode(new[] { "--simulator" }));
+        Assert.False(CompositionRoot.IsAdvancedMode(null));
     }
 }
