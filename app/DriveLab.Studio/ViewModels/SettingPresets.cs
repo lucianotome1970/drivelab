@@ -15,6 +15,7 @@ public static class SettingPresets
     private static readonly Dictionary<BaseSettingId, int[]> Map = new()
     {
         [BaseSettingId.MotionRange] = new[] { 360, 540, 720, 900, 1080, 1440 },
+        [BaseSettingId.BusNominalV] = new[] { 24, 36, 48, 56 },   // variante da placa: 24V → divisor 11; 48/56V → 19
         [BaseSettingId.TotalStrength] = new[] { 30, 50, 70, 100 },
         [BaseSettingId.MaxTorqueLimit] = new[] { 50, 80, 100 },
         [BaseSettingId.SoftStopStrength] = new[] { 0, 50, 80, 100 },
