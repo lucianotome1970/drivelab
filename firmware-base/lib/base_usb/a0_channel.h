@@ -97,7 +97,7 @@ public:
     // PURA (sem tocar hardware), espelha byte-a-byte
     // app/DriveLab.Core/Protocol/BaseState.cs (ToBytes/Parse):
     //   [0..3]   FirmwareVersion (ReleaseType=0/dev, Major, Minor, Patch)
-    //   [4]      flags (BaseFlags) — 0 (nenhuma flag definida ainda)
+    //   [4]      flags (BaseFlags) — bit 4 (16) = VoltageImplausible (tensão lida não bate com a variante)
     //   [5..6]   Position (int16 LE) — posição do volante em contagens, relativa ao centro (set-center)
     //   [7..8]   AngleDeciDeg (int16 LE) — ângulo do volante em 0.1°, relativo ao centro (o "0°" do app)
     //   [9..12]  Torque/MotorCurrentMa — adiado (M1)
@@ -112,7 +112,7 @@ public:
     // payload escrito (sempre kA0PayloadLen).
     static uint16_t buildDeviceStatePayload(uint8_t* out, int8_t mcuTempC, uint8_t clipping = 0,
                                             int16_t position = 0, int16_t angleDeciDeg = 0,
-                                            uint16_t busVoltageMv = 0)
+                                            uint16_t busVoltageMv = 0, uint8_t flags = 0)
     {
         for (uint16_t i = 0; i < kA0PayloadLen; ++i)
         {
@@ -122,7 +122,7 @@ public:
         out[1] = DRVLAB_FW_VER_MAJOR;
         out[2] = DRVLAB_FW_VER_MINOR;
         out[3] = DRVLAB_FW_VER_PATCH;
-        out[4] = 0;  // flags
+        out[4] = flags;  // BaseFlags (bit VoltageImplausible etc.)
         out[5] = static_cast<uint8_t>(position & 0xFF);            // Position (lo)
         out[6] = static_cast<uint8_t>((position >> 8) & 0xFF);     // Position (hi)
         out[7] = static_cast<uint8_t>(angleDeciDeg & 0xFF);        // AngleDeciDeg (lo)
@@ -153,6 +153,11 @@ public:
     /// ADC no PA6). É só leitura (motor OFF ok). A ESCALA do divisor ainda é placeholder — ver item A1 do
     /// registro de validação: use este valor na tela p/ calibrar contra o multímetro.
     void setBusVoltageMv(uint16_t mv) { m_busVoltageMv = mv; }
+
+    // Bit VoltageImplausible (16) do byte de flags — espelha BaseFlags.cs. Setado pelo m5 quando a tensão
+    // lida não bate com a variante selecionada (provável 24V/56V errado). É AVISO, não fault.
+    static constexpr uint8_t kFlagVoltageImplausible = 16;
+    void setStatusFlags(uint8_t f) { m_flags = f; }
 
     /// Telemetria do volante (set-center): posição em contagens + ângulo em 0.1°, já relativos ao centro.
     /// Alimentado pelo m5 a cada loop a partir do FocEncoder (motor OFF — é só leitura).
@@ -195,6 +200,7 @@ private:
     int16_t m_wheelPos = 0;       ///< posição do volante (contagens, rel. centro) p/ a telemetria (setWheelTelemetry)
     int16_t m_wheelAngleDeci = 0; ///< ângulo do volante (0.1°, rel. centro) p/ a telemetria (setWheelTelemetry)
     uint16_t m_busVoltageMv = 0;  ///< tensão do barramento (mV) p/ a telemetria (setBusVoltageMv)
+    uint8_t  m_flags = 0;         ///< byte de flags de estado (BaseFlags) p/ a telemetria (setStatusFlags)
     bool m_centerRequested = false; ///< pedido pendente de ResetCenter (cmd 3), consumido por centerRequested()
     int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
     bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()

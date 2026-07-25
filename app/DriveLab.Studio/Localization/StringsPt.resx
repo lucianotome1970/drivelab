@@ -191,6 +191,8 @@
   <data name="Monitor_DegC" xml:space="preserve"><value>°C</value></data>
   <data name="Monitor_NoSensor" xml:space="preserve"><value>—</value></data>
 
+  <data name="Monitor_VoltageImplausible" xml:space="preserve"><value>⚠ Tensão lida ({0} V) não bate com a tensão da fonte selecionada — confira o ajuste 24V/56V.</value></data>
+
   <data name="Update_Title" xml:space="preserve"><value>Atualizar firmware</value></data>
   <data name="Update_Device" xml:space="preserve"><value>Dispositivo</value></data>
   <data name="Update_SelectFile" xml:space="preserve"><value>Selecionar arquivo…</value></data>

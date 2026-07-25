@@ -515,6 +515,12 @@ void loop()
         uint16_t busMv = 0;
         if (busV > 0.0f) { const float mv = busV * 1000.0f; busMv = mv > 65535.0f ? 65535u : static_cast<uint16_t>(mv + 0.5f); }
         g_a0.setBusVoltageMv(busMv);
+
+        // Plausibilidade: com o bus energizado, avisa se a tensão lida não bate com a variante escolhida
+        // (provável 24V/56V errado). Só AVISA (flag) — não corrige a seleção; ver resposta ao usuário.
+        const uint8_t flags = busVoltageImplausible(busV, g_a0.cfg().busNominalV)
+                                  ? A0Channel::kFlagVoltageImplausible : 0;
+        g_a0.setStatusFlags(flags);
     }
 
     // Medição de clipping do FFB mesmo com o motor OFF: mede a demanda do host (força constante da tela de

@@ -28,6 +28,23 @@ static constexpr int kVbusDividerRatio = 19;
 // 56V rodando ≤24V" pediria um override explícito — deixado p/ depois; ver A1.)
 inline int vbusDividerRatioFor(int nominalV) { return nominalV >= 36 ? 19 : 11; }
 
+// Checagem de PLAUSIBILIDADE da tensão do bus vs a nominal escolhida. Como não dá pra auto-detectar a
+// variante (24V/56V) por hardware, isto pega o erro mais provável: o usuário escolheu a variante errada
+// no app → o divisor fica errado → a tensão lida sai muito fora da nominal. É um AVISO (não um fault).
+// Só julga com o bus ENERGIZADO (>= floor); com o bus desligado/USB retorna false (nada a julgar).
+static constexpr float kBusPoweredFloorV = 8.0f;    // abaixo disso o barramento está desligado
+static constexpr float kBusPlausLowFrac  = 0.70f;   // < 70% da nominal (energizado) = suspeito
+static constexpr float kBusPlausHighFrac = 1.20f;   // > 120% da nominal = suspeito (acima do overvoltage 108%)
+
+inline bool busVoltageImplausible(float measuredV, int nominalV)
+{
+    if (nominalV <= 0) return false;
+    if (measuredV < kBusPoweredFloorV) return false;              // bus desligado → sem julgamento
+    const float lo = static_cast<float>(nominalV) * kBusPlausLowFrac;
+    const float hi = static_cast<float>(nominalV) * kBusPlausHighFrac;
+    return measuredV < lo || measuredV > hi;
+}
+
 // NTC onboard dos FETs (ODrive v3.6): 10k a 25°C, Beta 3434, pull-up 3k3 a VDDA,
 // NTC na perna de baixo -> divisor ratiométrico (v = counts/4096 = Vadc/VDDA).
 static constexpr double kNtcR25   = 10000.0;

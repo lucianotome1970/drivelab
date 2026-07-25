@@ -11,7 +11,7 @@
 Legenda de risco: 🔴 segurança (antes do motor) · 🟠 gated (ativa no Stage 1) · 🟡 feel (ajustar girando) · 🔵 telemetria M1 · 🟢 motor-OFF (validável já) · ⚪ periféricos.
 
 ### 🔴 A. Bloqueadores de segurança — validar ANTES de destravar o motor
-- [ ] **Leitura da tensão do bus** (`FocPower::busVoltage`, pino PA6) — o **divisor por variante (24V→11 / 56V→19) já é automático** (derivado da nominal escolhida, `vbusDividerRatioFor`), então um binário atende as duas placas sem recompilar. **Ainda falta calibrar a ESCALA fina** (VDDA nominal, tolerância do divisor) vs multímetro. **O corte de sobretensão e o brake chopper dependem disto.**
+- [ ] **Leitura da tensão do bus** (`FocPower::busVoltage`, pino PA6) — o **divisor por variante (24V→11 / 56V→19) já é automático** (derivado da nominal, `vbusDividerRatioFor`) → um binário atende as duas placas sem recompilar. Há também um **aviso de plausibilidade** (`busVoltageImplausible` → flag na telemetria → banner no HardwareMonitor) que pega variante 24V/56V escolhida errada. **Ainda falta calibrar a ESCALA fina** (VDDA nominal, tolerância do divisor) vs multímetro — quando o bus energizar, é só conferir a leitura e ajustar. **O corte de sobretensão e o brake chopper dependem disto.**
 - [ ] **Proteção de sobrecorrente** (`FocCurrent`) — offset 2048 counts + VDDA nominal são chutes (`motor_hal.h`). Calibrar o offset com o motor **parado/sem corrente** antes de confiar na proteção.
 - [ ] **POLE_PAIRS** (=15, `m5/main.cpp`) — confirmar com o motor real (senão o FOC comuta errado → treme/trava).
 - [ ] **ENC_CPR** (=10000, E6B2 2500 P/R × 4) — confirmar girando 90° físicos e conferindo 90° na tela.

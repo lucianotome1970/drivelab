@@ -192,6 +192,8 @@
   <data name="Monitor_DegC" xml:space="preserve"><value>°C</value></data>
   <data name="Monitor_NoSensor" xml:space="preserve"><value>—</value></data>
 
+  <data name="Monitor_VoltageImplausible" xml:space="preserve"><value>⚠ Measured voltage ({0} V) doesn't match the selected supply voltage — check the 24V/56V setting.</value></data>
+
   <data name="Update_Title" xml:space="preserve"><value>Firmware update</value></data>
   <data name="Update_Device" xml:space="preserve"><value>Device</value></data>
   <data name="Update_SelectFile" xml:space="preserve"><value>Select file…</value></data>

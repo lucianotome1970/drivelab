@@ -15,4 +15,8 @@ public enum BaseFlags : byte
     Calibrated = 2,
     Error = 4,
     UsingSimulator = 8,
+
+    /// <summary>Aviso (não fatal): a tensão do barramento lida não bate com a variante/nominal
+    /// selecionada — provável 24V/56V escolhido errado no app. Ver busVoltageImplausible no firmware.</summary>
+    VoltageImplausible = 16,
 }

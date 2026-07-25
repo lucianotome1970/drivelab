@@ -31,6 +31,10 @@ public partial class HardwareMonitorViewModel : ViewModelBase
     [ObservableProperty] private TelemetryLevel _mcuTempLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _clippingLevel = TelemetryLevel.Ok;
 
+    /// <summary>Aviso (não fatal) quando a tensão lida não bate com a variante 24V/56V selecionada.
+    /// Vazio/null = sem aviso. A UI mostra só quando houver texto.</summary>
+    [ObservableProperty] private string? _voltageWarning;
+
     public HardwareMonitorViewModel(BaseSession session)
     {
         _session = session;
@@ -56,6 +60,12 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         MotorTempLevel = TempLevel(s.MotorTempC);
         McuTempLevel = TempLevel(s.McuTempC);
         ClippingLevel = ClipLevel(s.ClippingPercent);
+
+        // Aviso de variante 24V/56V errada (flag do firmware). Mostra a tensão lida p/ ser acionável.
+        VoltageWarning = s.Flags.HasFlag(BaseFlags.VoltageImplausible)
+            ? string.Format(CultureInfo.InvariantCulture,
+                            LocalizationManager.Get("Monitor_VoltageImplausible"), s.BusVoltageMv / 1000.0)
+            : null;
     }
 
     // Clipping: qualquer corte já é aviso (perda de detalhe); corte alto é crítico (baixar o ganho).

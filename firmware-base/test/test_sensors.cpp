@@ -64,6 +64,29 @@ int main()
         CHECK(full24 > 35000 && full24 < 37000);
     }
 
+    // ----- plausibilidade da tensão vs nominal (aviso de variante 24V/56V errada) -----
+    {
+        // bus desligado (< floor 8V) → nunca julga
+        CHECK(!busVoltageImplausible(0.0f, 56));
+        CHECK(!busVoltageImplausible(5.0f, 24));
+
+        // dentro da faixa [0.70, 1.20]·nominal → OK (inclui sag e regen normais)
+        CHECK(!busVoltageImplausible(56.0f, 56));    // exato
+        CHECK(!busVoltageImplausible(48.0f, 56));    // sag ~86%
+        CHECK(!busVoltageImplausible(60.0f, 56));    // regen ~107%
+        CHECK(!busVoltageImplausible(24.0f, 24));    // 24V exato
+
+        // fora da faixa (energizado) → implausível (provável variante errada)
+        CHECK(busVoltageImplausible(32.0f, 24));     // 133% — leu alto p/ 24V (placa é 56V?)
+        CHECK(busVoltageImplausible(30.0f, 56));     // 54% da nominal 56 → suspeito (placa é 24V?)
+        CHECK(busVoltageImplausible(15.0f, 24));     // 62% de 24 → suspeito
+        // borda: 41/56 = 0.73 está DENTRO de [0.70,1.20] → plausível (não avisa)
+        CHECK(!busVoltageImplausible(41.0f, 56));
+
+        // nominal inválida → não julga
+        CHECK(!busVoltageImplausible(50.0f, 0));
+    }
+
     // ----- mcuTempCFromSenseMv (V25=760, slope 2.5mV/°C) -----
     {
         CHECK(mcuTempCFromSenseMv(760) == 25);

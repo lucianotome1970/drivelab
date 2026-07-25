@@ -8,6 +8,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DriveLab.Studio.ViewModels"
              xmlns:conv="using:DriveLab.Studio.Converters"
+             xmlns:av="using:Avalonia.Data.Converters"
              xmlns:loc="using:DriveLab.Studio.Localization"
              x:Class="DriveLab.Studio.Views.HardwareMonitorView"
              x:DataType="vm:HardwareMonitorViewModel">
@@ -48,6 +49,13 @@
                 <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ClippingText}"
                            Foreground="{Binding ClippingLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
             </Grid>
+
+            <!-- Aviso (não fatal): tensão lida não bate com a variante 24V/56V selecionada. -->
+            <Border IsVisible="{Binding VoltageWarning, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}"
+                    Background="#33FF9800" CornerRadius="6" Padding="10,8">
+                <TextBlock Text="{Binding VoltageWarning}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlAccent}" />
+            </Border>
         </StackPanel>
     </Border>
 </UserControl>
