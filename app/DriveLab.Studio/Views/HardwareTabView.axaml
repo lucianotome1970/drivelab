@@ -1,7 +1,8 @@
 <!-- ============================================================================
      DriveLab
      HardwareTabView.axaml — Aba de hardware: monitor no topo, settings no meio e, no rodapé, o export do
-     perfil de hardware (só o criador vê esta aba). Autor: Luciano Tomé — Licença MIT
+     perfil de hardware num Expander recolhido (não come o espaço dos parâmetros). Só o criador vê esta aba.
+     Autor: Luciano Tomé — Licença MIT
 ============================================================================ -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -13,11 +14,11 @@
     <DockPanel>
         <views:HardwareMonitorView DockPanel.Dock="Top" Margin="0,0,0,16" DataContext="{Binding Monitor}" />
 
-        <!-- Exportar perfil de hardware: gera o hardware-profile.json com a config atual, pra o criador
-             embutir no instalador do DD dele. -->
-        <Border DockPanel.Dock="Bottom" Classes="card" Margin="0,16,0,0">
-            <StackPanel Spacing="8">
-                <TextBlock Text="Exportar perfil de hardware" Classes="h2" />
+        <!-- Exportar perfil de hardware: Expander RECOLHIDO por padrão — fica só um cabeçalho fino no rodapé,
+             deixando o espaço pros parâmetros. O criador abre quando for exportar. -->
+        <Expander DockPanel.Dock="Bottom" Header="Exportar perfil de hardware" IsExpanded="False"
+                  Margin="0,12,0,0" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="8" Margin="0,8,0,0">
                 <TextBlock Classes="muted" TextWrapping="Wrap"
                            Text="Gera o hardware-profile.json com os valores atuais — para embutir no instalador do seu DD (o comprador recebe já configurado)." />
                 <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
@@ -33,7 +34,7 @@
                 <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding ExportStatus}"
                            IsVisible="{Binding ExportStatus, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}" />
             </StackPanel>
-        </Border>
+        </Expander>
 
         <views:SettingsGroupView />
     </DockPanel>
