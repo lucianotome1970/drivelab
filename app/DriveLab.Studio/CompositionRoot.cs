@@ -197,6 +197,36 @@ public static class CompositionRoot
         var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs,
             new JsonNamedProfileStore<BaseProfile>("base"));
 
+        // Perfil de HARDWARE (vendor profile): se existir ~/.config/DriveLab/hardware-profile.json, valida e
+        // aplica os parâmetros de hardware do construtor. (v1: aplica + LOGA no console; o diálogo de
+        // confirmação vem a seguir.) Reaplica ao conectar (a placa recarrega da flash no connect).
+        var hwStore = new JsonHardwareProfileStore();
+        System.Console.WriteLine($"[DriveLab][HW] Procurando perfil de hardware em: {hwStore.Path}");
+        var hwProfile = hwStore.Load();
+        if (hwProfile is null)
+        {
+            System.Console.WriteLine("[DriveLab][HW] Nenhum perfil de hardware encontrado (ok).");
+        }
+        else
+        {
+            var issues = DriveLab.Core.Settings.HardwareProfileService.Validate(hwProfile);
+            if (issues.Count > 0)
+            {
+                System.Console.WriteLine($"[DriveLab][HW] Perfil de '{hwProfile.Vendor}' INVÁLIDO — NÃO aplicado:");
+                foreach (var it in issues) System.Console.WriteLine($"[DriveLab][HW]   - {it}");
+            }
+            else
+            {
+                void ApplyHw(string when)
+                {
+                    int n = basePage.ApplyHardwareProfile(hwProfile);
+                    System.Console.WriteLine($"[DriveLab][HW] Perfil de '{hwProfile.Vendor}' ({hwProfile.Device}) aplicado [{when}]: {n} parâmetros.");
+                }
+                ApplyHw("start");
+                session.Connected += (_, _) => ApplyHw("connect");
+            }
+        }
+
         // Atualização de firmware: por enquanto só a base, usando o MESMO transporte da sessão
         // (real → HID; simulador → transporte simulado, EnterDfu vira no-op).
         // Diagnóstico (só no modo real): cada poll do `dfu-util -l` vai para um log, para depurar

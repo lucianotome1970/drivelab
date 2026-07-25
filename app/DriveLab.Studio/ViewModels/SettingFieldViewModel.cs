@@ -38,6 +38,10 @@ public partial class SettingFieldViewModel : ViewModelBase
     }
     /// <summary>Chave estável do setting (nome do id) — usada pelos perfis nomeados.</summary>
     public string Key => _descriptor.Id.ToString();
+    /// <summary>Chave "snake_case" do schema (ex.: "board_variant") — usada pelo perfil de hardware.</summary>
+    public string SchemaKey => _descriptor.Key;
+    /// <summary>Id do setting (BaseSettingId).</summary>
+    public BaseSettingId SettingId => _descriptor.Id;
     public double Min => _descriptor.Min;
     public double Max => _descriptor.Max;
     public string Unit => _descriptor.Unit;

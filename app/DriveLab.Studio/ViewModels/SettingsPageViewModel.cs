@@ -73,6 +73,20 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
                 f.Value = v;   // dispara o write no controlador
     }
 
+    /// <summary>Aplica um perfil de HARDWARE (chaves "snake_case" do schema) nos campos correspondentes.
+    /// Só toca os campos cuja SchemaKey está no perfil. Retorna quantos foram aplicados.</summary>
+    public int ApplyHardwareProfile(HardwareProfile profile)
+    {
+        int n = 0;
+        foreach (var f in AllFields())
+            if (profile.Settings.TryGetValue(f.SchemaKey, out var v))
+            {
+                f.Value = v;   // dispara o write no controlador
+                n++;
+            }
+        return n;
+    }
+
     private void OnConnectionChanged(object? sender, EventArgs e)
     {
         IsConnected = _session.IsConnected;
