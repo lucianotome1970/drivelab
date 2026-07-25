@@ -50,9 +50,20 @@ Write-Host "==> .NET: usando '$dotnet'" -ForegroundColor DarkGray
 # ---------------------------------------------------------------------------
 # 2) Inno Setup - acha o ISCC; senao tenta winget; senao baixa e instala silencioso.
 # ---------------------------------------------------------------------------
-$isccDefault = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 function Find-Iscc {
-    if (Test-Path $isccDefault) { return $isccDefault }
+    foreach ($p in @("C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+                     "C:\Program Files\Inno Setup 6\ISCC.exe")) {
+        if (Test-Path $p) { return $p }
+    }
+    # registro (chave de desinstalacao do Inno Setup 6) - pega o InstallLocation onde quer que tenha ido.
+    foreach ($k in @("HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1",
+                     "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1")) {
+        $r = Get-ItemProperty $k -ErrorAction SilentlyContinue
+        if ($r -and $r.InstallLocation) {
+            $p = Join-Path $r.InstallLocation "ISCC.exe"
+            if (Test-Path $p) { return $p }
+        }
+    }
     $c = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     if ($c) { return $c.Source }
     return $null
@@ -94,8 +105,14 @@ if (-not $iscc) {
             } catch { Write-Warning "    falhou: $($_.Exception.Message)" }
         }
         if ($ok) {
-            Write-Host "    instalando o Inno Setup (pode pedir UAC/admin)..." -ForegroundColor DarkGray
-            Start-Process -FilePath $isSetup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait
+            Write-Host "    instalando o Inno Setup (APROVE o UAC se aparecer)..." -ForegroundColor DarkGray
+            # -Verb RunAs: lanca JA elevado, e ai o -Wait realmente espera a instalacao terminar (senao o
+            # instalador se auto-eleva, o lancador sai na hora e o Find-Iscc roda cedo demais).
+            try {
+                Start-Process -FilePath $isSetup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Verb RunAs -Wait
+            } catch {
+                Write-Warning "    a instalacao elevada falhou ou o UAC foi negado: $($_.Exception.Message)"
+            }
         }
         Remove-Item $isSetup -ErrorAction SilentlyContinue
         $iscc = Find-Iscc
