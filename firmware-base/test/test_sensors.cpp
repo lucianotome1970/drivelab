@@ -47,12 +47,10 @@ int main()
         CHECK(busMilliVolts(2048, 3300) > 31000 && busMilliVolts(2048, 3300) < 31600);
     }
 
-    // ----- divisor por variante (24V/56V) — um binário atende as duas sem recompilar -----
+    // ----- divisor pela VARIANTE da placa (24V/56V) — independente da tensão de operação -----
     {
-        CHECK(vbusDividerRatioFor(24) == 11);   // placa 24V
-        CHECK(vbusDividerRatioFor(48) == 19);   // placa 48/56V
-        CHECK(vbusDividerRatioFor(56) == 19);
-        CHECK(vbusDividerRatioFor(12) == 11);   // baixa nominal → variante 24V
+        CHECK(vbusDividerForVariant(0) == 11);  // placa 24V
+        CHECK(vbusDividerForVariant(1) == 19);  // placa 56V
 
         // O ratio passado muda a leitura: mesmos counts, tensão proporcional ao divisor.
         long r19 = busMilliVolts(2048, 3300, 19);

@@ -49,6 +49,7 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_FFB_CURVE_2:
         case BID_FFB_CURVE_3:
         case BID_FFB_CURVE_4:
+        case BID_BOARD_VARIANT:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -92,6 +93,7 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_FFB_CURVE_2:          return &c.ffbCurve[2];
         case BID_FFB_CURVE_3:          return &c.ffbCurve[3];
         case BID_FFB_CURVE_4:          return &c.ffbCurve[4];
+        case BID_BOARD_VARIANT:        return &c.boardVariant;
         default:                       return nullptr;
     }
 }
@@ -200,7 +202,8 @@ void baseSeedDefaults(BaseCfg& c) {
     c.linearity = 100;
     c.coggingEnable = 0;
     c.slewRate = 0;
-    c.busNominalV = 56;   // variante 56V da placa; o usuário ajusta conforme a fonte
+    c.busNominalV = 56;   // tensão de OPERAÇÃO/fonte (limiares); o usuário ajusta conforme a fonte
     // Curva de resposta da força: linear por padrão (identidade — não altera o feel de quem não mexer).
     c.ffbCurve[0] = 0; c.ffbCurve[1] = 25; c.ffbCurve[2] = 50; c.ffbCurve[3] = 75; c.ffbCurve[4] = 100;
+    c.boardVariant = 1;   // 1 = placa 56V (divisor VBUS 19) — variante mais comum p/ DD; 0 = placa 24V (11)
 }

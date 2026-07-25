@@ -23,6 +23,11 @@ public static class SettingOptions
             new EnumOptionSpec(0, "Setting_EncoderType_Quadrature"),
             new EnumOptionSpec(1, "Setting_EncoderType_MagneticSPI"),
         },
+        [BaseSettingId.BoardVariant] = new[]
+        {
+            new EnumOptionSpec(0, "Setting_BoardVariant_24V"),
+            new EnumOptionSpec(1, "Setting_BoardVariant_56V"),
+        },
     };
 
     public static IReadOnlyList<EnumOptionSpec> For(BaseSettingId id) =>

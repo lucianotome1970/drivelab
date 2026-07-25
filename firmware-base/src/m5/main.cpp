@@ -428,10 +428,10 @@ void setup()
     // -- continuam valendo os hardcoded acima.
     applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
 
-    // Divisor do VBUS derivado da tensão nominal escolhida (24V→11, 56V→19): um binário só lê a tensão
-    // certa nas duas variantes do v3.6, sem recompilar. (Não há como AUTO-detectar a variante por hardware
-    // — nem o firmware oficial do ODrive detecta; ele usa #define de compile-time. Ver resposta ao usuário.)
-    focPower.setDividerRatio(vbusDividerRatioFor(g_a0.cfg().busNominalV));
+    // Divisor do VBUS pela VARIANTE DA PLACA (24V→11, 56V→19) — propriedade do hardware, independente da
+    // tensão de operação. Um binário só lê certo nas duas placas, sem recompilar. (Não há auto-detecção por
+    // hardware — nem o firmware oficial do ODrive detecta; usa #define de compile-time.)
+    focPower.setDividerRatio(vbusDividerForVariant(g_a0.cfg().boardVariant));
 
     SerialTinyUSB.printf("DriveLab M5 (Task 4) — DRV8301 configure()=%s ready=%s faulted=%s | motor OFF (sem init/enable/initFOC)\n",
                   drvOk ? "OK" : "FAIL",
@@ -547,7 +547,7 @@ void loop()
     if (g_a0.cfgDirty())
     {
         applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
-        focPower.setDividerRatio(vbusDividerRatioFor(g_a0.cfg().busNominalV)); // re-deriva ao trocar a nominal
+        focPower.setDividerRatio(vbusDividerForVariant(g_a0.cfg().boardVariant)); // re-deriva ao trocar a variante
         g_a0.clearCfgDirty();
     }
 

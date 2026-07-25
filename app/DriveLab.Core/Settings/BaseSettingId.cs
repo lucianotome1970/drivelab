@@ -42,4 +42,5 @@ public enum BaseSettingId : byte
     FfbCurve2 = 30,
     FfbCurve3 = 31,
     FfbCurve4 = 32,
+    BoardVariant = 33,
 }

@@ -51,7 +51,8 @@ public static class CompositionRoot
         }),
         new("Hardware", new[]
         {
-            BaseSettingId.BusNominalV,   // tensão da fonte / variante da placa (24V→divisor 11, 56V→19)
+            BaseSettingId.BoardVariant,  // variante da placa (24V/56V) → divisor do VBUS (hardware)
+            BaseSettingId.BusNominalV,   // tensão de operação/fonte → limiares (independente da variante)
             BaseSettingId.EncoderDirection,
             BaseSettingId.EncoderCpr,
             BaseSettingId.EncoderType,

@@ -38,12 +38,13 @@ public static class BaseSettingsSchema
         new(BaseSettingId.Linearity, "linearity", "Linearidade da resposta", SettingType.UInt8, 50, 200, "%", SettingTab.Advanced, 100),
         new(BaseSettingId.CoggingEnable, "cogging_enable", "Compensação de cogging", SettingType.UInt8, 0, 1, "", SettingTab.Advanced, 0),
         new(BaseSettingId.SlewRate, "slew_rate", "Limite de variação (slew)", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
-        new(BaseSettingId.BusNominalV, "bus_nominal_v", "Tensão de operação (24V / 56V)", SettingType.UInt8, 12, 56, "V", SettingTab.Hardware, 56),
+        new(BaseSettingId.BusNominalV, "bus_nominal_v", "Tensão da fonte (nominal)", SettingType.UInt8, 12, 56, "V", SettingTab.Hardware, 56),
         new(BaseSettingId.FfbCurve0, "ffb_curve_0", "Curva de força — 0%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
         new(BaseSettingId.FfbCurve1, "ffb_curve_1", "Curva de força — 25%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 25),
         new(BaseSettingId.FfbCurve2, "ffb_curve_2", "Curva de força — 50%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 50),
         new(BaseSettingId.FfbCurve3, "ffb_curve_3", "Curva de força — 75%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 75),
         new(BaseSettingId.FfbCurve4, "ffb_curve_4", "Curva de força — 100%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 100),
+        new(BaseSettingId.BoardVariant, "board_variant", "Variante da placa", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 1),
     };
 
     private static readonly Dictionary<byte, SettingDescriptor> ById =

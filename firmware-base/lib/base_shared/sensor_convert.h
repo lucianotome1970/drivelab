@@ -23,10 +23,11 @@ static constexpr int kAdcFullScale = 4096;
 // conhecida (clone pode divergir) — ver item A1 do registro de validação.
 static constexpr int kVbusDividerRatio = 19;
 
-// Divisor efetivo por variante, derivado da tensão nominal escolhida (BusNominalV). Um binário só:
-// placa 24V (nominal ≤24) → 11; placa 48/56V (nominal ≥36) → 19. Puro/host-testável. (Combo raro "placa
-// 56V rodando ≤24V" pediria um override explícito — deixado p/ depois; ver A1.)
-inline int vbusDividerRatioFor(int nominalV) { return nominalV >= 36 ? 19 : 11; }
+// Divisor efetivo pela VARIANTE DA PLACA (hardware, BID_BOARD_VARIANT): placa 24V → 11, placa 56V → 19.
+// É propriedade FÍSICA da placa (resistores do divisor), INDEPENDENTE da tensão de operação/fonte — por
+// isso vem de um setting próprio, não de busNominalV. Assim uma placa 56V rodando uma fonte 24V (usuário
+// põe operação=24V) continua lendo a tensão certa. Um binário atende as duas placas sem recompilar.
+inline int vbusDividerForVariant(uint8_t variant) { return variant ? 19 : 11; }  // 0=24V, 1=56V
 
 // Checagem de PLAUSIBILIDADE da tensão do bus vs a nominal escolhida. Como não dá pra auto-detectar a
 // variante (24V/56V) por hardware, isto pega o erro mais provável: o usuário escolheu a variante errada

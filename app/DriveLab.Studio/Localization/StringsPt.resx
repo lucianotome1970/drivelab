@@ -165,6 +165,8 @@
   <data name="Setting_EncoderType" xml:space="preserve"><value>Tipo de encoder</value></data>
   <data name="Setting_EncoderType_Quadrature" xml:space="preserve"><value>Quadratura (E6B2)</value></data>
   <data name="Setting_EncoderType_MagneticSPI" xml:space="preserve"><value>SPI magnético (AS5047)</value></data>
+  <data name="Setting_BoardVariant_24V" xml:space="preserve"><value>Placa 24V</value></data>
+  <data name="Setting_BoardVariant_56V" xml:space="preserve"><value>Placa 56V</value></data>
 
   <data name="Home_Handbrake" xml:space="preserve"><value>Freio de mão</value></data>
   <data name="Handbrake_Title" xml:space="preserve"><value>Freio de mão</value></data>
