@@ -9,35 +9,33 @@ O que o instalador faz:
 - **Não** inclui `advanced.flag` → a aba **Hardware fica escondida** pro usuário final.
 - Cria atalhos (Menu Iniciar / Área de trabalho) e desinstalador.
 
-## Pré-requisitos
-- **.NET 8 SDK** (o `dotnet publish` roda em **qualquer SO**, inclusive macOS — cross-compila pra Windows).
-- **Inno Setup 6** (Windows) — só é necessário no passo de **compilar o instalador**. Se você está no Mac,
-  use o **CI** (veja o fim) pra gerar o `.exe` sem precisar de Windows.
+## Pré-requisitos no Windows (o criador de DD compila no Windows)
+- **.NET 8 SDK** — https://dotnet.microsoft.com/download
+- **Inno Setup 6** — https://jrsoftware.org/isdl.php
 
-## Passo a passo (build local no Windows)
-1. **Tenha o `hardware-profile.json`** do seu DD (exporte pelo app em modo avançado, ou parta do
-   `docs/perfil-hardware.md`). Valores fora da faixa do schema são recusados pelo app.
-
-2. **Publique o app** (self-contained — o comprador não precisa instalar .NET). Da raiz do repo:
+## Jeito fácil: o script faz tudo (recomendado)
+1. **Configure o seu DD no app** (modo avançado): rode `DriveLab.Studio.exe --advanced`, abra a aba
+   **Hardware**, ajuste tudo e clique **"Exportar perfil de hardware"** → salve como `hardware-profile.json`.
+2. **Coloque esse `hardware-profile.json` em `installer\windows\`** (esta pasta).
+3. No **PowerShell**, nesta pasta, rode:
+   ```powershell
+   .\build-installer.ps1 -Version 1.0.0
    ```
-   dotnet publish app/DriveLab.Studio/DriveLab.Studio.csproj -c Release -r win-x64 \
-       --self-contained true -o installer/windows/publish
-   ```
+   O script **publica o app + inclui o seu perfil + compila o instalador**. Sai em
+   `installer\windows\output\DriveLab-Setup-1.0.0.exe`.
+4. **Envie** esse `setup.exe` pros seus compradores. 🎉 (Antes, edite `DriveLab.iss` p/ pôr sua marca em
+   `MyAppPublisher`.)
 
-3. **Copie o SEU `hardware-profile.json`** pra dentro de `installer/windows/publish/` (ao lado do
-   `DriveLab.Studio.exe`). ⚠️ **Não** ponha um arquivo `advanced.flag` aqui (senão o comprador veria o Hardware).
+## Passo a passo manual (equivalente ao script)
+1. `dotnet publish app\DriveLab.Studio\DriveLab.Studio.csproj -c Release -r win-x64 --self-contained true -o installer\windows\publish`
+2. Copie o seu `hardware-profile.json` pra `installer\windows\publish\` (ao lado do `.exe`).
+   ⚠️ **Não** ponha `advanced.flag` no pacote (senão o comprador veria o Hardware).
+3. Compile: `ISCC.exe /DMyAppVersion=1.0.0 DriveLab.iss` (ou abra no *Inno Setup Compiler* → Compile).
 
-4. **Edite `DriveLab.iss`** — ajuste `MyAppVersion`, `MyAppPublisher`, `MyAppURL`.
-
-5. **Compile** com o Inno Setup (Windows): abra o `DriveLab.iss` no *Inno Setup Compiler* e clique **Compile**
-   (ou via linha de comando: `ISCC.exe DriveLab.iss`). Sai em `installer/windows/output/DriveLab-Setup-<versão>.exe`.
-
-6. **Envie** esse `setup.exe` pros seus compradores. 🎉
-
-## Sem Windows? Use o CI (GitHub Actions)
-`.github/workflows/windows-installer.yml` publica o app + compila o Inno num runner **Windows**, e sobe o
-`setup.exe` como artefato — você (no Mac) só dispara o workflow. Coloque o seu `hardware-profile.json` em
-`installer/windows/` antes; o workflow o inclui no pacote.
+## Alternativa: CI (GitHub Actions) — gera o .exe sem ter Windows
+`.github/workflows/windows-installer.yml` publica + compila o Inno num runner **Windows** e sobe o
+`setup.exe` como artefato. Útil se você desenvolve no Mac/Linux. Commite o `hardware-profile.json` em
+`installer/windows/` (ou deixe genérico).
 
 ## Notas
 - **Update:** mantenha o `AppId` (GUID) fixo entre versões — assim o instalador reconhece e atualiza no lugar.
