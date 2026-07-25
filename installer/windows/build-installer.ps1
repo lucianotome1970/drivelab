@@ -40,7 +40,7 @@ $dotnet = "dotnet"
 if (-not (Test-Sdk8)) {
     Write-Host "==> .NET 8 SDK nao encontrado. Instalando localmente em .dotnet\ (sem admin)..." -ForegroundColor Cyan
     $ins = Join-Path $here "dotnet-install.ps1"
-    Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.ps1" -OutFile $ins
+    Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.ps1" -OutFile $ins -UseBasicParsing -UserAgent "Mozilla/5.0"
     & $ins -Channel 8.0 -InstallDir (Join-Path $here ".dotnet") -NoPath
     $dotnet = Join-Path $here ".dotnet\dotnet.exe"
     if (-not (Test-Path $dotnet)) { throw "Falha ao instalar o .NET 8 SDK." }
@@ -68,13 +68,32 @@ if (-not $iscc) {
     $iscc = Find-Iscc
     if (-not $iscc) {
         $isSetup = Join-Path $here "innosetup-latest.exe"
-        Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $isSetup
-        # Instalacao silenciosa (pode pedir UAC/admin).
-        Start-Process -FilePath $isSetup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait
+        # URLs candidatas (direta versionada primeiro; o redirect download.php as vezes devolve HTML).
+        $urls = @(
+            "https://files.jrsoftware.org/is/6/innosetup-6.2.2.exe",
+            "https://jrsoftware.org/download.php/is.exe"
+        )
+        $ok = $false
+        foreach ($u in $urls) {
+            try {
+                Write-Host "    baixando Inno de $u ..." -ForegroundColor DarkGray
+                Invoke-WebRequest -Uri $u -OutFile $isSetup -UseBasicParsing -UserAgent "Mozilla/5.0"
+                # valida que baixou um EXECUTAVEL de verdade (PE comeca com 'MZ' = 0x4D 0x5A).
+                $b = [System.IO.File]::ReadAllBytes($isSetup)
+                if ($b.Length -gt 2 -and $b[0] -eq 0x4D -and $b[1] -eq 0x5A) { $ok = $true; break }
+                Write-Warning "    o arquivo baixado nao e um instalador valido; tentando a proxima URL."
+            } catch { Write-Warning "    falhou: $($_.Exception.Message)" }
+        }
+        if ($ok) {
+            Write-Host "    instalando o Inno Setup (pode pedir UAC/admin)..." -ForegroundColor DarkGray
+            Start-Process -FilePath $isSetup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait
+        }
         Remove-Item $isSetup -ErrorAction SilentlyContinue
         $iscc = Find-Iscc
     }
-    if (-not $iscc) { throw "Nao foi possivel instalar o Inno Setup automaticamente. Instale manualmente: https://jrsoftware.org/isdl.php" }
+    if (-not $iscc) {
+        throw "Nao consegui instalar o Inno Setup automaticamente. Instale manualmente em https://jrsoftware.org/isdl.php e rode o script de novo - ele detecta o Inno ja instalado e continua."
+    }
 }
 Write-Host "==> Inno Setup: usando '$iscc'" -ForegroundColor DarkGray
 
