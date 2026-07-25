@@ -34,4 +34,23 @@ public class CommandLineTests
     {
         Assert.False(CompositionRoot.IsSimulatorRequested(null));
     }
+
+    [Theory]
+    [InlineData("/distribution")]
+    [InlineData("--distribution")]
+    [InlineData("-distribution")]
+    [InlineData("--DISTRIBUTION")]
+    public void Recognizes_Distribution_Flag(string arg)
+    {
+        Assert.True(CompositionRoot.IsDistributionMode(new[] { arg }));
+    }
+
+    [Fact]
+    public void No_Distribution_Flag_Means_Creator_App()
+    {
+        // padrão = app do criador (Hardware visível). Sem flag e sem arquivo marcador → false.
+        Assert.False(CompositionRoot.IsDistributionMode(Array.Empty<string>()));
+        Assert.False(CompositionRoot.IsDistributionMode(new[] { "--simulator" }));
+        Assert.False(CompositionRoot.IsDistributionMode(null));
+    }
 }

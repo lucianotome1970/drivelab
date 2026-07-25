@@ -35,9 +35,14 @@
    — **nunca aplica calado**.
 4. Confirmou → grava via `BaseSession.WriteSettingAsync` (e no controlador).
 
-## Modo avançado
-- A aba **Hardware só aparece no modo avançado**. O iniciante (modo simples) nem vê o hardware — ele vem do
-  perfil do construtor. O construtor (avançado) configura tudo e usa **"Exportar perfil de hardware"**.
+## Modo distribuição (opção só do criador)
+- Por **padrão** o app é o **do criador**: a aba **Hardware aparece** (ele configura/exporta).
+- Ao empacotar a versão **de distribuição** pro usuário final, o criador ativa o **modo distribuição** — a aba
+  **Hardware some** (o leigo nunca vê/mexe nos parâmetros perigosos). Não há toggle na UI: é decisão do criador.
+- Ativado por: flag `--distribution` **ou** um arquivo marcador `distribution.flag` na pasta do executável
+  (que o criador inclui no pacote). O usuário final nunca passa o flag → nunca vê o Hardware.
+- No modo distribuição o perfil ainda é **gravado no dispositivo** (direto na sessão por BID, ao conectar),
+  mesmo sem a aba.
 
 ## Durabilidade (o ponto forte)
 Um update de firmware pode **re-semear a flash** (o flash magic muda quando a struct cresce). O app **guarda**
@@ -55,6 +60,8 @@ o perfil e **reaplica** após o update — a config de hardware não se perde.
 
 ## Estado
 - [x] Núcleo: `HardwareProfile` + `HardwareProfileService` (build/validate/serialize) — DriveLab.Core, testado.
-- [ ] Store (`ApplicationData/DriveLab/hardware-profile.json`) + export.
-- [ ] Auto-load no start + diálogo de confirmação + aplicar.
-- [ ] Modo avançado (esconder a aba Hardware).
+- [x] Store (`ApplicationData/DriveLab/hardware-profile.json`) + auto-load no start.
+- [x] Aplicar (autoritativo na sessão ao conectar; reflete na UI do criador).
+- [x] Modo distribuição (`--distribution` / `distribution.flag`) — esconde a aba Hardware.
+- [ ] Diálogo de confirmação ("Aplicar perfil de [vendor]?") — hoje aplica + loga.
+- [ ] Botão "Exportar perfil de hardware" (no app do criador).

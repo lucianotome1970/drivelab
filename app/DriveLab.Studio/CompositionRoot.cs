@@ -63,7 +63,7 @@ public static class CompositionRoot
         }),
     };
 
-    public static MainWindowViewModel CreateMainWindowViewModel(IBaseTransport? transport = null, bool simulatorMode = false)
+    public static MainWindowViewModel CreateMainWindowViewModel(IBaseTransport? transport = null, bool simulatorMode = false, bool distributionMode = false)
     {
         transport ??= new SimulatorBaseTransport();
         var dispatcher = new AvaloniaUiDispatcher();
@@ -135,7 +135,10 @@ public static class CompositionRoot
                 handbrakePresent, dispatcher));
 
         // Base do Volante: abas de settings + Telemetria como última aba.
+        // Modo distribuição: a aba Hardware é OMITIDA (o usuário final não vê os parâmetros perigosos —
+        // eles vêm do perfil de hardware do criador). No app do criador (padrão) a aba aparece normalmente.
         var wheelBaseTabs = WheelBaseTabs
+            .Where(t => !(distributionMode && t.Header == "Hardware"))
             .Select(t => new PageTab(L.Get($"Tab_{t.Header}"), t.Header == "Hardware"
                 ? new HardwareTabViewModel(session, t.Header, t.Ids)
                 : new SettingsGroupViewModel(session, t.Header, t.Ids)))
@@ -217,13 +220,25 @@ public static class CompositionRoot
             }
             else
             {
-                void ApplyHw(string when)
+                // (a) reflete na UI do criador (no-op na distribuição, que não tem a aba Hardware).
+                int uiN = basePage.ApplyHardwareProfile(hwProfile);
+                System.Console.WriteLine($"[DriveLab][HW] Perfil de '{hwProfile.Vendor}' ({hwProfile.Device}) — {uiN} campos na UI; será gravado no dispositivo ao conectar.");
+
+                // (b) AUTORITATIVO: grava direto na sessão (por BID) ao conectar — funciona em QUALQUER modo,
+                // inclusive distribuição (sem campos de UI). A placa recarrega da flash no connect, então
+                // aplicamos por cima.
+                session.Connected += async (_, _) =>
                 {
-                    int n = basePage.ApplyHardwareProfile(hwProfile);
-                    System.Console.WriteLine($"[DriveLab][HW] Perfil de '{hwProfile.Vendor}' ({hwProfile.Device}) aplicado [{when}]: {n} parâmetros.");
-                }
-                ApplyHw("start");
-                session.Connected += (_, _) => ApplyHw("connect");
+                    int n = 0;
+                    foreach (var d in DriveLab.Core.Settings.HardwareProfileService.HardwareSettings)
+                        if (hwProfile.Settings.TryGetValue(d.Key, out var v))
+                        {
+                            await session.WriteSettingAsync(d.Id,
+                                new DriveLab.Core.Settings.SettingValue(d.Type, v));
+                            n++;
+                        }
+                    System.Console.WriteLine($"[DriveLab][HW] Perfil gravado no dispositivo (connect): {n} parâmetros.");
+                };
             }
         }
 
@@ -367,6 +382,24 @@ public static class CompositionRoot
     public static bool IsSimulatorRequested(string[]? args) =>
         args is not null && args.Any(a =>
             a.TrimStart('/', '-').Equals("simulator", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Modo DISTRIBUIÇÃO: o app foi empacotado pelo CRIADOR do DD para entregar ao usuário final —
+    /// a aba Hardware fica ESCONDIDA (o leigo nunca vê/mexe nos parâmetros perigosos). Por padrão (app do
+    /// criador) a aba aparece. Detectado por: (a) flag de linha de comando <c>--distribution</c>, ou
+    /// (b) um arquivo marcador <c>distribution.flag</c> na pasta do executável — que o criador inclui no
+    /// pacote distribuído. Assim o usuário final NÃO tem como acessar o Hardware; é opção só do criador.</summary>
+    public static bool IsDistributionMode(string[]? args)
+    {
+        if (args is not null && args.Any(a =>
+                a.TrimStart('/', '-').Equals("distribution", StringComparison.OrdinalIgnoreCase)))
+            return true;
+        try
+        {
+            return System.IO.File.Exists(
+                System.IO.Path.Combine(AppContext.BaseDirectory, "distribution.flag"));
+        }
+        catch { return false; }
+    }
 
     /// <summary>
     /// Detector de módulos do splash. Em modo simulador a base virtual conta como
