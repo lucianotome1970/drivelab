@@ -52,6 +52,9 @@ Settings and telemetry travel over the **vendor P0/A0 channel** (report ids `0x1
 - **Wheel** — rim button LED colors + global brightness + paddle configuration; the rim **stores its colors** and the app reads them back on connect.
 - **Named profiles** — every module has a profile selector (save / apply / rename / delete); selecting one writes it to the controller.
 
+### For DD makers — ship a pre-configured installer
+Building and **selling** DDs on DriveLab? The **[Maker's guide » (`docs/guia-criador.md`)](../docs/guia-criador.md)** covers it end to end: the difference between using the app as a **maker** (advanced mode → the Hardware tab is visible, you configure and **export** the hardware profile) vs an **end user** (normal → tab hidden, feel only), plus how to generate a **Windows installer** that ships your hardware config bundled (one script does it all).
+
 ### Build & run
 Needs the **.NET 8 SDK**.
 ```bash
@@ -127,6 +130,9 @@ Settings e telemetria trafegam pelo **canal vendor P0/A0** (report ids `0x14` wr
 - **Freio de mão** — curva de eixo único + botão digital (limiar/histerese).
 - **Volante** — cores dos LEDs dos botões do aro + brilho global + configuração das pás; o aro **guarda as cores** e o app as lê de volta ao conectar.
 - **Perfis nomeados** — todo módulo tem um seletor de perfis (salvar / aplicar / renomear / excluir); selecionar um grava no controlador.
+
+### Para quem monta e vende DD — instalador já configurado
+Vai **montar e vender** DDs com o DriveLab? O **[Guia do criador » (`docs/guia-criador.md`)](../docs/guia-criador.md)** explica tudo: a diferença entre usar o app como **criador** (modo avançado → a aba Hardware aparece, você configura e **exporta** o perfil de hardware) e como **usuário final** (normal → aba escondida, só o feel), além de como gerar um **instalador Windows** que já entrega a sua config de hardware embutida (um script faz tudo).
 
 ### Build & execução
 Precisa do **SDK do .NET 8**.

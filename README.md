@@ -29,6 +29,8 @@ Custom firmware for the ODESC v4.2 + a cross-platform configurator app.</p>
 
 > All builds live on the [releases page](https://github.com/lucianotome1970/drivelab/releases). · *Todas as versões ficam na [página de releases](https://github.com/lucianotome1970/drivelab/releases).*
 
+> 🛠️ **Building & selling DDs?** The **[Maker's guide](docs/guia-criador.md)** shows how to configure your hardware and ship a Windows installer with the config bundled. · *🛠️ **Monta e vende DDs?** O **[Guia do criador](docs/guia-criador.md)** mostra como configurar seu hardware e gerar um instalador Windows já com a config embutida.*
+
 ---
 
 ## 📸 Screenshots
