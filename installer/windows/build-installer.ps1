@@ -60,18 +60,25 @@ function Find-Iscc {
 $iscc = Find-Iscc
 if (-not $iscc) {
     Write-Host "==> Inno Setup nao encontrado. Instalando..." -ForegroundColor Cyan
+    # (a) winget, se existir.
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         try {
             winget install -e --id JRSoftware.InnoSetup --silent --accept-source-agreements --accept-package-agreements | Out-Null
-        } catch { Write-Warning "winget falhou; tentando download direto." }
+        } catch { Write-Warning "winget falhou; tentando o proximo metodo." }
+        $iscc = Find-Iscc
     }
-    $iscc = Find-Iscc
+    # (b) Chocolatey, se existir.
+    if (-not $iscc -and (Get-Command choco -ErrorAction SilentlyContinue)) {
+        try { choco install innosetup -y --no-progress | Out-Null } catch { Write-Warning "choco falhou; tentando download direto." }
+        $iscc = Find-Iscc
+    }
+    # (c) download direto do site oficial.
     if (-not $iscc) {
         $isSetup = Join-Path $here "innosetup-latest.exe"
-        # URLs candidatas (direta versionada primeiro; o redirect download.php as vezes devolve HTML).
+        # O '?site=N' faz o download.php REDIRECIONAR pro binario do mirror (sem ele, devolve HTML).
         $urls = @(
-            "https://files.jrsoftware.org/is/6/innosetup-6.2.2.exe",
-            "https://jrsoftware.org/download.php/is.exe"
+            "https://jrsoftware.org/download.php/is.exe?site=2",
+            "https://jrsoftware.org/download.php/is.exe?site=1"
         )
         $ok = $false
         foreach ($u in $urls) {
@@ -92,7 +99,12 @@ if (-not $iscc) {
         $iscc = Find-Iscc
     }
     if (-not $iscc) {
-        throw "Nao consegui instalar o Inno Setup automaticamente. Instale manualmente em https://jrsoftware.org/isdl.php e rode o script de novo - ele detecta o Inno ja instalado e continua."
+        Write-Host ""
+        Write-Host "!! Nao consegui instalar o Inno Setup automaticamente (rede/mirror)." -ForegroundColor Yellow
+        Write-Host "   Instale manualmente (1 minuto): https://jrsoftware.org/isdl.php" -ForegroundColor Yellow
+        Write-Host "   Depois rode este script de novo - ele detecta o Inno e continua do publish." -ForegroundColor Yellow
+        try { Start-Process "https://jrsoftware.org/isdl.php" } catch {}
+        exit 1
     }
 }
 Write-Host "==> Inno Setup: usando '$iscc'" -ForegroundColor DarkGray
