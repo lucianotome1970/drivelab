@@ -51,6 +51,8 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_FFB_CURVE_3:
         case BID_FFB_CURVE_4:
         case BID_BOARD_VARIANT:
+        case BID_THERMAL_CONT_PCT:
+        case BID_THERMAL_PEAK_SEC:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -96,6 +98,8 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_FFB_CURVE_4:          return &c.ffbCurve[4];
         case BID_BOARD_VARIANT:        return &c.boardVariant;
         case BID_TORQUE_CONSTANT:      return &c.torqueConstant;
+        case BID_THERMAL_CONT_PCT:     return &c.thermalContPct;
+        case BID_THERMAL_PEAK_SEC:     return &c.thermalPeakSec;
         default:                       return nullptr;
     }
 }
@@ -209,4 +213,6 @@ void baseSeedDefaults(BaseCfg& c) {
     c.ffbCurve[0] = 0; c.ffbCurve[1] = 25; c.ffbCurve[2] = 50; c.ffbCurve[3] = 75; c.ffbCurve[4] = 100;
     c.boardVariant = 1;   // 1 = placa 56V (divisor VBUS 19) — variante mais comum p/ DD; 0 = placa 24V (11)
     c.torqueConstant = 0.0f; // Kt (Nm/A) — 0 = não medido; o criador preenche (back-EMF/calibração) p/ o app estimar torque
+    c.thermalContPct = 100;  // 100% = derate térmico desligado (contínuo == pico); o criador baixa p/ proteger o motor
+    c.thermalPeakSec = 0;    // 0 s = derate desligado; o criador define quantos segundos de pico pleno permitir
 }

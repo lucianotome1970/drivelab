@@ -44,4 +44,6 @@ public enum BaseSettingId : byte
     FfbCurve4 = 32,
     BoardVariant = 33,
     TorqueConstant = 34,
+    ThermalContinuousPct = 35,
+    ThermalPeakSeconds = 36,
 }

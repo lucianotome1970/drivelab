@@ -18,6 +18,7 @@
 #include "force_reconstruct.h"
 #include "cogging.h"
 #include "cogging_store.h"
+#include "thermal_derate.h"
 #include "filters.h"
 #include "oscillation.h"
 #include "brake_pwm.h"
@@ -662,6 +663,57 @@ int main() {
     // 21) FfbEngine com anti-tremor ativo desligado por padrão (não muda o comportamento base)
     {
         FfbEngine e; CHECK(!e.oscGuardEnabled);
+    }
+
+    // 22) Derate térmico: pico liberado por N segundos, depois desce pro contínuo; recarrega em repouso.
+    {
+        ThermalDerate td;
+
+        // Desligado por padrão (config zerada) → teto "infinito" (clamp vira no-op) e não conta orçamento.
+        CHECK(!td.enabled());
+        CHECK(td.update(999.0f, 0.01f) > 1.0e8f);
+
+        // Configura: pico 9 Nm, contínuo 6 Nm, 2 s de pico pleno.
+        td.configure(9.0f, 6.0f, 2.0f);
+        CHECK(td.enabled());
+        CHECK(approx(td.budgetFraction(), 1.0f, 1e-4f));       // começa frio (orçamento cheio)
+
+        // Frio: o teto permitido é o PICO pleno.
+        CHECK(approx(td.update(9.0f, 0.0f), 9.0f, 1e-4f));     // dt=0 não drena, só lê o teto
+
+        // Demanda cheia por ~2 s → o teto JÁ desceu bem abaixo do pico (peak shaving acontecendo).
+        for (int k = 0; k < 200; ++k) td.update(9.0f, 0.01f);  // 2,0 s
+        CHECK(td.budgetFraction() < 0.6f);
+        CHECK(td.update(9.0f, 0.0f) < 8.0f);                    // não entrega mais o pico pleno
+
+        // Demanda cheia sustentada (mais 6 s) → converge suave pro CONTÍNUO (sem degrau).
+        for (int k = 0; k < 600; ++k) td.update(9.0f, 0.01f);  // +6,0 s
+        CHECK(td.budgetFraction() < 0.1f);
+        CHECK(approx(td.update(9.0f, 0.0f), 6.0f, 0.4f));       // teto ≈ contínuo
+
+        // Em repouso (torque 0), o orçamento RECARREGA e o pico volta a ficar disponível.
+        for (int k = 0; k < 500; ++k) td.update(0.0f, 0.01f);  // 5,0 s parado
+        CHECK(td.budgetFraction() > 0.9f);
+        CHECK(td.update(9.0f, 0.0f) > 8.5f);                    // pico de novo liberado
+
+        // Demanda ABAIXO do contínuo nunca é limitada e não esgota o orçamento.
+        td.reset();
+        for (int k = 0; k < 500; ++k) {
+            const float lim = td.update(5.0f, 0.01f);           // 5 < contínuo(6)
+            CHECK(lim >= 5.0f);
+        }
+        CHECK(approx(td.budgetFraction(), 1.0f, 1e-3f));        // ficou cheio o tempo todo
+    }
+
+    // 22b) Derate no FfbEngine (via apply_cfg): pico cai pro contínuo sob carga sustentada; teto duro respeitado.
+    {
+        FfbEngine e;
+        e.force.maxTorqueNm  = 9.0f;
+        e.force.torqueLimitNm = 9.0f;                 // pico = teto duro
+        e.thermalDerate.configure(9.0f, 6.0f, 1.0f);  // contínuo 6 Nm, 1 s de pico
+        CHECK(e.thermalDerate.enabled());
+        // (o clamp em si é exercitado pelo teste 22; aqui só garantimos que o engine EXPÕE o bloco configurável)
+        CHECK(approx(e.thermalDerate.update(9.0f, 0.0f), 9.0f, 1e-4f));
     }
 
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);

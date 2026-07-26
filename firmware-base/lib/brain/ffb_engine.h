@@ -17,6 +17,7 @@
 #include "startup.h"
 #include "force_reconstruct.h"
 #include "cogging.h"
+#include "thermal_derate.h"
 #include "filters.h"
 #include "oscillation.h"
 #include "clip_meter.h"
@@ -60,6 +61,7 @@ public:
     PowerGuard         guard;              ///< brake resistor + falha de potência
     Biquad             outputFilter;       ///< notch/low-pass na saída (default passa-tudo)
     const CoggingTable* cogging = nullptr; ///< feed-forward de cogging (opcional)
+    ThermalDerate       thermalDerate;     ///< teto de torque dinâmico (pico por N s → contínuo); off por padrão
     OscillationDetector oscGuard;          ///< anti-tremor ativo (desinfla a força se detectar limit-cycle)
     EffectManager       effects;           ///< banco de efeitos PID do jogo (Sub-projeto 2) — soma aditiva no hostF
     ClipMeter           clip;              ///< medidor de clipping (torque pedido além do teto) — exposto na telemetria
@@ -114,6 +116,7 @@ public:
 
         if (!startup.forceEnabled()) {
             _prev = 0.0f;
+            thermalDerate.update(0.0f, dt);                 // parado (sem torque) → o orçamento de pico recarrega
             clip.update(0.0f, force.torqueLimitNm, dt);     // sem força fluindo → o medidor decai a zero
             if (startup.state == MotorState::Aligning) {   // alinha o rotor open-loop
                 const float a = startup.alignTorque();
@@ -142,6 +145,10 @@ public:
         if (oscGuardEnabled) t *= oscGuard.update(vel, dt);             // anti-tremor ativo (desinfla se oscilar)
         t *= startup.rampGain();                                        // rampa de subida (soft start)
         t = slewLimit(t, _prev, maxSlewNmPerStep);                      // limite de variação
+        {
+            const float lim = thermalDerate.update(t < 0 ? -t : t, dt); // teto dinâmico: libera pico, cai p/ contínuo
+            t = clampf(t, -lim, lim);                                   // (no-op quando desligado → retorna ~inf)
+        }
         t = clampf(t, -force.torqueLimitNm, force.torqueLimitNm);       // TETO DURO sempre por último
 
         motor.setTorque(t);

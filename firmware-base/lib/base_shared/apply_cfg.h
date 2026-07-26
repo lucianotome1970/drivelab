@@ -78,6 +78,12 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
 
     e.maxSlewNmPerStep = (c.slewRate / 100.0f) * kSlewMaxNmPerStep;
 
+    // Derate térmico: pico = teto duro atual; contínuo = % do pico; peakSec = janela de pico pleno.
+    // thermalContPct=100 OU thermalPeakSec=0 => desligado (o próprio ThermalDerate vira no-op).
+    e.thermalDerate.configure(e.force.torqueLimitNm,
+                              (c.thermalContPct / 100.0f) * e.force.torqueLimitNm,
+                              static_cast<float>(c.thermalPeakSec));
+
     // cogging: apenas o on/off do setting; a tabela em si vem da calibração de bancada
     // (fora deste sub-projeto) — por isso `e.cogging` fica nullptr aqui mesmo com
     // coggingEnable=1. Quem carregar a tabela decide se/quando atribuir e.cogging.
