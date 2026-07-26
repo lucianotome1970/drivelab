@@ -48,6 +48,8 @@ public static class BaseSettingsSchema
         new(BaseSettingId.TorqueConstant, "torque_constant", "Constante de torque (Kt)", SettingType.Float, 0, 2, "Nm/A", SettingTab.Hardware, 0),
         new(BaseSettingId.ThermalContinuousPct, "thermal_continuous_pct", "Torque contínuo (% do pico)", SettingType.UInt8, 30, 100, "%", SettingTab.Hardware, 100),
         new(BaseSettingId.ThermalPeakSeconds, "thermal_peak_seconds", "Duração do pico", SettingType.UInt8, 0, 60, "s", SettingTab.Hardware, 0),
+        new(BaseSettingId.FetTempLimitC, "fet_temp_limit_c", "Corte de temp. dos FETs", SettingType.UInt8, 50, 110, "°C", SettingTab.Hardware, 85),
+        new(BaseSettingId.MotorTempLimitC, "motor_temp_limit_c", "Corte de temp. do motor", SettingType.UInt8, 60, 125, "°C", SettingTab.Hardware, 100),
     };
 
     private static readonly Dictionary<byte, SettingDescriptor> ById =

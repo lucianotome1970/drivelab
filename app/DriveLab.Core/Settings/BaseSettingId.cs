@@ -46,4 +46,6 @@ public enum BaseSettingId : byte
     TorqueConstant = 34,
     ThermalContinuousPct = 35,
     ThermalPeakSeconds = 36,
+    FetTempLimitC = 37,
+    MotorTempLimitC = 38,
 }

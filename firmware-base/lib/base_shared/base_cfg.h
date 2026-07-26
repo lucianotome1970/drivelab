@@ -49,6 +49,8 @@
 #define BID_TORQUE_CONSTANT       34
 #define BID_THERMAL_CONT_PCT      35
 #define BID_THERMAL_PEAK_SEC      36
+#define BID_FET_TEMP_LIMIT        37
+#define BID_MOTOR_TEMP_LIMIT      38
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -93,6 +95,8 @@ struct BaseCfg {
     float    torqueConstant;      // BID_TORQUE_CONSTANT       Float Kt em Nm/A (0=não medido). Fonte: back-EMF ou calibração SimpleFOC. App estima torque = Kt·Iq
     uint8_t  thermalContPct;      // BID_THERMAL_CONT_PCT      UInt8 torque contínuo como % do pico (100=derate off)
     uint8_t  thermalPeakSec;      // BID_THERMAL_PEAK_SEC      UInt8 segundos de pico pleno antes de cair p/ contínuo (0=off)
+    uint8_t  fetTempLimitC;       // BID_FET_TEMP_LIMIT        UInt8 corte duro do NTC dos FETs (°C)
+    uint8_t  motorTempLimitC;     // BID_MOTOR_TEMP_LIMIT      UInt8 corte duro do NTC do motor/enrolamento (°C)
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.

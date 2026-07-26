@@ -99,7 +99,7 @@ void setup() {
     engine.force.torqueLimitNm = 1.5f;     // teto baixo no M1 (segurança)
     engine.startup.cfg.busMinV = 20; engine.startup.cfg.busMaxV = 28;   // 24V
     engine.startup.cfg.alignSeconds = 0.5f; engine.startup.cfg.rampSeconds = 1.0f;
-    engine.guard.overVoltageV  = 27; engine.guard.overTempC = 70;
+    engine.guard.overVoltageV  = 27; engine.guard.fetOverTempC = 70; engine.guard.motorOverTempC = 70;
     engine.effect.damperNmPerRadPerSec = 0.3f;   // amortecimento anti-tremor (do nosso estudo de estabilidade)
     engine.currentLimitA       = 6.0f;
     engine.enableRequested     = false;    // COMEÇA DESLIGADO — arma via serial ('1')

@@ -84,6 +84,14 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
                               (c.thermalContPct / 100.0f) * e.force.torqueLimitNm,
                               static_cast<float>(c.thermalPeakSec));
 
+    // Cortes de sobretemperatura SEPARADOS (FET/placa e motor/enrolamento). O runtime guard usa cada um
+    // contra seu NTC; o gate de PARTIDA (não-começar-quente) usa o MENOR dos dois, por segurança.
+    e.guard.fetOverTempC   = static_cast<float>(c.fetTempLimitC);
+    e.guard.motorOverTempC = static_cast<float>(c.motorTempLimitC);
+    e.startup.cfg.tempMaxC = c.fetTempLimitC < c.motorTempLimitC
+                                 ? static_cast<float>(c.fetTempLimitC)
+                                 : static_cast<float>(c.motorTempLimitC);
+
     // cogging: apenas o on/off do setting; a tabela em si vem da calibração de bancada
     // (fora deste sub-projeto) — por isso `e.cogging` fica nullptr aqui mesmo com
     // coggingEnable=1. Quem carregar a tabela decide se/quando atribuir e.cogging.

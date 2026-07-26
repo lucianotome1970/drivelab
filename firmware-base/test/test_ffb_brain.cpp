@@ -251,7 +251,7 @@ int main() {
 
     // 11) M2 — PowerGuard: dump de regeneração + falha latched por sobretensão/sobretemperatura
     {
-        PowerGuard g; g.overVoltageV = 30; g.overTempC = 80;
+        PowerGuard g; g.overVoltageV = 30; g.fetOverTempC = 80; g.motorOverTempC = 80;
         g.brake.cfg.onVoltage = 26; g.brake.cfg.fullVoltage = 30; g.brake.cfg.offVoltage = 25;
         MockPower pw; MockBrake br;
 
@@ -263,7 +263,7 @@ int main() {
         g.step(pw, br);
         CHECK(g.faulted);
 
-        PowerGuard g2; g2.overTempC = 80;                  // sobretemperatura também falha
+        PowerGuard g2; g2.fetOverTempC = 80;               // sobretemperatura (FET) também falha
         MockPower hot; hot.bus = 20; hot.mfet = 90; MockBrake br2;
         g2.step(hot, br2);
         CHECK(g2.faulted);
@@ -518,7 +518,7 @@ int main() {
         eng.endstop.rangeRad = 10.0f;                       // sem soft-stop na faixa
         eng.startup.cfg.alignSeconds = 0.1f; eng.startup.cfg.rampSeconds = 0.0f; eng.startup.cfg.alignTorqueNm = 0.3f;
         eng.startup.cfg.busMinV = 20; eng.startup.cfg.busMaxV = 30; eng.startup.cfg.tempMaxC = 80;
-        eng.guard.overVoltageV = 32; eng.guard.overTempC = 80;
+        eng.guard.overVoltageV = 32; eng.guard.fetOverTempC = 80; eng.guard.motorOverTempC = 80;
         eng.guard.brake.cfg.onVoltage = 26; eng.guard.brake.cfg.fullVoltage = 30; eng.guard.brake.cfg.offVoltage = 25;
         eng.reconstructor.cfg.steps = 1;                    // ZOH → força determinística
         eng.currentLimitA = 8.0f;
@@ -549,7 +549,7 @@ int main() {
         e2.endstop.rangeRad = 10.0f;
         e2.startup.cfg.alignSeconds = 0.0f; e2.startup.cfg.rampSeconds = 0.0f;
         e2.startup.cfg.busMinV = 20; e2.startup.cfg.busMaxV = 30; e2.startup.cfg.tempMaxC = 80;
-        e2.guard.overVoltageV = 32; e2.guard.overTempC = 80;
+        e2.guard.overVoltageV = 32; e2.guard.fetOverTempC = 80; e2.guard.motorOverTempC = 80;
         e2.reconstructor.cfg.steps = 1; e2.currentLimitA = 8.0f; e2.enableRequested = true;
         CoggingTable cg; cg.table[0] = 0.1f; e2.cogging = &cg;
         e2.setGameForce(100.0f);

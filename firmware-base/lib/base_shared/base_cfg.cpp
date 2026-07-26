@@ -53,6 +53,8 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_BOARD_VARIANT:
         case BID_THERMAL_CONT_PCT:
         case BID_THERMAL_PEAK_SEC:
+        case BID_FET_TEMP_LIMIT:
+        case BID_MOTOR_TEMP_LIMIT:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -100,6 +102,8 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_TORQUE_CONSTANT:      return &c.torqueConstant;
         case BID_THERMAL_CONT_PCT:     return &c.thermalContPct;
         case BID_THERMAL_PEAK_SEC:     return &c.thermalPeakSec;
+        case BID_FET_TEMP_LIMIT:       return &c.fetTempLimitC;
+        case BID_MOTOR_TEMP_LIMIT:     return &c.motorTempLimitC;
         default:                       return nullptr;
     }
 }
@@ -215,4 +219,6 @@ void baseSeedDefaults(BaseCfg& c) {
     c.torqueConstant = 0.0f; // Kt (Nm/A) — 0 = não medido; o criador preenche (back-EMF/calibração) p/ o app estimar torque
     c.thermalContPct = 100;  // 100% = derate térmico desligado (contínuo == pico); o criador baixa p/ proteger o motor
     c.thermalPeakSec = 0;    // 0 s = derate desligado; o criador define quantos segundos de pico pleno permitir
+    c.fetTempLimitC  = 85;   // corte duro do NTC dos FETs (placa) — conservador
+    c.motorTempLimitC = 100; // corte duro do NTC do motor (enrolamento) — seguro p/ classe B; subir só se classe F/H
 }

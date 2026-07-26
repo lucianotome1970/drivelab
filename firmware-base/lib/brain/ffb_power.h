@@ -67,9 +67,12 @@ inline bool overTemp(float tempC, float limitC)   { return tempC > limitC; }
 class PowerGuard {
 public:
     BrakeController brake;
-    float overVoltageV = 30.0f;   ///< corte duro de tensão (sistema 24V — nunca deixar disparar)
-    float overTempC    = 80.0f;   ///< corte duro de temperatura (FET/motor)
-    bool  faulted = false;        ///< latched — só volta com clearFault() (após investigar)
+    float overVoltageV   = 30.0f;   ///< corte duro de tensão (sistema 24V — nunca deixar disparar)
+    // Cortes de temperatura SEPARADOS: o NTC dos FETs mede a placa (limite ~85°C) e o do motor mede o
+    // enrolamento (limite conforme a classe de isolamento — B/F/H). Sensor ausente devolve -128 → nunca dispara.
+    float fetOverTempC   = 85.0f;   ///< corte duro do NTC dos FETs (placa)
+    float motorOverTempC = 100.0f;  ///< corte duro do NTC do motor (enrolamento)
+    bool  faulted = false;          ///< latched — só volta com clearFault() (após investigar)
 
     /// Um passo da proteção: atualiza o brake resistor e avalia os cortes. Retorna o duty.
     float step(IPowerSense& power, IBrakeResistor& resistor) {
@@ -77,8 +80,8 @@ public:
         const float duty = brake.update(v);
         resistor.setDuty(duty);
         if (overVoltage(v, overVoltageV) ||
-            overTemp(power.mosfetTempC(), overTempC) ||
-            overTemp(power.motorTempC(), overTempC)) {
+            overTemp(power.mosfetTempC(), fetOverTempC) ||
+            overTemp(power.motorTempC(), motorOverTempC)) {
             faulted = true;
         }
         return duty;
