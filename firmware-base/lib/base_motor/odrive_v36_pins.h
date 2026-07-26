@@ -72,7 +72,14 @@ static constexpr int kOdrivePinEncoderZ = PC9;  // índice (não usado pelo Enco
 static constexpr int kOdrivePinShuntIB = PC0;
 static constexpr int kOdrivePinShuntIC = PC1;
 static constexpr int kOdrivePinVBus    = PA6;
-static constexpr int kOdrivePinNtcM0   = PC5;
+static constexpr int kOdrivePinNtcM0   = PC5;   // M0_TEMP — NTC dos FETs (onboard)
+
+// Entradas de temperatura SOBRANDO (fonte de fábrica MKS v0.5.1, Board/v3/Inc/main.h): a placa provisiona
+// dois canais de termistor que NÃO usamos (rodamos só o M0). Ideais p/ um NTC no ENROLAMENTO do motor —
+// ADC-capaz, com condicionamento (pull-up) já no PCB. AUX_TEMP é a escolha preferida (canal auxiliar
+// dedicado); M1_TEMP é alternativa (NTC do eixo M1, ocioso). Confirmar o pull-up na bancada (assume-se 3k3).
+static constexpr int kOdrivePinAuxTemp = PA5;   // AUX_TEMP — NTC do MOTOR (enrolamento). Ver DRVLAB_MOTOR_NTC.
+static constexpr int kOdrivePinM1Temp  = PA4;   // M1_TEMP — alternativa (eixo M1 não usado)
 
 // ----------------------------------------------------------------------------
 // Brake resistor — dissipa a energia de regeneração via um MEIO-PONTE

@@ -37,7 +37,7 @@ Legenda de risco: 🔴 segurança (antes do motor) · 🟠 gated (ativa no Stage
 - [ ] `Torque`, `MotorCurrentMa` — sem malha de corrente rodando.
 - [~] `FetTempC` — **habilitado** (NTC no PC5 → `fetThermistorCentiC`, na telemetria + OLED). Leitura passiva, motor-OFF. **Falta validar** as constantes do NTC (kNtcR25/Beta/Rload) contra um termômetro — o clone MKS pode divergir do ODrive genuíno. -128 = sem sensor.
 - [x] `BusVoltageMv` — **plugado na telemetria** (v0.3.2): m5 lê `FocPower::busVoltage()` (PA6) e envia em `[15..16]`. ⚠️ A **escala do divisor** ainda é placeholder → calibrar vs multímetro (item 🔴A1).
-- [ ] `MotorTempC` — sem NTC dedicado confirmado.
+- [~] `MotorTempC` — **caminho pronto** (v0.3.x): m5 lê `FocPower::motorTempC()` → telemetria `[17]` → app já mostra "Motor temperature". **Falta o sensor físico:** soldar um **NTC MF52A 10k B3435** no enrolamento, fios pelo eixo oco até o pad **AUX_TEMP (PA5)** + GND, e **definir `DRVLAB_MOTOR_NTC`** no build (sem a flag = -128 "sem sensor"). Reaproveita a fórmula Beta do FET (mesmo NTC). **Validar na bancada:** (a) o pull-up do AUX_TEMP (assume 3k3, igual M0_TEMP) contra um termômetro; (b) definir o **corte de sobretemperatura ~105°C** (o epóxi do MF52A só vai a ~125°C). Alternativa de pino: `M1_TEMP` (PA4). Fecha o loop com o **derate térmico** (modelo I²t + NTC real).
 - [x] `McuTempC` — único sensor real hoje. ✅
 
 ### 🟢 E. Motor-OFF — validável JÁ (sem 56V, só plugar a base por USB)

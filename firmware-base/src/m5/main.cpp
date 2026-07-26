@@ -595,6 +595,12 @@ void loop()
         if (fetC > 127) fetC = 127; else if (fetC < -128) fetC = -128;
         g_a0.setFetTempC(static_cast<int8_t>(fetC));
 
+        // Temperatura do MOTOR (NTC no enrolamento, AUX_TEMP/PA5) → telemetria. Sem DRVLAB_MOTOR_NTC definido,
+        // motorTempC() devolve -128 ("sem sensor"); ao soldar o NTC + definir a flag, vira leitura real.
+        long motC = lroundf(focPower.motorTempC());
+        if (motC > 127) motC = 127; else if (motC < -128) motC = -128;
+        g_a0.setMotorTempC(static_cast<int8_t>(motC));
+
         // Plausibilidade: com o bus energizado, avisa se a tensão lida não bate com a variante escolhida
         // (provável 24V/56V errado). Só AVISA (flag) — não corrige a seleção; ver resposta ao usuário.
         const uint8_t flags = (busVoltageImplausible(busV, g_a0.cfg().busNominalV) ? A0Channel::kFlagVoltageImplausible : 0)

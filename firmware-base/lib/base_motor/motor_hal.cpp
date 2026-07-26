@@ -113,9 +113,18 @@ float FocPower::mosfetTempC()
 
 float FocPower::motorTempC()
 {
-    // AJUSTAR: sem NTC dedicado no motor confirmado nesta revisão de placa —
-    // placeholder seguro (mesma nota de mosfetTempC()).
-    return 25.0f;
+#ifdef DRVLAB_MOTOR_NTC
+    // NTC no ENROLAMENTO do motor, lido no AUX_TEMP (PA5). Mesmo NTC/fórmula do FET (MF52A 10k, Beta 3435 ≈
+    // kNtcBeta=3434) → reaproveita fetThermistorCentiC. AJUSTAR na bancada: confirmar o pull-up do AUX_TEMP
+    // (assume 3k3, igual ao M0_TEMP) contra um termômetro. Sensor aberto/curto → -128°C ("sem sensor").
+    // O corte por sobretemperatura deve ser conservador (~105°C): o bead de epóxi (MF52A) só vai a ~125°C.
+    const int centiC = fetThermistorCentiC(static_cast<uint16_t>(analogRead(kOdrivePinAuxTemp)));
+    return static_cast<float>(centiC) / 100.0f;
+#else
+    // Sem NTC de motor instalado: "sem sensor" (o app mostra "—" e a segurança usa max(FET,motor) sem falso
+    // aquecimento). Defina DRVLAB_MOTOR_NTC ao soldar o NTC no AUX_TEMP (PA5).
+    return -128.0f;
+#endif
 }
 
 // ----------------------------------------------------------------------------
