@@ -46,6 +46,7 @@
 #define BID_FFB_CURVE_3           31
 #define BID_FFB_CURVE_4           32
 #define BID_BOARD_VARIANT         33
+#define BID_TORQUE_CONSTANT       34
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -87,6 +88,7 @@ struct BaseCfg {
     uint8_t  busNominalV;         // BID_BUS_NOMINAL_V         UInt8 (V de OPERAÇÃO/fonte; deriva a janela busMin/max/over)
     uint8_t  ffbCurve[5];         // BID_FFB_CURVE_0..4        UInt8 0..100 — curva de resposta da força (5 pontos)
     uint8_t  boardVariant;        // BID_BOARD_VARIANT         UInt8 0=placa 24V (divisor VBUS 11) / 1=placa 56V (19)
+    float    torqueConstant;      // BID_TORQUE_CONSTANT       Float Kt em Nm/A (0=não medido). Fonte: back-EMF ou calibração SimpleFOC. App estima torque = Kt·Iq
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.

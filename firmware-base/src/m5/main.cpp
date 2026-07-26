@@ -76,6 +76,8 @@
 #include "motor_hal.h"
 #include "ffb_engine.h"
 #include "apply_cfg.h"
+#include "cogging_store.h"   // (de)serializacao da tabela de cogging p/ a flash
+#include <EEPROM.h>          // EEPROM emulada (STM32duino) — blob da tabela de cogging
 
 #ifdef DRVLAB_OLED
 #include "ssd1306_i2c.h"     // visor OLED (I2C bit-bang no header GPIO)
@@ -153,6 +155,13 @@ static drivelab::FocEncoder focEncoder(encoder);
 static drivelab::FocCurrent focCurrent(Drv8301Gain::G40);
 static drivelab::FocPower   focPower;
 
+// Tabela de cogging (por-motor): mora na flash em blob proprio (offset separado do BaseCfg), calibrada
+// pelo criador na bancada e carregada no boot. ATENCAO bancada: a EEPROM emulada precisa ter >= ~700 bytes
+// (BaseCfg em [0..~64] + blob de cogging em [128..~651]); confirmar EEPROM.length() na placa.
+static drivelab::CoggingTable g_coggingTable;   // CoggingMap<128>
+static bool g_hasCogging = false;
+static constexpr int kCoggingFlashAddr = 128;   // offset separado do BaseCfg (magic+struct em [0..~64])
+
 #ifdef DRVLAB_OLED
 // Visor OLED SSD1306 no header GPIO da MKS: SDA=GPIO1(PA0), SCL=GPIO2(PA1), botão=GPIO3(PA2).
 // Energia do 3.3V do header SPI (ABZ fica só pro encoder). Bit-bang I2C — pinos livres no firmware.
@@ -169,6 +178,13 @@ static drivelab::FocBrake   focBrake;
 
 // ===================== O "cérebro" FFB (lib/brain) =====================
 static drivelab::FfbEngine engine;
+
+// Aplica/retira a tabela de cogging no engine conforme ela existe (g_hasCogging) E o setting coggingEnable.
+// Definida aqui (depois de `engine`) porque referencia o engine e g_a0.
+static void applyCoggingToEngine()
+{
+    engine.cogging = (g_hasCogging && g_a0.cfg().coggingEnable) ? &g_coggingTable : nullptr;
+}
 
 // ----------------------------------------------------------------------
 // g_calibrated — o ÚNICO interruptor que decide se o pipeline chega a tocar
@@ -460,6 +476,18 @@ void setup()
     // hardware — nem o firmware oficial do ODrive detecta; usa #define de compile-time.)
     focPower.setDividerRatio(vbusDividerForVariant(g_a0.cfg().boardVariant));
 
+    // Tabela de cogging (por-motor): lê o blob da flash e, se for válido (magic/versão/N/CRC batem),
+    // liga no engine — respeitando o setting coggingEnable. Se não houver tabela (placa nova/sem calibrar),
+    // segue sem compensação. A calibração que ESCREVE o blob é da bancada (Stage 1, exige motor).
+    {
+        uint8_t blob[drivelab::coggingBlobSize<128>()];
+        EEPROM.get(kCoggingFlashAddr, blob);
+        g_hasCogging = drivelab::unpackCogging(blob, sizeof(blob), g_coggingTable);
+        applyCoggingToEngine();
+        SerialTinyUSB.printf("DriveLab M5 — cogging: %s\n",
+                             g_hasCogging ? "tabela carregada da flash" : "sem tabela (sem compensacao)");
+    }
+
     SerialTinyUSB.printf("DriveLab M5 (Task 4) — DRV8301 configure()=%s ready=%s faulted=%s | motor OFF (sem init/enable/initFOC)\n",
                   drvOk ? "OK" : "FAIL",
                   drv.isReady() ? "true" : "false",
@@ -530,6 +558,24 @@ void loop()
         encoder.update();
         if (g_a0.centerRequested())
             focEncoder.setCenterHere();
+
+        // Pedido de calibração de cogging (BaseCommand.CalibrateCogging, do app na aba Hardware). A rotina
+        // REAL (giro lento medindo torque por posição → CoggingCalibrator → packCogging → grava na flash)
+        // EXIGE motor: só roda no Stage 1 (g_calibrated). Motor-OFF apenas registra — o caminho já está pronto.
+        if (g_a0.coggingCalibRequested())
+        {
+            if (g_calibrated)
+            {
+                // Stage 1 (bancada, com motor energizado e operador presente): aqui entra o giro de coleta —
+                // CoggingCalibrator<128> por todo o range, cal.finish(g_coggingTable), depois packCogging +
+                // EEPROM.put(kCoggingFlashAddr, blob) e g_hasCogging=true; applyCoggingToEngine() no fim.
+                SerialTinyUSB.printf("DriveLab M5 — CalibrateCogging: Stage 1 (giro de coleta a implementar)\n");
+            }
+            else
+            {
+                SerialTinyUSB.printf("DriveLab M5 — CalibrateCogging pedido, mas motor OFF (gated) — so na bancada (Stage 1)\n");
+            }
+        }
         const float angRad = focEncoder.positionRad();                       // já relativo ao centro
         const int16_t deci = A0Channel::angleDeciDegFromRad(angRad);
         const long counts  = lroundf(angRad * (ENC_CPR / (2.0f * 3.14159265358979323846f)));
@@ -551,8 +597,8 @@ void loop()
 
         // Plausibilidade: com o bus energizado, avisa se a tensão lida não bate com a variante escolhida
         // (provável 24V/56V errado). Só AVISA (flag) — não corrige a seleção; ver resposta ao usuário.
-        const uint8_t flags = busVoltageImplausible(busV, g_a0.cfg().busNominalV)
-                                  ? A0Channel::kFlagVoltageImplausible : 0;
+        const uint8_t flags = (busVoltageImplausible(busV, g_a0.cfg().busNominalV) ? A0Channel::kFlagVoltageImplausible : 0)
+                            | (g_hasCogging ? A0Channel::kFlagCoggingLoaded : 0);
         g_a0.setStatusFlags(flags);
     }
 
@@ -610,6 +656,7 @@ void loop()
     {
         applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
         focPower.setDividerRatio(vbusDividerForVariant(g_a0.cfg().boardVariant)); // re-deriva ao trocar a variante
+        applyCoggingToEngine(); // honra coggingEnable ao vivo (liga/desliga a tabela sem reboot)
         g_a0.clearCfgDirty();
     }
 

@@ -22,6 +22,7 @@ uint8_t baseTypeForField(uint8_t id) {
             return BT_INT8;
         case BID_CURRENT_P:
         case BID_CURRENT_I:
+        case BID_TORQUE_CONSTANT:
             return BT_FLOAT;
         case BID_SOFT_STOP_RANGE:
         case BID_SOFT_STOP_STRENGTH:
@@ -94,6 +95,7 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_FFB_CURVE_3:          return &c.ffbCurve[3];
         case BID_FFB_CURVE_4:          return &c.ffbCurve[4];
         case BID_BOARD_VARIANT:        return &c.boardVariant;
+        case BID_TORQUE_CONSTANT:      return &c.torqueConstant;
         default:                       return nullptr;
     }
 }
@@ -206,4 +208,5 @@ void baseSeedDefaults(BaseCfg& c) {
     // Curva de resposta da força: linear por padrão (identidade — não altera o feel de quem não mexer).
     c.ffbCurve[0] = 0; c.ffbCurve[1] = 25; c.ffbCurve[2] = 50; c.ffbCurve[3] = 75; c.ffbCurve[4] = 100;
     c.boardVariant = 1;   // 1 = placa 56V (divisor VBUS 19) — variante mais comum p/ DD; 0 = placa 24V (11)
+    c.torqueConstant = 0.0f; // Kt (Nm/A) — 0 = não medido; o criador preenche (back-EMF/calibração) p/ o app estimar torque
 }

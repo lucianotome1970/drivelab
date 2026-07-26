@@ -21,6 +21,7 @@ public partial class HardwareMonitorViewModel : ViewModelBase
 
     [ObservableProperty] private string _busVoltageText = "—";
     [ObservableProperty] private string _motorCurrentText = "—";
+    [ObservableProperty] private string _estimatedTorqueText = "—";
     [ObservableProperty] private string _fetTempText = "—";
     [ObservableProperty] private string _motorTempText = "—";
     [ObservableProperty] private string _mcuTempText = "—";
@@ -34,6 +35,13 @@ public partial class HardwareMonitorViewModel : ViewModelBase
     /// <summary>Aviso (não fatal) quando a tensão lida não bate com a variante 24V/56V selecionada.
     /// Vazio/null = sem aviso. A UI mostra só quando houver texto.</summary>
     [ObservableProperty] private string? _voltageWarning;
+
+    /// <summary>Constante de torque Kt (Nm/A) do motor, vinda do setting de hardware (0 = não medido). O dono
+    /// desta VM (HardwareTabViewModel) mantém isso sincronizado com o campo torque_constant. Usada p/ estimar
+    /// o torque = Kt·corrente SEM balança — igual Moza/Fanatec fazem (Kt·Iq medido).</summary>
+    [ObservableProperty] private double _torqueConstant;
+
+    private short _lastMotorCurrentMa;
 
     public HardwareMonitorViewModel(BaseSession session)
     {
@@ -51,6 +59,8 @@ public partial class HardwareMonitorViewModel : ViewModelBase
     {
         BusVoltageText = (s.BusVoltageMv / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " V";
         MotorCurrentText = (s.MotorCurrentMa / 1000.0).ToString("0.00", CultureInfo.InvariantCulture) + " A";
+        _lastMotorCurrentMa = s.MotorCurrentMa;
+        UpdateEstimatedTorque();
         FetTempText = TempText(s.FetTempC);
         MotorTempText = TempText(s.MotorTempC);
         McuTempText = TempText(s.McuTempC);
@@ -66,6 +76,17 @@ public partial class HardwareMonitorViewModel : ViewModelBase
             ? string.Format(CultureInfo.InvariantCulture,
                             LocalizationManager.Get("Monitor_VoltageImplausible"), s.BusVoltageMv / 1000.0)
             : null;
+    }
+
+    // Torque estimado = Kt·corrente (sem balança). Só mostra quando Kt > 0 (o criador mediu/calibrou); senão "—".
+    // É o mesmo cálculo que as bases comerciais usam (Kt·Iq medido) — mais preciso que pendurar peso numa haste.
+    partial void OnTorqueConstantChanged(double value) => UpdateEstimatedTorque();
+
+    private void UpdateEstimatedTorque()
+    {
+        EstimatedTorqueText = TorqueConstant > 0
+            ? (TorqueConstant * (_lastMotorCurrentMa / 1000.0)).ToString("0.0", CultureInfo.InvariantCulture) + " Nm"
+            : "—";
     }
 
     // Clipping: qualquer corte já é aviso (perda de detalhe); corte alto é crítico (baixar o ganho).

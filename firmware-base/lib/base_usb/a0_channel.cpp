@@ -128,6 +128,13 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 SerialTinyUSB.printf("A0 cmd=%u (SetForceEnabled) arg=%u -> forceEnabled=%u\n",
                                       cmd, arg, m_forceEnabled ? 1U : 0U);
             }
+            else if (cmd == 7 /* CalibrateCogging */)
+            {
+                // BaseCommand.CalibrateCogging: só marca — o m5 dispara a rotina de calibração fora deste
+                // callback USB. Só roda de fato no Stage 1 (com motor); motor-OFF apenas registra o pedido.
+                m_coggingCalibRequested = true;
+                SerialTinyUSB.printf("A0 cmd=%u (CalibrateCogging) -> m_coggingCalibRequested\n", cmd);
+            }
             else
             {
                 SerialTinyUSB.printf("A0 cmd=%u arg=%u (sem handler ainda)\n", cmd, arg);

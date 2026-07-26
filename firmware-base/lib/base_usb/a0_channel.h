@@ -162,6 +162,9 @@ public:
     // Bit VoltageImplausible (16) do byte de flags — espelha BaseFlags.cs. Setado pelo m5 quando a tensão
     // lida não bate com a variante selecionada (provável 24V/56V errado). É AVISO, não fault.
     static constexpr uint8_t kFlagVoltageImplausible = 16;
+    // Bit CoggingLoaded (32): há uma tabela de cogging VÁLIDA na flash e ligada no engine. Espelha
+    // BaseFlags.cs — o app mostra "tabela presente" na aba Hardware. Setado pelo m5 quando g_hasCogging.
+    static constexpr uint8_t kFlagCoggingLoaded = 32;
     void setStatusFlags(uint8_t f) { m_flags = f; }
 
     /// Telemetria do volante (set-center): posição em contagens + ângulo em 0.1°, já relativos ao centro.
@@ -177,6 +180,15 @@ public:
     bool centerRequested()
     {
         if (m_centerRequested) { m_centerRequested = false; return true; }
+        return false;
+    }
+
+    /// Consome um pedido de "calibrar cogging" (BaseCommand.CalibrateCogging / cmd 7). Retorna true UMA vez
+    /// por pedido — o m5 dispara a rotina de calibração FORA do callback USB (e só de fato roda no Stage 1,
+    /// com motor; motor-OFF ela só registra o pedido). A tabela resultante é gravada na flash pelo m5.
+    bool coggingCalibRequested()
+    {
+        if (m_coggingCalibRequested) { m_coggingCalibRequested = false; return true; }
         return false;
     }
 
@@ -208,6 +220,7 @@ private:
     int8_t   m_fetTempC = 0;      ///< temperatura dos FETs (°C) p/ a telemetria (setFetTempC)
     uint8_t  m_flags = 0;         ///< byte de flags de estado (BaseFlags) p/ a telemetria (setStatusFlags)
     bool m_centerRequested = false; ///< pedido pendente de ResetCenter (cmd 3), consumido por centerRequested()
+    bool m_coggingCalibRequested = false; ///< pedido pendente de CalibrateCogging (cmd 7), consumido por coggingCalibRequested()
     int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
     bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()
 

@@ -55,6 +55,8 @@ Settings and telemetry travel over the **vendor P0/A0 channel** (report ids `0x1
 ### For DD makers — ship a pre-configured installer
 Building and **selling** DDs on DriveLab? The **[Maker's guide » (`docs/guia-criador.md`)](../docs/guia-criador.md)** covers it end to end: the difference between using the app as a **maker** (advanced mode → the Hardware tab is visible, you configure and **export** the hardware profile) vs an **end user** (normal → tab hidden, feel only), plus how to generate a **Windows installer** that ships your hardware config bundled (one script does it all).
 
+Want to know **how many Nm** your motor delivers without a lever and a scale? See the **[Torque calculation guide » (`docs/calculo-torque.md`)](../docs/calculo-torque.md)** — measure the torque constant **Kt** and read the estimated torque live in the app.
+
 ### Build & run
 Needs the **.NET 8 SDK**.
 ```bash
@@ -133,6 +135,8 @@ Settings e telemetria trafegam pelo **canal vendor P0/A0** (report ids `0x14` wr
 
 ### Para quem monta e vende DD — instalador já configurado
 Vai **montar e vender** DDs com o DriveLab? O **[Guia do criador » (`docs/guia-criador.md`)](../docs/guia-criador.md)** explica tudo: a diferença entre usar o app como **criador** (modo avançado → a aba Hardware aparece, você configura e **exporta** o perfil de hardware) e como **usuário final** (normal → aba escondida, só o feel), além de como gerar um **instalador Windows** que já entrega a sua config de hardware embutida (um script faz tudo).
+
+Quer saber **quantos Nm** o seu motor entrega sem haste e balança? Veja o **[Guia de cálculo de torque » (`docs/calculo-torque.md`)](../docs/calculo-torque.md)** — meça a constante de torque **Kt** e leia o torque estimado ao vivo no app.
 
 ### Build & execução
 Precisa do **SDK do .NET 8**.

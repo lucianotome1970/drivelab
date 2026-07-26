@@ -17,6 +17,7 @@
 #include "startup.h"
 #include "force_reconstruct.h"
 #include "cogging.h"
+#include "cogging_store.h"
 #include "filters.h"
 #include "oscillation.h"
 #include "brake_pwm.h"
@@ -442,6 +443,35 @@ int main() {
             if (err > worst) worst = err;
         }
         CHECK(worst < 0.02f);   // ripple de ±0.2 reduzido a <0.02 → ~10× mais liso
+    }
+
+    // 14b) Cogging store: pack/unpack do blob (magic+versao+N+CRC) — persistencia na flash.
+    {
+        CoggingMap<128> src;
+        for (int i = 0; i < 128; ++i) src.table[i] = 0.01f * static_cast<float>(i - 64);
+
+        CHECK(coggingBlobSize<128>() == (size_t)(4 + 1 + 2 + 128 * 4 + 4)); // 523
+
+        uint8_t blob[coggingBlobSize<128>()];
+        CHECK(packCogging(src, blob, sizeof(blob)) == sizeof(blob));
+        // buffer pequeno demais -> 0
+        CHECK(packCogging(src, blob, 10) == 0);
+
+        CoggingMap<128> dst;
+        CHECK(unpackCogging(blob, sizeof(blob), dst));
+        for (int i = 0; i < 128; ++i) CHECK(dst.table[i] == src.table[i]);   // round-trip exato
+
+        // corromper 1 byte da tabela -> CRC recusa
+        uint8_t bad[sizeof(blob)]; std::memcpy(bad, blob, sizeof(blob));
+        bad[10] ^= 0xFF;
+        CoggingMap<128> x;
+        CHECK(!unpackCogging(bad, sizeof(bad), x));
+        // magic errado -> recusa
+        std::memcpy(bad, blob, sizeof(blob)); bad[0] ^= 0xFF;
+        CHECK(!unpackCogging(bad, sizeof(bad), x));
+        // tamanho errado (N diferente) -> recusa
+        CoggingMap<64> y;
+        CHECK(!unpackCogging(blob, sizeof(blob), y));
     }
 
     // 15) Filtros DSP: low-pass (passa DC, mata Nyquist), notch (passa DC, rejeita f0), velocidade

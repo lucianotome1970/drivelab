@@ -18,7 +18,7 @@
     <Border Classes="card">
         <StackPanel Spacing="16">
             <TextBlock Text="{loc:Translate Monitor_Title}" Classes="h2" />
-            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate Monitor_BusVoltage}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding BusVoltageText}"
@@ -29,24 +29,30 @@
                 <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MotorCurrentText}"
                            Foreground="{DynamicResource DlMuted}" Margin="0,6" />
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate Monitor_FetTemp}"
+                <!-- Torque estimado = Kt·corrente (sem balança). Mostra "—" até o Kt ser medido/calibrado. -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate Monitor_EstimatedTorque}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
-                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FetTempText}"
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding EstimatedTorqueText}"
+                           Foreground="{DynamicResource DlMuted}" Margin="0,6" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Translate Monitor_FetTemp}"
+                           Foreground="{DynamicResource DlText}" Margin="0,6" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FetTempText}"
                            Foreground="{Binding FetTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
 
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Translate Monitor_MotorTemp}"
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Translate Monitor_MotorTemp}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
-                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding MotorTempText}"
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding MotorTempText}"
                            Foreground="{Binding MotorTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
 
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Translate Monitor_McuTemp}"
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Translate Monitor_McuTemp}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
-                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding McuTempText}"
+                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding McuTempText}"
                            Foreground="{Binding McuTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
 
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Translate Monitor_Clipping}"
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="{loc:Translate Monitor_Clipping}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
-                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ClippingText}"
+                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ClippingText}"
                            Foreground="{Binding ClippingLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
             </Grid>
 

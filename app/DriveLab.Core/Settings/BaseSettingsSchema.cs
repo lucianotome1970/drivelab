@@ -45,6 +45,7 @@ public static class BaseSettingsSchema
         new(BaseSettingId.FfbCurve3, "ffb_curve_3", "Curva de força — 75%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 75),
         new(BaseSettingId.FfbCurve4, "ffb_curve_4", "Curva de força — 100%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 100),
         new(BaseSettingId.BoardVariant, "board_variant", "Variante da placa", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 1),
+        new(BaseSettingId.TorqueConstant, "torque_constant", "Constante de torque (Kt)", SettingType.Float, 0, 2, "Nm/A", SettingTab.Hardware, 0),
     };
 
     private static readonly Dictionary<byte, SettingDescriptor> ById =

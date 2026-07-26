@@ -17,6 +17,23 @@
         <!-- Os settings de hardware + o export (como Footer) ficam no MESMO ScrollViewer: o export rola junto. -->
         <views:SettingsGroupView>
             <views:SettingsGroupView.Footer>
+              <StackPanel Spacing="0">
+                <!-- Compensação de cogging: calibrar (roda na bancada) + status da tabela na flash. Só o criador. -->
+                <Expander Header="Compensação de cogging" IsExpanded="False"
+                          Margin="0,12,0,0" HorizontalAlignment="Stretch">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Mede o ripple do motor (imã passando por imã) e grava uma tabela na flash do dispositivo. O firmware subtrai o ripple posição a posição — é o que deixa o hub com feel liso de DD caro." />
+                        <TextBlock Text="{Binding CoggingPresentText}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                        <Button Classes="accent" Content="Calibrar cogging"
+                                Command="{Binding CalibrateCoggingCommand}" HorizontalAlignment="Left" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="A coleta EXIGE motor energizado — roda na bancada (Stage 1). Com o motor desligado, o dispositivo só registra o pedido." />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding CoggingStatus}"
+                                   IsVisible="{Binding CoggingStatus, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Expander>
+
                 <!-- Expander recolhido por padrão: não ocupa espaço até o criador abrir p/ exportar. -->
                 <Expander Header="Exportar perfil de hardware" IsExpanded="False"
                           Margin="0,12,0,0" HorizontalAlignment="Stretch">
@@ -37,6 +54,7 @@
                                    IsVisible="{Binding ExportStatus, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}" />
                     </StackPanel>
                 </Expander>
+              </StackPanel>
             </views:SettingsGroupView.Footer>
         </views:SettingsGroupView>
     </DockPanel>

@@ -19,4 +19,9 @@ public enum BaseFlags : byte
     /// <summary>Aviso (não fatal): a tensão do barramento lida não bate com a variante/nominal
     /// selecionada — provável 24V/56V escolhido errado no app. Ver busVoltageImplausible no firmware.</summary>
     VoltageImplausible = 16,
+
+    /// <summary>Há uma tabela de cogging válida gravada na flash do dispositivo e ativa no engine (a
+    /// compensação de ripple está funcionando). A aba Hardware mostra "tabela presente". Ver
+    /// kFlagCoggingLoaded no firmware.</summary>
+    CoggingLoaded = 32,
 }

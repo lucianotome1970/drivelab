@@ -15,4 +15,9 @@ public enum BaseCommand : byte
     EnterDfu = 4,
     Calibrate = 5,
     SetForceEnabled = 6,
+
+    /// <summary>Dispara a calibração de cogging por-motor (giro lento medindo o ripple, grava a tabela na
+    /// flash do dispositivo). Exige motor energizado — só roda na bancada (Stage 1). Só o criador tem acesso
+    /// (botão na aba Hardware). Ver coggingCalibRequested no firmware.</summary>
+    CalibrateCogging = 7,
 }

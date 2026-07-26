@@ -33,6 +33,9 @@ The **same app** (DriveLab Studio) behaves in two ways, depending on who opens i
 - **Feel** (free — the user tweaks freely): total force, damper, soft-stop, telemetry effects, force curves,
   **steering angle (DOR)**.
 
+> 💪 To find out **how many Nm** your motor delivers (measure **Kt** and read the estimated torque live in the
+> app), see the **[Torque calculation guide](calculo-torque.md)**.
+
 Changing the feel **never** alters the hardware. They're separate by design.
 
 ### 2. How the MAKER uses the app (advanced mode)
@@ -141,6 +144,9 @@ O **mesmo app** (DriveLab Studio) se comporta de dois jeitos, dependendo de quem
   direção/CPR do encoder, pares de polo, ganhos de corrente (P/I), corrente de calibração.
 - **Feel** (livre — o usuário mexe à vontade): força total, damper, soft-stop, efeitos por telemetria,
   curvas de força, **ângulo de giro (DOR)**.
+
+> 💪 Para descobrir **quantos Nm** o seu motor entrega (medir o **Kt** e ler o torque estimado ao vivo no
+> app), veja o **[Guia de cálculo de torque](calculo-torque.md)**.
 
 Mexer no feel **nunca** altera o hardware. São separados de propósito.
 
