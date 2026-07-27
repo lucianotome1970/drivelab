@@ -131,7 +131,9 @@ static Drv8301 drv;
 
 // ===================== Parâmetros do motor — AJUSTAR NA BANCADA =====================
 static const int   POLE_PAIRS = 15;      // hoverboard in-wheel, ~15 pares — AJUSTAR na bancada
-static const float ENC_CPR    = 10000.0f; // Omron E6B2-CWZ6C 2500 P/R × 4 (quadratura) = 10000 CPR
+static const float ENC_CPR    = 4000.0f;  // DEFAULT (Omron E6B2-CWZ6C 1000 P/R × 4 = 4000 CPR). Usado no construtor do
+                                          // Encoder e como fallback; o valor REAL vem do config (encoderCpr) em setup().
+static float       g_encCpr   = ENC_CPR;  // CPR em uso (lido do config no boot + no cfgDirty). Trocar encoder = só mudar no app.
 static const float SUPPLY_V   = 56.0f;   // MKS ODRIVE-S V3.6-S6V — variante 56V (NÃO 24V)
 
 // ===================== SimpleFOC — construídos, NUNCA inicializados/ligados aqui =====================
@@ -461,6 +463,13 @@ void setup()
     // Canal A0: carrega os settings persistidos (ou semeia defaults).
     g_a0.begin();
 
+    // CPR do encoder VEM DO CONFIG (encoderCpr) — trocar encoder no futuro = só mudar no app + Salvar, sem reflash.
+    // O construtor do Encoder e o encoder.init() já rodaram com o DEFAULT; cpr só é usado em runtime, então
+    // sobrescrever aqui (depois de ler a flash) já vale para o 1º positionRad() do loop. 0/absurdo → fallback.
+    g_encCpr = static_cast<float>(g_a0.cfg().encoderCpr);
+    if (g_encCpr < 1.0f) g_encCpr = ENC_CPR;
+    encoder.cpr = g_encCpr;
+
     // Sub-projeto 1 (Feel ajustável ao vivo, Task 3): aplica os settings
     // carregados por cima do que acabou de ser hardcoded acima. Ordem
     // importa -- maxTorqueNm é constante de HARDWARE (fica setado antes),
@@ -578,7 +587,7 @@ void loop()
         }
         const float angRad = focEncoder.positionRad();                       // já relativo ao centro
         const int16_t deci = A0Channel::angleDeciDegFromRad(angRad);
-        const long counts  = lroundf(angRad * (ENC_CPR / (2.0f * 3.14159265358979323846f)));
+        const long counts  = lroundf(angRad * (g_encCpr / (2.0f * 3.14159265358979323846f)));
         const int16_t pos  = static_cast<int16_t>(counts > 32767 ? 32767 : (counts < -32768 ? -32768 : counts));
         g_a0.setWheelTelemetry(pos, deci);
 
@@ -594,6 +603,7 @@ void loop()
         long fetC = lroundf(focPower.mosfetTempC());
         if (fetC > 127) fetC = 127; else if (fetC < -128) fetC = -128;
         g_a0.setFetTempC(static_cast<int8_t>(fetC));
+        g_a0.setFetNtcRaw(focPower.mosfetNtcRaw()); // ADC cru → telemetria (calibrar a escala do NTC do clone)
 
         // Temperatura do MOTOR (NTC no enrolamento, AUX_TEMP/PA5) → telemetria. Sem DRVLAB_MOTOR_NTC definido,
         // motorTempC() devolve -128 ("sem sensor"); ao soldar o NTC + definir a flag, vira leitura real.
@@ -663,6 +673,9 @@ void loop()
         applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
         focPower.setDividerRatio(vbusDividerForVariant(g_a0.cfg().boardVariant)); // re-deriva ao trocar a variante
         applyCoggingToEngine(); // honra coggingEnable ao vivo (liga/desliga a tabela sem reboot)
+        g_encCpr = static_cast<float>(g_a0.cfg().encoderCpr);  // CPR ao vivo (muda no app + Salvar, sem reflash)
+        if (g_encCpr < 1.0f) g_encCpr = ENC_CPR;
+        encoder.cpr = g_encCpr;
         g_a0.clearCfgDirty();
     }
 

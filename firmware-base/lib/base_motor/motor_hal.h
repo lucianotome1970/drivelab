@@ -111,6 +111,10 @@ public:
     float mosfetTempC() override;
     float motorTempC() override;
 
+    // Valor CRU do ADC do NTC dos FETs (PC5, 0..4095). Para CALIBRAR a escala numa placa clone: ler o cru a
+    // uma temp conhecida (ex.: MCU~30°C) e ajustar kNtcR25/Beta/Rload. Exposto na telemetria (byte 20-21).
+    uint16_t mosfetNtcRaw();
+
     // Divisor do VBUS por variante do v3.6 (24V→11, 56V→19). O m5 seta a partir da nominal escolhida
     // (vbusDividerRatioFor(busNominalV)) — um binário só atende 24V e 56V sem recompilar.
     void setDividerRatio(int ratio) { if (ratio > 0) m_dividerRatio = ratio; }

@@ -111,6 +111,12 @@ float FocPower::mosfetTempC()
     return static_cast<float>(centiC) / 100.0f;
 }
 
+uint16_t FocPower::mosfetNtcRaw()
+{
+    // Leitura crua do ADC do NTC dos FETs (PC5) — sem conversão. Para calibrar a escala do NTC no clone.
+    return static_cast<uint16_t>(analogRead(kOdrivePinNtcM0));
+}
+
 float FocPower::motorTempC()
 {
 #ifdef DRVLAB_MOTOR_NTC

@@ -21,7 +21,7 @@ public static class BaseSettingsSchema
         new(BaseSettingId.MaxTorqueLimit, "max_torque_limit", "Limite de torque", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 80),
         new(BaseSettingId.ForceDirection, "force_direction", "Direção da força", SettingType.Int8, -1, 1, "", SettingTab.Advanced, 1),
         new(BaseSettingId.EncoderDirection, "encoder_direction", "Direção do encoder", SettingType.Int8, -1, 1, "", SettingTab.Hardware, 1),
-        new(BaseSettingId.EncoderCpr, "encoder_cpr", "CPR do encoder", SettingType.UInt16, 100, 60000, "contagens", SettingTab.Hardware, 10000),
+        new(BaseSettingId.EncoderCpr, "encoder_cpr", "CPR do encoder", SettingType.UInt16, 100, 60000, "contagens", SettingTab.Hardware, 4000),
         new(BaseSettingId.PolePairs, "pole_pairs", "Pares de polos", SettingType.UInt8, 1, 50, "", SettingTab.Hardware, 15),
         new(BaseSettingId.CurrentP, "current_p", "Ganho P (corrente)", SettingType.Float, 0, 10, "", SettingTab.Hardware, 0.05),
         new(BaseSettingId.CurrentI, "current_i", "Ganho I (corrente)", SettingType.Float, 0, 1000, "", SettingTab.Hardware, 10),

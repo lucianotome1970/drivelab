@@ -113,7 +113,8 @@ public:
     static uint16_t buildDeviceStatePayload(uint8_t* out, int8_t mcuTempC, uint8_t clipping = 0,
                                             int16_t position = 0, int16_t angleDeciDeg = 0,
                                             uint16_t busVoltageMv = 0, uint8_t flags = 0,
-                                            int8_t fetTempC = 0, int8_t motorTempC = 0)
+                                            int8_t fetTempC = 0, int8_t motorTempC = 0,
+                                            uint16_t fetNtcRaw = 0)
     {
         for (uint16_t i = 0; i < kA0PayloadLen; ++i)
         {
@@ -134,6 +135,8 @@ public:
         out[16] = static_cast<uint8_t>((busVoltageMv >> 8) & 0xFF); // BusVoltageMv (hi)
         out[17] = static_cast<uint8_t>(motorTempC); // MotorTempC — NTC do enrolamento (-128 = sem sensor)
         out[18] = static_cast<uint8_t>(mcuTempC);
+        out[20] = static_cast<uint8_t>(fetNtcRaw & 0xFF);        // FET NTC ADC cru (lo) — p/ calibrar a escala
+        out[21] = static_cast<uint8_t>((fetNtcRaw >> 8) & 0xFF); // FET NTC ADC cru (hi)
         out[19] = clipping;
         return kA0PayloadLen;
     }
@@ -163,6 +166,10 @@ public:
     /// Temperatura do MOTOR (°C, int8) p/ a telemetria — alimentado pelo m5 com FocPower::motorTempC() (NTC no
     /// enrolamento, AUX_TEMP/PA5). -128 = sem sensor (default até soldar o NTC + definir DRVLAB_MOTOR_NTC).
     void setMotorTempC(int8_t c) { m_motorTempC = c; }
+
+    /// ADC CRU do NTC dos FETs (0..4095) p/ a telemetria (byte 20-21) — usado p/ CALIBRAR a escala do NTC no
+    /// clone (ler o cru a uma temp conhecida e ajustar as constantes). Alimentado com FocPower::mosfetNtcRaw().
+    void setFetNtcRaw(uint16_t raw) { m_fetNtcRaw = raw; }
 
     // Bit VoltageImplausible (16) do byte de flags — espelha BaseFlags.cs. Setado pelo m5 quando a tensão
     // lida não bate com a variante selecionada (provável 24V/56V errado). É AVISO, não fault.
@@ -224,6 +231,7 @@ private:
     uint16_t m_busVoltageMv = 0;  ///< tensão do barramento (mV) p/ a telemetria (setBusVoltageMv)
     int8_t   m_fetTempC = 0;      ///< temperatura dos FETs (°C) p/ a telemetria (setFetTempC)
     int8_t   m_motorTempC = -128; ///< temperatura do motor (°C) p/ a telemetria (setMotorTempC); -128 = sem sensor
+    uint16_t m_fetNtcRaw = 0;     ///< ADC cru do NTC dos FETs p/ a telemetria (setFetNtcRaw) — calibração da escala
     uint8_t  m_flags = 0;         ///< byte de flags de estado (BaseFlags) p/ a telemetria (setStatusFlags)
     bool m_centerRequested = false; ///< pedido pendente de ResetCenter (cmd 3), consumido por centerRequested()
     bool m_coggingCalibRequested = false; ///< pedido pendente de CalibrateCogging (cmd 7), consumido por coggingCalibRequested()
