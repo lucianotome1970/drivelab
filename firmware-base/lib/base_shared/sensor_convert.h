@@ -46,11 +46,14 @@ inline bool busVoltageImplausible(float measuredV, int nominalV)
     return measuredV < lo || measuredV > hi;
 }
 
-// NTC onboard dos FETs (ODrive v3.6): 10k a 25°C, Beta 3434, pull-up 3k3 a VDDA,
-// NTC na perna de baixo -> divisor ratiométrico (v = counts/4096 = Vadc/VDDA).
+// NTC onboard dos FETs. NA ODESC 54V (clone) o divisor é INVERTIDO em relação ao ODrive genuíno: o NTC fica
+// na perna de CIMA (para o VDDA) e o pull-up para o GND -> Vadc SOBE com a temperatura. Calibrado na bancada
+// (2026-07-27): a ADC crua = 1029 com o MCU a ~29°C bate com NTC 10k/Beta 3434 + Rload ~2,9k na fórmula
+// invertida (a fórmula do genuíno dava 95°C falsos). R_ntc = Rload*(4096-counts)/counts. Refinar por 2 pontos
+// depois se precisar de precisão perto do corte (85°C).
 static constexpr double kNtcR25   = 10000.0;
 static constexpr double kNtcBeta  = 3434.0;
-static constexpr double kNtcRload = 3300.0;
+static constexpr double kNtcRload = 2900.0;  // pull-up efetivo da ODESC (ajustado p/ o FET concordar com o MCU no ambiente)
 static constexpr double kNtcT0K   = 298.15; // 25°C em Kelvin
 
 // VDDA (mV) a partir do VREFINT interno. F405: VREFINT típico 1.21V; o VREFINT_CAL
@@ -86,7 +89,7 @@ inline int mcuTempCFromSenseMv(int vsenseMv)
 }
 
 // Temperatura do NTC dos FETs em centésimos de °C, pela fórmula Beta.
-// v = counts/4096 = R_ntc/(Rload+R_ntc) -> R_ntc = Rload*counts/(4096-counts).
+// ODESC (divisor INVERTIDO): v = counts/4096 = Rload/(Rload+R_ntc) -> R_ntc = Rload*(4096-counts)/counts.
 // 1/T = 1/T0 + ln(R_ntc/R25)/Beta. Retorna °C*100 (o chamador clampa em sbyte).
 // counts fora de faixa (0 / >=4096) = sensor aberto/curto -> valor claramente inválido.
 inline int fetThermistorCentiC(uint16_t counts)
@@ -94,8 +97,8 @@ inline int fetThermistorCentiC(uint16_t counts)
     if (counts == 0 || counts >= static_cast<uint16_t>(kAdcFullScale - 1))
         return -12800; // -128.00°C: sinaliza leitura inválida (fica no piso do sbyte)
 
-    double rNtc = kNtcRload * static_cast<double>(counts) /
-                  static_cast<double>(kAdcFullScale - counts);
+    double rNtc = kNtcRload * static_cast<double>(kAdcFullScale - counts) /
+                  static_cast<double>(counts);
     double invT = 1.0 / kNtcT0K + std::log(rNtc / kNtcR25) / kNtcBeta;
     double tC = 1.0 / invT - 273.15;
     return static_cast<int>(tC * 100.0 + (tC >= 0 ? 0.5 : -0.5));

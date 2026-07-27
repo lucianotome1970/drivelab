@@ -92,23 +92,23 @@ int main()
         CHECK(mcuTempCFromSenseMv(735) == 15);              // -25mV -> -10°C
     }
 
-    // ----- fetThermistorCentiC (Beta 3434, R25 10k, Rload 3k3, NTC embaixo) -----
+    // ----- fetThermistorCentiC (ODESC: divisor INVERTIDO, Rload 2900, NTC em cima) -----
     {
         // counts fora de faixa = inválido
         CHECK(fetThermistorCentiC(0) == -12800);
         CHECK(fetThermistorCentiC(4095) == -12800);
 
-        // R_ntc = 10k em counts=3080 -> ~25°C
-        int c25 = fetThermistorCentiC(3080);
-        CHECK(c25 > 2400 && c25 < 2600);
+        // Âncora da bancada (2026-07-27): counts=1029 -> ~29°C (calibrado vs MCU)
+        int amb = fetThermistorCentiC(1029);
+        CHECK(amb > 2600 && amb < 3100);        // ~29°C
 
-        // NTC: mais quente => R menor => counts menor. Monotônico decrescente.
-        int hot = fetThermistorCentiC(2048);   // ~57°C
-        int cold = fetThermistorCentiC(3600);  // ~4°C
-        CHECK(hot > c25);
-        CHECK(cold < c25);
-        CHECK(hot > 5000 && hot < 6500);        // ~57°C
-        CHECK(cold > 0 && cold < 1200);         // ~4°C
+        // INVERTIDO: mais quente => Vadc maior => counts MAIOR. Monotônico CRESCENTE.
+        int hot  = fetThermistorCentiC(2048);   // ~61°C
+        int cold = fetThermistorCentiC(500);    // ~7°C
+        CHECK(hot > amb);
+        CHECK(cold < amb);
+        CHECK(hot > 5500 && hot < 6700);        // ~61°C
+        CHECK(cold > 0 && cold < 1500);         // ~7°C
     }
 
     std::printf("sensors: %d checks, %d fails\n", g_checks, g_fails);
