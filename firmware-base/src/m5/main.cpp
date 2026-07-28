@@ -290,6 +290,24 @@ static int          g_calRetry    = 0;
 static const int    kCalMaxRetry  = 3;
 static float        g_verStart    = 0.0f;   // getAngle no início do VERIFY
 
+// SWEEP de posição (±900°) — teste de faixa como um volante. Modo ângulo, lento (velocity_limit baixo), gentil.
+static bool  g_sweepMode   = false;         // arg==99 → sweep ±900° em vez de giro por velocidade
+static float g_sweepCenter = 0.0f;          // getAngle no início do sweep (o "0" do volante)
+static float g_sweepTarget = 0.0f;          // alvo atual (center ± amplitude)
+static const float kSweepAmp = 15.708f;     // 900° em rad (2,5 voltas)
+
+// Corte de RUNAWAY (segurança): se a velocidade disparar muito acima do esperado, desabilita NA HORA.
+static bool runawayCut()
+{
+    if (fabsf(motor.shaft_velocity) > 15.0f) {   // rad/s — bem acima de qualquer alvo do teste
+        motor.move(0.0f); motor.loopFOC(); motor.disable();
+        g_focPhase = FOC_IDLE; g_motorFault = true;
+        SerialTinyUSB.printf("RUNAWAY! |vel|=%dmrad/s > 15 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
+        return true;
+    }
+    return false;
+}
+
 // Medição de cogging (motor-OFF gated; operador presente)
 static drivelab::CoggingCalibrator<128> g_cogCal;
 static bool           g_doCogMeasure = false;   // set pelo cmd 7 (mede) vs cmd 5 (só roda)
@@ -382,7 +400,8 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     const float busV = focPower.busVoltage();
     if (busV < 8.0f) { SerialTinyUSB.printf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
     g_doCogMeasure = doMeasure;
-    g_velTarget = (arg > 0) ? (float)arg : 6.0f;   // arg = velocidade alvo em rad/s (0 → 6)
+    g_sweepMode = (arg == 99);                     // arg=99 → sweep de posição ±900°
+    g_velTarget = (g_sweepMode || arg == 0) ? 6.0f : (float)arg;   // senão arg = velocidade alvo (rad/s)
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
     const bool drvOk = drv.configure();
@@ -399,19 +418,20 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     adc2Config();                                 // RE-ARMA o gatilho do ADC (motor.init/enable reconfigurou o TIM1)
     motor.controller        = MotionControlType::torque;
     motor.torque_controller = TorqueControlType::foc_current;   // <— era voltage: controle de CORRENTE (torque limpo)
-    motor.voltage_limit     = 5.0f;
-    motor.current_limit     = 2.0f;                             // 2A (spec) — subir depois
-    motor.velocity_limit    = 30.0f;
-    // PID de corrente (defaults conservadores; tunar na bancada)
-    motor.PID_current_q.P = 2.0f; motor.PID_current_q.I = 100.0f; motor.PID_current_q.D = 0.0f;
-    motor.PID_current_d.P = 2.0f; motor.PID_current_d.I = 100.0f; motor.PID_current_d.D = 0.0f;
+    // ⚠️ SEGURANÇA (2026-07-28: um lurch quebrou o suporte do encoder). Limites BAIXÍSSIMOS até o tuning ficar
+    // estável — 0.5A mal move o hub, quanto mais quebra algo. Subir só com cautela depois de suave.
+    motor.voltage_limit     = 2.0f;
+    motor.current_limit     = 0.5f;                            // 0.5A — gentil
+    motor.velocity_limit    = 12.0f;
+    motor.PID_current_q.P = 1.5f; motor.PID_current_q.I = 60.0f; motor.PID_current_q.D = 0.0f;
+    motor.PID_current_d.P = 1.5f; motor.PID_current_d.I = 60.0f; motor.PID_current_d.D = 0.0f;
     motor.PID_current_q.limit = motor.voltage_limit; motor.PID_current_d.limit = motor.voltage_limit;
-    motor.LPF_current_q.Tf = 0.01f; motor.LPF_current_d.Tf = 0.01f;
-    // PID de velocidade: em foc_current a saída é CORRENTE (A) → limite = current_limit (2A), não tensão
-    motor.PID_velocity.P = 0.15f; motor.PID_velocity.I = 2.0f; motor.PID_velocity.D = 0.0f;
-    motor.PID_velocity.output_ramp = 300.0f;
+    motor.LPF_current_q.Tf = 0.005f; motor.LPF_current_d.Tf = 0.005f;
+    // PID de velocidade: saída é CORRENTE (A) → limite = current_limit (0.5A). Ganhos baixos + rampa lenta.
+    motor.PID_velocity.P = 0.05f; motor.PID_velocity.I = 0.5f; motor.PID_velocity.D = 0.0f;
+    motor.PID_velocity.output_ramp = 2.0f;                    // rampa lenta da corrente (A/s)
     motor.PID_velocity.limit = motor.current_limit;
-    motor.LPF_velocity.Tf = 0.04f;   // filtro na velocidade (a velocidade estimada era ruidosa)
+    motor.LPF_velocity.Tf = 0.05f;   // filtro na velocidade (estimada é ruidosa)
     g_calRetry = 0;
     restartScan(nowMs);
 }
@@ -477,6 +497,7 @@ static void stage1aTick(uint32_t nowMs)
 
     // VERIFY — confirma que o zero gira; se travou, recalibra (o scan em modo-tensão nao e repetivel)
     if (g_focPhase == FOC_VERIFY) {
+        if (runawayCut()) return;
         motor.feed_forward_voltage.q = 0.0f;
         motor.loopFOC();
         motor.move(4.0f);
@@ -490,6 +511,15 @@ static void stage1aTick(uint32_t nowMs)
                 g_cogCal.reset(); g_focPhase = FOC_COG;
                 SerialTinyUSB.printf("COG: medindo cogging (giro lento %d rad/s por ~%ds)...\n",
                                      (int)kCogMeasV, (int)(kCogMeasMs/1000));
+            } else if (g_sweepMode) {
+                motor.controller     = MotionControlType::angle;   // controle de POSIÇÃO p/ o sweep
+                motor.P_angle.P      = 5.0f;
+                motor.velocity_limit = 3.0f;                       // sweep LENTO (3 rad/s)
+                motor.P_angle.limit  = motor.velocity_limit;
+                encoder.update(); g_sweepCenter = encoder.getAngle();
+                g_sweepTarget = g_sweepCenter + kSweepAmp;         // 1º alvo: +900°
+                g_focPhase = FOC_RUN;
+                SerialTinyUSB.printf("-> SWEEP +/-900deg (angle mode, lento, 0.5A)\n");
             } else {
                 g_focPhase = FOC_RUN;
                 SerialTinyUSB.printf("-> RUN velocidade %d rad/s (cogging %s)\n",
@@ -512,6 +542,7 @@ static void stage1aTick(uint32_t nowMs)
 
     // COG — medição: gira lento e grava o Uq (torque) comandado por posição mecânica
     if (g_focPhase == FOC_COG) {
+        if (runawayCut()) return;
         motor.feed_forward_voltage.q = 0.0f;   // NÃO compensa enquanto mede
         motor.loopFOC();
         motor.move(kCogMeasV);
@@ -538,31 +569,39 @@ static void stage1aTick(uint32_t nowMs)
         return;
     }
 
-    // FOC_RUN
-    if ((int32_t)(nowMs - g_focT) > 6000) {
+    // FOC_RUN (giro por velocidade OU sweep de posição ±900°)
+    if (runawayCut()) return;                                        // segurança: corta se a velocidade disparar
+    const uint32_t runDur = g_sweepMode ? 24000u : 6000u;            // sweep dura mais (várias idas/voltas)
+    if ((int32_t)(nowMs - g_focT) > (int32_t)runDur) {
         motor.feed_forward_voltage.q = 0.0f;
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE;
         SerialTinyUSB.printf("FOC: fim\n");
+        return;
+    }
+    motor.loopFOC();
+    if (g_sweepMode) {
+        encoder.update();
+        const float pos = encoder.getAngle();
+        if (fabsf(pos - g_sweepTarget) < 0.3f)                       // chegou no alvo → inverte o lado
+            g_sweepTarget = (g_sweepTarget > g_sweepCenter) ? (g_sweepCenter - kSweepAmp) : (g_sweepCenter + kSweepAmp);
+        motor.move(g_sweepTarget);
+        static uint32_t lastLogS = 0;
+        if ((int32_t)(nowMs - lastLogS) > 400) { lastLogS = nowMs;
+            SerialTinyUSB.printf("  SWEEP pos=%ddeg alvo=%ddeg vel=%dmrad/s Iq=%dmA\n",
+                (int)((pos-g_sweepCenter)*57.2958f), (int)((g_sweepTarget-g_sweepCenter)*57.2958f),
+                (int)(motor.shaft_velocity*1000.0f), (int)(motor.current.q*1000.0f)); }
     } else {
-        // feed-forward de cogging (se medido): soma −ripple(posição) ao Uq, com teto de segurança
-        float ff = 0.0f;
-        if (g_hasCogging) {
-            ff = g_coggingTable.compensation(encoder.getMechanicalAngle());
-            if (ff >  kCogFFClamp) ff =  kCogFFClamp;
-            if (ff < -kCogFFClamp) ff = -kCogFFClamp;
-        }
+        float ff = 0.0f;                                            // feed-forward de cogging (se medido)
+        if (g_hasCogging) { ff = g_coggingTable.compensation(encoder.getMechanicalAngle());
+            if (ff > kCogFFClamp) ff = kCogFFClamp; else if (ff < -kCogFFClamp) ff = -kCogFFClamp; }
         motor.feed_forward_voltage.q = ff;
-        motor.loopFOC();
         motor.move(g_velTarget);
         static uint32_t lastLog = 0;
-        if ((int32_t)(nowMs - lastLog) > 400) {
-            lastLog = nowMs;
+        if ((int32_t)(nowMs - lastLog) > 400) { lastLog = nowMs;
             SerialTinyUSB.printf("  RUN vel=%dmrad/s Iq=%dmA Id=%dmA Uq=%dmV ff=%dmV\n",
-                                 (int)(motor.shaft_velocity*1000.0f),
-                                 (int)(motor.current.q*1000.0f), (int)(motor.current.d*1000.0f),
-                                 (int)(motor.voltage.q*1000.0f), (int)(ff*1000.0f));
-        }
+                (int)(motor.shaft_velocity*1000.0f), (int)(motor.current.q*1000.0f), (int)(motor.current.d*1000.0f),
+                (int)(motor.voltage.q*1000.0f), (int)(ff*1000.0f)); }
     }
 }
 
