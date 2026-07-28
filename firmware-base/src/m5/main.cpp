@@ -163,28 +163,55 @@ static drivelab::FocPower   focPower;
 // PWM — espera o contador do TIM1 chegar perto do PICO (janela em que os FETs de baixo conduzem a corrente de
 // fase), com timeout de segurança. Entregue ao foc_current por GenericCurrentSense. Tudo sequencial, sem
 // injected/DMA/ISR → não pendura e não briga com a telemetria (que também é analogRead).
-static volatile float g_iOffB = 0.0f, g_iOffC = 0.0f;   // offset de repouso (A), medido no init
 static bool g_csReady = false;
+
+// Leitura RÁPIDA dos shunts direto no ADC2 (canais IN10=PC0=IB, IN11=PC1=IC). ~2µs/leitura (vs ~15µs do
+// analogRead, que esfomeava a USB no loop do foc_current). ADC2 dedicado → não briga com o ADC1 dos analogRead
+// de telemetria. Escala 0,0403 A/count; offset em counts medido em repouso.
+static const float kAmpsPerCount = 3.3f / 4096.0f / (40.0f * 0.0005f);   // ~0,0403 A/count
+static float g_off10 = 2048.0f, g_off11 = 2048.0f;                        // offset de repouso (counts)
+
+// SINCRONIZAÇÃO POR HARDWARE, SEM interrupção (o ADC_IRQHandler é do SimpleFOC; o TIM1_UP é do core — os dois
+// tomados). Truque: ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_CC4, com o CC4 comparando perto do
+// PICO do PWM (low-side conduzindo) → o hardware faz 1 conversão/período no ponto certo e guarda em JDR1/JDR2.
+// O loop só LÊ o JDR (registrador pronto, ~0µs, sem espera) → sincronizado, sem busy-wait, sem ISR, sem conflito.
+// (Não habilita CC4E: PA11=USB DM; o OC4REF interno dispara o ADC sem precisar do pino.)
+// Config COMPLETA e IDEMPOTENTE do ADC2 injected (TRGO=update do ODrive: o update SEMPRE fira, mesmo com MOE).
+// Chamada A CADA leitura pra sobreviver a qualquer analogRead, que DE-INICIALIZA o ADC (limitação conhecida do
+// SimpleFOC STM32 — analogRead init/deinit o ADC toda vez). ADON escrito JUNTO no CR2 (não pisca ligado→desligado).
+static void adc2Config()
+{
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
+    GPIOC->MODER |= (3u << 0) | (3u << 2);                        // PC0, PC1 = analog
+    GPIOC->PUPDR &= ~((3u << 0) | (3u << 2));                     // sem pull
+    RCC->APB2ENR |= RCC_APB2ENR_ADC2EN;
+    ADC->CCR = (ADC->CCR & ~ADC_CCR_ADCPRE) | ADC_CCR_ADCPRE_0;   // ADCCLK = PCLK2/4 (<= 36MHz)
+    ADC2->CR1 = ADC_CR1_SCAN;                                     // scan (2 inj), SEM interrupt
+    ADC2->CR2 = (1u << 16) | (1u << 20) | ADC_CR2_ADON;           // JEXTSEL=TIM1_TRGO, JEXTEN=rising, ADON (junto)
+    ADC2->SMPR1 = (3u << 0) | (3u << 3);                          // 56 ciclos ch10/11
+    ADC2->JSQR = (1u << 20) | (11u << 15) | (10u << 10);          // JL=1: JSQ3=10→JDR1, JSQ4=11→JDR2
+    TIM1->CR2 = (TIM1->CR2 & ~TIM_CR2_MMS) | (2u << 4);           // TRGO = update
+}
 
 static PhaseCurrent_s genCurrentRead()
 {
-    const uint32_t arr = TIM1->ARR;
-    const uint32_t thr = arr - (arr / 6);                       // janela ~17% no topo (low-side ON)
-    for (uint32_t g = 0; TIM1->CNT < thr && g < 100000u; ++g) { asm volatile("nop"); }
-    float ia, ib, ic;
-    focCurrent.readPhaseCurrents(ia, ib, ic);                   // analogRead PC0/PC1 + escala
-    ib -= g_iOffB; ic -= g_iOffC;                              // tira o offset de repouso medido
-    PhaseCurrent_s r; r.b = ib; r.c = ic; r.a = -(ib + ic);    // fase A por KCL
+    adc2Config();   // reconfig completo por leitura → sobrevive a qualquer analogRead que de-inicializou o ADC
+    const float ib = ((float)ADC2->JDR1 - g_off10) * kAmpsPerCount;   // IN10 = PC0 = IB
+    const float ic = ((float)ADC2->JDR2 - g_off11) * kAmpsPerCount;   // IN11 = PC1 = IC
+    PhaseCurrent_s r; r.b = ib; r.c = ic; r.a = -(ib + ic);           // fase A por KCL
     return r;
 }
 
 static void genCurrentInit()
 {
-    float sb = 0.0f, sc = 0.0f; const int N = 200;             // offset de repouso (motor parado, sem corrente)
-    g_iOffB = 0.0f; g_iOffC = 0.0f;
-    for (int i = 0; i < N; ++i) { float a,b,c; focCurrent.readPhaseCurrents(a,b,c); sb += b; sc += c; delayMicroseconds(200); }
-    g_iOffB = sb / (float)N; g_iOffC = sc / (float)N;
-    SerialTinyUSB.printf("CS init: offset repouso Ib=%dmA Ic=%dmA\n", (int)(g_iOffB*1000), (int)(g_iOffC*1000));
+    adc2Config();
+    delay(5);                                                    // deixa o TIM1 disparar algumas conversões
+    float s10 = 0.0f, s11 = 0.0f; const int N = 400;             // offset de repouso (motor parado, sem corrente)
+    for (int i = 0; i < N; ++i) { adc2Config(); s10 += ADC2->JDR1; s11 += ADC2->JDR2; delayMicroseconds(50); }
+    g_off10 = s10 / (float)N; g_off11 = s11 / (float)N;
+    SerialTinyUSB.printf("CS init: off IB=%d IC=%d | ADC2 SR=0x%lx JDR1=%lu JDR2=%lu MMS=%lu\n",
+                         (int)g_off10, (int)g_off11, (unsigned long)ADC2->SR,
+                         (unsigned long)ADC2->JDR1, (unsigned long)ADC2->JDR2, (unsigned long)((TIM1->CR2 >> 4) & 7u));
 }
 
 static GenericCurrentSense currentSense(genCurrentRead, genCurrentInit);
@@ -311,10 +338,14 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
         motor.linkDriver(&driver); motor.linkCurrentSense(&currentSense);
         motor.pole_pairs = g_a0.cfg().polePairs; motor.voltage_limit = 3.0f;
         motor.init(); motor.enable();
+        adc2Config();                 // RE-ARMA o gatilho (motor.init/enable reconfigurou o TIM1)
         const float V = 0.5f;
         const float angs[4] = { 0.0f, _PI_2, _PI, _3PI_2 };
         for (int i=0;i<4;i++){
             motor.setPhaseVoltage(V, 0.0f, angs[i]); delay(200);
+            if (i==0) SerialTinyUSB.printf("  dbg MMS=%lu SR=0x%lx JDR1=%lu JDR2=%lu ARR=%lu CCR4=%lu CCR1=%lu CCR2=%lu CCR3=%lu\n",
+                (unsigned long)((TIM1->CR2>>4)&7u),(unsigned long)ADC2->SR,(unsigned long)ADC2->JDR1,(unsigned long)ADC2->JDR2,
+                (unsigned long)TIM1->ARR,(unsigned long)TIM1->CCR4,(unsigned long)TIM1->CCR1,(unsigned long)TIM1->CCR2,(unsigned long)TIM1->CCR3);
             float sa=0,sb=0,sc=0; const int M=10;
             for(int k=0;k<M;k++){ PhaseCurrent_s p=currentSense.getPhaseCurrents(); sa+=p.a;sb+=p.b;sc+=p.c; delay(2); }
             DQCurrent_s dq = currentSense.getFOCCurrents(angs[i]);
@@ -358,16 +389,28 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     if (!drvOk || !driver.initialized) { SerialTinyUSB.printf("FOC ABORT: drv=%d\n",drvOk?1:0); motor.disable(); g_motorFault=true; return; }
     motor.linkDriver(&driver);
     motor.linkSensor(&encoder);
+    // Sensor de corrente (foc_current). init uma vez (calibra offset com PWM=0); reusa nas calibrações seguintes.
+    currentSense.linkDriver(&driver);
+    if (!g_csReady) g_csReady = (currentSense.init() == 1);
+    motor.linkCurrentSense(&currentSense);
     motor.pole_pairs        = g_a0.cfg().polePairs;   // 15 (confirmado: 30 ímãs)
     motor.init();
     motor.enable();                                   // EXPLÍCITO — sequência que PRODUZIU torque na bancada
+    adc2Config();                                 // RE-ARMA o gatilho do ADC (motor.init/enable reconfigurou o TIM1)
     motor.controller        = MotionControlType::torque;
-    motor.torque_controller = TorqueControlType::voltage;
+    motor.torque_controller = TorqueControlType::foc_current;   // <— era voltage: controle de CORRENTE (torque limpo)
     motor.voltage_limit     = 5.0f;
+    motor.current_limit     = 2.0f;                             // 2A (spec) — subir depois
     motor.velocity_limit    = 30.0f;
+    // PID de corrente (defaults conservadores; tunar na bancada)
+    motor.PID_current_q.P = 2.0f; motor.PID_current_q.I = 100.0f; motor.PID_current_q.D = 0.0f;
+    motor.PID_current_d.P = 2.0f; motor.PID_current_d.I = 100.0f; motor.PID_current_d.D = 0.0f;
+    motor.PID_current_q.limit = motor.voltage_limit; motor.PID_current_d.limit = motor.voltage_limit;
+    motor.LPF_current_q.Tf = 0.01f; motor.LPF_current_d.Tf = 0.01f;
+    // PID de velocidade: em foc_current a saída é CORRENTE (A) → limite = current_limit (2A), não tensão
     motor.PID_velocity.P = 0.15f; motor.PID_velocity.I = 2.0f; motor.PID_velocity.D = 0.0f;
     motor.PID_velocity.output_ramp = 300.0f;
-    motor.PID_velocity.limit = motor.voltage_limit;  // CRÍTICO: senão o default capa o Uq (~2V) e empaca no cogging
+    motor.PID_velocity.limit = motor.current_limit;
     motor.LPF_velocity.Tf = 0.04f;   // filtro na velocidade (a velocidade estimada era ruidosa)
     g_calRetry = 0;
     restartScan(nowMs);
@@ -515,9 +558,9 @@ static void stage1aTick(uint32_t nowMs)
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 400) {
             lastLog = nowMs;
-            SerialTinyUSB.printf("  RUN vel=%dmrad/s shaft=%dmrad Uq=%dmV ff=%dmV\n",
+            SerialTinyUSB.printf("  RUN vel=%dmrad/s Iq=%dmA Id=%dmA Uq=%dmV ff=%dmV\n",
                                  (int)(motor.shaft_velocity*1000.0f),
-                                 (int)(motor.shaft_angle*1000.0f),
+                                 (int)(motor.current.q*1000.0f), (int)(motor.current.d*1000.0f),
                                  (int)(motor.voltage.q*1000.0f), (int)(ff*1000.0f));
         }
     }
@@ -872,7 +915,7 @@ void loop()
     uint32_t now = millis();
 
     static uint32_t lastSensor = 0;
-    if (now - lastSensor >= 100)
+    if (!g_csReady && now - lastSensor >= 100)   // ⚠️ analogRead do MCU temp DE-INICIALIZA o ADC → quebra o injected
     {
         lastSensor = now;
         sensorsSample();
@@ -926,27 +969,28 @@ void loop()
 
         // Tensão do barramento (ADC PA6) → telemetria. Leitura passiva (motor OFF ok). A escala do divisor
         // ainda é placeholder (item A1 do registro de validação) — este valor serve p/ calibrar vs multímetro.
-        const float busV = focPower.busVoltage();
-        uint16_t busMv = 0;
-        if (busV > 0.0f) { const float mv = busV * 1000.0f; busMv = mv > 65535.0f ? 65535u : static_cast<uint16_t>(mv + 0.5f); }
-        g_a0.setBusVoltageMv(busMv);
+        // ⚠️ analogRead QUEBRA o ADC injected do current sense (limitação conhecida do SimpleFOC STM32 —
+        // analogRead init/deinit o ADC toda vez). Enquanto o current sense estiver ativo (g_csReady), NÃO ler
+        // tensão do bus / temps por analogRead — congela esses valores (o encoder/posição não usa ADC, segue ok).
+        float busV = 0.0f;
+        if (!g_csReady) {
+            busV = focPower.busVoltage();
+            uint16_t busMv = 0;
+            if (busV > 0.0f) { const float mv = busV * 1000.0f; busMv = mv > 65535.0f ? 65535u : static_cast<uint16_t>(mv + 0.5f); }
+            g_a0.setBusVoltageMv(busMv);
 
-        // Temperatura dos FETs (NTC no PC5) → telemetria. Leitura passiva (motor OFF ok); -128 = sem sensor.
-        // Escala/constantes do NTC a validar na bancada (o clone MKS pode divergir do ODrive genuíno).
-        long fetC = lroundf(focPower.mosfetTempC());
-        if (fetC > 127) fetC = 127; else if (fetC < -128) fetC = -128;
-        g_a0.setFetTempC(static_cast<int8_t>(fetC));
-        g_a0.setFetNtcRaw(focPower.mosfetNtcRaw()); // ADC cru → telemetria (calibrar a escala do NTC do clone)
+            long fetC = lroundf(focPower.mosfetTempC());
+            if (fetC > 127) fetC = 127; else if (fetC < -128) fetC = -128;
+            g_a0.setFetTempC(static_cast<int8_t>(fetC));
+            g_a0.setFetNtcRaw(focPower.mosfetNtcRaw());
 
-        // Temperatura do MOTOR (NTC no enrolamento, AUX_TEMP/PA5) → telemetria. Sem DRVLAB_MOTOR_NTC definido,
-        // motorTempC() devolve -128 ("sem sensor"); ao soldar o NTC + definir a flag, vira leitura real.
-        long motC = lroundf(focPower.motorTempC());
-        if (motC > 127) motC = 127; else if (motC < -128) motC = -128;
-        g_a0.setMotorTempC(static_cast<int8_t>(motC));
+            long motC = lroundf(focPower.motorTempC());
+            if (motC > 127) motC = 127; else if (motC < -128) motC = -128;
+            g_a0.setMotorTempC(static_cast<int8_t>(motC));
+        }
 
-        // Plausibilidade: com o bus energizado, avisa se a tensão lida não bate com a variante escolhida
-        // (provável 24V/56V errado). Só AVISA (flag) — não corrige a seleção; ver resposta ao usuário.
-        const uint8_t flags = (busVoltageImplausible(busV, g_a0.cfg().busNominalV) ? A0Channel::kFlagVoltageImplausible : 0)
+        // Plausibilidade: com o bus energizado, avisa se a tensão lida não bate com a variante escolhida.
+        const uint8_t flags = ((!g_csReady && busVoltageImplausible(busV, g_a0.cfg().busNominalV)) ? A0Channel::kFlagVoltageImplausible : 0)
                             | (g_hasCogging ? A0Channel::kFlagCoggingLoaded : 0)
                             | (g_motorReady ? 0x02 : 0)   // Calibrated (BaseFlags) — initFOC OK (Stage 1a)
                             | (g_motorFault ? 0x04 : 0);  // Error — initFOC falhou
