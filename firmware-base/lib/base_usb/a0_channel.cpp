@@ -128,6 +128,14 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 SerialTinyUSB.printf("A0 cmd=%u (SetForceEnabled) arg=%u -> forceEnabled=%u\n",
                                       cmd, arg, m_forceEnabled ? 1U : 0U);
             }
+            else if (cmd == 5 /* Calibrate (Stage 1a: initFOC do motor) */)
+            {
+                // BaseCommand.Calibrate: só marca — o m5 roda o Stage 1a (open-loop) fora deste callback USB.
+                // arg = tensão open-loop em décimos de volt (ex.: 15 = 1,5V) → ajustável sem reflash. Deliberado.
+                m_calibrateRequested = true;
+                m_calibrateArg = arg;
+                SerialTinyUSB.printf("A0 cmd=5 (Calibrate) arg=%u -> Stage 1a (%u.%uV)\n", arg, arg/10, arg%10);
+            }
             else if (cmd == 7 /* CalibrateCogging */)
             {
                 // BaseCommand.CalibrateCogging: só marca — o m5 dispara a rotina de calibração fora deste

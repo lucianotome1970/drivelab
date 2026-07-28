@@ -195,6 +195,14 @@ public:
         return false;
     }
 
+    /// Consome um pedido de "calibrar o MOTOR" (BaseCommand.Calibrate / cmd 5) — Stage 1a: o m5 roda initFOC
+    /// (alinha o motor, mede zero elétrico + direção) FORA do callback USB. É o PRIMEIRO GIRO — deliberado.
+    bool calibrateRequested(uint8_t& argOut)
+    {
+        if (m_calibrateRequested) { m_calibrateRequested = false; argOut = m_calibrateArg; return true; }
+        return false;
+    }
+
     /// Consome um pedido de "calibrar cogging" (BaseCommand.CalibrateCogging / cmd 7). Retorna true UMA vez
     /// por pedido — o m5 dispara a rotina de calibração FORA do callback USB (e só de fato roda no Stage 1,
     /// com motor; motor-OFF ela só registra o pedido). A tabela resultante é gravada na flash pelo m5.
@@ -235,6 +243,8 @@ private:
     uint8_t  m_flags = 0;         ///< byte de flags de estado (BaseFlags) p/ a telemetria (setStatusFlags)
     bool m_centerRequested = false; ///< pedido pendente de ResetCenter (cmd 3), consumido por centerRequested()
     bool m_coggingCalibRequested = false; ///< pedido pendente de CalibrateCogging (cmd 7), consumido por coggingCalibRequested()
+    bool m_calibrateRequested = false; ///< pedido pendente de Calibrate (cmd 5, Stage 1a), consumido por calibrateRequested()
+    uint8_t m_calibrateArg = 0;        ///< arg do cmd 5 = tensão open-loop em décimos de volt (ex.: 15 = 1,5V)
     int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
     bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()
 
