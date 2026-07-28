@@ -303,12 +303,34 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
     if (!drv.configure() || !driver.initialized) { SerialTinyUSB.printf("CS DIAG ABORT: drv\n"); return; }
     currentSense.linkDriver(&driver);
-    const int ok = currentSense.init();          // calibra offset (motor parado, PWM=0)
-    g_csReady = (ok == 1);
-    float sa=0, sb=0, sc=0;                       // média de 20 leituras em repouso (deve ~0A)
+    if (!g_csReady) g_csReady = (currentSense.init() == 1);   // calibra offset (motor parado, PWM=0)
+
+    if (arg == 101) {
+        // Vetor de tensão conhecido (0,5V) em 4 ângulos → valida a leitura SOB corrente + o sync.
+        // (O motor pode dar pequenos trancos alternando os ângulos — normal.)
+        motor.linkDriver(&driver); motor.linkCurrentSense(&currentSense);
+        motor.pole_pairs = g_a0.cfg().polePairs; motor.voltage_limit = 3.0f;
+        motor.init(); motor.enable();
+        const float V = 0.5f;
+        const float angs[4] = { 0.0f, _PI_2, _PI, _3PI_2 };
+        for (int i=0;i<4;i++){
+            motor.setPhaseVoltage(V, 0.0f, angs[i]); delay(200);
+            float sa=0,sb=0,sc=0; const int M=10;
+            for(int k=0;k<M;k++){ PhaseCurrent_s p=currentSense.getPhaseCurrents(); sa+=p.a;sb+=p.b;sc+=p.c; delay(2); }
+            DQCurrent_s dq = currentSense.getFOCCurrents(angs[i]);
+            SerialTinyUSB.printf("  ang=%dmrad Ia=%dmA Ib=%dmA Ic=%dmA (KCL=%dmA) | Id=%dmA Iq=%dmA\n",
+                (int)(angs[i]*1000),(int)(sa/M*1000),(int)(sb/M*1000),(int)(sc/M*1000),
+                (int)((sa+sb+sc)/M*1000),(int)(dq.d*1000),(int)(dq.q*1000));
+        }
+        motor.setPhaseVoltage(0,0,0); motor.disable();
+        SerialTinyUSB.printf("CS VETOR: fim\n");
+        return;
+    }
+
+    float sa=0, sb=0, sc=0;                       // arg=100: média de 20 leituras em repouso (deve ~0A)
     for (int i=0;i<20;i++){ PhaseCurrent_s c = currentSense.getPhaseCurrents(); sa+=c.a; sb+=c.b; sc+=c.c; delay(2); }
     SerialTinyUSB.printf("CS DIAG: init=%d rest Ia=%dmA Ib=%dmA Ic=%dmA | busV=%dmV fetC=%d mcuC=%d\n",
-        ok, (int)(sa/20*1000), (int)(sb/20*1000), (int)(sc/20*1000),
+        g_csReady?1:0, (int)(sa/20*1000), (int)(sb/20*1000), (int)(sc/20*1000),
         (int)(focPower.busVoltage()*1000), (int)lroundf(focPower.mosfetTempC()), sensorMcuTempC());
 }
 
