@@ -214,16 +214,34 @@ static float    g_elecAngle  = 0.0f;  // ângulo elétrico do sweep manual (rad)
 // todo. A média ida+volta cancela o cogging E o atraso de carga (que troca de sinal entre ida e volta) → zero
 // robusto. Checagem de sanidade (ODrive): se o rotor andou bem menos que o esperado, ESCORREGOU → aborta e pede
 // mais tensão. Setup de torque comprovado (que já moveu o rotor na bancada).
-//   LOCK 1s (assenta) → FWD 4s → BWD 4s → RUN malha fechada em VELOCIDADE (alvo=arg do cmd 5, default 6) por 6s.
-enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_RUN };
+//   LOCK 1s (assenta) → FWD 4s → BWD 4s → [COG opcional] → RUN malha fechada em VELOCIDADE por 6s.
+// COGGING (cmd 7): depois da cal de zero, gira LENTO (kCogMeasV) gravando o Uq comandado por posição mecânica
+// (= torque p/ manter a velocidade = cogging + atrito). CoggingCalibrator tira a média por bin, remove o DC
+// (atrito) e inverte → mapa de compensação. No RUN, soma compensation(mech) ao feed_forward_voltage.q do
+// SimpleFOC a cada tick → cancela o ripple. cmd 5 = cal + RUN (aplica cogging SE já medido); cmd 7 = cal +
+// MEDE + RUN com compensação. A/B: rode cmd 5 (baseline) e depois cmd 7 (com cogging) e compare a ondulação.
+enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_VERIFY, FOC_COG, FOC_RUN };
 static FocPhase g_focPhase  = FOC_IDLE;
 static uint32_t g_focT      = 0;
 static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem do arg do cmd 5, sem reflash
 
+// VERIFY: o zero da cal via scan em modo-tensão NÃO é repetível (cogging → stick-slip corrompe o scan). Depois
+// de calcular o zero, dá um giro-teste; se NÃO girou (zero ruim → travou), recalibra automaticamente até girar.
+static int          g_calRetry    = 0;
+static const int    kCalMaxRetry  = 3;
+static float        g_verStart    = 0.0f;   // getAngle no início do VERIFY
+
+// Medição de cogging (motor-OFF gated; operador presente)
+static drivelab::CoggingCalibrator<128> g_cogCal;
+static bool           g_doCogMeasure = false;   // set pelo cmd 7 (mede) vs cmd 5 (só roda)
+static const float    kCogMeasV   = 2.0f;       // rad/s da medição (lento → cogging domina o Uq)
+static const uint32_t kCogMeasMs  = 12000;      // ~4 voltas mecânicas a 2 rad/s (2π/2 ≈ 3,14s/volta)
+static const float    kCogFFClamp = 2.0f;       // teto do feed-forward de cogging (V) — segurança
+
 static const float    kCalV     = 4.0f;   // tensão de arrasto (estático a 3V escorregou; contínuo a 4V arrasta)
-static const float    kCalOmega = 5.0f;   // rad/s ELÉTRICO da varredura (devagar → rotor segue)
-static const uint32_t kLockMs   = 1000;   // assentamento inicial
-static const uint32_t kScanMs   = 4000;   // duração por sentido
+static const float    kCalOmega = 4.0f;   // rad/s ELÉTRICO da varredura (mais devagar → rastreio mais firme)
+static const uint32_t kLockMs   = 1500;   // assentamento inicial (maior → parte de posição mais estável)
+static const uint32_t kScanMs   = 6000;   // duração por sentido (~24 rad elec ≈ 3,8 voltas → média melhor)
 static const float    kScanSpan = kCalOmega * (kScanMs / 1000.0f);   // rad elétricos por sentido (~20)
 static double   g_sinP=0, g_cosP=0, g_sinM=0, g_cosM=0;
 static uint32_t g_calN=0;
@@ -241,10 +259,23 @@ static inline void calAccum(float angField)
     g_calN++;
 }
 
-static void stage1aStart(uint32_t nowMs, uint8_t arg)
+// (Re)inicia a varredura de calibração de zero (usado no início e em cada tentativa do VERIFY).
+static void restartScan(uint32_t nowMs)
+{
+    g_sinP=g_cosP=g_sinM=g_cosM=0; g_calN=0;
+    motor.controller = MotionControlType::torque;
+    motor.feed_forward_voltage.q = 0.0f;
+    motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);       // trava no início da varredura
+    g_focPhase = FOC_LOCK; g_focT = nowMs;
+    SerialTinyUSB.printf("CAL: lock + varredura ida/volta (V=%d.%dV, %d rad elec/sentido)...\n",
+                         (int)kCalV, ((int)(kCalV*10))%10, (int)kScanSpan);
+}
+
+static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 {
     const float busV = focPower.busVoltage();
     if (busV < 8.0f) { SerialTinyUSB.printf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
+    g_doCogMeasure = doMeasure;
     g_velTarget = (arg > 0) ? (float)arg : 6.0f;   // arg = velocidade alvo em rad/s (0 → 6)
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
@@ -259,14 +290,12 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg)
     motor.torque_controller = TorqueControlType::voltage;
     motor.voltage_limit     = 5.0f;
     motor.velocity_limit    = 30.0f;
-    motor.PID_velocity.P = 0.2f; motor.PID_velocity.I = 2.0f; motor.PID_velocity.D = 0.0f;
-    motor.PID_velocity.output_ramp = 200.0f;
-    motor.LPF_velocity.Tf = 0.02f;
-    g_sinP=g_cosP=g_sinM=g_cosM=0; g_calN=0;
-    motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);       // trava no início da varredura
-    g_focPhase = FOC_LOCK; g_focT = nowMs;
-    SerialTinyUSB.printf("CAL continua (ODrive): lock 1s + varredura ida/volta (V=%d.%dV, %d rad elec/sentido)...\n",
-                         (int)kCalV, ((int)(kCalV*10))%10, (int)kScanSpan);
+    motor.PID_velocity.P = 0.15f; motor.PID_velocity.I = 2.0f; motor.PID_velocity.D = 0.0f;
+    motor.PID_velocity.output_ramp = 300.0f;
+    motor.PID_velocity.limit = motor.voltage_limit;  // CRÍTICO: senão o default capa o Uq (~2V) e empaca no cogging
+    motor.LPF_velocity.Tf = 0.04f;   // filtro na velocidade (a velocidade estimada era ruidosa)
+    g_calRetry = 0;
+    restartScan(nowMs);
 }
 
 static void stage1aTick(uint32_t nowMs)
@@ -321,25 +350,100 @@ static void stage1aTick(uint32_t nowMs)
                              (int)(dFwd*1000.0f), (int)(expected*1000.0f), cw?"CW":"CCW",
                              (int)(motor.zero_electric_angle*1000.0f), (unsigned long)g_calN, (int)g_velTarget);
         motor.controller = MotionControlType::velocity;
-        g_motorReady=true; g_focPhase=FOC_RUN; g_focT=nowMs;
+        motor.feed_forward_voltage.q = 0.0f;
+        encoder.update(); g_verStart = encoder.getAngle();
+        g_focPhase = FOC_VERIFY; g_focT = nowMs;
+        SerialTinyUSB.printf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
+        return;
+    }
+
+    // VERIFY — confirma que o zero gira; se travou, recalibra (o scan em modo-tensão nao e repetivel)
+    if (g_focPhase == FOC_VERIFY) {
+        motor.feed_forward_voltage.q = 0.0f;
+        motor.loopFOC();
+        motor.move(4.0f);
+        if ((int32_t)(nowMs - g_focT) < 1200) return;
+        encoder.update();
+        const float moved = fabsf(encoder.getAngle() - g_verStart);
+        if (moved > 1.5f) {                        // girou ~1/4 volta -> zero bom
+            SerialTinyUSB.printf("VERIFY OK: girou %dmrad (zero bom)\n", (int)(moved*1000.0f));
+            g_motorReady = true; g_focT = nowMs;
+            if (g_doCogMeasure) {
+                g_cogCal.reset(); g_focPhase = FOC_COG;
+                SerialTinyUSB.printf("COG: medindo cogging (giro lento %d rad/s por ~%ds)...\n",
+                                     (int)kCogMeasV, (int)(kCogMeasMs/1000));
+            } else {
+                g_focPhase = FOC_RUN;
+                SerialTinyUSB.printf("-> RUN velocidade %d rad/s (cogging %s)\n",
+                                     (int)g_velTarget, g_hasCogging ? "ON" : "OFF");
+            }
+        } else {                                   // travou -> zero ruim, recalibra
+            g_calRetry++;
+            if (g_calRetry <= kCalMaxRetry) {
+                SerialTinyUSB.printf("VERIFY: TRAVOU (moveu so %dmrad) — recalibrando %d/%d\n",
+                                     (int)(moved*1000.0f), g_calRetry, kCalMaxRetry);
+                restartScan(nowMs);
+            } else {
+                SerialTinyUSB.printf("VERIFY: travou apos %d tentativas — abortando (cal instavel; fix real = sensor de corrente)\n", kCalMaxRetry);
+                motor.move(0.0f); motor.loopFOC(); motor.disable();
+                g_motorFault=true; g_focPhase=FOC_IDLE;
+            }
+        }
+        return;
+    }
+
+    // COG — medição: gira lento e grava o Uq (torque) comandado por posição mecânica
+    if (g_focPhase == FOC_COG) {
+        motor.feed_forward_voltage.q = 0.0f;   // NÃO compensa enquanto mede
+        motor.loopFOC();
+        motor.move(kCogMeasV);
+        encoder.update();
+        g_cogCal.addSample(encoder.getMechanicalAngle(), motor.voltage.q);
+        static uint32_t lastLog = 0;
+        if ((int32_t)(nowMs - lastLog) > 500) {
+            lastLog = nowMs;
+            SerialTinyUSB.printf("  COG vel=%dmrad/s mech=%dmrad Uq=%dmV\n",
+                                 (int)(motor.shaft_velocity*1000.0f),
+                                 (int)(encoder.getMechanicalAngle()*1000.0f),
+                                 (int)(motor.voltage.q*1000.0f));
+        }
+        if ((int32_t)(nowMs - g_focT) >= (int32_t)kCogMeasMs) {
+            g_cogCal.finish(g_coggingTable);
+            g_hasCogging = true;
+            // resumo do mapa: pico-a-pico da compensação (V)
+            float mn=1e9f, mx=-1e9f;
+            for (int i=0;i<128;++i){ float v=g_coggingTable.table[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
+            SerialTinyUSB.printf("COG fim: mapa medido, comp pico-a-pico=%dmV -> RUN velocidade %d rad/s (cogging ON)\n",
+                                 (int)((mx-mn)*1000.0f), (int)g_velTarget);
+            g_focPhase = FOC_RUN; g_focT = nowMs;
+        }
         return;
     }
 
     // FOC_RUN
     if ((int32_t)(nowMs - g_focT) > 6000) {
+        motor.feed_forward_voltage.q = 0.0f;
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE;
         SerialTinyUSB.printf("FOC: fim\n");
     } else {
+        // feed-forward de cogging (se medido): soma −ripple(posição) ao Uq, com teto de segurança
+        float ff = 0.0f;
+        if (g_hasCogging) {
+            ff = g_coggingTable.compensation(encoder.getMechanicalAngle());
+            if (ff >  kCogFFClamp) ff =  kCogFFClamp;
+            if (ff < -kCogFFClamp) ff = -kCogFFClamp;
+        }
+        motor.feed_forward_voltage.q = ff;
         motor.loopFOC();
         motor.move(g_velTarget);
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 400) {
             lastLog = nowMs;
-            SerialTinyUSB.printf("  RUN vel=%dmrad/s shaft=%dmrad Uq=%dmV\n",
+            SerialTinyUSB.printf("  RUN vel=%dmrad/s shaft=%dmrad Uq=%dmV ff=%dmV\n",
                                  (int)(motor.shaft_velocity*1000.0f),
                                  (int)(motor.shaft_angle*1000.0f),
-                                 (int)(motor.voltage.q*1000.0f));
+                                 (int)(motor.voltage.q*1000.0f), (int)(ff*1000.0f));
         }
     }
 }
@@ -724,31 +828,20 @@ void loop()
         if (g_a0.centerRequested())
             focEncoder.setCenterHere();
 
-        // STAGE 1a — PRIMEIRO GIRO (BaseCommand.Calibrate). Deliberado: eu disparo o cmd 5 com o operador de
-        // mão na tomada. NÃO-bloqueante: stage1aStart() só configura+habilita; o giro open-loop roda no
-        // stage1aTick() (abaixo, todo loop) e para sozinho em 3 s — a telemetria NUNCA para.
+        // STAGE 1a — calibração FOC + giro (bancada, operador de mão na tomada). NÃO-bloqueante: stage1aStart()
+        // configura+habilita; o resto roda no stage1aTick() (todo loop) e para sozinho — a telemetria NUNCA para.
+        //   cmd 5 (Calibrate)       → cal de zero + RUN (aplica cogging SE já medido).
+        //   cmd 7 (CalibrateCogging)→ cal de zero + MEDE o cogging (giro lento) + RUN COM compensação.
+        // Só inicia se estiver ocioso (não interrompe um teste em andamento).
         uint8_t calArg = 0;
-        if (g_a0.calibrateRequested(calArg))
-            stage1aStart(now, calArg);
-        stage1aTick(now);
-
-        // Pedido de calibração de cogging (BaseCommand.CalibrateCogging, do app na aba Hardware). A rotina
-        // REAL (giro lento medindo torque por posição → CoggingCalibrator → packCogging → grava na flash)
-        // EXIGE motor: só roda no Stage 1 (g_calibrated). Motor-OFF apenas registra — o caminho já está pronto.
-        if (g_a0.coggingCalibRequested())
+        const bool wantCal = g_a0.calibrateRequested(calArg);
+        const bool wantCog = g_a0.coggingCalibRequested();
+        if (g_focPhase == FOC_IDLE)
         {
-            if (g_calibrated)
-            {
-                // Stage 1 (bancada, com motor energizado e operador presente): aqui entra o giro de coleta —
-                // CoggingCalibrator<128> por todo o range, cal.finish(g_coggingTable), depois packCogging +
-                // EEPROM.put(kCoggingFlashAddr, blob) e g_hasCogging=true; applyCoggingToEngine() no fim.
-                SerialTinyUSB.printf("DriveLab M5 — CalibrateCogging: Stage 1 (giro de coleta a implementar)\n");
-            }
-            else
-            {
-                SerialTinyUSB.printf("DriveLab M5 — CalibrateCogging pedido, mas motor OFF (gated) — so na bancada (Stage 1)\n");
-            }
+            if (wantCog)      stage1aStart(now, 4, true);      // mede cogging a 4 rad/s no RUN
+            else if (wantCal) stage1aStart(now, calArg, false);
         }
+        stage1aTick(now);
         const float angRad = focEncoder.positionRad();                       // já relativo ao centro
         const int16_t deci = A0Channel::angleDeciDegFromRad(angRad);
         const long counts  = lroundf(angRad * (g_encCpr / (2.0f * 3.14159265358979323846f)));
