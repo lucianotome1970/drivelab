@@ -425,15 +425,19 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     motor.voltage_limit     = 5.0f;
     motor.current_limit     = g_doCogMeasure ? 1.0f : 0.5f;    // medir cogging precisa de folga p/ vencer as covas (1A); senão 0.5A gentil
     motor.velocity_limit    = 12.0f;
-    motor.PID_current_q.P = 1.5f; motor.PID_current_q.I = 60.0f; motor.PID_current_q.D = 0.0f;
-    motor.PID_current_d.P = 1.5f; motor.PID_current_d.I = 60.0f; motor.PID_current_d.D = 0.0f;
+    // PI de corrente — AO VIVO pelo config (currentP/currentI via app/HID) p/ tunar sem reflash. 0 = default.
+    const float cP = (g_a0.cfg().currentP > 0.0f) ? g_a0.cfg().currentP : 1.5f;
+    const float cI = (g_a0.cfg().currentI > 0.0f) ? g_a0.cfg().currentI : 60.0f;
+    motor.PID_current_q.P = cP; motor.PID_current_q.I = cI; motor.PID_current_q.D = 0.0f;
+    motor.PID_current_d.P = cP; motor.PID_current_d.I = cI; motor.PID_current_d.D = 0.0f;
     motor.PID_current_q.limit = motor.voltage_limit; motor.PID_current_d.limit = motor.voltage_limit;
     motor.LPF_current_q.Tf = 0.005f; motor.LPF_current_d.Tf = 0.005f;
-    // PID de velocidade: saída é CORRENTE (A) → limite = current_limit (0.5A). Ganhos baixos + rampa lenta.
-    motor.PID_velocity.P = 0.05f; motor.PID_velocity.I = 0.5f; motor.PID_velocity.D = 0.0f;
-    motor.PID_velocity.output_ramp = 2.0f;                    // rampa lenta da corrente (A/s)
+    // PID de velocidade: saída é CORRENTE (A) → limite = current_limit. Mais firme (menos drift do "acelerou no
+    // meio") e rampa mais rápida (alvo em ~0.5s em vez de rastejar). Ainda gentil (torque capado em 0.5A).
+    motor.PID_velocity.P = 0.10f; motor.PID_velocity.I = 0.30f; motor.PID_velocity.D = 0.0f;
+    motor.PID_velocity.output_ramp = 8.0f;                   // rampa da corrente (A/s)
     motor.PID_velocity.limit = motor.current_limit;
-    motor.LPF_velocity.Tf = 0.05f;   // filtro na velocidade (estimada é ruidosa)
+    motor.LPF_velocity.Tf = 0.04f;   // filtro na velocidade (estimada é ruidosa)
     g_calRetry = 0;
     restartScan(nowMs);
 }
