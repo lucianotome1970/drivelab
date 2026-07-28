@@ -157,6 +157,38 @@ static drivelab::FocEncoder focEncoder(encoder);
 static drivelab::FocCurrent focCurrent(Drv8301Gain::G40);
 static drivelab::FocPower   focPower;
 
+// Sensor de corrente PRÓPRIO. (O LowsideCurrentSense do SimpleFOC PENDURA o init nesta placa — a máquina de
+// ADC injected/DMA + sync de timer conflita com nossos analogRead sequenciais. Ver bancada 2026-07-28.)
+// Aqui: leitura dos shunts B/C (via FocCurrent → analogRead PC0/PC1, escala 0,0403 A/count) SINCRONIZADA ao
+// PWM — espera o contador do TIM1 chegar perto do PICO (janela em que os FETs de baixo conduzem a corrente de
+// fase), com timeout de segurança. Entregue ao foc_current por GenericCurrentSense. Tudo sequencial, sem
+// injected/DMA/ISR → não pendura e não briga com a telemetria (que também é analogRead).
+static volatile float g_iOffB = 0.0f, g_iOffC = 0.0f;   // offset de repouso (A), medido no init
+static bool g_csReady = false;
+
+static PhaseCurrent_s genCurrentRead()
+{
+    const uint32_t arr = TIM1->ARR;
+    const uint32_t thr = arr - (arr / 6);                       // janela ~17% no topo (low-side ON)
+    for (uint32_t g = 0; TIM1->CNT < thr && g < 100000u; ++g) { asm volatile("nop"); }
+    float ia, ib, ic;
+    focCurrent.readPhaseCurrents(ia, ib, ic);                   // analogRead PC0/PC1 + escala
+    ib -= g_iOffB; ic -= g_iOffC;                              // tira o offset de repouso medido
+    PhaseCurrent_s r; r.b = ib; r.c = ic; r.a = -(ib + ic);    // fase A por KCL
+    return r;
+}
+
+static void genCurrentInit()
+{
+    float sb = 0.0f, sc = 0.0f; const int N = 200;             // offset de repouso (motor parado, sem corrente)
+    g_iOffB = 0.0f; g_iOffC = 0.0f;
+    for (int i = 0; i < N; ++i) { float a,b,c; focCurrent.readPhaseCurrents(a,b,c); sb += b; sc += c; delayMicroseconds(200); }
+    g_iOffB = sb / (float)N; g_iOffC = sc / (float)N;
+    SerialTinyUSB.printf("CS init: offset repouso Ib=%dmA Ic=%dmA\n", (int)(g_iOffB*1000), (int)(g_iOffC*1000));
+}
+
+static GenericCurrentSense currentSense(genCurrentRead, genCurrentInit);
+
 // Tabela de cogging (por-motor): mora na flash em blob proprio (offset separado do BaseCfg), calibrada
 // pelo criador na bancada e carregada no boot. ATENCAO bancada: a EEPROM emulada precisa ter >= ~700 bytes
 // (BaseCfg em [0..~64] + blob de cogging em [128..~651]); confirmar EEPROM.length() na placa.
@@ -257,6 +289,27 @@ static inline void calAccum(float angField)
     g_sinP += sinf(aP); g_cosP += cosf(aP);
     g_sinM += sinf(aM); g_cosM += cosf(aM);
     g_calN++;
+}
+
+// Diagnóstico do sensor de corrente (cmd 5 arg=100). Isolado — NÃO mexe no stage1a provado nem energiza
+// o motor além do EN_GATE (PWM=0). Valida: cs.init() OK + offset calibrado + corrente em repouso ~0A +
+// telemetria (bus/temp) ainda lendo (⇒ sem conflito de ADC). É o de-risco #1 do design.
+static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
+{
+    (void)nowMs; (void)arg;
+    const float busV = focPower.busVoltage();
+    if (busV < 8.0f) { SerialTinyUSB.printf("CS DIAG ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); return; }
+    driver.voltage_power_supply = busV;
+    if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
+    if (!drv.configure() || !driver.initialized) { SerialTinyUSB.printf("CS DIAG ABORT: drv\n"); return; }
+    currentSense.linkDriver(&driver);
+    const int ok = currentSense.init();          // calibra offset (motor parado, PWM=0)
+    g_csReady = (ok == 1);
+    float sa=0, sb=0, sc=0;                       // média de 20 leituras em repouso (deve ~0A)
+    for (int i=0;i<20;i++){ PhaseCurrent_s c = currentSense.getPhaseCurrents(); sa+=c.a; sb+=c.b; sc+=c.c; delay(2); }
+    SerialTinyUSB.printf("CS DIAG: init=%d rest Ia=%dmA Ib=%dmA Ic=%dmA | busV=%dmV fetC=%d mcuC=%d\n",
+        ok, (int)(sa/20*1000), (int)(sb/20*1000), (int)(sc/20*1000),
+        (int)(focPower.busVoltage()*1000), (int)lroundf(focPower.mosfetTempC()), sensorMcuTempC());
 }
 
 // (Re)inicia a varredura de calibração de zero (usado no início e em cada tentativa do VERIFY).
@@ -838,8 +891,9 @@ void loop()
         const bool wantCog = g_a0.coggingCalibRequested();
         if (g_focPhase == FOC_IDLE)
         {
-            if (wantCog)      stage1aStart(now, 4, true);      // mede cogging a 4 rad/s no RUN
-            else if (wantCal) stage1aStart(now, calArg, false);
+            if (wantCog)                       stage1aStart(now, 4, true);   // mede cogging a 4 rad/s no RUN
+            else if (wantCal && calArg >= 100) currentSenseDiag(now, calArg); // 100=init/repouso do current sense
+            else if (wantCal)                  stage1aStart(now, calArg, false);
         }
         stage1aTick(now);
         const float angRad = focEncoder.positionRad();                       // já relativo ao centro
