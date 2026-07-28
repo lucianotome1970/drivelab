@@ -313,7 +313,7 @@ static drivelab::CoggingCalibrator<128> g_cogCal;
 static bool           g_doCogMeasure = false;   // set pelo cmd 7 (mede) vs cmd 5 (só roda)
 static const float    kCogMeasV   = 2.0f;       // rad/s da medição (lento → cogging domina o Uq)
 static const uint32_t kCogMeasMs  = 12000;      // ~4 voltas mecânicas a 2 rad/s (2π/2 ≈ 3,14s/volta)
-static const float    kCogFFClamp = 2.0f;       // teto do feed-forward de cogging (V) — segurança
+static const float    kCogFFClamp = 0.5f;       // teto do feed-forward de cogging (A, foc_current) — segurança
 
 static const float    kCalV     = 4.0f;   // tensão de arrasto (estático a 3V escorregou; contínuo a 4V arrasta)
 static const float    kCalOmega = 4.0f;   // rad/s ELÉTRICO da varredura (mais devagar → rastreio mais firme)
@@ -420,8 +420,10 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     motor.torque_controller = TorqueControlType::foc_current;   // <— era voltage: controle de CORRENTE (torque limpo)
     // ⚠️ SEGURANÇA (2026-07-28: um lurch quebrou o suporte do encoder). Limites BAIXÍSSIMOS até o tuning ficar
     // estável — 0.5A mal move o hub, quanto mais quebra algo. Subir só com cautela depois de suave.
-    motor.voltage_limit     = 2.0f;
-    motor.current_limit     = 0.5f;                            // 0.5A — gentil
+    // voltage_limit ALTO = autoridade pro PI de corrente (NÃO é a segurança). A SEGURANÇA de torque é o
+    // current_limit BAIXO (0.5A gentil). Com 2V o PI nao chegava nem a 1A e o motor nao girava.
+    motor.voltage_limit     = 5.0f;
+    motor.current_limit     = g_doCogMeasure ? 1.0f : 0.5f;    // medir cogging precisa de folga p/ vencer as covas (1A); senão 0.5A gentil
     motor.velocity_limit    = 12.0f;
     motor.PID_current_q.P = 1.5f; motor.PID_current_q.I = 60.0f; motor.PID_current_q.D = 0.0f;
     motor.PID_current_d.P = 1.5f; motor.PID_current_d.I = 60.0f; motor.PID_current_d.D = 0.0f;
@@ -543,26 +545,25 @@ static void stage1aTick(uint32_t nowMs)
     // COG — medição: gira lento e grava o Uq (torque) comandado por posição mecânica
     if (g_focPhase == FOC_COG) {
         if (runawayCut()) return;
-        motor.feed_forward_voltage.q = 0.0f;   // NÃO compensa enquanto mede
+        motor.feed_forward_current.q = 0.0f;   // NÃO compensa enquanto mede
         motor.loopFOC();
         motor.move(kCogMeasV);
         encoder.update();
-        g_cogCal.addSample(encoder.getMechanicalAngle(), motor.voltage.q);
+        g_cogCal.addSample(encoder.getMechanicalAngle(), motor.current.q);   // Iq medido = torque p/ manter a vel = atrito+cogging
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 500) {
             lastLog = nowMs;
-            SerialTinyUSB.printf("  COG vel=%dmrad/s mech=%dmrad Uq=%dmV\n",
+            SerialTinyUSB.printf("  COG vel=%dmrad/s mech=%dmrad Iq=%dmA\n",
                                  (int)(motor.shaft_velocity*1000.0f),
                                  (int)(encoder.getMechanicalAngle()*1000.0f),
-                                 (int)(motor.voltage.q*1000.0f));
+                                 (int)(motor.current.q*1000.0f));
         }
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kCogMeasMs) {
             g_cogCal.finish(g_coggingTable);
             g_hasCogging = true;
-            // resumo do mapa: pico-a-pico da compensação (V)
-            float mn=1e9f, mx=-1e9f;
+            float mn=1e9f, mx=-1e9f;                                          // pico-a-pico da compensação (A)
             for (int i=0;i<128;++i){ float v=g_coggingTable.table[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
-            SerialTinyUSB.printf("COG fim: mapa medido, comp pico-a-pico=%dmV -> RUN velocidade %d rad/s (cogging ON)\n",
+            SerialTinyUSB.printf("COG fim: mapa medido, comp pico-a-pico=%dmA -> RUN velocidade %d rad/s (cogging ON)\n",
                                  (int)((mx-mn)*1000.0f), (int)g_velTarget);
             g_focPhase = FOC_RUN; g_focT = nowMs;
         }
@@ -595,7 +596,7 @@ static void stage1aTick(uint32_t nowMs)
         float ff = 0.0f;                                            // feed-forward de cogging (se medido)
         if (g_hasCogging) { ff = g_coggingTable.compensation(encoder.getMechanicalAngle());
             if (ff > kCogFFClamp) ff = kCogFFClamp; else if (ff < -kCogFFClamp) ff = -kCogFFClamp; }
-        motor.feed_forward_voltage.q = ff;
+        motor.feed_forward_current.q = ff;   // feed-forward de CORRENTE (foc_current) — cancela o cogging
         motor.move(g_velTarget);
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 400) { lastLog = nowMs;
