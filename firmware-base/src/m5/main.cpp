@@ -296,13 +296,21 @@ static float g_sweepCenter = 0.0f;          // getAngle no início do sweep (o "
 static float g_sweepTarget = 0.0f;          // alvo atual (center ± amplitude)
 static const float kSweepAmp = 15.708f;     // 900° em rad (2,5 voltas)
 
+// FFB MOLA (arg=98) — o "hello world" do force feedback: o volante empurra de volta pro centro (mola) com
+// amortecimento (estabiliza com o encoder laggy). Você gira na mão e SENTE a força. Torque via foc_current,
+// capado em current_limit (0.5A gentil). Mola-amortecedor: current = -k*(ang-centro) - d*velocidade.
+static bool  g_ffbMode    = false;          // arg==98 → modo FFB mola
+static float g_ffbCenter  = 0.0f;           // getAngle do "centro" do volante
+static float g_ffbSpring  = 0.30f;          // A/rad — força da mola (AO VIVO via springStrength; 0.30 = proporcional até ~95°)
+static float g_ffbDamp    = 0.02f;          // A/(rad/s) — amortecimento (AO VIVO via damperStrength; baixo p/ o geartrain ruidoso)
+
 // Corte de RUNAWAY (segurança): se a velocidade disparar muito acima do esperado, desabilita NA HORA.
 static bool runawayCut()
 {
-    if (fabsf(motor.shaft_velocity) > 15.0f) {   // rad/s — bem acima de qualquer alvo do teste
+    if (fabsf(motor.shaft_velocity) > 30.0f) {   // rad/s — teto 0.5A ja e a seguranca; corte relaxado p/ nao falso-tripar no ruido do geartrain
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE; g_motorFault = true;
-        SerialTinyUSB.printf("RUNAWAY! |vel|=%dmrad/s > 15 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
+        SerialTinyUSB.printf("RUNAWAY! |vel|=%dmrad/s > 30 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
         return true;
     }
     return false;
@@ -401,7 +409,8 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     if (busV < 8.0f) { SerialTinyUSB.printf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
     g_doCogMeasure = doMeasure;
     g_sweepMode = (arg == 99);                     // arg=99 → sweep de posição ±900°
-    g_velTarget = (g_sweepMode || arg == 0) ? 6.0f : (float)arg;   // senão arg = velocidade alvo (rad/s)
+    g_ffbMode   = (arg == 98);                     // arg=98 → FFB mola
+    g_velTarget = (arg >= 1 && arg <= 30) ? (float)arg : 6.0f;   // so 1..30 = alvo de velocidade; modos especiais (98/99) usam 6
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
     const bool drvOk = drv.configure();
@@ -503,7 +512,18 @@ static void stage1aTick(uint32_t nowMs)
 
     // VERIFY — confirma que o zero gira; se travou, recalibra (o scan em modo-tensão nao e repetivel)
     if (g_focPhase == FOC_VERIFY) {
-        if (runawayCut()) return;
+        // runaway no VERIFY = zero ruim (geartrain deixa a cal não-repetível) → RECALIBRA em vez de abortar
+        if (fabsf(motor.shaft_velocity) > 30.0f) {
+            motor.move(0.0f); motor.loopFOC(); motor.disable();
+            if (++g_calRetry <= kCalMaxRetry) {
+                SerialTinyUSB.printf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
+                motor.enable(); restartScan(nowMs);
+            } else {
+                SerialTinyUSB.printf("VERIFY runaway apos %d tentativas — abortando\n", kCalMaxRetry);
+                g_motorFault = true; g_focPhase = FOC_IDLE;
+            }
+            return;
+        }
         motor.feed_forward_voltage.q = 0.0f;
         motor.loopFOC();
         motor.move(4.0f);
@@ -526,6 +546,15 @@ static void stage1aTick(uint32_t nowMs)
                 g_sweepTarget = g_sweepCenter + kSweepAmp;         // 1º alvo: +900°
                 g_focPhase = FOC_RUN;
                 SerialTinyUSB.printf("-> SWEEP +/-900deg (angle mode, lento, 0.5A)\n");
+            } else if (g_ffbMode) {
+                motor.controller = MotionControlType::torque;      // torque direto (mola via foc_current)
+                encoder.update(); g_ffbCenter = encoder.getAngle();
+                const uint8_t ss = g_a0.cfg().springStrength, ds = g_a0.cfg().damperStrength;  // AO VIVO
+                g_ffbSpring = (ss > 0 ? ss : 30) / 100.0f * 0.6f;   // 0..0.6 A/rad
+                g_ffbDamp   = (ds > 0 ? ds : 20) / 100.0f * 0.10f;  // 0..0.10 A/(rad/s)
+                g_focPhase = FOC_RUN;
+                SerialTinyUSB.printf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
+                                     (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
             } else {
                 g_focPhase = FOC_RUN;
                 SerialTinyUSB.printf("-> RUN velocidade %d rad/s (cogging %s)\n",
@@ -576,7 +605,7 @@ static void stage1aTick(uint32_t nowMs)
 
     // FOC_RUN (giro por velocidade OU sweep de posição ±900°)
     if (runawayCut()) return;                                        // segurança: corta se a velocidade disparar
-    const uint32_t runDur = g_sweepMode ? 24000u : 6000u;            // sweep dura mais (várias idas/voltas)
+    const uint32_t runDur = g_sweepMode ? 24000u : (g_ffbMode ? 20000u : 6000u);   // ffb/sweep duram mais p/ brincar
     if ((int32_t)(nowMs - g_focT) > (int32_t)runDur) {
         motor.feed_forward_voltage.q = 0.0f;
         motor.move(0.0f); motor.loopFOC(); motor.disable();
@@ -585,7 +614,19 @@ static void stage1aTick(uint32_t nowMs)
         return;
     }
     motor.loopFOC();
-    if (g_sweepMode) {
+    if (g_ffbMode) {
+        // MOLA + amortecimento: current_sp = -k*(ang-centro) - d*vel, capado em current_limit
+        encoder.update();
+        const float ang = encoder.getAngle() - g_ffbCenter;
+        float cur = -g_ffbSpring * ang - g_ffbDamp * motor.shaft_velocity;
+        const float lim = motor.current_limit;
+        if (cur > lim) cur = lim; else if (cur < -lim) cur = -lim;
+        motor.move(cur);                                             // torque mode → current_sp = cur
+        static uint32_t lastLogF = 0;
+        if ((int32_t)(nowMs - lastLogF) > 400) { lastLogF = nowMs;
+            SerialTinyUSB.printf("  FFB ang=%ddeg cur_sp=%dmA Iq=%dmA\n",
+                (int)(ang*57.2958f), (int)(cur*1000.0f), (int)(motor.current.q*1000.0f)); }
+    } else if (g_sweepMode) {
         encoder.update();
         const float pos = encoder.getAngle();
         if (fabsf(pos - g_sweepTarget) < 0.3f)                       // chegou no alvo → inverte o lado
