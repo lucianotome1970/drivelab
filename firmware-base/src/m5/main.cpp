@@ -933,6 +933,17 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
 // pilha (lib/base_usb/usb_base.{h,cpp}).
 static Adafruit_USBD_HID *g_hid = nullptr;
 
+// Janela de bus da BANCADA (M6): aplicada DEPOIS de todo applyCfgToEngine(), que deriva busMinV/busMaxV/
+// overVoltageV a partir de busNominalV (ex.: nominal=56V vira 39-60V) e senão rejeitaria os ~19V da fonte
+// de bring-up. Precisa ser chamada nos DOIS lugares que chamam applyCfgToEngine() (setup() e o cfgDirty()
+// de loop()), senão um "Salvar" no app reaplica a janela derivada e o game-FFB para de aceitar a bancada.
+// AJUSTAR/remover na rampa, quando a bancada for pra fonte nominal de verdade.
+static void applyBenchBusWindow(drivelab::FfbEngine &e)
+{
+    e.startup.cfg.busMinV = 12; e.startup.cfg.busMaxV = 30;  // aceita 19V (bancada) — AJUSTAR na rampa
+    e.guard.overVoltageV  = 30;
+}
+
 void setup()
 {
     // EnterDfu — PRIMEIRÍSSIMA coisa de setup(), antes de qualquer init de
@@ -1031,17 +1042,13 @@ void setup()
     // torqueLimitNm/demais campos de "feel" são SETTINGS e vêm de
     // applyCfgToEngine() (sobrescreve o valor conservador fixo logo acima
     // por um derivado de c.maxTorqueLimit%). busMinV/busMaxV/overVoltageV
-    // (guard/startup, safety-critical) NÃO são tocados por applyCfgToEngine
-    // -- continuam valendo os hardcoded acima.
+    // (guard/startup, safety-critical) SÃO derivados de busNominalV por
+    // applyCfgToEngine (ver lib/base_shared/apply_cfg.h) -- por isso a
+    // janela de bancada é reaplicada por cima logo abaixo, e de novo em
+    // todo cfgDirty() de loop() (senão um "Salvar" no app restaura a
+    // janela derivada de busNominalV e rejeita a fonte de bring-up).
     applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
-
-    // Janela de bus do modo FFB DO JOGO (M6, Task 2): SOBRESCREVE por cima do que applyCfgToEngine() acabou de
-    // derivar de busNominalV (ex.: nominal=56V vira 39-60V, o que rejeitaria os ~19V da bancada de bring-up).
-    // Tem que vir DEPOIS de applyCfgToEngine() nesta função, senão seria sobrescrita de volta. AJUSTAR na rampa
-    // (quando a bancada for pra fonte nominal de verdade) — hoje é só a janela que deixa o power-guard do
-    // engine.step() aceitar a fonte de bancada em vez de recusar por "fora da faixa".
-    engine.startup.cfg.busMinV = 12; engine.startup.cfg.busMaxV = 30;  // aceita 19V (bancada) — AJUSTAR na rampa
-    engine.guard.overVoltageV  = 30;
+    applyBenchBusWindow(engine);  // M6, Task 2 -- ver comentário no helper acima
 
     // Divisor do VBUS pela VARIANTE DA PLACA (24V→11, 56V→19) — propriedade do hardware, independente da
     // tensão de operação. Um binário só lê certo nas duas placas, sem recompilar. (Não há auto-detecção por
@@ -1298,6 +1305,7 @@ void loop()
     if (g_a0.cfgDirty())
     {
         applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
+        applyBenchBusWindow(engine);  // M6: reaplica a janela de bancada (applyCfgToEngine acabou de sobrescrevê-la)
         focPower.setDividerRatio(vbusDividerForVariant(g_a0.cfg().boardVariant)); // re-deriva ao trocar a variante
         applyCoggingToEngine(); // honra coggingEnable ao vivo (liga/desliga a tabela sem reboot)
         g_encCpr = static_cast<float>(g_a0.cfg().encoderCpr);  // CPR ao vivo (muda no app + Salvar, sem reflash)
