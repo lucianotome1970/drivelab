@@ -78,6 +78,7 @@
 #include "encoder_select.h"
 #include "ffb_engine.h"
 #include "apply_cfg.h"
+#include "ffb_arm_guard.h"   // predicados puros de arme/desarme do modo FFB do jogo (M6)
 #include "cogging_store.h"   // (de)serializacao da tabela de cogging p/ a flash
 #include <EEPROM.h>          // EEPROM emulada (STM32duino) — blob da tabela de cogging
 
@@ -310,6 +311,15 @@ static float g_ffbCenter  = 0.0f;           // getAngle do "centro" do volante
 static float g_ffbSpring  = 0.30f;          // A/rad — força da mola (AO VIVO via springStrength; 0.30 = proporcional até ~95°)
 static float g_ffbDamp    = 0.02f;          // A/(rad/s) — amortecimento (AO VIVO via damperStrength; baixo p/ o geartrain ruidoso)
 
+// FFB DO JOGO (arg=97/96, M6) — arnês de comando que liga a força do JOGO (ACC via getForce/PID) ao motor
+// real, com arme deliberado (canEnterGameFfb) e desarme por segurança (shouldDisarmGameFfb, Task 1). Torque
+// via foc_current, capado em current_limit=1.0A (teto duro). arg=97 = feed do ACC (setGameForce já é chamado
+// pelo ForceReconstructor no fluxo HID normal); arg=96 = sintético (injeta uma força pequena e CONHECIDA, só
+// pra validar o caminho força→motor sem depender do jogo estar rodando).
+static bool     g_gameFfbMode      = false;   // arg==97 (feed do ACC) ou arg==96 (força sintética conhecida)
+static bool     g_gameFfbSynthetic = false;   // arg==96 → injeta força constante conhecida (passo (a))
+static uint32_t g_gameFfbT         = 0;
+
 // MONITOR de FFB do JOGO por ST-Link (openocd mdw): board USB→PC(jogo), ST-Link→Mac. Capturamos o que o jogo
 // manda pra provar que o FFB chega (sem precisar do motor). [0]=nº reports FFB [1]=const force [2]=device gain
 // [3]=último op/effect [4]=pos encoder (deci-deg) [5]=nº set-const-force.
@@ -435,6 +445,8 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     g_doCogMeasure = doMeasure;
     g_sweepMode = (arg == 99);                     // arg=99 → sweep de posição ±900°
     g_ffbMode   = (arg == 98);                     // arg=98 → FFB mola
+    g_gameFfbMode      = (arg == 97 || arg == 96); // modo FFB do jogo (97=ACC, 96=sintético)
+    g_gameFfbSynthetic = (arg == 96);
     g_velTarget = (arg >= 1 && arg <= 30) ? (float)arg : 6.0f;   // so 1..30 = alvo de velocidade; modos especiais (98/99) usam 6
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
@@ -457,7 +469,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     // voltage_limit ALTO = autoridade pro PI de corrente (NÃO é a segurança). A SEGURANÇA de torque é o
     // current_limit BAIXO (0.5A gentil). Com 2V o PI nao chegava nem a 1A e o motor nao girava.
     motor.voltage_limit     = 5.0f;
-    motor.current_limit     = g_doCogMeasure ? 1.0f : 0.5f;    // medir cogging precisa de folga p/ vencer as covas (1A); senão 0.5A gentil
+    motor.current_limit     = (g_doCogMeasure || g_gameFfbMode) ? 1.0f : 0.5f;  // jogo capado a 1A (teto de seguranca); cogging idem; senão 0.5A gentil
     motor.velocity_limit    = 12.0f;
     // PI de corrente — AO VIVO pelo config (currentP/currentI via app/HID) p/ tunar sem reflash. 0 = default.
     const float cP = (g_a0.cfg().currentP > 0.0f) ? g_a0.cfg().currentP : 1.5f;
@@ -580,6 +592,12 @@ static void stage1aTick(uint32_t nowMs)
                 g_focPhase = FOC_RUN;
                 drivelab::dbgRingPrintf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
                                      (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
+            } else if (g_gameFfbMode && canEnterGameFfb(g_motorReady)) {
+                motor.controller = MotionControlType::torque;   // torque via foc_current (idem mola)
+                if (g_gameFfbSynthetic) engine.setGameForce(1500.0f);  // força constante pequena e CONHECIDA (~1500/32767)
+                g_focPhase = FOC_RUN; g_gameFfbT = nowMs;
+                drivelab::dbgRingPrintf("-> FFB DO JOGO (%s), teto 1A. Desarma em runaway/fault/USB-drop/app-off.\n",
+                                     g_gameFfbSynthetic ? "SINTETICO" : "ACC");
             } else {
                 g_focPhase = FOC_RUN;
                 drivelab::dbgRingPrintf("-> RUN velocidade %d rad/s (cogging %s)\n",
@@ -630,7 +648,7 @@ static void stage1aTick(uint32_t nowMs)
 
     // FOC_RUN (giro por velocidade OU sweep de posição ±900°)
     if (runawayCut()) return;                                        // segurança: corta se a velocidade disparar
-    const uint32_t runDur = g_sweepMode ? 24000u : (g_ffbMode ? 20000u : 6000u);   // ffb/sweep duram mais p/ brincar
+    const uint32_t runDur = g_sweepMode ? 24000u : ((g_ffbMode || g_gameFfbMode) ? 20000u : 6000u);   // ffb/sweep duram mais p/ brincar
     if ((int32_t)(nowMs - g_focT) > (int32_t)runDur) {
         motor.feed_forward_voltage.q = 0.0f;
         motor.move(0.0f); motor.loopFOC(); motor.disable();
@@ -639,7 +657,30 @@ static void stage1aTick(uint32_t nowMs)
         return;
     }
     motor.loopFOC();
-    if (g_ffbMode) {
+    if (g_gameFfbMode) {
+        // Desarme por segurança (predicado puro, Task 1): runaway JÁ foi checado por runawayCut() no topo;
+        // aqui cobrimos USB-drop e app-off (fault do engine é tratado internamente por engine.step()).
+        if (shouldDisarmGameFfb(/*runaway=*/false, /*fault=*/false,
+                                TinyUSBDevice.mounted(), g_a0.forceEnabled())) {
+            motor.move(0.0f); motor.loopFOC(); motor.disable();
+            g_focPhase = FOC_IDLE;
+            drivelab::dbgRingPrintf("FFB JOGO: desarmado (USB/app)\n");
+            return;
+        }
+        // ⚠️ Nota de unidade, NÃO-bloqueante: focMotor.setTorque(nm) faz motor.move(nm), e em foc_current o
+        // move() trata o valor como CORRENTE (A). Então o "Nm" do engine é lido como "A" — a SEGURANÇA está
+        // garantida pelo current_limit=1.0A (SimpleFOC clampa o Iq) independentemente disso; a calibração
+        // Nm↔A é fidelidade, fica pra rampa futura.
+        static uint32_t lastGfUs = 0;
+        const uint32_t nowUs = micros();
+        float dt = (nowUs - lastGfUs) * 1e-6f; lastGfUs = nowUs;
+        if (dt <= 0.0f || dt > 0.05f) dt = 0.001f;   // sanidade do 1º passo / gaps
+        engine.step(dt, focEncoder, focCurrent, focPower, focBrake, focMotor);  // força do jogo → torque (cap 1A)
+        static uint32_t lastLogG = 0;
+        if ((int32_t)(nowMs - lastLogG) > 400) { lastLogG = nowMs;
+            drivelab::dbgRingPrintf("  FFB JOGO Iq=%dmA vel=%dmrad/s\n",
+                (int)(motor.current.q*1000.0f), (int)(motor.shaft_velocity*1000.0f)); }
+    } else if (g_ffbMode) {
         // MOLA + amortecimento: current_sp = -k*(ang-centro) - d*vel, capado em current_limit
         encoder.update();
         const float ang = encoder.getAngle() - g_ffbCenter;
@@ -994,6 +1035,14 @@ void setup()
     // -- continuam valendo os hardcoded acima.
     applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
 
+    // Janela de bus do modo FFB DO JOGO (M6, Task 2): SOBRESCREVE por cima do que applyCfgToEngine() acabou de
+    // derivar de busNominalV (ex.: nominal=56V vira 39-60V, o que rejeitaria os ~19V da bancada de bring-up).
+    // Tem que vir DEPOIS de applyCfgToEngine() nesta função, senão seria sobrescrita de volta. AJUSTAR na rampa
+    // (quando a bancada for pra fonte nominal de verdade) — hoje é só a janela que deixa o power-guard do
+    // engine.step() aceitar a fonte de bancada em vez de recusar por "fora da faixa".
+    engine.startup.cfg.busMinV = 12; engine.startup.cfg.busMaxV = 30;  // aceita 19V (bancada) — AJUSTAR na rampa
+    engine.guard.overVoltageV  = 30;
+
     // Divisor do VBUS pela VARIANTE DA PLACA (24V→11, 56V→19) — propriedade do hardware, independente da
     // tensão de operação. Um binário só lê certo nas duas placas, sem recompilar. (Não há auto-detecção por
     // hardware — nem o firmware oficial do ODrive detecta; usa #define de compile-time.)
@@ -1265,6 +1314,9 @@ void loop()
     // A verificação de forceEnabled() é feita mesmo assim (em vez de só
     // "if (false)") para documentar a condição completa que o Stage 1 vai
     // herdar quando ligar g_calibrated.
+    // O caminho jogo→motor da v1 é o modo de comando g_gameFfbMode (ver
+    // FOC_RUN, guardado por canEnterGameFfb/shouldDisarmGameFfb) — este
+    // gate segue morto de propósito.
     // ------------------------------------------------------------------
     static uint32_t lastMicros = 0;
     if (g_calibrated && g_a0.forceEnabled())
