@@ -115,8 +115,7 @@ static_assert(sizeof(JoystickInputReport) == 24,
 // ----------------------------------------------------------------------
 static constexpr uint8_t kMaxEffectBlocks = 40;
 static constexpr uint8_t kSimultaneousEffectsMax = 8;
-static uint8_t g_nextEffectBlock = 1;
-static uint8_t g_lastEffectBlock = 0;
+static uint8_t g_lastEffectBlock = 0;  // bloco alocado no último Create New Effect (allocateBlock)
 
 // Canal A0 (config channel) — lib/base_usb/a0_channel.{h,cpp} (M5 Stage 0).
 static A0Channel g_a0;
@@ -704,15 +703,11 @@ static const char *ffb_op_name(uint8_t op)
 // m05 (ver comentário lá para o layout de bytes).
 static void handle_create_new_effect(uint8_t const *buffer, uint16_t bufsize)
 {
-    uint8_t effectType = (bufsize >= 1) ? buffer[0] : 0;
-
-    (void)effectType;
-    g_lastEffectBlock = g_nextEffectBlock;
-    g_nextEffectBlock++;
-    if (g_nextEffectBlock > kMaxEffectBlocks)
-    {
-        g_nextEffectBlock = 1;
-    }
+    (void)buffer;
+    (void)bufsize;
+    // Aloca o 1º bloco LIVRE (fix 400Hz): reusa blocos liberados em vez de um contador
+    // com wrap cego em 40. 0 = pool cheio → o Block Load reporta status 2 (Full).
+    g_lastEffectBlock = engine.effects.allocateBlock();
     // (sem printf: callback USB — não bloquear/estarvar o tud_task no handshake de entrada de pista)
 }
 
@@ -843,13 +838,12 @@ static uint16_t hid_get_report_impl(uint8_t report_id,
             return 0;
         }
         buffer[0] = g_lastEffectBlock;
-        buffer[1] = 1; // Block Load Success
-        // RAM pool disponível: número finito e coerente com o pool reportado
-        // no RID_PID_POOL. Modelamos um budget de 16 bytes por efeito
-        // (kMaxEffectBlocks*16) e descontamos um chunk por efeito já alocado.
-        // (M5 sem alocador real de RAM de efeito — valor plausível, não 0xFFFF.)
+        buffer[1] = (g_lastEffectBlock != 0) ? 1 : 2; // 1=Success; 2=Full (pool cheio → 0)
+        // RAM pool REAL disponível (fix 400Hz): (slots LIVRES) * 16, refletindo a
+        // alocação por reserva (allocateBlock/freeBlock). Antes descontava um contador
+        // que dava wrap → o pool "crescia" do nada e confundia o ACC.
         uint16_t ramPoolAvailable =
-            (uint16_t)(kMaxEffectBlocks * 16) - (uint16_t)(g_nextEffectBlock * 16);
+            (uint16_t)((kMaxEffectBlocks - engine.effects.usedBlocks()) * 16);
         buffer[2] = (uint8_t)(ramPoolAvailable & 0xFF);
         buffer[3] = (uint8_t)(ramPoolAvailable >> 8);
         // (sem printf: este GET roda no handshake de criação de efeito na entrada de pista;
@@ -1023,6 +1017,7 @@ void loop()
     }
 
     TinyUSBDevice.task();
+    g_ffbMon[15]++;   // contador de iterações do loop (SWD): mede a taxa real do loop @400Hz
 
     if (!TinyUSBDevice.mounted())
     {
@@ -1147,13 +1142,26 @@ void loop()
     // 56V — o motor não gira; só medimos o quanto a força pedida passaria do teto. No Stage 1 (g_calibrated),
     // é o próprio engine.step() que atualiza o clip meter; aqui só o publicamos.
     {
+        // PERF/400Hz (2026-07-29): o measureClipOnly chama gameDemandRaw → computeForce
+        // (itera 40 slots) + computeTorqueRaw (endstop/filtros) — CARO. Rodá-lo TODO loop
+        // (milhares/seg) dominava o loop (visto por SWD) e estarvava o USB → o ACC a 400Hz
+        // não era atendido a tempo e TRAVAVA no carregamento da sessão. Com o motor OFF a
+        // força medida é só telemetria (medidor de clipping do app), então THROTTLAMOS a
+        // ~50Hz — libera o loop p/ aguentar 400Hz de FFB. (Quando o Stage 1 ligar o motor,
+        // é o engine.step() que atualiza o clip, sem passar por aqui.) Ver
+        // [[drivelab-game-compat-a0]] (fix dos 400Hz do ACC).
         static uint32_t lastClipUs = 0;
-        const uint32_t nowUs = micros();
-        const float clipDt = lastClipUs ? (nowUs - lastClipUs) * 1e-6f : 0.001f;
-        lastClipUs = nowUs;
-        if (!(g_calibrated && g_a0.forceEnabled()))
-            engine.measureClipOnly(clipDt);
-        g_a0.setClipping(engine.clipping());
+        static uint32_t lastClipMs = 0;
+        if (now - lastClipMs >= 20)   // ~50Hz — de sobra p/ o medidor de clipping do app
+        {
+            lastClipMs = now;
+            const uint32_t nowUs = micros();
+            const float clipDt = lastClipUs ? (nowUs - lastClipUs) * 1e-6f : 0.02f;
+            lastClipUs = nowUs;
+            if (!(g_calibrated && g_a0.forceEnabled()))
+                engine.measureClipOnly(clipDt);
+            g_a0.setClipping(engine.clipping());
+        }
     }
 
 #ifdef DRVLAB_OLED
@@ -1218,6 +1226,13 @@ void loop()
     // telemetria do app nunca mais starva o input do jogo.
     g_a0.serviceLoop(now, &UsbBase::sendReport);
 
+    // PERF/400Hz (2026-07-29): o TinyUSBDevice.task() (que DRENA o endpoint OUT de FFB)
+    // roda só 1× no topo do loop → a taxa de serviço do USB = taxa do loop. A 400Hz o
+    // ACC despeja FFB rápido demais e o OUT enche antes do próximo task() → NAK → o ACC
+    // trava. Chamamos o task() DE NOVO no meio do loop (aqui e no fim) p/ drenar o OUT
+    // com mais frequência, sem depender do loop inteiro. Ver [[drivelab-game-compat-a0]].
+    TinyUSBDevice.task();
+
     // Sub-projeto 1 (Feel ajustável ao vivo, Task 3): ao vivo -- só reaplica
     // quando algum SETWRITE (0x14) de fato mexeu no BaseCfg (cfgDirty()),
     // nunca todo tick (applyCfgToEngine não é grátis: monta um Biquad
@@ -1277,4 +1292,6 @@ void loop()
         UsbBase::sendReport(RID_PID_STATE, &st, 1);
         g_ffbMon[14]++;   // instrumentação: PID State enviado
     }
+
+    TinyUSBDevice.task();   // PERF/400Hz: 3ª drenada do USB por loop (ver comentário acima)
 }

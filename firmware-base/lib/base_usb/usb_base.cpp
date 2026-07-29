@@ -40,8 +40,13 @@ namespace UsbBase
         // Effect/Envelope/.../Device Control/Device Gain) quanto o A0
         // (A0_RID_CMD/DIRECT/SETWRITE/SETREAD) têm Output reports que só
         // chegam pelo endpoint OUT dedicado.
+        // bInterval 1ms (1000Hz), NÃO 4ms (250Hz) — FIX 400Hz (2026-07-29): o intervalo
+        // de 4ms limitava o endpoint a 250Hz, EXATAMENTE entre 200Hz (funciona) e 400Hz
+        // (travava): o ACC a 400Hz manda FFB a cada 2.5ms mas o endpoint só aceitava a
+        // cada 4ms → backpressure → ACC trava. FFBeast/Moza usam 1ms. Ver
+        // [[drivelab-game-compat-a0]].
         Adafruit_USBD_HID g_hid(ffb_hid_report_desc, ffb_hid_report_desc_len,
-                                 HID_ITF_PROTOCOL_NONE, 4, /*has_out_endpoint=*/true);
+                                 HID_ITF_PROTOCOL_NONE, 1, /*has_out_endpoint=*/true);
 
         // Buffer estático (precisa sobreviver ao runtime — tud_hid_descriptor_report_cb
         // devolve o ponteiro guardado por g_hid a qualquer momento, inclusive

@@ -27,6 +27,14 @@ static constexpr int kEffectSlots = 40;
 class EffectManager {
     FxEffect m_slots[kEffectSlots];
 
+    // Reserva de bloco (2026-07-29, fix 400Hz): distinto de "configurado"/"ativo".
+    // Create New Effect RESERVA um bloco livre (allocateBlock) ANTES do host mandar
+    // o Set Effect; Block Free / reset liberam. Antes a alocação era um contador que
+    // dava wrap em 40 sem reusar liberados → a 400Hz o ACC churna efeitos, bate no
+    // wrap e recebe um bloco reusado/errado → trava. Agora reusamos o 1º livre e o
+    // Block Load reporta o pool REAL. Ver [[drivelab-game-compat-a0]].
+    bool m_allocated[kEffectSlots] = {false};
+
     // Estado p/ estimar aceleração (efeito Inertia) entre chamadas de
     // computeForce — um único "sensor" compartilhado por todos os slots
     // (não há um por-efeito porque pos/vel vêm do eixo físico único).
@@ -251,12 +259,36 @@ public:
         const int s = static_cast<int>(block1based) - 1;
         if (s < 0 || s >= kEffectSlots) return;
         m_slots[s] = FxEffect{};
+        m_allocated[s] = false;   // libera a reserva (o bloco volta ao pool)
+    }
+
+    // Reserva o 1º bloco LIVRE p/ um Create New Effect. Devolve o índice 1-based
+    // (1..kEffectSlots) ou 0 se o pool estiver cheio (host deve tratar como falha).
+    // Limpa o slot p/ o estado default — o Set Effect seguinte preenche os params.
+    uint8_t allocateBlock() {
+        for (int i = 0; i < kEffectSlots; ++i) {
+            if (!m_allocated[i]) {
+                m_allocated[i] = true;
+                m_slots[i] = FxEffect{};
+                return static_cast<uint8_t>(i + 1);
+            }
+        }
+        return 0; // pool cheio
+    }
+
+    // Nº de blocos reservados no momento (p/ o RID_PID_POOL/Block Load reportar o
+    // pool REAL disponível ao host).
+    int usedBlocks() const {
+        int n = 0;
+        for (int i = 0; i < kEffectSlots; ++i) if (m_allocated[i]) ++n;
+        return n;
     }
 
     // Limpa TODOS os slots pro estado default.
     void reset() {
         for (int i = 0; i < kEffectSlots; ++i) {
             m_slots[i] = FxEffect{};
+            m_allocated[i] = false;
         }
     }
 
