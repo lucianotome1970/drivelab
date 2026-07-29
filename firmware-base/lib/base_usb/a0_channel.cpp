@@ -30,7 +30,7 @@
 // ----------------------------------------------------------------------
 namespace
 {
-constexpr uint32_t kBaseFlashMagic = 0x444C4234; // "DLB4" (bump: BaseCfg ganhou boardVariant → reseed defaults)
+constexpr uint32_t kBaseFlashMagic = 0x444C4235; // "DLB5" (bump: BaseCfg ganhou spring/damper/friction/inertiaGain)
 constexpr int kBaseFlashMagicAddr = 0;
 constexpr int kBaseFlashCfgAddr = kBaseFlashMagicAddr + sizeof(kBaseFlashMagic);
 

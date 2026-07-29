@@ -235,6 +235,43 @@ int main() {
         CHECK(c.encoderCpr == before);
     }
 
+    // ----- ganhos por tipo de efeito (BID 39-42): default 100, round-trip 150 -----
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        CHECK(c.springGain == 100);
+        CHECK(c.damperGain == 100);
+        CHECK(c.frictionGain == 100);
+        CHECK(c.inertiaGain == 100);
+
+        uint8_t type, buf[8];
+        uint8_t w[1] = { 150 };
+
+        CHECK(baseTypeForField(BID_SPRING_GAIN) == BT_UINT8);
+        baseWriteField(c, BID_SPRING_GAIN, BT_UINT8, w, sizeof(w));
+        CHECK(c.springGain == 150);
+        int n = baseReadField(c, BID_SPRING_GAIN, &type, buf);
+        CHECK(n == 1 && type == BT_UINT8 && buf[0] == 150);
+
+        CHECK(baseTypeForField(BID_DAMPER_GAIN) == BT_UINT8);
+        baseWriteField(c, BID_DAMPER_GAIN, BT_UINT8, w, sizeof(w));
+        CHECK(c.damperGain == 150);
+        n = baseReadField(c, BID_DAMPER_GAIN, &type, buf);
+        CHECK(n == 1 && type == BT_UINT8 && buf[0] == 150);
+
+        CHECK(baseTypeForField(BID_FRICTION_GAIN) == BT_UINT8);
+        baseWriteField(c, BID_FRICTION_GAIN, BT_UINT8, w, sizeof(w));
+        CHECK(c.frictionGain == 150);
+        n = baseReadField(c, BID_FRICTION_GAIN, &type, buf);
+        CHECK(n == 1 && type == BT_UINT8 && buf[0] == 150);
+
+        CHECK(baseTypeForField(BID_INERTIA_GAIN) == BT_UINT8);
+        baseWriteField(c, BID_INERTIA_GAIN, BT_UINT8, w, sizeof(w));
+        CHECK(c.inertiaGain == 150);
+        n = baseReadField(c, BID_INERTIA_GAIN, &type, buf);
+        CHECK(n == 1 && type == BT_UINT8 && buf[0] == 150);
+    }
+
     std::printf("base_cfg: %d checks, %d fails\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

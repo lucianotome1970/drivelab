@@ -55,6 +55,10 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_THERMAL_PEAK_SEC:
         case BID_FET_TEMP_LIMIT:
         case BID_MOTOR_TEMP_LIMIT:
+        case BID_SPRING_GAIN:
+        case BID_DAMPER_GAIN:
+        case BID_FRICTION_GAIN:
+        case BID_INERTIA_GAIN:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -104,6 +108,10 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_THERMAL_PEAK_SEC:     return &c.thermalPeakSec;
         case BID_FET_TEMP_LIMIT:       return &c.fetTempLimitC;
         case BID_MOTOR_TEMP_LIMIT:     return &c.motorTempLimitC;
+        case BID_SPRING_GAIN:          return &c.springGain;
+        case BID_DAMPER_GAIN:          return &c.damperGain;
+        case BID_FRICTION_GAIN:        return &c.frictionGain;
+        case BID_INERTIA_GAIN:         return &c.inertiaGain;
         default:                       return nullptr;
     }
 }
@@ -221,4 +229,8 @@ void baseSeedDefaults(BaseCfg& c) {
     c.thermalPeakSec = 0;    // 0 s = derate desligado; o criador define quantos segundos de pico pleno permitir
     c.fetTempLimitC  = 85;   // corte duro do NTC dos FETs (placa) — conservador
     c.motorTempLimitC = 100; // corte duro do NTC do motor (enrolamento) — seguro p/ classe B; subir só se classe F/H
+    c.springGain = 100;      // 100% = ganho neutro (não altera o Spring que o JOGO mandar)
+    c.damperGain = 100;      // 100% = ganho neutro (não altera o Damper que o JOGO mandar)
+    c.frictionGain = 100;    // 100% = ganho neutro (não altera a Friction que o JOGO mandar)
+    c.inertiaGain = 100;     // 100% = ganho neutro (não altera a Inertia que o JOGO mandar)
 }

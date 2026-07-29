@@ -51,6 +51,10 @@
 #define BID_THERMAL_PEAK_SEC      36
 #define BID_FET_TEMP_LIMIT        37
 #define BID_MOTOR_TEMP_LIMIT      38
+#define BID_SPRING_GAIN           39
+#define BID_DAMPER_GAIN           40
+#define BID_FRICTION_GAIN         41
+#define BID_INERTIA_GAIN          42
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -97,6 +101,10 @@ struct BaseCfg {
     uint8_t  thermalPeakSec;      // BID_THERMAL_PEAK_SEC      UInt8 segundos de pico pleno antes de cair p/ contínuo (0=off)
     uint8_t  fetTempLimitC;       // BID_FET_TEMP_LIMIT        UInt8 corte duro do NTC dos FETs (°C)
     uint8_t  motorTempLimitC;     // BID_MOTOR_TEMP_LIMIT      UInt8 corte duro do NTC do motor/enrolamento (°C)
+    uint8_t  springGain;    // BID_SPRING_GAIN    UInt8 0..200 (%) — escala o Spring do JOGO
+    uint8_t  damperGain;    // BID_DAMPER_GAIN    UInt8 0..200
+    uint8_t  frictionGain;  // BID_FRICTION_GAIN  UInt8 0..200
+    uint8_t  inertiaGain;   // BID_INERTIA_GAIN   UInt8 0..200
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.

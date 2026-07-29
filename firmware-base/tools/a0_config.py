@@ -44,6 +44,10 @@ BID_SPRING_STRENGTH    = 4
 BID_DAMPER_STRENGTH    = 5
 BID_POLE_PAIRS         = 11
 BID_CURRENT_P          = 12
+BID_SPRING_GAIN        = 39
+BID_DAMPER_GAIN        = 40
+BID_FRICTION_GAIN      = 41
+BID_INERTIA_GAIN       = 42
 
 FIELD_MAP = {
     BID_MOTION_RANGE:    ("motionRange", BT_UINT16),
@@ -52,6 +56,10 @@ FIELD_MAP = {
     BID_DAMPER_STRENGTH: ("damperStrength", BT_UINT8),
     BID_POLE_PAIRS:      ("polePairs", BT_UINT8),
     BID_CURRENT_P:       ("currentP", BT_FLOAT),
+    BID_SPRING_GAIN:     ("springGain", BT_UINT8),
+    BID_DAMPER_GAIN:     ("damperGain", BT_UINT8),
+    BID_FRICTION_GAIN:   ("frictionGain", BT_UINT8),
+    BID_INERTIA_GAIN:    ("inertiaGain", BT_UINT8),
 }
 
 

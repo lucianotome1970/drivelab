@@ -59,6 +59,10 @@ inline void applyCfgToEngine(const BaseCfg& c, FfbEngine& e, float loopHz) {
     // eixo: kMaxPosRad = curso (meia-faixa em rad). Sem isto a mola do jogo satura no ângulo errado.
     e.effects.setPosRange(e.endstop.rangeRad);
 
+    // Ganhos por tipo de efeito (0..200%, default 100%=neutro) — escalam os efeitos Condition
+    // que o JOGO manda via PID (Spring/Damper/Friction/Inertia), pós-normalização acima.
+    e.effects.setTypeGains(c.springGain, c.damperGain, c.frictionGain, c.inertiaGain);
+
     // Reconstrução: reconstructionSteps>0 = janela FIXA de interpolação; 0 = ADAPTATIVA (o reconstructor
     // mede o intervalo real entre reports — 60 Hz do ACC ou 360 Hz do iRacing — em vez de assumir 60 fixo).
     // fallbackSteps = estimativa loopHz/60 usada até a 1ª medição existir.
