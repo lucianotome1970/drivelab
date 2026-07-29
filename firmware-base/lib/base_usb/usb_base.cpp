@@ -83,13 +83,15 @@ namespace UsbBase
             TinyUSBDevice.begin(0);
         }
 
-        // NOTA CDC: Adafruit_USBD_Device::begin() SEMPRE registra um CDC
-        // ("Serial is always added by default" — Adafruit_USBD_Device.cpp) antes
-        // de qualquer classe nossa entrar. Era por isso que a v1 via só CDC no
-        // config descriptor: g_hid.begin() rodava ANTES de TinyUSB_Device_Init(0),
-        // e o clearConfiguration() de dentro de begin() descartava a interface
-        // HID já registrada. Um composite HID+CDC é aceitável aqui (e útil p/
-        // debug futuro via CDC).
+        // COMPAT COM JOGOS (2026-07-28): o Adafruit_USBD_Device::begin() SEMPRE
+        // adiciona um CDC (Serial) E seta bDeviceClass=0xEF (Misc/IAD, "composto").
+        // Essa classe fazia o AMS2 IGNORAR a placa e o ACC engasgar. Removemos o CDC
+        // e voltamos a classe pra 0x00 (device HID LIMPO, = FFBeast/Moza) com
+        // clearConfiguration(): ele reseta _desc_device (bDeviceClass=0) e zera a
+        // contagem de interfaces/endpoints (some o CDC). Só DEPOIS adicionamos o(s)
+        // HID. O CDC de debug virou ring buffer em RAM lido por SWD (dbg_ring.h).
+        // Ver [[drivelab-game-compat-a0]].
+        TinyUSBDevice.clearConfiguration();
         // Monta o Report Descriptor combinado (FFB + A0, ver comentário junto de
         // g_combined_hid_report_desc) e o atribui a g_hid ANTES do begin() —
         // setReportDescriptor() só troca o ponteiro/tamanho guardados na
@@ -116,15 +118,8 @@ namespace UsbBase
             TinyUSBDevice.attach();
         }
 
-        // CDC de debug: "Serial" já é a CDC do TinyUSB neste core (STM32duino) —
-        // tusb_config_stm32.h define "#define Serial SerialTinyUSB" e
-        // Adafruit_USBD_CDC.h define "#define SerialTinyUSB Serial"; como as duas
-        // macros se referenciam uma à outra, o pré-processador para a expansão
-        // recursiva e ambos os nomes acabam resolvendo para o mesmo objeto
-        // global `Adafruit_USBD_CDC SerialTinyUSB` (é o CDC registrado
-        // automaticamente por Adafruit_USBD_Device::begin(), não uma UART).
-        SerialTinyUSB.begin(115200);
-
+        // (SEM SerialTinyUSB.begin(): o CDC foi removido pelo clearConfiguration()
+        // acima. Debug agora é o ring buffer em RAM lido por SWD — ver dbg_ring.h.)
         return g_hid;
     }
 

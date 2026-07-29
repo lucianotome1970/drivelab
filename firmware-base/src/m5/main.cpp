@@ -70,6 +70,7 @@
 #include "sensor_convert.h"   // vbusDividerRatioFor() — divisor do VBUS por variante (24V/56V)
 #include "dfu_jump.h"
 #include "usb_base.h"
+#include "dbg_ring.h"        // debug por ring buffer em RAM (SWD) — CDC removido
 
 #include "drv8301.h"
 #include "odrive_v36_pins.h"
@@ -152,28 +153,10 @@ static Encoder   encoder(kOdrivePinEncoderA, kOdrivePinEncoderB, ENC_CPR, kOdriv
 static void doEncoderA() { encoder.handleA(); }
 static void doEncoderB() { encoder.handleB(); }
 
-// ---------------------------------------------------------------------------
-// Debug serial NÃO-BLOQUEANTE (2026-07-28). O Adafruit_USBD_CDC::write() fica
-// em `while (remain && tud_cdc_n_connected()) yield();` — se o host abre a porta
-// COM (DTR alto) mas NÃO drena o FIFO (ex.: Windows/ACC enumeram o CDC composto
-// mas ninguém lê), QUALQUER SerialTinyUSB.printf TRAVA pra sempre. Isso estarva o
-// tud_task()/loop de FFB e CONGELA o jogo (visto por profiling do PC via SWD:
-// preso em tud_cdc_n_connected + yield). Fix robusto (como firmware sério de FFB):
-// só escreve se a mensagem couber INTEIRA no FIFO livre; senão descarta. Assim o
-// write() nunca entra no spin (remain=0 na 1ª passada). Substitui todos os printf
-// dos caminhos quentes. Ver [[drivelab-p0-hid-ep-fix]].
-static void dbgPrintf(const char *fmt, ...)
-{
-    char buf[192];
-    va_list ap;
-    va_start(ap, fmt);
-    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-    if (n <= 0) return;
-    if (n > (int)sizeof(buf)) n = (int)sizeof(buf);
-    if (SerialTinyUSB.availableForWrite() < n) return;   // não cabe → descarta (não bloqueia)
-    SerialTinyUSB.write((const uint8_t *)buf, (size_t)n);
-}
+// Debug agora vai pro ring buffer em RAM (dbg_ring.h), lido por SWD — o CDC foi
+// removido no redesign de compat com jogos (bDeviceClass 0xEF Misc/IAD do CDC fazia
+// o AMS2 ignorar a placa; sem CDC → classe 0x00 limpa). Todos os `drivelab::dbgRingPrintf(...)`
+// deste arquivo resolvem p/ drivelab::dbgRingPrintf. Ver [[drivelab-game-compat-a0]].
 
 // ===================== HAL cérebro<->SimpleFOC (Task 3) — só CONSTRUÍDOS =====================
 static drivelab::FocEncoder focEncoder(encoder);
@@ -232,7 +215,7 @@ static void genCurrentInit()
     float s10 = 0.0f, s11 = 0.0f; const int N = 400;             // offset de repouso (motor parado, sem corrente)
     for (int i = 0; i < N; ++i) { adc2Config(); s10 += ADC2->JDR1; s11 += ADC2->JDR2; delayMicroseconds(50); }
     g_off10 = s10 / (float)N; g_off11 = s11 / (float)N;
-    dbgPrintf("CS init: off IB=%d IC=%d | ADC2 SR=0x%lx JDR1=%lu JDR2=%lu MMS=%lu\n",
+    drivelab::dbgRingPrintf("CS init: off IB=%d IC=%d | ADC2 SR=0x%lx JDR1=%lu JDR2=%lu MMS=%lu\n",
                          (int)g_off10, (int)g_off11, (unsigned long)ADC2->SR,
                          (unsigned long)ADC2->JDR1, (unsigned long)ADC2->JDR2, (unsigned long)((TIM1->CR2 >> 4) & 7u));
 }
@@ -352,7 +335,7 @@ static bool runawayCut()
     if (fabsf(motor.shaft_velocity) > 30.0f) {   // rad/s — teto 0.5A ja e a seguranca; corte relaxado p/ nao falso-tripar no ruido do geartrain
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE; g_motorFault = true;
-        dbgPrintf("RUNAWAY! |vel|=%dmrad/s > 30 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
+        drivelab::dbgRingPrintf("RUNAWAY! |vel|=%dmrad/s > 30 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
         return true;
     }
     return false;
@@ -393,10 +376,10 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
 {
     (void)nowMs; (void)arg;
     const float busV = focPower.busVoltage();
-    if (busV < 8.0f) { dbgPrintf("CS DIAG ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); return; }
+    if (busV < 8.0f) { drivelab::dbgRingPrintf("CS DIAG ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); return; }
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
-    if (!drv.configure() || !driver.initialized) { dbgPrintf("CS DIAG ABORT: drv\n"); return; }
+    if (!drv.configure() || !driver.initialized) { drivelab::dbgRingPrintf("CS DIAG ABORT: drv\n"); return; }
     currentSense.linkDriver(&driver);
     if (!g_csReady) g_csReady = (currentSense.init() == 1);   // calibra offset (motor parado, PWM=0)
 
@@ -411,24 +394,24 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
         const float angs[4] = { 0.0f, _PI_2, _PI, _3PI_2 };
         for (int i=0;i<4;i++){
             motor.setPhaseVoltage(V, 0.0f, angs[i]); delay(200);
-            if (i==0) dbgPrintf("  dbg MMS=%lu SR=0x%lx JDR1=%lu JDR2=%lu ARR=%lu CCR4=%lu CCR1=%lu CCR2=%lu CCR3=%lu\n",
+            if (i==0) drivelab::dbgRingPrintf("  dbg MMS=%lu SR=0x%lx JDR1=%lu JDR2=%lu ARR=%lu CCR4=%lu CCR1=%lu CCR2=%lu CCR3=%lu\n",
                 (unsigned long)((TIM1->CR2>>4)&7u),(unsigned long)ADC2->SR,(unsigned long)ADC2->JDR1,(unsigned long)ADC2->JDR2,
                 (unsigned long)TIM1->ARR,(unsigned long)TIM1->CCR4,(unsigned long)TIM1->CCR1,(unsigned long)TIM1->CCR2,(unsigned long)TIM1->CCR3);
             float sa=0,sb=0,sc=0; const int M=10;
             for(int k=0;k<M;k++){ PhaseCurrent_s p=currentSense.getPhaseCurrents(); sa+=p.a;sb+=p.b;sc+=p.c; delay(2); }
             DQCurrent_s dq = currentSense.getFOCCurrents(angs[i]);
-            dbgPrintf("  ang=%dmrad Ia=%dmA Ib=%dmA Ic=%dmA (KCL=%dmA) | Id=%dmA Iq=%dmA\n",
+            drivelab::dbgRingPrintf("  ang=%dmrad Ia=%dmA Ib=%dmA Ic=%dmA (KCL=%dmA) | Id=%dmA Iq=%dmA\n",
                 (int)(angs[i]*1000),(int)(sa/M*1000),(int)(sb/M*1000),(int)(sc/M*1000),
                 (int)((sa+sb+sc)/M*1000),(int)(dq.d*1000),(int)(dq.q*1000));
         }
         motor.setPhaseVoltage(0,0,0); motor.disable();
-        dbgPrintf("CS VETOR: fim\n");
+        drivelab::dbgRingPrintf("CS VETOR: fim\n");
         return;
     }
 
     float sa=0, sb=0, sc=0;                       // arg=100: média de 20 leituras em repouso (deve ~0A)
     for (int i=0;i<20;i++){ PhaseCurrent_s c = currentSense.getPhaseCurrents(); sa+=c.a; sb+=c.b; sc+=c.c; delay(2); }
-    dbgPrintf("CS DIAG: init=%d rest Ia=%dmA Ib=%dmA Ic=%dmA | busV=%dmV fetC=%d mcuC=%d\n",
+    drivelab::dbgRingPrintf("CS DIAG: init=%d rest Ia=%dmA Ib=%dmA Ic=%dmA | busV=%dmV fetC=%d mcuC=%d\n",
         g_csReady?1:0, (int)(sa/20*1000), (int)(sb/20*1000), (int)(sc/20*1000),
         (int)(focPower.busVoltage()*1000), (int)lroundf(focPower.mosfetTempC()), sensorMcuTempC());
 }
@@ -441,14 +424,14 @@ static void restartScan(uint32_t nowMs)
     motor.feed_forward_voltage.q = 0.0f;
     motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);       // trava no início da varredura
     g_focPhase = FOC_LOCK; g_focT = nowMs;
-    dbgPrintf("CAL: lock + varredura ida/volta (V=%d.%dV, %d rad elec/sentido)...\n",
+    drivelab::dbgRingPrintf("CAL: lock + varredura ida/volta (V=%d.%dV, %d rad elec/sentido)...\n",
                          (int)kCalV, ((int)(kCalV*10))%10, (int)kScanSpan);
 }
 
 static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 {
     const float busV = focPower.busVoltage();
-    if (busV < 8.0f) { dbgPrintf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
+    if (busV < 8.0f) { drivelab::dbgRingPrintf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
     g_doCogMeasure = doMeasure;
     g_sweepMode = (arg == 99);                     // arg=99 → sweep de posição ±900°
     g_ffbMode   = (arg == 98);                     // arg=98 → FFB mola
@@ -456,7 +439,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
     const bool drvOk = drv.configure();
-    if (!drvOk || !driver.initialized) { dbgPrintf("FOC ABORT: drv=%d\n",drvOk?1:0); motor.disable(); g_motorFault=true; return; }
+    if (!drvOk || !driver.initialized) { drivelab::dbgRingPrintf("FOC ABORT: drv=%d\n",drvOk?1:0); motor.disable(); g_motorFault=true; return; }
     motor.linkDriver(&driver);
     motor.linkSensor(&encoder);
     // Sensor de corrente (foc_current). init uma vez (calibra offset com PWM=0); reusa nas calibrações seguintes.
@@ -502,7 +485,7 @@ static void stage1aTick(uint32_t nowMs)
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kLockMs) {
             encoder.update(); g_contStart = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_FWD;
-            dbgPrintf("CAL: varrendo p/ FRENTE...\n");
+            drivelab::dbgRingPrintf("CAL: varrendo p/ FRENTE...\n");
         }
         return;
     }
@@ -515,7 +498,7 @@ static void stage1aTick(uint32_t nowMs)
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kScanMs) {
             encoder.update(); g_contFwd = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_BWD;
-            dbgPrintf("CAL: FRENTE andou %dmrad (mech) -> varrendo p/ TRAS...\n",
+            drivelab::dbgRingPrintf("CAL: FRENTE andou %dmrad (mech) -> varrendo p/ TRAS...\n",
                                  (int)((g_contFwd - g_contStart) * 1000.0f));
         }
         return;
@@ -534,21 +517,21 @@ static void stage1aTick(uint32_t nowMs)
         const float expected = kScanSpan / (float)motor.pole_pairs; // mech esperado se seguiu 1:1
         const bool  cw       = (dFwd >= 0.0f);
         if (fabsf(dFwd) < 0.4f * expected) {   // ODrive: resposta insuficiente = escorregou
-            dbgPrintf("CAL ABORT: rotor ESCORREGOU (andou %dmrad, esperado %dmrad) — cogging forte, subir tensao.\n",
+            drivelab::dbgRingPrintf("CAL ABORT: rotor ESCORREGOU (andou %dmrad, esperado %dmrad) — cogging forte, subir tensao.\n",
                                  (int)(dFwd*1000.0f), (int)(expected*1000.0f));
             motor.disable(); g_motorFault=true; g_focPhase=FOC_IDLE; return;
         }
         motor.sensor_direction    = cw ? Direction::CW : Direction::CCW;
         motor.zero_electric_angle = cw ? atan2f((float)g_sinP,(float)g_cosP)
                                        : atan2f((float)g_sinM,(float)g_cosM);
-        dbgPrintf("CAL fim: dFwd=%dmrad esperado=%dmrad dir=%s zero=%dmrad N=%lu -> MALHA FECHADA %d rad/s\n",
+        drivelab::dbgRingPrintf("CAL fim: dFwd=%dmrad esperado=%dmrad dir=%s zero=%dmrad N=%lu -> MALHA FECHADA %d rad/s\n",
                              (int)(dFwd*1000.0f), (int)(expected*1000.0f), cw?"CW":"CCW",
                              (int)(motor.zero_electric_angle*1000.0f), (unsigned long)g_calN, (int)g_velTarget);
         motor.controller = MotionControlType::velocity;
         motor.feed_forward_voltage.q = 0.0f;
         encoder.update(); g_verStart = encoder.getAngle();
         g_focPhase = FOC_VERIFY; g_focT = nowMs;
-        dbgPrintf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
+        drivelab::dbgRingPrintf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
         return;
     }
 
@@ -558,10 +541,10 @@ static void stage1aTick(uint32_t nowMs)
         if (fabsf(motor.shaft_velocity) > 30.0f) {
             motor.move(0.0f); motor.loopFOC(); motor.disable();
             if (++g_calRetry <= kCalMaxRetry) {
-                dbgPrintf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
+                drivelab::dbgRingPrintf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
                 motor.enable(); restartScan(nowMs);
             } else {
-                dbgPrintf("VERIFY runaway apos %d tentativas — abortando\n", kCalMaxRetry);
+                drivelab::dbgRingPrintf("VERIFY runaway apos %d tentativas — abortando\n", kCalMaxRetry);
                 g_motorFault = true; g_focPhase = FOC_IDLE;
             }
             return;
@@ -573,11 +556,11 @@ static void stage1aTick(uint32_t nowMs)
         encoder.update();
         const float moved = fabsf(encoder.getAngle() - g_verStart);
         if (moved > 1.5f) {                        // girou ~1/4 volta -> zero bom
-            dbgPrintf("VERIFY OK: girou %dmrad (zero bom)\n", (int)(moved*1000.0f));
+            drivelab::dbgRingPrintf("VERIFY OK: girou %dmrad (zero bom)\n", (int)(moved*1000.0f));
             g_motorReady = true; g_focT = nowMs;
             if (g_doCogMeasure) {
                 g_cogCal.reset(); g_focPhase = FOC_COG;
-                dbgPrintf("COG: medindo cogging (giro lento %d rad/s por ~%ds)...\n",
+                drivelab::dbgRingPrintf("COG: medindo cogging (giro lento %d rad/s por ~%ds)...\n",
                                      (int)kCogMeasV, (int)(kCogMeasMs/1000));
             } else if (g_sweepMode) {
                 motor.controller     = MotionControlType::angle;   // controle de POSIÇÃO p/ o sweep
@@ -587,7 +570,7 @@ static void stage1aTick(uint32_t nowMs)
                 encoder.update(); g_sweepCenter = encoder.getAngle();
                 g_sweepTarget = g_sweepCenter + kSweepAmp;         // 1º alvo: +900°
                 g_focPhase = FOC_RUN;
-                dbgPrintf("-> SWEEP +/-900deg (angle mode, lento, 0.5A)\n");
+                drivelab::dbgRingPrintf("-> SWEEP +/-900deg (angle mode, lento, 0.5A)\n");
             } else if (g_ffbMode) {
                 motor.controller = MotionControlType::torque;      // torque direto (mola via foc_current)
                 encoder.update(); g_ffbCenter = encoder.getAngle();
@@ -595,21 +578,21 @@ static void stage1aTick(uint32_t nowMs)
                 g_ffbSpring = (ss > 0 ? ss : 30) / 100.0f * 0.6f;   // 0..0.6 A/rad
                 g_ffbDamp   = (ds > 0 ? ds : 20) / 100.0f * 0.10f;  // 0..0.10 A/(rad/s)
                 g_focPhase = FOC_RUN;
-                dbgPrintf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
+                drivelab::dbgRingPrintf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
                                      (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
             } else {
                 g_focPhase = FOC_RUN;
-                dbgPrintf("-> RUN velocidade %d rad/s (cogging %s)\n",
+                drivelab::dbgRingPrintf("-> RUN velocidade %d rad/s (cogging %s)\n",
                                      (int)g_velTarget, g_hasCogging ? "ON" : "OFF");
             }
         } else {                                   // travou -> zero ruim, recalibra
             g_calRetry++;
             if (g_calRetry <= kCalMaxRetry) {
-                dbgPrintf("VERIFY: TRAVOU (moveu so %dmrad) — recalibrando %d/%d\n",
+                drivelab::dbgRingPrintf("VERIFY: TRAVOU (moveu so %dmrad) — recalibrando %d/%d\n",
                                      (int)(moved*1000.0f), g_calRetry, kCalMaxRetry);
                 restartScan(nowMs);
             } else {
-                dbgPrintf("VERIFY: travou apos %d tentativas — abortando (cal instavel; fix real = sensor de corrente)\n", kCalMaxRetry);
+                drivelab::dbgRingPrintf("VERIFY: travou apos %d tentativas — abortando (cal instavel; fix real = sensor de corrente)\n", kCalMaxRetry);
                 motor.move(0.0f); motor.loopFOC(); motor.disable();
                 g_motorFault=true; g_focPhase=FOC_IDLE;
             }
@@ -628,7 +611,7 @@ static void stage1aTick(uint32_t nowMs)
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 500) {
             lastLog = nowMs;
-            dbgPrintf("  COG vel=%dmrad/s mech=%dmrad Iq=%dmA\n",
+            drivelab::dbgRingPrintf("  COG vel=%dmrad/s mech=%dmrad Iq=%dmA\n",
                                  (int)(motor.shaft_velocity*1000.0f),
                                  (int)(encoder.getMechanicalAngle()*1000.0f),
                                  (int)(motor.current.q*1000.0f));
@@ -638,7 +621,7 @@ static void stage1aTick(uint32_t nowMs)
             g_hasCogging = true;
             float mn=1e9f, mx=-1e9f;                                          // pico-a-pico da compensação (A)
             for (int i=0;i<128;++i){ float v=g_coggingTable.table[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
-            dbgPrintf("COG fim: mapa medido, comp pico-a-pico=%dmA -> RUN velocidade %d rad/s (cogging ON)\n",
+            drivelab::dbgRingPrintf("COG fim: mapa medido, comp pico-a-pico=%dmA -> RUN velocidade %d rad/s (cogging ON)\n",
                                  (int)((mx-mn)*1000.0f), (int)g_velTarget);
             g_focPhase = FOC_RUN; g_focT = nowMs;
         }
@@ -652,7 +635,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.feed_forward_voltage.q = 0.0f;
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE;
-        dbgPrintf("FOC: fim\n");
+        drivelab::dbgRingPrintf("FOC: fim\n");
         return;
     }
     motor.loopFOC();
@@ -666,7 +649,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.move(cur);                                             // torque mode → current_sp = cur
         static uint32_t lastLogF = 0;
         if ((int32_t)(nowMs - lastLogF) > 400) { lastLogF = nowMs;
-            dbgPrintf("  FFB ang=%ddeg cur_sp=%dmA Iq=%dmA\n",
+            drivelab::dbgRingPrintf("  FFB ang=%ddeg cur_sp=%dmA Iq=%dmA\n",
                 (int)(ang*57.2958f), (int)(cur*1000.0f), (int)(motor.current.q*1000.0f)); }
     } else if (g_sweepMode) {
         encoder.update();
@@ -676,7 +659,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.move(g_sweepTarget);
         static uint32_t lastLogS = 0;
         if ((int32_t)(nowMs - lastLogS) > 400) { lastLogS = nowMs;
-            dbgPrintf("  SWEEP pos=%ddeg alvo=%ddeg vel=%dmrad/s Iq=%dmA\n",
+            drivelab::dbgRingPrintf("  SWEEP pos=%ddeg alvo=%ddeg vel=%dmrad/s Iq=%dmA\n",
                 (int)((pos-g_sweepCenter)*57.2958f), (int)((g_sweepTarget-g_sweepCenter)*57.2958f),
                 (int)(motor.shaft_velocity*1000.0f), (int)(motor.current.q*1000.0f)); }
     } else {
@@ -687,7 +670,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.move(g_velTarget);
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 400) { lastLog = nowMs;
-            dbgPrintf("  RUN vel=%dmrad/s Iq=%dmA Id=%dmA Uq=%dmV ff=%dmV\n",
+            drivelab::dbgRingPrintf("  RUN vel=%dmrad/s Iq=%dmA Id=%dmA Uq=%dmV ff=%dmV\n",
                 (int)(motor.shaft_velocity*1000.0f), (int)(motor.current.q*1000.0f), (int)(motor.current.d*1000.0f),
                 (int)(motor.voltage.q*1000.0f), (int)(ff*1000.0f)); }
     }
@@ -1021,11 +1004,11 @@ void setup()
         EEPROM.get(kCoggingFlashAddr, blob);
         g_hasCogging = drivelab::unpackCogging(blob, sizeof(blob), g_coggingTable);
         applyCoggingToEngine();
-        dbgPrintf("DriveLab M5 — cogging: %s\n",
+        drivelab::dbgRingPrintf("DriveLab M5 — cogging: %s\n",
                              g_hasCogging ? "tabela carregada da flash" : "sem tabela (sem compensacao)");
     }
 
-    dbgPrintf("DriveLab M5 (Task 4) — DRV8301 configure()=%s ready=%s faulted=%s | motor OFF (sem init/enable/initFOC)\n",
+    drivelab::dbgRingPrintf("DriveLab M5 (Task 4) — DRV8301 configure()=%s ready=%s faulted=%s | motor OFF (sem init/enable/initFOC)\n",
                   drvOk ? "OK" : "FAIL",
                   drv.isReady() ? "true" : "false",
                   drv.faulted() ? "true" : "false");
@@ -1051,7 +1034,7 @@ void loop()
     if (!bannerSent)
     {
         bannerSent = true;
-        dbgPrintf("DriveLab M5 (Task 4) — USB/A0 + FFB->engine ativos | motor OFF (g_calibrated=false)\n");
+        drivelab::dbgRingPrintf("DriveLab M5 (Task 4) — USB/A0 + FFB->engine ativos | motor OFF (g_calibrated=false)\n");
     }
 
     // Canal A0: SaveSettings — escrita de fato na flash fora do callback USB.
@@ -1059,7 +1042,7 @@ void loop()
     {
         g_a0.clearSave();
         g_a0.save();
-        dbgPrintf("A0 saved\n");
+        drivelab::dbgRingPrintf("A0 saved\n");
     }
 
     uint32_t now = millis();
