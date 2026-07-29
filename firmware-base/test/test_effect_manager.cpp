@@ -378,6 +378,40 @@ int main() {
         CHECK(std::fabs(mgr.computeForce(0.0f, 0.0f, 200)) < 1e-3f); // 200 >= 100 -> expirado
     }
 
+    // ---- setTypeGains: ganho por tipo escala a força de Condition (0%=zera,
+    // 100%=igual, 200%=dobra) — mesmo setup de Spring do teste acima. ----
+    {
+        EffectManager mgr;
+        mgr.setPosRange(3.14159265f);
+        uint8_t setEffect[16] = {0};
+        setEffect[0] = 0x01; setEffect[1] = 1; setEffect[2] = 8; // Spring, block 1
+        setEffect[11] = 255; // gain
+        mgr.handleReport(setEffect, sizeof(setEffect), 0);
+
+        uint8_t setCond[15] = {0};
+        setCond[0] = 0x03; setCond[1] = 1;
+        setCond[3] = 0x00; setCond[4] = 0x00; // centerOffset = 0
+        setCond[5] = 0xFF; setCond[6] = 0x7F; // posCoeff = 32767
+        setCond[7] = 0x00; setCond[8] = 0x00; // negCoeff = 0
+        setCond[9] = 0xFF; setCond[10] = 0x7F;  // posSat = 32767
+        setCond[11] = 0xFF; setCond[12] = 0x7F; // negSat = 32767
+        setCond[13] = 0x00; setCond[14] = 0x00; // deadBand = 0
+        mgr.handleReport(setCond, sizeof(setCond), 0);
+        mgr.operation(1, 1, 0);
+
+        mgr.setTypeGains(100, 100, 100, 100);
+        const float f100 = mgr.computeForce(1.0f, 0.0f, 0);
+
+        mgr.setTypeGains(200, 100, 100, 100);
+        const float f200 = mgr.computeForce(1.0f, 0.0f, 0);
+
+        mgr.setTypeGains(0, 100, 100, 100);
+        const float f0 = mgr.computeForce(1.0f, 0.0f, 0);
+
+        CHECK(std::fabs(f0) < 1e-3f);
+        CHECK(std::fabs(f200 - 2.0f * f100) < 1e-2f * std::fabs(f100) + 1e-3f);
+    }
+
     std::printf("%s  — %d checks, %d fail(s)\n", g_fails ? "FALHOU" : "OK", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

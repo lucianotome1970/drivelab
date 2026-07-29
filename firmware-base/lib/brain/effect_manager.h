@@ -57,10 +57,21 @@ public:
     void setVelRange(float maxVel)     { if (maxVel > 1e-4f)    m_maxVel = maxVel; }
     void setAccelRange(float maxAccel) { if (maxAccel > 1e-4f)  m_maxAccel = maxAccel; }
 
+    // Ganhos por tipo de efeito Condition (0-200%, default 100% = neutro) —
+    // knobs do usuário p/ ajustar a "sensação" do Spring/Damper/Friction/
+    // Inertia que o JOGO manda, sem alterar o que o jogo pediu (posCoeff/
+    // negCoeff/etc. do próprio efeito). Aplicado no fim de conditionForce().
+    void setTypeGains(uint8_t spring, uint8_t damper, uint8_t friction, uint8_t inertia) {
+        m_gainSpring = spring; m_gainDamper = damper;
+        m_gainFriction = friction; m_gainInertia = inertia;
+    }
+
 private:
     float m_maxPosRad = kMaxPosRad;   // curso do eixo (DOR/2) — setPosRange() casa com a config
     float m_maxVel    = kMaxVel;
     float m_maxAccel  = kMaxAccel;
+
+    uint8_t m_gainSpring = 100, m_gainDamper = 100, m_gainFriction = 100, m_gainInertia = 100;
 
     static float clamp1(float v) {
         if (v > 1.0f) return 1.0f;
@@ -175,7 +186,15 @@ private:
         const float sat = (raw >= 0.0f) ? (float)e.posSat : (float)e.negSat;
         if (std::fabs(raw) > sat) raw = (raw >= 0.0f) ? sat : -sat;
 
-        return raw;
+        float g = 1.0f;
+        switch (e.type) {
+            case FxType::Spring:   g = m_gainSpring   / 100.0f; break;
+            case FxType::Damper:   g = m_gainDamper   / 100.0f; break;
+            case FxType::Friction: g = m_gainFriction / 100.0f; break;
+            case FxType::Inertia:  g = m_gainInertia  / 100.0f; break;
+            default: break;
+        }
+        return raw * g;
     }
 
 public:
