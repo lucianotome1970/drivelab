@@ -31,7 +31,7 @@
 #include "filters.h"
 #include "drv8301.h"
 
-class Encoder;    // forward decl — evita puxar SimpleFOC.h neste header
+class Sensor;     // forward decl — base do SimpleFOC (Encoder e MagneticSensor* herdam dela)
 class BLDCMotor;  //   (SimpleFOC.h já é incluído por quem instancia estas
                    //   classes, ex.: src/m5/main.cpp)
 
@@ -44,13 +44,13 @@ namespace drivelab {
 class FocEncoder : public IEncoder
 {
 public:
-    // encoder: referência ao `Encoder` já construído em main.cpp (não é dono).
-    // lpfHz/expectedSampleRateHz: corte do low-pass e taxa de chamada ESPERADA
-    // de velocityRadPerSec() (para desenhar o biquad) — AJUSTAR na bancada
-    // quando a Task 4 decidir a taxa real do loop do engine (o corte do
-    // filtro efetivamente muda se a taxa de chamada real divergir muito da
-    // taxa assumida aqui).
-    explicit FocEncoder(Encoder& encoder, float lpfHz = 30.0f, float expectedSampleRateHz = 1000.0f);
+    // sensor: referência ao `Sensor` já construído em main.cpp (Encoder incremental na v1; magnético no M5)
+    // (não é dono). lpfHz/expectedSampleRateHz: corte do low-pass e taxa de
+    // chamada ESPERADA de velocityRadPerSec() (para desenhar o biquad) —
+    // AJUSTAR na bancada quando a Task 4 decidir a taxa real do loop do
+    // engine (o corte do filtro efetivamente muda se a taxa de chamada real
+    // divergir muito da taxa assumida aqui).
+    explicit FocEncoder(Sensor& sensor, float lpfHz = 30.0f, float expectedSampleRateHz = 1000.0f);
 
     // positionRad() já devolve o ângulo RELATIVO ao centro (subtrai o offset do set-center).
     float positionRad() override;
@@ -64,7 +64,7 @@ public:
     void reset() { m_velEst.reset(); m_centerOffsetRad = 0.0f; }
 
 private:
-    Encoder& m_encoder;
+    Sensor& m_sensor;
     VelocityEstimator m_velEst;
     float m_centerOffsetRad = 0.0f;  ///< ângulo cru guardado como centro (0 = centro no ponto de boot)
 };

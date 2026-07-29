@@ -75,6 +75,7 @@
 #include "drv8301.h"
 #include "odrive_v36_pins.h"
 #include "motor_hal.h"
+#include "encoder_select.h"
 #include "ffb_engine.h"
 #include "apply_cfg.h"
 #include "cogging_store.h"   // (de)serializacao da tabela de cogging p/ a flash
@@ -974,6 +975,14 @@ void setup()
     g_encCpr = static_cast<float>(g_a0.cfg().encoderCpr);
     if (g_encCpr < 1.0f) g_encCpr = ENC_CPR;
     encoder.cpr = g_encCpr;
+
+    // encoderType (BID 18): v1 só suporta ABI (E6B2). Tipo magnético (MT6701/AS5047P) é reconhecido
+    // mas fica pro M5 (SPI3 compartilhado com o DRV8301 + CS) → cai de volta pro ABI com aviso.
+    {
+        const auto encSel = selectEncoder(g_a0.cfg().encoderType);
+        if (!encSel.supported)
+            drivelab::dbgRingPrintf("encoderType=%u nao suportado (v1); usando ABI/E6B2\n", g_a0.cfg().encoderType);
+    }
 
     // Sub-projeto 1 (Feel ajustável ao vivo, Task 3): aplica os settings
     // carregados por cima do que acabou de ser hardcoded acima. Ordem

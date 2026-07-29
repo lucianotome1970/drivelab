@@ -20,15 +20,15 @@ namespace drivelab {
 // ----------------------------------------------------------------------------
 // FocEncoder
 // ----------------------------------------------------------------------------
-FocEncoder::FocEncoder(Encoder& encoder, float lpfHz, float expectedSampleRateHz)
-    : m_encoder(encoder)
+FocEncoder::FocEncoder(Sensor& sensor, float lpfHz, float expectedSampleRateHz)
+    : m_sensor(sensor)
 {
     m_velEst.lpf = makeLowPass(lpfHz, expectedSampleRateHz, 0.707f);
 }
 
-float FocEncoder::positionRad() { return m_encoder.getAngle() - m_centerOffsetRad; }
+float FocEncoder::positionRad() { return m_sensor.getAngle() - m_centerOffsetRad; }
 
-void FocEncoder::setCenterHere() { m_centerOffsetRad = m_encoder.getAngle(); }
+void FocEncoder::setCenterHere() { m_centerOffsetRad = m_sensor.getAngle(); }
 
 float FocEncoder::velocityRadPerSec()
 {
@@ -36,12 +36,12 @@ float FocEncoder::velocityRadPerSec()
     // PÚBLICO da VelocityEstimator — e NÃO `m_velEst.update(vel, dt)`.
     // `update()` faz diferença finita de POSIÇÃO (não de velocidade) seguida
     // do low-pass; alimentá-lo com uma velocidade já diferenciada pelo
-    // SimpleFOC (encoder.getVelocity()) calcularia aceleração/jerk filtrado,
+    // SimpleFOC (sensor.getVelocity()) calcularia aceleração/jerk filtrado,
     // não velocidade suave — o oposto do que este passo pede ("velocidade
     // filtrada"). Reaproveitamos o mesmo low-pass (RBJ, testado em
     // test/test_velocity_estimator.cpp) só que aplicado direto sobre a
     // estimativa de velocidade que o próprio SimpleFOC já calcula.
-    return m_velEst.lpf.process(m_encoder.getVelocity());
+    return m_velEst.lpf.process(m_sensor.getVelocity());
 }
 
 // ----------------------------------------------------------------------------
