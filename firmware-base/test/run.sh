@@ -70,3 +70,7 @@ c++ -std=c++17 -I../lib/base_display -Wall -Wextra -Werror -o "$out16" test_oled
 out17="$(mktemp -d)/encoder_select_test"
 c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out17" test_encoder_select.cpp
 "$out17"
+
+out18="$(mktemp -d)/ffb_arm_guard_test"
+c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out18" test_ffb_arm_guard.cpp
+"$out18"
