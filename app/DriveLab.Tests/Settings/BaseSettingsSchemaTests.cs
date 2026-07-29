@@ -52,12 +52,18 @@ public class BaseSettingsSchemaTests
     }
 
     [Fact]
+    public void EncoderType_Bid_Matches_Firmware()
+    {
+        Assert.Equal(18, (byte)BaseSettingId.EncoderType);
+    }
+
+    [Fact]
     public void EncoderType_Has_Expected_Metadata()
     {
         var d = BaseSettingsSchema.Get(BaseSettingId.EncoderType);
         Assert.Equal(SettingType.UInt8, d.Type);
         Assert.Equal(0, d.Min);
-        Assert.Equal(1, d.Max);
+        Assert.Equal(2, d.Max);          // 0=E6B2/ABI · 1=MT6701 · 2=AS5047P
         Assert.Equal(0, d.Default);
         Assert.Equal(SettingTab.Hardware, d.Tab);
     }

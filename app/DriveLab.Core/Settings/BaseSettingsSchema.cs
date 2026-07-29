@@ -29,7 +29,7 @@ public static class BaseSettingsSchema
         new(BaseSettingId.PositionSmoothing, "position_smoothing", "Suavização de posição", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
         new(BaseSettingId.PowerLimit, "power_limit", "Limite de potência", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 100),
         new(BaseSettingId.BrakingLimit, "braking_limit", "Limite de frenagem", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 100),
-        new(BaseSettingId.EncoderType, "encoder_type", "Tipo de encoder", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0),
+        new(BaseSettingId.EncoderType, "encoder_type", "Tipo de encoder (0=E6B2/ABI · 1=MT6701 · 2=AS5047P)", SettingType.UInt8, 0, 2, "", SettingTab.Hardware, 0),
         new(BaseSettingId.ReconstructionSteps, "reconstruction_steps", "Reconstrução (passos, 0=auto)", SettingType.UInt8, 0, 32, "", SettingTab.Advanced, 0),
         new(BaseSettingId.ReconstructionLpf, "reconstruction_lpf", "Reconstrução (suavização)", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
         new(BaseSettingId.OutputFilterHz, "output_filter_hz", "Filtro de saída (corte)", SettingType.UInt16, 0, 2000, "Hz", SettingTab.Advanced, 0),
