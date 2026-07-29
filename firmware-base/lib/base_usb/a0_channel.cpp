@@ -32,6 +32,23 @@ namespace
 constexpr uint32_t kBaseFlashMagic = 0x444C4234; // "DLB4" (bump: BaseCfg ganhou boardVariant → reseed defaults)
 constexpr int kBaseFlashMagicAddr = 0;
 constexpr int kBaseFlashCfgAddr = kBaseFlashMagicAddr + sizeof(kBaseFlashMagic);
+
+// Debug serial NÃO-BLOQUEANTE — ver o comentário completo em src/m5/main.cpp.
+// O CDC write() do Adafruit fica em spin (yield) enquanto a porta CDC estiver
+// "conectada" (DTR) e o FIFO cheio; se o host abre a COM e não lê, QUALQUER
+// printf trava o loop de FFB/USB e CONGELA o jogo. Só escreve se couber inteiro.
+void dbgPrintf(const char *fmt, ...)
+{
+    char buf[160];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    if (n <= 0) return;
+    if (n > (int)sizeof(buf)) n = (int)sizeof(buf);
+    if (SerialTinyUSB.availableForWrite() < n) return; // não cabe → descarta (não bloqueia)
+    SerialTinyUSB.write((const uint8_t *)buf, (size_t)n);
+}
 } // namespace
 
 void A0Channel::begin()
@@ -76,7 +93,7 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
             uint16_t valLen = len - 4;
             baseWriteField(m_cfg, fieldId, type, &buf[4], valLen);
             m_cfgDirty = true;
-            SerialTinyUSB.printf("A0 write field=%u type=%u len=%u\n", fieldId, type, valLen);
+            dbgPrintf("A0 write field=%u type=%u len=%u\n", fieldId, type, valLen);
         }
         return true;
     }
@@ -87,7 +104,7 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
         {
             m_pendingField = buf[1];
             m_pendingReadValue = true;
-            SerialTinyUSB.printf("A0 read field=%u\n", m_pendingField);
+            dbgPrintf("A0 read field=%u\n", m_pendingField);
         }
         return true;
     }
@@ -101,7 +118,7 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
             if (cmd == 2 /* SaveSettings */)
             {
                 m_saveRequested = true;
-                SerialTinyUSB.printf("A0 cmd=%u (SaveSettings) arg=%u -> m_saveRequested\n", cmd, arg);
+                dbgPrintf("A0 cmd=%u (SaveSettings) arg=%u -> m_saveRequested\n", cmd, arg);
             }
             else if (cmd == 4 /* EnterDfu */)
             {
@@ -110,14 +127,14 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 // pilha USB -- nada de trabalho pesado/irreversível dentro
                 // do contexto de interrupção/callback do TinyUSB).
                 m_dfuRequested = true;
-                SerialTinyUSB.printf("A0 EnterDfu\n");
+                dbgPrintf("A0 EnterDfu\n");
             }
             else if (cmd == 3 /* ResetCenter */)
             {
                 // BaseCommand.ResetCenter: só marca — o m5 captura a posição atual do encoder como centro
                 // fora deste callback USB (nada de trabalho no contexto do SET_REPORT do TinyUSB).
                 m_centerRequested = true;
-                SerialTinyUSB.printf("A0 cmd=%u (ResetCenter) -> m_centerRequested\n", cmd);
+                dbgPrintf("A0 cmd=%u (ResetCenter) -> m_centerRequested\n", cmd);
             }
             else if (cmd == 6 /* SetForceEnabled */)
             {
@@ -125,7 +142,7 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 // BaseCommand.cs) -- arg!=0 habilita. M0.5 não tem motor:
                 // só guarda o estado (usado pelo M5, ver forceEnabled()).
                 m_forceEnabled = (arg != 0);
-                SerialTinyUSB.printf("A0 cmd=%u (SetForceEnabled) arg=%u -> forceEnabled=%u\n",
+                dbgPrintf("A0 cmd=%u (SetForceEnabled) arg=%u -> forceEnabled=%u\n",
                                       cmd, arg, m_forceEnabled ? 1U : 0U);
             }
             else if (cmd == 5 /* Calibrate (Stage 1a: initFOC do motor) */)
@@ -134,18 +151,18 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 // arg = tensão open-loop em décimos de volt (ex.: 15 = 1,5V) → ajustável sem reflash. Deliberado.
                 m_calibrateRequested = true;
                 m_calibrateArg = arg;
-                SerialTinyUSB.printf("A0 cmd=5 (Calibrate) arg=%u -> Stage 1a (%u.%uV)\n", arg, arg/10, arg%10);
+                dbgPrintf("A0 cmd=5 (Calibrate) arg=%u -> Stage 1a (%u.%uV)\n", arg, arg/10, arg%10);
             }
             else if (cmd == 7 /* CalibrateCogging */)
             {
                 // BaseCommand.CalibrateCogging: só marca — o m5 dispara a rotina de calibração fora deste
                 // callback USB. Só roda de fato no Stage 1 (com motor); motor-OFF apenas registra o pedido.
                 m_coggingCalibRequested = true;
-                SerialTinyUSB.printf("A0 cmd=%u (CalibrateCogging) -> m_coggingCalibRequested\n", cmd);
+                dbgPrintf("A0 cmd=%u (CalibrateCogging) -> m_coggingCalibRequested\n", cmd);
             }
             else
             {
-                SerialTinyUSB.printf("A0 cmd=%u arg=%u (sem handler ainda)\n", cmd, arg);
+                dbgPrintf("A0 cmd=%u arg=%u (sem handler ainda)\n", cmd, arg);
             }
         }
         return true;
@@ -210,7 +227,7 @@ void A0Channel::serviceLoop(uint32_t nowMs, bool (*sender)(uint8_t, const uint8_
         if (sender(A0_RID_SETVALUE, payload, sizeof(payload)))
         {
             m_pendingReadValue = false;
-            SerialTinyUSB.printf("A0 reply field=%u type=%u len=%d\n", m_pendingField, type, n);
+            dbgPrintf("A0 reply field=%u type=%u len=%d\n", m_pendingField, type, n);
         }
     }
 

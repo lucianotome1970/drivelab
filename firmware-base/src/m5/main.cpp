@@ -152,6 +152,29 @@ static Encoder   encoder(kOdrivePinEncoderA, kOdrivePinEncoderB, ENC_CPR, kOdriv
 static void doEncoderA() { encoder.handleA(); }
 static void doEncoderB() { encoder.handleB(); }
 
+// ---------------------------------------------------------------------------
+// Debug serial NÃO-BLOQUEANTE (2026-07-28). O Adafruit_USBD_CDC::write() fica
+// em `while (remain && tud_cdc_n_connected()) yield();` — se o host abre a porta
+// COM (DTR alto) mas NÃO drena o FIFO (ex.: Windows/ACC enumeram o CDC composto
+// mas ninguém lê), QUALQUER SerialTinyUSB.printf TRAVA pra sempre. Isso estarva o
+// tud_task()/loop de FFB e CONGELA o jogo (visto por profiling do PC via SWD:
+// preso em tud_cdc_n_connected + yield). Fix robusto (como firmware sério de FFB):
+// só escreve se a mensagem couber INTEIRA no FIFO livre; senão descarta. Assim o
+// write() nunca entra no spin (remain=0 na 1ª passada). Substitui todos os printf
+// dos caminhos quentes. Ver [[drivelab-p0-hid-ep-fix]].
+static void dbgPrintf(const char *fmt, ...)
+{
+    char buf[192];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    if (n <= 0) return;
+    if (n > (int)sizeof(buf)) n = (int)sizeof(buf);
+    if (SerialTinyUSB.availableForWrite() < n) return;   // não cabe → descarta (não bloqueia)
+    SerialTinyUSB.write((const uint8_t *)buf, (size_t)n);
+}
+
 // ===================== HAL cérebro<->SimpleFOC (Task 3) — só CONSTRUÍDOS =====================
 static drivelab::FocEncoder focEncoder(encoder);
 static drivelab::FocCurrent focCurrent(Drv8301Gain::G40);
@@ -209,7 +232,7 @@ static void genCurrentInit()
     float s10 = 0.0f, s11 = 0.0f; const int N = 400;             // offset de repouso (motor parado, sem corrente)
     for (int i = 0; i < N; ++i) { adc2Config(); s10 += ADC2->JDR1; s11 += ADC2->JDR2; delayMicroseconds(50); }
     g_off10 = s10 / (float)N; g_off11 = s11 / (float)N;
-    SerialTinyUSB.printf("CS init: off IB=%d IC=%d | ADC2 SR=0x%lx JDR1=%lu JDR2=%lu MMS=%lu\n",
+    dbgPrintf("CS init: off IB=%d IC=%d | ADC2 SR=0x%lx JDR1=%lu JDR2=%lu MMS=%lu\n",
                          (int)g_off10, (int)g_off11, (unsigned long)ADC2->SR,
                          (unsigned long)ADC2->JDR1, (unsigned long)ADC2->JDR2, (unsigned long)((TIM1->CR2 >> 4) & 7u));
 }
@@ -304,13 +327,32 @@ static float g_ffbCenter  = 0.0f;           // getAngle do "centro" do volante
 static float g_ffbSpring  = 0.30f;          // A/rad — força da mola (AO VIVO via springStrength; 0.30 = proporcional até ~95°)
 static float g_ffbDamp    = 0.02f;          // A/(rad/s) — amortecimento (AO VIVO via damperStrength; baixo p/ o geartrain ruidoso)
 
+// MONITOR de FFB do JOGO por ST-Link (openocd mdw): board USB→PC(jogo), ST-Link→Mac. Capturamos o que o jogo
+// manda pra provar que o FFB chega (sem precisar do motor). [0]=nº reports FFB [1]=const force [2]=device gain
+// [3]=último op/effect [4]=pos encoder (deci-deg) [5]=nº set-const-force.
+volatile int32_t g_ffbMon[16] = {0};
+// Instrumentação do freeze (2026-07-28): [6]=nº de GET_REPORT, [7]=último GET (type<<8|id),
+// [8]=último retorno do GET (bytes; 0=STALL), [9]=nº de GET que deram STALL(0),
+// [10]=último SET FEATURE report_id, [11]=nº de OUT reports consumidos pelo A0,
+// [12]=nº de reports do JOYSTICK enviados, [13]=nº de vezes que o endpoint IN estava
+// OCUPADO na hora de mandar o joystick (ready()==false), [14]=nº de PID State enviados,
+// [15]=contador de iterações do loop() (prova que o loop roda e a velocidade).
+
+// PID State report (Input, RID 0x02): o OpenFFBoard ENVIA este report de estado
+// (HidFFB::sendStatusReport) após criar efeito / effect operation p/ confirmar ao
+// host que os atuadores estão habilitados. Sem isso, o DirectInput do ACC TRAVA no
+// carregamento da pista esperando a confirmação de estado do dispositivo FFB
+// (firmware saudável, FFB fluindo, mas o jogo não avança). Marcamos "dirty" a cada
+// OUT report de FFB e enviamos no loop (heartbeat ~30Hz), respeitando o endpoint IN.
+static volatile bool g_pidStateDirty = false;
+
 // Corte de RUNAWAY (segurança): se a velocidade disparar muito acima do esperado, desabilita NA HORA.
 static bool runawayCut()
 {
     if (fabsf(motor.shaft_velocity) > 30.0f) {   // rad/s — teto 0.5A ja e a seguranca; corte relaxado p/ nao falso-tripar no ruido do geartrain
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE; g_motorFault = true;
-        SerialTinyUSB.printf("RUNAWAY! |vel|=%dmrad/s > 30 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
+        dbgPrintf("RUNAWAY! |vel|=%dmrad/s > 30 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
         return true;
     }
     return false;
@@ -351,10 +393,10 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
 {
     (void)nowMs; (void)arg;
     const float busV = focPower.busVoltage();
-    if (busV < 8.0f) { SerialTinyUSB.printf("CS DIAG ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); return; }
+    if (busV < 8.0f) { dbgPrintf("CS DIAG ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); return; }
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
-    if (!drv.configure() || !driver.initialized) { SerialTinyUSB.printf("CS DIAG ABORT: drv\n"); return; }
+    if (!drv.configure() || !driver.initialized) { dbgPrintf("CS DIAG ABORT: drv\n"); return; }
     currentSense.linkDriver(&driver);
     if (!g_csReady) g_csReady = (currentSense.init() == 1);   // calibra offset (motor parado, PWM=0)
 
@@ -369,24 +411,24 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
         const float angs[4] = { 0.0f, _PI_2, _PI, _3PI_2 };
         for (int i=0;i<4;i++){
             motor.setPhaseVoltage(V, 0.0f, angs[i]); delay(200);
-            if (i==0) SerialTinyUSB.printf("  dbg MMS=%lu SR=0x%lx JDR1=%lu JDR2=%lu ARR=%lu CCR4=%lu CCR1=%lu CCR2=%lu CCR3=%lu\n",
+            if (i==0) dbgPrintf("  dbg MMS=%lu SR=0x%lx JDR1=%lu JDR2=%lu ARR=%lu CCR4=%lu CCR1=%lu CCR2=%lu CCR3=%lu\n",
                 (unsigned long)((TIM1->CR2>>4)&7u),(unsigned long)ADC2->SR,(unsigned long)ADC2->JDR1,(unsigned long)ADC2->JDR2,
                 (unsigned long)TIM1->ARR,(unsigned long)TIM1->CCR4,(unsigned long)TIM1->CCR1,(unsigned long)TIM1->CCR2,(unsigned long)TIM1->CCR3);
             float sa=0,sb=0,sc=0; const int M=10;
             for(int k=0;k<M;k++){ PhaseCurrent_s p=currentSense.getPhaseCurrents(); sa+=p.a;sb+=p.b;sc+=p.c; delay(2); }
             DQCurrent_s dq = currentSense.getFOCCurrents(angs[i]);
-            SerialTinyUSB.printf("  ang=%dmrad Ia=%dmA Ib=%dmA Ic=%dmA (KCL=%dmA) | Id=%dmA Iq=%dmA\n",
+            dbgPrintf("  ang=%dmrad Ia=%dmA Ib=%dmA Ic=%dmA (KCL=%dmA) | Id=%dmA Iq=%dmA\n",
                 (int)(angs[i]*1000),(int)(sa/M*1000),(int)(sb/M*1000),(int)(sc/M*1000),
                 (int)((sa+sb+sc)/M*1000),(int)(dq.d*1000),(int)(dq.q*1000));
         }
         motor.setPhaseVoltage(0,0,0); motor.disable();
-        SerialTinyUSB.printf("CS VETOR: fim\n");
+        dbgPrintf("CS VETOR: fim\n");
         return;
     }
 
     float sa=0, sb=0, sc=0;                       // arg=100: média de 20 leituras em repouso (deve ~0A)
     for (int i=0;i<20;i++){ PhaseCurrent_s c = currentSense.getPhaseCurrents(); sa+=c.a; sb+=c.b; sc+=c.c; delay(2); }
-    SerialTinyUSB.printf("CS DIAG: init=%d rest Ia=%dmA Ib=%dmA Ic=%dmA | busV=%dmV fetC=%d mcuC=%d\n",
+    dbgPrintf("CS DIAG: init=%d rest Ia=%dmA Ib=%dmA Ic=%dmA | busV=%dmV fetC=%d mcuC=%d\n",
         g_csReady?1:0, (int)(sa/20*1000), (int)(sb/20*1000), (int)(sc/20*1000),
         (int)(focPower.busVoltage()*1000), (int)lroundf(focPower.mosfetTempC()), sensorMcuTempC());
 }
@@ -399,14 +441,14 @@ static void restartScan(uint32_t nowMs)
     motor.feed_forward_voltage.q = 0.0f;
     motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);       // trava no início da varredura
     g_focPhase = FOC_LOCK; g_focT = nowMs;
-    SerialTinyUSB.printf("CAL: lock + varredura ida/volta (V=%d.%dV, %d rad elec/sentido)...\n",
+    dbgPrintf("CAL: lock + varredura ida/volta (V=%d.%dV, %d rad elec/sentido)...\n",
                          (int)kCalV, ((int)(kCalV*10))%10, (int)kScanSpan);
 }
 
 static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 {
     const float busV = focPower.busVoltage();
-    if (busV < 8.0f) { SerialTinyUSB.printf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
+    if (busV < 8.0f) { dbgPrintf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
     g_doCogMeasure = doMeasure;
     g_sweepMode = (arg == 99);                     // arg=99 → sweep de posição ±900°
     g_ffbMode   = (arg == 98);                     // arg=98 → FFB mola
@@ -414,7 +456,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
     const bool drvOk = drv.configure();
-    if (!drvOk || !driver.initialized) { SerialTinyUSB.printf("FOC ABORT: drv=%d\n",drvOk?1:0); motor.disable(); g_motorFault=true; return; }
+    if (!drvOk || !driver.initialized) { dbgPrintf("FOC ABORT: drv=%d\n",drvOk?1:0); motor.disable(); g_motorFault=true; return; }
     motor.linkDriver(&driver);
     motor.linkSensor(&encoder);
     // Sensor de corrente (foc_current). init uma vez (calibra offset com PWM=0); reusa nas calibrações seguintes.
@@ -460,7 +502,7 @@ static void stage1aTick(uint32_t nowMs)
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kLockMs) {
             encoder.update(); g_contStart = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_FWD;
-            SerialTinyUSB.printf("CAL: varrendo p/ FRENTE...\n");
+            dbgPrintf("CAL: varrendo p/ FRENTE...\n");
         }
         return;
     }
@@ -473,7 +515,7 @@ static void stage1aTick(uint32_t nowMs)
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kScanMs) {
             encoder.update(); g_contFwd = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_BWD;
-            SerialTinyUSB.printf("CAL: FRENTE andou %dmrad (mech) -> varrendo p/ TRAS...\n",
+            dbgPrintf("CAL: FRENTE andou %dmrad (mech) -> varrendo p/ TRAS...\n",
                                  (int)((g_contFwd - g_contStart) * 1000.0f));
         }
         return;
@@ -492,21 +534,21 @@ static void stage1aTick(uint32_t nowMs)
         const float expected = kScanSpan / (float)motor.pole_pairs; // mech esperado se seguiu 1:1
         const bool  cw       = (dFwd >= 0.0f);
         if (fabsf(dFwd) < 0.4f * expected) {   // ODrive: resposta insuficiente = escorregou
-            SerialTinyUSB.printf("CAL ABORT: rotor ESCORREGOU (andou %dmrad, esperado %dmrad) — cogging forte, subir tensao.\n",
+            dbgPrintf("CAL ABORT: rotor ESCORREGOU (andou %dmrad, esperado %dmrad) — cogging forte, subir tensao.\n",
                                  (int)(dFwd*1000.0f), (int)(expected*1000.0f));
             motor.disable(); g_motorFault=true; g_focPhase=FOC_IDLE; return;
         }
         motor.sensor_direction    = cw ? Direction::CW : Direction::CCW;
         motor.zero_electric_angle = cw ? atan2f((float)g_sinP,(float)g_cosP)
                                        : atan2f((float)g_sinM,(float)g_cosM);
-        SerialTinyUSB.printf("CAL fim: dFwd=%dmrad esperado=%dmrad dir=%s zero=%dmrad N=%lu -> MALHA FECHADA %d rad/s\n",
+        dbgPrintf("CAL fim: dFwd=%dmrad esperado=%dmrad dir=%s zero=%dmrad N=%lu -> MALHA FECHADA %d rad/s\n",
                              (int)(dFwd*1000.0f), (int)(expected*1000.0f), cw?"CW":"CCW",
                              (int)(motor.zero_electric_angle*1000.0f), (unsigned long)g_calN, (int)g_velTarget);
         motor.controller = MotionControlType::velocity;
         motor.feed_forward_voltage.q = 0.0f;
         encoder.update(); g_verStart = encoder.getAngle();
         g_focPhase = FOC_VERIFY; g_focT = nowMs;
-        SerialTinyUSB.printf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
+        dbgPrintf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
         return;
     }
 
@@ -516,10 +558,10 @@ static void stage1aTick(uint32_t nowMs)
         if (fabsf(motor.shaft_velocity) > 30.0f) {
             motor.move(0.0f); motor.loopFOC(); motor.disable();
             if (++g_calRetry <= kCalMaxRetry) {
-                SerialTinyUSB.printf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
+                dbgPrintf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
                 motor.enable(); restartScan(nowMs);
             } else {
-                SerialTinyUSB.printf("VERIFY runaway apos %d tentativas — abortando\n", kCalMaxRetry);
+                dbgPrintf("VERIFY runaway apos %d tentativas — abortando\n", kCalMaxRetry);
                 g_motorFault = true; g_focPhase = FOC_IDLE;
             }
             return;
@@ -531,11 +573,11 @@ static void stage1aTick(uint32_t nowMs)
         encoder.update();
         const float moved = fabsf(encoder.getAngle() - g_verStart);
         if (moved > 1.5f) {                        // girou ~1/4 volta -> zero bom
-            SerialTinyUSB.printf("VERIFY OK: girou %dmrad (zero bom)\n", (int)(moved*1000.0f));
+            dbgPrintf("VERIFY OK: girou %dmrad (zero bom)\n", (int)(moved*1000.0f));
             g_motorReady = true; g_focT = nowMs;
             if (g_doCogMeasure) {
                 g_cogCal.reset(); g_focPhase = FOC_COG;
-                SerialTinyUSB.printf("COG: medindo cogging (giro lento %d rad/s por ~%ds)...\n",
+                dbgPrintf("COG: medindo cogging (giro lento %d rad/s por ~%ds)...\n",
                                      (int)kCogMeasV, (int)(kCogMeasMs/1000));
             } else if (g_sweepMode) {
                 motor.controller     = MotionControlType::angle;   // controle de POSIÇÃO p/ o sweep
@@ -545,7 +587,7 @@ static void stage1aTick(uint32_t nowMs)
                 encoder.update(); g_sweepCenter = encoder.getAngle();
                 g_sweepTarget = g_sweepCenter + kSweepAmp;         // 1º alvo: +900°
                 g_focPhase = FOC_RUN;
-                SerialTinyUSB.printf("-> SWEEP +/-900deg (angle mode, lento, 0.5A)\n");
+                dbgPrintf("-> SWEEP +/-900deg (angle mode, lento, 0.5A)\n");
             } else if (g_ffbMode) {
                 motor.controller = MotionControlType::torque;      // torque direto (mola via foc_current)
                 encoder.update(); g_ffbCenter = encoder.getAngle();
@@ -553,21 +595,21 @@ static void stage1aTick(uint32_t nowMs)
                 g_ffbSpring = (ss > 0 ? ss : 30) / 100.0f * 0.6f;   // 0..0.6 A/rad
                 g_ffbDamp   = (ds > 0 ? ds : 20) / 100.0f * 0.10f;  // 0..0.10 A/(rad/s)
                 g_focPhase = FOC_RUN;
-                SerialTinyUSB.printf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
+                dbgPrintf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
                                      (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
             } else {
                 g_focPhase = FOC_RUN;
-                SerialTinyUSB.printf("-> RUN velocidade %d rad/s (cogging %s)\n",
+                dbgPrintf("-> RUN velocidade %d rad/s (cogging %s)\n",
                                      (int)g_velTarget, g_hasCogging ? "ON" : "OFF");
             }
         } else {                                   // travou -> zero ruim, recalibra
             g_calRetry++;
             if (g_calRetry <= kCalMaxRetry) {
-                SerialTinyUSB.printf("VERIFY: TRAVOU (moveu so %dmrad) — recalibrando %d/%d\n",
+                dbgPrintf("VERIFY: TRAVOU (moveu so %dmrad) — recalibrando %d/%d\n",
                                      (int)(moved*1000.0f), g_calRetry, kCalMaxRetry);
                 restartScan(nowMs);
             } else {
-                SerialTinyUSB.printf("VERIFY: travou apos %d tentativas — abortando (cal instavel; fix real = sensor de corrente)\n", kCalMaxRetry);
+                dbgPrintf("VERIFY: travou apos %d tentativas — abortando (cal instavel; fix real = sensor de corrente)\n", kCalMaxRetry);
                 motor.move(0.0f); motor.loopFOC(); motor.disable();
                 g_motorFault=true; g_focPhase=FOC_IDLE;
             }
@@ -586,7 +628,7 @@ static void stage1aTick(uint32_t nowMs)
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 500) {
             lastLog = nowMs;
-            SerialTinyUSB.printf("  COG vel=%dmrad/s mech=%dmrad Iq=%dmA\n",
+            dbgPrintf("  COG vel=%dmrad/s mech=%dmrad Iq=%dmA\n",
                                  (int)(motor.shaft_velocity*1000.0f),
                                  (int)(encoder.getMechanicalAngle()*1000.0f),
                                  (int)(motor.current.q*1000.0f));
@@ -596,7 +638,7 @@ static void stage1aTick(uint32_t nowMs)
             g_hasCogging = true;
             float mn=1e9f, mx=-1e9f;                                          // pico-a-pico da compensação (A)
             for (int i=0;i<128;++i){ float v=g_coggingTable.table[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
-            SerialTinyUSB.printf("COG fim: mapa medido, comp pico-a-pico=%dmA -> RUN velocidade %d rad/s (cogging ON)\n",
+            dbgPrintf("COG fim: mapa medido, comp pico-a-pico=%dmA -> RUN velocidade %d rad/s (cogging ON)\n",
                                  (int)((mx-mn)*1000.0f), (int)g_velTarget);
             g_focPhase = FOC_RUN; g_focT = nowMs;
         }
@@ -610,7 +652,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.feed_forward_voltage.q = 0.0f;
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE;
-        SerialTinyUSB.printf("FOC: fim\n");
+        dbgPrintf("FOC: fim\n");
         return;
     }
     motor.loopFOC();
@@ -624,7 +666,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.move(cur);                                             // torque mode → current_sp = cur
         static uint32_t lastLogF = 0;
         if ((int32_t)(nowMs - lastLogF) > 400) { lastLogF = nowMs;
-            SerialTinyUSB.printf("  FFB ang=%ddeg cur_sp=%dmA Iq=%dmA\n",
+            dbgPrintf("  FFB ang=%ddeg cur_sp=%dmA Iq=%dmA\n",
                 (int)(ang*57.2958f), (int)(cur*1000.0f), (int)(motor.current.q*1000.0f)); }
     } else if (g_sweepMode) {
         encoder.update();
@@ -634,7 +676,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.move(g_sweepTarget);
         static uint32_t lastLogS = 0;
         if ((int32_t)(nowMs - lastLogS) > 400) { lastLogS = nowMs;
-            SerialTinyUSB.printf("  SWEEP pos=%ddeg alvo=%ddeg vel=%dmrad/s Iq=%dmA\n",
+            dbgPrintf("  SWEEP pos=%ddeg alvo=%ddeg vel=%dmrad/s Iq=%dmA\n",
                 (int)((pos-g_sweepCenter)*57.2958f), (int)((g_sweepTarget-g_sweepCenter)*57.2958f),
                 (int)(motor.shaft_velocity*1000.0f), (int)(motor.current.q*1000.0f)); }
     } else {
@@ -645,7 +687,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.move(g_velTarget);
         static uint32_t lastLog = 0;
         if ((int32_t)(nowMs - lastLog) > 400) { lastLog = nowMs;
-            SerialTinyUSB.printf("  RUN vel=%dmrad/s Iq=%dmA Id=%dmA Uq=%dmV ff=%dmV\n",
+            dbgPrintf("  RUN vel=%dmrad/s Iq=%dmA Id=%dmA Uq=%dmV ff=%dmV\n",
                 (int)(motor.shaft_velocity*1000.0f), (int)(motor.current.q*1000.0f), (int)(motor.current.d*1000.0f),
                 (int)(motor.voltage.q*1000.0f), (int)(ff*1000.0f)); }
     }
@@ -681,14 +723,14 @@ static void handle_create_new_effect(uint8_t const *buffer, uint16_t bufsize)
 {
     uint8_t effectType = (bufsize >= 1) ? buffer[0] : 0;
 
+    (void)effectType;
     g_lastEffectBlock = g_nextEffectBlock;
     g_nextEffectBlock++;
     if (g_nextEffectBlock > kMaxEffectBlocks)
     {
         g_nextEffectBlock = 1;
     }
-
-    SerialTinyUSB.printf("FFB create-effect type=%u -> block=%u\n", effectType, g_lastEffectBlock);
+    // (sem printf: callback USB — não bloquear/estarvar o tud_task no handshake de entrada de pista)
 }
 
 // Callback de SET_REPORT — mesma dupla rota (endpoint OUT vs control
@@ -705,6 +747,7 @@ static void hid_set_report_callback(uint8_t report_id,
 {
     if (report_type == HID_REPORT_TYPE_FEATURE)
     {
+        g_ffbMon[10] = report_id;   // instrumentação: último SET FEATURE
         if (report_id == RID_PID_CREATE_NEW_EFFECT)
         {
             handle_create_new_effect(buffer, bufsize);
@@ -715,6 +758,7 @@ static void hid_set_report_callback(uint8_t report_id,
     // Canal A0 primeiro — mesma ordem/motivo do m05.
     if (g_a0.handleOutReport(buffer, bufsize))
     {
+        g_ffbMon[11]++;   // instrumentação: OUT report consumido pelo A0
         return;
     }
 
@@ -723,6 +767,8 @@ static void hid_set_report_callback(uint8_t report_id,
     // por >500ms, engine.step() decai a força a zero. Sem isto, o watchdog
     // zeraria a força mesmo com FFB ativo assim que o Stage 1 ligar o motor.
     engine.notifyFfbActivity();
+    g_ffbMon[0]++;   // contador de reports FFB do jogo (openocd le → prova que o jogo manda FFB)
+    g_pidStateDirty = true;   // pedir envio do PID State (confirma estado ao ACC — evita freeze)
 
     // Sub-projeto 2 (Parser de efeitos FFB, Task 4): roteia TODOS os OUT
     // reports PID (SetEffect/Envelope/Condition/Periodic/Constant/Ramp,
@@ -743,26 +789,29 @@ static void hid_set_report_callback(uint8_t report_id,
     if (bufsize >= 2 && buffer[0] == RID_PID_DEVICE_GAIN)
     {
         engine.setDeviceGain(buffer[1]);
+        g_ffbMon[2] = buffer[1];
     }
 
     FfbOut o = ffb_parse_out(buffer, bufsize);
     switch (o.type)
     {
         case FFB_SET_CONSTANT_FORCE:
-            SerialTinyUSB.printf("FFB const block=%u mag=%d\n", o.effectBlock, o.constantForce);
+            // (sem printf: roda a CADA força constante — milhares/seg — e SerialTinyUSB.write()
+            //  fica em loop enquanto o host tiver a porta CDC aberta; num callback USB isso estarva
+            //  o tud_task() e contribui p/ o congelamento do jogo. Ver o throttle da telemetria acima.)
             // Só guarda o alvo (ForceReconstructor) — pura, sem hardware.
             // engine.step() (o que de fato leria isto e chamaria
             // motor.setTorque()) só roda atrás do gate `g_calibrated`
             // (sempre false aqui) — ver loop().
             engine.setGameForce(static_cast<float>(o.constantForce));
+            g_ffbMon[1] = o.constantForce; g_ffbMon[5]++;
             break;
 
         case FFB_EFFECT_OPERATION:
-            SerialTinyUSB.printf("FFB effect-op block=%u op=%s\n", o.effectBlock, ffb_op_name(o.op));
+            g_ffbMon[3] = o.op;
             break;
 
         case FFB_DEVICE_CONTROL:
-            SerialTinyUSB.printf("FFB device-control len=%u\n", bufsize);
             break;
 
         case FFB_SET_EFFECT:
@@ -774,9 +823,9 @@ static void hid_set_report_callback(uint8_t report_id,
 }
 
 // GET_REPORT Feature (Block Load / Pool) — mesmo handshake do m05.
-static uint16_t hid_get_report_callback(uint8_t report_id,
-                                         hid_report_type_t report_type,
-                                         uint8_t *buffer, uint16_t reqlen)
+static uint16_t hid_get_report_impl(uint8_t report_id,
+                                    hid_report_type_t report_type,
+                                    uint8_t *buffer, uint16_t reqlen)
 {
     // PID State (0x02) é um report de INPUT (itens 0x81 no descritor), não
     // FEATURE — tratamos antes do guard de FEATURE. Só respondemos a
@@ -820,7 +869,8 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
             (uint16_t)(kMaxEffectBlocks * 16) - (uint16_t)(g_nextEffectBlock * 16);
         buffer[2] = (uint8_t)(ramPoolAvailable & 0xFF);
         buffer[3] = (uint8_t)(ramPoolAvailable >> 8);
-        SerialTinyUSB.printf("FFB block-load -> block=%u status=success\n", g_lastEffectBlock);
+        // (sem printf: este GET roda no handshake de criação de efeito na entrada de pista;
+        //  bloquear/estarvar aqui era candidato ao congelamento — mantém a resposta imediata)
         return 4;
     }
 
@@ -837,11 +887,26 @@ static uint16_t hid_get_report_callback(uint8_t report_id,
         buffer[1] = (uint8_t)(ramPoolSize >> 8);
         buffer[2] = kSimultaneousEffectsMax; // efeitos simultâneos (Device Managed Pool)
         buffer[3] = 0;
-        SerialTinyUSB.printf("FFB pool -> size=%u simultaneous=%u\n", ramPoolSize, kSimultaneousEffectsMax);
+        // (sem printf: callback USB no caminho de enumeração/FFB — resposta imediata)
         return 4;
     }
 
     return 0;
+}
+
+// Wrapper de instrumentação (2026-07-28): registra cada GET_REPORT (o que o ACC
+// pede e o que respondemos) em g_ffbMon p/ diagnosticar o congelamento na entrada
+// de pista via leitura SWD, sem printf (não-bloqueante).
+static uint16_t hid_get_report_callback(uint8_t report_id,
+                                        hid_report_type_t report_type,
+                                        uint8_t *buffer, uint16_t reqlen)
+{
+    const uint16_t ret = hid_get_report_impl(report_id, report_type, buffer, reqlen);
+    g_ffbMon[6]++;
+    g_ffbMon[7] = ((int32_t)report_type << 8) | report_id;
+    g_ffbMon[8] = ret;
+    if (ret == 0) g_ffbMon[9]++;
+    return ret;
 }
 
 // Ver o comentário completo em src/m05/main.cpp (has_out_endpoint=true, o
@@ -956,11 +1021,11 @@ void setup()
         EEPROM.get(kCoggingFlashAddr, blob);
         g_hasCogging = drivelab::unpackCogging(blob, sizeof(blob), g_coggingTable);
         applyCoggingToEngine();
-        SerialTinyUSB.printf("DriveLab M5 — cogging: %s\n",
+        dbgPrintf("DriveLab M5 — cogging: %s\n",
                              g_hasCogging ? "tabela carregada da flash" : "sem tabela (sem compensacao)");
     }
 
-    SerialTinyUSB.printf("DriveLab M5 (Task 4) — DRV8301 configure()=%s ready=%s faulted=%s | motor OFF (sem init/enable/initFOC)\n",
+    dbgPrintf("DriveLab M5 (Task 4) — DRV8301 configure()=%s ready=%s faulted=%s | motor OFF (sem init/enable/initFOC)\n",
                   drvOk ? "OK" : "FAIL",
                   drv.isReady() ? "true" : "false",
                   drv.faulted() ? "true" : "false");
@@ -986,7 +1051,7 @@ void loop()
     if (!bannerSent)
     {
         bannerSent = true;
-        SerialTinyUSB.printf("DriveLab M5 (Task 4) — USB/A0 + FFB->engine ativos | motor OFF (g_calibrated=false)\n");
+        dbgPrintf("DriveLab M5 (Task 4) — USB/A0 + FFB->engine ativos | motor OFF (g_calibrated=false)\n");
     }
 
     // Canal A0: SaveSettings — escrita de fato na flash fora do callback USB.
@@ -994,7 +1059,7 @@ void loop()
     {
         g_a0.clearSave();
         g_a0.save();
-        SerialTinyUSB.printf("A0 saved\n");
+        dbgPrintf("A0 saved\n");
     }
 
     uint32_t now = millis();
@@ -1051,17 +1116,28 @@ void loop()
         const long counts  = lroundf(angRad * (g_encCpr / (2.0f * 3.14159265358979323846f)));
         const int16_t pos  = static_cast<int16_t>(counts > 32767 ? 32767 : (counts < -32768 ? -32768 : counts));
         g_a0.setWheelTelemetry(pos, deci);
+        g_ffbMon[4] = deci;   // posição do volante (deci-deg) — o jogo lê isto p/ calcular o FFB
 
         // Tensão do barramento (ADC PA6) → telemetria. Leitura passiva (motor OFF ok). A escala do divisor
         // ainda é placeholder (item A1 do registro de validação) — este valor serve p/ calibrar vs multímetro.
         // ⚠️ analogRead QUEBRA o ADC injected do current sense (limitação conhecida do SimpleFOC STM32 —
         // analogRead init/deinit o ADC toda vez). Enquanto o current sense estiver ativo (g_csReady), NÃO ler
         // tensão do bus / temps por analogRead — congela esses valores (o encoder/posição não usa ADC, segue ok).
-        float busV = 0.0f;
-        if (!g_csReady) {
-            busV = focPower.busVoltage();
+        //
+        // ⚠️ PERF/USB (2026-07-28): cada analogRead é CARO e BLOQUEANTE — pinmap_find_function +
+        // HAL_ADC_Start + HAL_ADC_PollForConversion. Lê-los TODO loop (4 analogReads: bus + 2 FET + motor)
+        // dominava o tempo do loop (confirmado por profiling do PC via SWD: o firmware passava a maior parte
+        // em analogRead) e ESTARVA o tud_task(): quando o ACC entrava na pista e despejava a enxurrada de FFB,
+        // as transferências de controle do carregamento não eram atendidas a tempo e o JOGO CONGELAVA na tela
+        // (tirar a USB → entrava na hora). Fix: throttle a 50 ms (20 Hz, de sobra p/ a tela do app), cacheando
+        // busV p/ o flag de plausibilidade. Loop rápido → USB atendido. Ver [[drivelab-p0-hid-ep-fix]].
+        static float s_lastBusV = 0.0f;
+        static uint32_t s_lastTelemMs = 0;
+        if (!g_csReady && (now - s_lastTelemMs >= 50)) {
+            s_lastTelemMs = now;
+            s_lastBusV = focPower.busVoltage();
             uint16_t busMv = 0;
-            if (busV > 0.0f) { const float mv = busV * 1000.0f; busMv = mv > 65535.0f ? 65535u : static_cast<uint16_t>(mv + 0.5f); }
+            if (s_lastBusV > 0.0f) { const float mv = s_lastBusV * 1000.0f; busMv = mv > 65535.0f ? 65535u : static_cast<uint16_t>(mv + 0.5f); }
             g_a0.setBusVoltageMv(busMv);
 
             long fetC = lroundf(focPower.mosfetTempC());
@@ -1073,6 +1149,7 @@ void loop()
             if (motC > 127) motC = 127; else if (motC < -128) motC = -128;
             g_a0.setMotorTempC(static_cast<int8_t>(motC));
         }
+        const float busV = g_csReady ? 0.0f : s_lastBusV;
 
         // Plausibilidade: com o bus energizado, avisa se a tensão lida não bate com a variante escolhida.
         const uint8_t flags = ((!g_csReady && busVoltageImplausible(busV, g_a0.cfg().busNominalV)) ? A0Channel::kFlagVoltageImplausible : 0)
@@ -1125,7 +1202,37 @@ void loop()
     }
 #endif
 
-    // Resposta deferida do A0 (0x16) + telemetria periódica (0x21).
+    // >>> PRIORIDADE ABSOLUTA DO REPORT DO VOLANTE (2026-07-28). O jogo LÊ este report
+    // (RID_JOYSTICK) pro input de direção. O endpoint IN é COMPARTILHADO e, sob a carga
+    // de FFB, libera vaga devagar. Se a telemetria A0 (0x21) e o PID State (0x02) rodarem
+    // ANTES, roubam TODAS as vagas livres e o report do volante NUNCA sai → o jogo fica
+    // "sem ação" (dispositivo enumerado, eixo morto; volta ao fechar o jogo). Confirmado
+    // por SWD: [12] joystick CONGELADO, [13] endpoint-ocupado disparando, [14] PID/telem
+    // ainda enviando. Fix: mandar o JOYSTICK PRIMEIRO; A0/PID pegam só a sobra do endpoint.
+    static uint32_t lastSend = 0;
+    if (now - lastSend >= 4)   // ~250Hz p/ FFB responsivo
+    {
+        if (g_hid->ready())
+        {
+            lastSend = now;
+            JoystickInputReport report;
+            memset(&report, 0, sizeof(report));
+            // ±900° (±15.7 rad) → full-scale int16. Posição relativa ao centro (focEncoder).
+            float a = focEncoder.positionRad() / 15.708f * 32767.0f;
+            if (a > 32767.0f) a = 32767.0f; else if (a < -32767.0f) a = -32767.0f;
+            report.axes[0] = (int16_t)a;
+            UsbBase::sendReport(RID_JOYSTICK, (const uint8_t *)&report, sizeof(report));
+            g_ffbMon[12]++;   // instrumentação: joystick enviado
+        }
+        else
+        {
+            g_ffbMon[13]++;   // instrumentação: queria mandar joystick mas endpoint IN OCUPADO
+        }
+    }
+
+    // Resposta deferida do A0 (0x16) + telemetria periódica (0x21) — SÓ pega o endpoint IN
+    // se o joystick acima não pegou (o sender interno checa g_hid->ready()). Assim a
+    // telemetria do app nunca mais starva o input do jogo.
     g_a0.serviceLoop(now, &UsbBase::sendReport);
 
     // Sub-projeto 1 (Feel ajustável ao vivo, Task 3): ao vivo -- só reaplica
@@ -1171,17 +1278,20 @@ void loop()
     // fisicamente inerte porque driver.init()/motor.enable() nunca
     // rodaram — não precisa de "desligar" o que nunca foi ligado.)
 
-    // Report de Input do RID_JOYSTICK — prova de vida, mesmo padrão do m05
-    // (eixo X decorativo; o encoder real não está inicializado aqui).
-    static uint32_t lastSend = 0;
-    if (g_hid->ready() && (now - lastSend >= 10))
+    // PID State report (Input, RID 0x02) — confirma ao host que os atuadores estão
+    // habilitados. Enviado como heartbeat LENTO (10Hz) e SÓ na sobra do endpoint (depois
+    // do joystick, que tem prioridade absoluta acima). NÃO usa mais gatilho por-FFB-report:
+    // aquilo disparava a cada força constante e roubava TODAS as vagas do endpoint IN,
+    // matando o input do volante no jogo. Ver o bloco de prioridade do joystick acima.
+    static uint32_t lastPidState = 0;
+    if (g_hid->ready() && (now - lastPidState >= 100))
     {
-        lastSend = now;
-
-        JoystickInputReport report;
-        memset(&report, 0, sizeof(report));
-        report.axes[0] = (int16_t)(32767.0f * sinf(now / 1000.0f));
-
-        UsbBase::sendReport(RID_JOYSTICK, (const uint8_t *)&report, sizeof(report));
+        lastPidState = now;
+        g_pidStateDirty = false;
+        uint8_t st = buildPidStateByte(false /*devicePaused*/, true /*actuatorsEnabled*/,
+                                       true /*safetySwitch*/, false /*actuatorOverride*/,
+                                       true /*actuatorPower*/);
+        UsbBase::sendReport(RID_PID_STATE, &st, 1);
+        g_ffbMon[14]++;   // instrumentação: PID State enviado
     }
 }
