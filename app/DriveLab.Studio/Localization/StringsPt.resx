@@ -88,6 +88,7 @@
   <data name="Tab_Basic" xml:space="preserve"><value>Básico</value></data>
   <data name="Tab_Advanced" xml:space="preserve"><value>Avançado</value></data>
   <data name="Tab_Hardware" xml:space="preserve"><value>Hardware</value></data>
+  <data name="Tab_Feel" xml:space="preserve"><value>Feel</value></data>
   <data name="Tab_Telemetry" xml:space="preserve"><value>Telemetria</value></data>
   <data name="Tab_Pedals" xml:space="preserve"><value>Pedais</value></data>
   <data name="Tab_InputMonitor" xml:space="preserve"><value>Monitor de entrada</value></data>

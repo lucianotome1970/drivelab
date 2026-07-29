@@ -61,6 +61,13 @@ public static class CompositionRoot
             BaseSettingId.CurrentI,
             BaseSettingId.CalibrationCurrent,
         }),
+        new("Feel", new[]
+        {
+            BaseSettingId.SpringGain,
+            BaseSettingId.DamperGain,
+            BaseSettingId.FrictionGain,
+            BaseSettingId.InertiaGain,
+        }),
     };
 
     public static MainWindowViewModel CreateMainWindowViewModel(IBaseTransport? transport = null, bool simulatorMode = false, bool advancedMode = false)

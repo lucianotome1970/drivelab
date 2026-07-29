@@ -48,4 +48,8 @@ public enum BaseSettingId : byte
     ThermalPeakSeconds = 36,
     FetTempLimitC = 37,
     MotorTempLimitC = 38,
+    SpringGain = 39,
+    DamperGain = 40,
+    FrictionGain = 41,
+    InertiaGain = 42,
 }

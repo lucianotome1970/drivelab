@@ -50,6 +50,10 @@ public static class BaseSettingsSchema
         new(BaseSettingId.ThermalPeakSeconds, "thermal_peak_seconds", "Duração do pico", SettingType.UInt8, 0, 60, "s", SettingTab.Hardware, 0),
         new(BaseSettingId.FetTempLimitC, "fet_temp_limit_c", "Corte de temp. dos FETs", SettingType.UInt8, 50, 110, "°C", SettingTab.Hardware, 85),
         new(BaseSettingId.MotorTempLimitC, "motor_temp_limit_c", "Corte de temp. do motor", SettingType.UInt8, 60, 125, "°C", SettingTab.Hardware, 100),
+        new(BaseSettingId.SpringGain, "spring_gain", "Ganho de Mola (jogo)", SettingType.UInt8, 0, 200, "%", SettingTab.Feel, 100),
+        new(BaseSettingId.DamperGain, "damper_gain", "Ganho de Damper (jogo)", SettingType.UInt8, 0, 200, "%", SettingTab.Feel, 100),
+        new(BaseSettingId.FrictionGain, "friction_gain", "Ganho de Friction (jogo)", SettingType.UInt8, 0, 200, "%", SettingTab.Feel, 100),
+        new(BaseSettingId.InertiaGain, "inertia_gain", "Ganho de Inertia (jogo)", SettingType.UInt8, 0, 200, "%", SettingTab.Feel, 100),
     };
 
     private static readonly Dictionary<byte, SettingDescriptor> ById =

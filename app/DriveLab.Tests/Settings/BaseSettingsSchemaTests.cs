@@ -61,4 +61,29 @@ public class BaseSettingsSchemaTests
         Assert.Equal(0, d.Default);
         Assert.Equal(SettingTab.Hardware, d.Tab);
     }
+
+    [Theory]
+    [InlineData(BaseSettingId.SpringGain, 39)]
+    [InlineData(BaseSettingId.DamperGain, 40)]
+    [InlineData(BaseSettingId.FrictionGain, 41)]
+    [InlineData(BaseSettingId.InertiaGain, 42)]
+    public void GainSetting_Bid_Matches_Firmware(BaseSettingId id, byte expectedBid)
+    {
+        Assert.Equal(expectedBid, (byte)id);
+    }
+
+    [Theory]
+    [InlineData(BaseSettingId.SpringGain)]
+    [InlineData(BaseSettingId.DamperGain)]
+    [InlineData(BaseSettingId.FrictionGain)]
+    [InlineData(BaseSettingId.InertiaGain)]
+    public void GainSetting_Has_Expected_Metadata(BaseSettingId id)
+    {
+        var d = BaseSettingsSchema.Get(id);
+        Assert.Equal(SettingType.UInt8, d.Type);
+        Assert.Equal(0, d.Min);
+        Assert.Equal(200, d.Max);
+        Assert.Equal(100, d.Default);
+        Assert.Equal(SettingTab.Feel, d.Tab);
+    }
 }

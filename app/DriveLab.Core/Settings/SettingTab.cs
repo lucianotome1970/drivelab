@@ -12,4 +12,5 @@ public enum SettingTab
     Basic,
     Advanced,
     Hardware,
+    Feel,
 }
