@@ -78,3 +78,7 @@ c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out18" test_ffb_ar
 out19="$(mktemp -d)/contactor_manager_test"
 c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out19" test_contactor_manager.cpp
 "$out19"
+
+out20="$(mktemp -d)/power_button_test"
+c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out20" test_power_button.cpp
+"$out20"
