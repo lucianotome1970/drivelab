@@ -76,6 +76,8 @@
 #include "odrive_v36_pins.h"
 #include "motor_hal.h"
 #include "contactor_manager.h"
+#include "power_button.h"    // soft-power por botão (Task 4, opt-in por power_button_enable)
+#include "button_debounce.h" // debounce genérico de botão — reusado pelo OLED e pelo power button
 #include "encoder_select.h"
 #include "ffb_engine.h"
 #include "apply_cfg.h"
@@ -86,7 +88,6 @@
 #ifdef DRVLAB_OLED
 #include "ssd1306_i2c.h"     // visor OLED (I2C bit-bang no header GPIO)
 #include "oled_status.h"     // composição das telas de status
-#include "button_debounce.h" // botão que cicla as telas
 #endif
 
 // Taxa nominal do laço de torque -- usada por applyCfgToEngine() só para
@@ -295,6 +296,9 @@ static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem 
 static ContactorManager g_contactor;   // proteção off-state (só ativa com cfg().softPowerEnable)
 static bool g_contactorPinInit = false;
 static bool g_driveWanted = false;   // operador pediu uma operação de motor (fecha o contator antes de g_focPhase sair de IDLE)
+
+static PowerButton g_powerButton;   // soft-power por botão (só ativo com cfg().powerButtonEnable), holdMs=2000/cutDelayMs=200 (defaults)
+static drivelab::ButtonDebounce g_powerBtnDebounce;   // debounce do botão de power (reusa o mesmo debouncer do botão do OLED)
 
 // VERIFY: o zero da cal via scan em modo-tensão NÃO é repetível (cogging → stick-slip corrompe o scan). Depois
 // de calcular o zero, dá um giro-teste; se NÃO girou (zero ruim → travou), recalibra automaticamente até girar.
@@ -1134,6 +1138,17 @@ void setup()
         drivelab::dbgRingPrintf("SOFT-POWER: contator ativo (pino %d), aberto no boot\n", kOdrivePinContactor);
     }
 
+    // Soft-power por botão (Task 4, opt-in por power_button_enable): latch de energia (self-hold) HIGH
+    // no boot + botão ativo-baixo com pull-up. Com powerButtonEnable=0 (default) nada aqui executa —
+    // nenhum GPIO é tocado, o comportamento é idêntico ao de hoje.
+    if (g_a0.cfg().powerButtonEnable) {
+        pinMode(kOdrivePinPowerEnable, OUTPUT);
+        digitalWrite(kOdrivePinPowerEnable, HIGH);   // latch: segura a própria energia no boot
+        pinMode(kOdrivePinPowerBtn, INPUT_PULLUP);   // botão ativo-baixo (ajustar ao hardware)
+        drivelab::dbgRingPrintf("SOFT-POWER: botão de power ativo (btn=pino %d, enable=pino %d)\n",
+                                 kOdrivePinPowerBtn, kOdrivePinPowerEnable);
+    }
+
     // Divisor do VBUS pela VARIANTE DA PLACA (24V→11, 56V→19) — propriedade do hardware, independente da
     // tensão de operação. Um binário só lê certo nas duas placas, sem recompilar. (Não há auto-detecção por
     // hardware — nem o firmware oficial do ODrive detecta; usa #define de compile-time.)
@@ -1197,6 +1212,29 @@ void loop()
         const bool driveIntent = (g_focPhase != FOC_IDLE) || g_driveWanted;
         g_contactor.step(driveIntent, g_motorFault, now);
         if (g_contactorPinInit) digitalWrite(kOdrivePinContactor, g_contactor.coilOn() ? HIGH : LOW);
+    }
+
+    // Soft-power por botão (Task 4, opt-in por power_button_enable): passo da máquina de estados +
+    // aciona o latch de energia. Com powerButtonEnable=0 (default) nada aqui executa — nenhum GPIO é
+    // tocado, comportamento idêntico ao de hoje.
+    if (g_a0.cfg().powerButtonEnable) {
+        // botão ativo-baixo com pull-up → pressionado = LOW. Debounce (reusa o mesmo debouncer do
+        // botão do OLED) — só o estado ESTÁVEL (pressed()) importa aqui, não a borda de clique, porque
+        // o PowerButton precisa medir quanto tempo o botão fica segurado.
+        g_powerBtnDebounce.update(digitalRead(kOdrivePinPowerBtn) == LOW, now);
+        bool btnDown = g_powerBtnDebounce.pressed();
+        // se o contator está desabilitado, não há o que esperar abrir → trata como "aberto"
+        bool contactorOpen = !g_a0.cfg().softPowerEnable
+                             || (g_contactor.state() == ContactorState::Open);
+        g_powerButton.step(btnDown, contactorOpen, now);
+
+        if (g_powerButton.shuttingDown()) {
+            // desarma o motor e pede o contator abrir (driveIntent=false via g_driveWanted)
+            g_driveWanted = false;
+            g_focPhase = FOC_IDLE;
+            motor.disable();
+        }
+        digitalWrite(kOdrivePinPowerEnable, g_powerButton.powerEnable() ? HIGH : LOW);
     }
 
     static uint32_t lastSensor = 0;

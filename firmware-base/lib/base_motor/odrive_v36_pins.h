@@ -104,3 +104,13 @@ static constexpr int kOdrivePinAuxBrakeH = PB11;  // TIM2_CH4 — AUX_H (half-br
 // do board (4·3·2·1). Só é usado quando softPowerEnable=1; no default (0) nunca é tocado.
 // ----------------------------------------------------------------------------
 static constexpr int kOdrivePinContactor = PC6;  // PLACEHOLDER seguro — CONFIRMAR o pino real do header
+
+// ----------------------------------------------------------------------------
+// Soft-power por botão (opt-in por power_button_enable, Task 4). GPIOs livres do header —
+// leitura do botão de power (ativo-baixo, INPUT_PULLUP) + latch de energia (self-hold, sai HIGH
+// no boot e cai LOW quando o PowerButton decide cortar). ⚠️ PLACEHOLDERS — CONFIRMAR na bancada
+// (mapear os pinos livres do header GPIO do board). Só usados quando powerButtonEnable=1; no
+// default (0) nunca são tocados.
+// ----------------------------------------------------------------------------
+static constexpr int kOdrivePinPowerBtn    = PC7;  // PLACEHOLDER — leitura do botão de power; CONFIRMAR na bancada
+static constexpr int kOdrivePinPowerEnable = PA15; // PLACEHOLDER — latch de energia (self-hold); CONFIRMAR na bancada
