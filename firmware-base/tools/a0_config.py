@@ -48,6 +48,7 @@ BID_SPRING_GAIN        = 39
 BID_DAMPER_GAIN        = 40
 BID_FRICTION_GAIN      = 41
 BID_INERTIA_GAIN       = 42
+BID_SOFT_POWER_ENABLE  = 43
 
 FIELD_MAP = {
     BID_MOTION_RANGE:    ("motionRange", BT_UINT16),
@@ -60,6 +61,7 @@ FIELD_MAP = {
     BID_DAMPER_GAIN:     ("damperGain", BT_UINT8),
     BID_FRICTION_GAIN:   ("frictionGain", BT_UINT8),
     BID_INERTIA_GAIN:    ("inertiaGain", BT_UINT8),
+    BID_SOFT_POWER_ENABLE: ("softPowerEnable", BT_UINT8),
 }
 
 

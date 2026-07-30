@@ -30,7 +30,7 @@
 // ----------------------------------------------------------------------
 namespace
 {
-constexpr uint32_t kBaseFlashMagic = 0x444C4235; // "DLB5" (bump: BaseCfg ganhou spring/damper/friction/inertiaGain)
+constexpr uint32_t kBaseFlashMagic = 0x444C4236; // "DLB6" (bump: BaseCfg ganhou softPowerEnable)
 constexpr int kBaseFlashMagicAddr = 0;
 constexpr int kBaseFlashCfgAddr = kBaseFlashMagicAddr + sizeof(kBaseFlashMagic);
 

@@ -59,6 +59,7 @@ uint8_t baseTypeForField(uint8_t id) {
         case BID_DAMPER_GAIN:
         case BID_FRICTION_GAIN:
         case BID_INERTIA_GAIN:
+        case BID_SOFT_POWER_ENABLE:
             return BT_UINT8;
         default:
             return 0xFF;
@@ -112,6 +113,7 @@ static void* fieldPtr(BaseCfg& c, uint8_t id) {
         case BID_DAMPER_GAIN:          return &c.damperGain;
         case BID_FRICTION_GAIN:        return &c.frictionGain;
         case BID_INERTIA_GAIN:         return &c.inertiaGain;
+        case BID_SOFT_POWER_ENABLE:    return &c.softPowerEnable;
         default:                       return nullptr;
     }
 }
@@ -233,4 +235,5 @@ void baseSeedDefaults(BaseCfg& c) {
     c.damperGain = 100;      // 100% = ganho neutro (não altera o Damper que o JOGO mandar)
     c.frictionGain = 100;    // 100% = ganho neutro (não altera a Friction que o JOGO mandar)
     c.inertiaGain = 100;     // 100% = ganho neutro (não altera a Inertia que o JOGO mandar)
+    c.softPowerEnable = 0;   // 0 = como hoje (contator/soft-power desligado); opt-in explícito
 }

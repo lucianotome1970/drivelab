@@ -55,6 +55,7 @@
 #define BID_DAMPER_GAIN           40
 #define BID_FRICTION_GAIN         41
 #define BID_INERTIA_GAIN          42
+#define BID_SOFT_POWER_ENABLE     43
 
 // Tipos de dado — devem casar com app/DriveLab.Core/Settings/SettingType.cs
 // (enum SettingType : byte).
@@ -105,6 +106,7 @@ struct BaseCfg {
     uint8_t  damperGain;    // BID_DAMPER_GAIN    UInt8 0..200
     uint8_t  frictionGain;  // BID_FRICTION_GAIN  UInt8 0..200
     uint8_t  inertiaGain;   // BID_INERTIA_GAIN   UInt8 0..200
+    uint8_t  softPowerEnable;   // BID_SOFT_POWER_ENABLE  UInt8 0/1 — liga o contator/soft-power (default 0 = como hoje)
 };
 
 // Retorna o SettingType (0..4, ver BT_*) do campo `id`, ou 0xFF se id desconhecido.
