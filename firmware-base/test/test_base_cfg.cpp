@@ -288,6 +288,22 @@ int main() {
         CHECK(n == 1 && type == BT_UINT8 && buf[0] == 1);
     }
 
+    // ----- power_button_enable (BID 44): default 0, round-trip 1 -----
+    {
+        BaseCfg c;
+        baseSeedDefaults(c);
+        CHECK(c.powerButtonEnable == 0);
+
+        uint8_t type, buf[8];
+        uint8_t w[1] = { 1 };
+
+        CHECK(baseTypeForField(BID_POWER_BUTTON_ENABLE) == BT_UINT8);
+        baseWriteField(c, BID_POWER_BUTTON_ENABLE, BT_UINT8, w, sizeof(w));
+        CHECK(c.powerButtonEnable == 1);
+        int n = baseReadField(c, BID_POWER_BUTTON_ENABLE, &type, buf);
+        CHECK(n == 1 && type == BT_UINT8 && buf[0] == 1);
+    }
+
     std::printf("base_cfg: %d checks, %d fails\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

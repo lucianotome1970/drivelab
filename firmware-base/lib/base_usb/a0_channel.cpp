@@ -30,7 +30,7 @@
 // ----------------------------------------------------------------------
 namespace
 {
-constexpr uint32_t kBaseFlashMagic = 0x444C4236; // "DLB6" (bump: BaseCfg ganhou softPowerEnable)
+constexpr uint32_t kBaseFlashMagic = 0x444C4237; // "DLB7" (bump: BaseCfg ganhou powerButtonEnable)
 constexpr int kBaseFlashMagicAddr = 0;
 constexpr int kBaseFlashCfgAddr = kBaseFlashMagicAddr + sizeof(kBaseFlashMagic);
 
