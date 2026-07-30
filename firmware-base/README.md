@@ -207,6 +207,8 @@ M1 (open-loop motor) → M2 (encoder + closed loop + brake resistor) → M3 (A0 
 
 **Testing the logic without the board:** the FFB "brain" (force→torque, soft-stop, safety) lives in a **portable module** (`lib/brain/`) behind a hardware seam (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`). It compiles into the firmware (HAL = SimpleFOC/ADC) **and** into a PC host test with mocks — run `test/run.sh` (no board or emulator needed). Only USB enumeration and real-time timing still need silicon (a cheap Black Pill F411 de-risks USB before the ODESC). See **[docs/base-ffb-brain.md](../docs/base-ffb-brain.md)** (how it's built) and **[docs/ffb-quality-log.md](../docs/ffb-quality-log.md)** (levers + discoveries with measured numbers — reconstruction, cogging, the FFB "shake" and its fix).
 
+**Position sensor / encoder:** the bench uses an **Omron E6B2-CWZ6C** (incremental ABI); the product plan is to support **three** encoders (E6B2, MT6701, AS5047P) behind SimpleFOC's `Sensor` interface. Trade-offs and mounting/wiring notes: **[docs/encoders.md](../docs/encoders.md)**.
+
 ### Wheel connection (USB hub + 5 V rail)
 
 For a quick-release rim, the base is meant to host a small **USB hub** (the ODESC and the rim share one cable to the PC) and a **5 V buck** off the main PSU to power the rim's RGB LEDs — so no extra USB cable dangles from the wheel. Full wiring, the signals that cross the slip ring, and the required protections are documented in the rim README: **[firmware-wheel → Wheel ↔ base wiring & power](../firmware-wheel/README.md#wheel--base-wiring--power-simple-vs-full-rim)**.
@@ -409,6 +411,8 @@ M1 (motor malha aberta) → M2 (encoder + malha fechada + brake resistor) → M3
 **Esqueleto do M1 (compila, pronto pra gravar):** `src/m1/main.cpp` (env `m1`) liga o cérebro (`FfbEngine` + partida segura + proteção) ao **SimpleFOC** (BLDCMotor/driver/encoder) e ao ADC — o alvo real das interfaces que mockamos no host. **Compila** (5,9% de flash), mas **não é validado em hardware**: os pinos/escalas de ADC da ODESC são placeholders p/ ajustar na bancada, e ele sobe **desarmado** (arma via serial `'1'`/`'0'` — segurança primeiro). Gravar: `pio run -e m1 -t upload`.
 
 **Testar a lógica sem a placa:** o "cérebro" FFB (força→torque, soft-stop, segurança) mora num **módulo portável** (`lib/brain/`) atrás de uma costura de hardware (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`). Compila no firmware (HAL = SimpleFOC/ADC) **e** num teste de host no PC com mocks — rode `test/run.sh` (sem placa nem emulador). Só a enumeração USB e o real-time ainda precisam de silício (uma Black Pill F411 barata de-risca o USB antes da ODESC). Ver **[docs/base-ffb-brain.md](../docs/base-ffb-brain.md)** (como é feito) e **[docs/ffb-quality-log.md](../docs/ffb-quality-log.md)** (alavancas + descobertas com números medidos — reconstrução, cogging, o "tremor" do FFB e seu fix).
+
+**Sensor de posição / encoder:** a bancada usa um **Omron E6B2-CWZ6C** (incremental ABI); o plano do produto é suportar **três** encoders (E6B2, MT6701, AS5047P) atrás da interface `Sensor` do SimpleFOC. Trade-offs e notas de montagem/fiação: **[docs/encoders.md](../docs/encoders.md)**.
 
 ### Conexão do volante (hub USB + trilho de 5 V)
 
