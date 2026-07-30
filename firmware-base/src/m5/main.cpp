@@ -294,6 +294,7 @@ static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem 
 
 static ContactorManager g_contactor;   // proteção off-state (só ativa com cfg().softPowerEnable)
 static bool g_contactorPinInit = false;
+static bool g_driveWanted = false;   // operador pediu uma operação de motor (fecha o contator antes de g_focPhase sair de IDLE)
 
 // VERIFY: o zero da cal via scan em modo-tensão NÃO é repetível (cogging → stick-slip corrompe o scan). Depois
 // de calcular o zero, dá um giro-teste; se NÃO girou (zero ruim → travou), recalibra automaticamente até girar.
@@ -445,16 +446,20 @@ static void restartScan(uint32_t nowMs)
 
 static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 {
+    if (g_a0.cfg().softPowerEnable) g_driveWanted = true;   // sinaliza intenção → contator começa a fechar no loop
+
     const float busV = focPower.busVoltage();
-    if (busV < 8.0f) { drivelab::dbgRingPrintf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
+    if (busV < 8.0f) { drivelab::dbgRingPrintf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_driveWanted=false; g_motorFault=true; return; }
 
     // Contator (se ligado): não energizar o motor até as fases estarem conectadas (contator fechado).
     if (g_a0.cfg().softPowerEnable && !g_contactor.readyToDrive()) {
-        // driveIntent vira true no loop (g_focPhase != IDLE); aqui só abortamos esta tentativa se ainda
-        // não fechou — o operador re-dispara em ~50ms (o contator fecha em kCloseMs=30ms).
+        // driveIntent vira true no loop (g_focPhase != IDLE || g_driveWanted); aqui só abortamos esta tentativa se ainda
+        // não fechou — o operador re-dispara em ~50ms (o contator fecha em kCloseMs=30ms). g_driveWanted continua
+        // true (setado acima) para o contator seguir fechando enquanto o operador re-dispara.
         drivelab::dbgRingPrintf("FOC: aguardando contator fechar (readyToDrive=0) — re-disparar\n");
         return;
     }
+    g_driveWanted = false;   // a partir daqui g_focPhase != IDLE cobre o driveIntent
 
     g_doCogMeasure = doMeasure;
     g_sweepMode = (arg == 99);                     // arg=99 → sweep de posição ±900°
@@ -465,7 +470,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     driver.voltage_power_supply = busV;
     if (!driver.initialized) { driver.dead_zone = 0.02f; driver.init(); }
     const bool drvOk = drv.configure();
-    if (!drvOk || !driver.initialized) { drivelab::dbgRingPrintf("FOC ABORT: drv=%d\n",drvOk?1:0); motor.disable(); g_motorFault=true; return; }
+    if (!drvOk || !driver.initialized) { drivelab::dbgRingPrintf("FOC ABORT: drv=%d\n",drvOk?1:0); motor.disable(); g_driveWanted=false; g_motorFault=true; return; }
     motor.linkDriver(&driver);
     motor.linkSensor(&encoder);
     // Sensor de corrente (foc_current). init uma vez (calibra offset com PWM=0); reusa nas calibrações seguintes.
@@ -1189,7 +1194,7 @@ void loop()
     // Contator fail-safe (Task 4, opt-in por soft_power_enable): passo da máquina de estados + aciona
     // a bobina. Com softPowerEnable=0 (default) nada aqui executa — nenhum GPIO é tocado.
     if (g_a0.cfg().softPowerEnable) {
-        const bool driveIntent = (g_focPhase != FOC_IDLE);
+        const bool driveIntent = (g_focPhase != FOC_IDLE) || g_driveWanted;
         g_contactor.step(driveIntent, g_motorFault, now);
         if (g_contactorPinInit) digitalWrite(kOdrivePinContactor, g_contactor.coilOn() ? HIGH : LOW);
     }
