@@ -459,7 +459,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     currentSense.linkDriver(&driver);
     if (!g_csReady) g_csReady = (currentSense.init() == 1);
     motor.linkCurrentSense(&currentSense);
-    motor.pole_pairs        = g_a0.cfg().polePairs;   // 15 (confirmado: 30 ímãs)
+    motor.pole_pairs        = g_a0.cfg().polePairs;   // 15 (CONFIRMADO: 30 ímãs contados). O pp_est~16 da cal era ESCORREGÃO do rotor no sweep, não pp real.
     motor.init();
     motor.enable();                                   // EXPLÍCITO — sequência que PRODUZIU torque na bancada
     adc2Config();                                 // RE-ARMA o gatilho do ADC (motor.init/enable reconfigurou o TIM1)
