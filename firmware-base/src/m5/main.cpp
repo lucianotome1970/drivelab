@@ -75,6 +75,7 @@
 #include "drv8301.h"
 #include "odrive_v36_pins.h"
 #include "motor_hal.h"
+#include "contactor_manager.h"
 #include "encoder_select.h"
 #include "ffb_engine.h"
 #include "apply_cfg.h"
@@ -291,6 +292,9 @@ static FocPhase g_focPhase  = FOC_IDLE;
 static uint32_t g_focT      = 0;
 static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem do arg do cmd 5, sem reflash
 
+static ContactorManager g_contactor;   // proteção off-state (só ativa com cfg().softPowerEnable)
+static bool g_contactorPinInit = false;
+
 // VERIFY: o zero da cal via scan em modo-tensão NÃO é repetível (cogging → stick-slip corrompe o scan). Depois
 // de calcular o zero, dá um giro-teste; se NÃO girou (zero ruim → travou), recalibra automaticamente até girar.
 static int          g_calRetry    = 0;
@@ -443,6 +447,15 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 {
     const float busV = focPower.busVoltage();
     if (busV < 8.0f) { drivelab::dbgRingPrintf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_motorFault=true; return; }
+
+    // Contator (se ligado): não energizar o motor até as fases estarem conectadas (contator fechado).
+    if (g_a0.cfg().softPowerEnable && !g_contactor.readyToDrive()) {
+        // driveIntent vira true no loop (g_focPhase != IDLE); aqui só abortamos esta tentativa se ainda
+        // não fechou — o operador re-dispara em ~50ms (o contator fecha em kCloseMs=30ms).
+        drivelab::dbgRingPrintf("FOC: aguardando contator fechar (readyToDrive=0) — re-disparar\n");
+        return;
+    }
+
     g_doCogMeasure = doMeasure;
     g_sweepMode = (arg == 99);                     // arg=99 → sweep de posição ±900°
     g_ffbMode   = (arg == 98);                     // arg=98 → FFB mola
@@ -1106,6 +1119,16 @@ void setup()
     applyCfgToEngine(g_a0.cfg(), engine, kLoopHz);
     applyBenchBusWindow(engine);  // M6, Task 2 -- ver comentário no helper acima
 
+    // Contator fail-safe (Task 4, opt-in por soft_power_enable): deixa o pino em estado seguro
+    // (bobina OFF -> contator ABERTO) no boot. Com softPowerEnable=0 (default) nada aqui executa —
+    // nenhum GPIO é tocado, o comportamento é idêntico ao de hoje.
+    if (g_a0.cfg().softPowerEnable) {
+        pinMode(kOdrivePinContactor, OUTPUT);
+        digitalWrite(kOdrivePinContactor, LOW);   // bobina OFF -> contator ABERTO (fail-safe no boot)
+        g_contactorPinInit = true;
+        drivelab::dbgRingPrintf("SOFT-POWER: contator ativo (pino %d), aberto no boot\n", kOdrivePinContactor);
+    }
+
     // Divisor do VBUS pela VARIANTE DA PLACA (24V→11, 56V→19) — propriedade do hardware, independente da
     // tensão de operação. Um binário só lê certo nas duas placas, sem recompilar. (Não há auto-detecção por
     // hardware — nem o firmware oficial do ODrive detecta; usa #define de compile-time.)
@@ -1162,6 +1185,14 @@ void loop()
     }
 
     uint32_t now = millis();
+
+    // Contator fail-safe (Task 4, opt-in por soft_power_enable): passo da máquina de estados + aciona
+    // a bobina. Com softPowerEnable=0 (default) nada aqui executa — nenhum GPIO é tocado.
+    if (g_a0.cfg().softPowerEnable) {
+        const bool driveIntent = (g_focPhase != FOC_IDLE);
+        g_contactor.step(driveIntent, g_motorFault, now);
+        if (g_contactorPinInit) digitalWrite(kOdrivePinContactor, g_contactor.coilOn() ? HIGH : LOW);
+    }
 
     static uint32_t lastSensor = 0;
     if (!g_csReady && now - lastSensor >= 100)   // ⚠️ analogRead do MCU temp DE-INICIALIZA o ADC → quebra o injected

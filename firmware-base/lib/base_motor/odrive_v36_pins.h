@@ -97,3 +97,10 @@ static constexpr int kOdrivePinM1Temp  = PA4;   // M1_TEMP — alternativa (eixo
 // ----------------------------------------------------------------------------
 static constexpr int kOdrivePinAuxBrakeL = PB10;  // TIM2_CH3 — AUX_L (half-bridge low-side)
 static constexpr int kOdrivePinAuxBrakeH = PB11;  // TIM2_CH4 — AUX_H (half-bridge high-side)
+
+// ----------------------------------------------------------------------------
+// Contator fail-safe (proteção off-state, opt-in por soft_power_enable). GPIO livre do header que
+// aciona a bobina (via transistor). ⚠️ VALOR A CONFIRMAR NA BANCADA — mapear os pinos do header GPIO
+// do board (4·3·2·1). Só é usado quando softPowerEnable=1; no default (0) nunca é tocado.
+// ----------------------------------------------------------------------------
+static constexpr int kOdrivePinContactor = PC6;  // PLACEHOLDER seguro — CONFIRMAR o pino real do header
