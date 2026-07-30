@@ -68,6 +68,23 @@ public class BaseSettingsSchemaTests
         Assert.Equal(SettingTab.Hardware, d.Tab);
     }
 
+    [Fact]
+    public void SoftPowerEnable_Bid_Matches_Firmware()
+    {
+        Assert.Equal(43, (byte)BaseSettingId.SoftPowerEnable);
+    }
+
+    [Fact]
+    public void SoftPowerEnable_Has_Expected_Metadata()
+    {
+        var d = BaseSettingsSchema.Get(BaseSettingId.SoftPowerEnable);
+        Assert.Equal(SettingType.UInt8, d.Type);
+        Assert.Equal(0, d.Min);
+        Assert.Equal(1, d.Max);
+        Assert.Equal(0, d.Default);
+        Assert.Equal(SettingTab.Hardware, d.Tab);
+    }
+
     [Theory]
     [InlineData(BaseSettingId.SpringGain, 39)]
     [InlineData(BaseSettingId.DamperGain, 40)]
