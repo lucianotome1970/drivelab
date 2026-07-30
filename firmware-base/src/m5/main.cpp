@@ -286,7 +286,7 @@ static float    g_elecAngle  = 0.0f;  // ângulo elétrico do sweep manual (rad)
 // (atrito) e inverte → mapa de compensação. No RUN, soma compensation(mech) ao feed_forward_voltage.q do
 // SimpleFOC a cada tick → cancela o ripple. cmd 5 = cal + RUN (aplica cogging SE já medido); cmd 7 = cal +
 // MEDE + RUN com compensação. A/B: rode cmd 5 (baseline) e depois cmd 7 (com cogging) e compare a ondulação.
-enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_VERIFY, FOC_COG, FOC_RUN };
+enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_ZERO, FOC_VERIFY, FOC_COG, FOC_RUN };
 static FocPhase g_focPhase  = FOC_IDLE;
 static uint32_t g_focT      = 0;
 static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem do arg do cmd 5, sem reflash
@@ -343,6 +343,7 @@ static volatile bool g_pidStateDirty = false;
 static bool runawayCut()
 {
     if (fabsf(motor.shaft_velocity) > 30.0f) {   // rad/s — teto 0.5A ja e a seguranca; corte relaxado p/ nao falso-tripar no ruido do geartrain
+        engine.enableRequested = false;          // desliga o engine no runaway (M6)
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE; g_motorFault = true;
         drivelab::dbgRingPrintf("RUNAWAY! |vel|=%dmrad/s > 30 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
@@ -358,7 +359,7 @@ static const float    kCogMeasV   = 2.0f;       // rad/s da medição (lento →
 static const uint32_t kCogMeasMs  = 12000;      // ~4 voltas mecânicas a 2 rad/s (2π/2 ≈ 3,14s/volta)
 static const float    kCogFFClamp = 0.5f;       // teto do feed-forward de cogging (A, foc_current) — segurança
 
-static const float    kCalV     = 4.0f;   // tensão de arrasto (estático a 3V escorregou; contínuo a 4V arrasta)
+static const float    kCalV     = 6.0f;   // tensão de arrasto (3V/4V escorregavam no cogging forte — 6V arrasta firme)
 static const float    kCalOmega = 4.0f;   // rad/s ELÉTRICO da varredura (mais devagar → rastreio mais firme)
 static const uint32_t kLockMs   = 1500;   // assentamento inicial (maior → parte de posição mais estável)
 static const uint32_t kScanMs   = 6000;   // duração por sentido (~24 rad elec ≈ 3,8 voltas → média melhor)
@@ -469,7 +470,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     // voltage_limit ALTO = autoridade pro PI de corrente (NÃO é a segurança). A SEGURANÇA de torque é o
     // current_limit BAIXO (0.5A gentil). Com 2V o PI nao chegava nem a 1A e o motor nao girava.
     motor.voltage_limit     = 5.0f;
-    motor.current_limit     = (g_doCogMeasure || g_gameFfbMode) ? 1.0f : 0.5f;  // jogo capado a 1A (teto de seguranca); cogging idem; senão 0.5A gentil
+    motor.current_limit     = g_gameFfbMode ? 1.0f : (g_doCogMeasure ? 1.0f : 0.5f);  // jogo: cap 1A GENTIL (motor quente + 1º teste com engine ligado); cogging 1A; senão 0.5A
     motor.velocity_limit    = 12.0f;
     // PI de corrente — AO VIVO pelo config (currentP/currentI via app/HID) p/ tunar sem reflash. 0 = default.
     const float cP = (g_a0.cfg().currentP > 0.0f) ? g_a0.cfg().currentP : 1.5f;
@@ -533,12 +534,31 @@ static void stage1aTick(uint32_t nowMs)
                                  (int)(dFwd*1000.0f), (int)(expected*1000.0f));
             motor.disable(); g_motorFault=true; g_focPhase=FOC_IDLE; return;
         }
-        motor.sensor_direction    = cw ? Direction::CW : Direction::CCW;
-        motor.zero_electric_angle = cw ? atan2f((float)g_sinP,(float)g_cosP)
-                                       : atan2f((float)g_sinM,(float)g_cosM);
-        drivelab::dbgRingPrintf("CAL fim: dFwd=%dmrad esperado=%dmrad dir=%s zero=%dmrad N=%lu -> MALHA FECHADA %d rad/s\n",
-                             (int)(dFwd*1000.0f), (int)(expected*1000.0f), cw?"CW":"CCW",
-                             (int)(motor.zero_electric_angle*1000.0f), (unsigned long)g_calN, (int)g_velTarget);
+        motor.sensor_direction = cw ? Direction::CW : Direction::CCW;
+        // pp check (jeito SimpleFOC): mech percorrido × pp deve ≈ span elétrico (kScanSpan). Se divergir muito,
+        // pole_pairs provavelmente está errado (dá "muita corrente, sem torque"). Só loga (não aborta).
+        const float ppEst = fabsf(dFwd) > 1e-4f ? kScanSpan / fabsf(dFwd) : 0.0f;
+        drivelab::dbgRingPrintf("CAL: dir=%s dFwd=%dmrad pp_est=%d (cfg=%d) -> lock-and-settle p/ o ZERO\n",
+                             cw?"CW":"CCW", (int)(dFwd*1000.0f), (int)(ppEst+0.5f), (int)motor.pole_pairs);
+        // ZERO por LOCK-AND-SETTLE (jeito SimpleFOC, robusto ao cogging) em vez do sweep-correlate (frágil,
+        // escorregava). Trava o campo em _3PI_2 e deixa o rotor ASSENTAR (estado FOC_ZERO) — só precisa de
+        // torque de fixação num ponto, não rastreio contínuo. Ver FOCMotor::alignSensor do SimpleFOC.
+        motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);
+        g_focPhase = FOC_ZERO; g_focT = nowMs;
+        return;
+    }
+
+    // FOC_ZERO — LOCK-AND-SETTLE do zero elétrico (jeito SimpleFOC::alignSensor, robusto ao cogging):
+    // segura o campo em _3PI_2, deixa o rotor ASSENTAR, e lê zero_electric_angle = electricalAngle().
+    if (g_focPhase == FOC_ZERO) {
+        motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);
+        if ((int32_t)(nowMs - g_focT) < 800) return;    // ~800ms p/ o rotor assentar em _3PI_2
+        encoder.update();
+        motor.zero_electric_angle = 0.0f;
+        motor.zero_electric_angle = motor.electricalAngle();   // offset elétrico no ponto travado (SimpleFOC)
+        drivelab::dbgRingPrintf("CAL: ZERO lock-and-settle = %dmrad (dir=%s) -> MALHA FECHADA %d rad/s\n",
+                             (int)(motor.zero_electric_angle*1000.0f),
+                             motor.sensor_direction==Direction::CW?"CW":"CCW", (int)g_velTarget);
         motor.controller = MotionControlType::velocity;
         motor.feed_forward_voltage.q = 0.0f;
         encoder.update(); g_verStart = encoder.getAngle();
@@ -595,8 +615,15 @@ static void stage1aTick(uint32_t nowMs)
             } else if (g_gameFfbMode && canEnterGameFfb(g_motorReady)) {
                 motor.controller = MotionControlType::torque;   // torque via foc_current (idem mola)
                 if (g_gameFfbSynthetic) engine.setGameForce(1500.0f);  // força constante pequena e CONHECIDA (~1500/32767)
+                // >>> BUG FIX (M6): SEM isto o engine.step() SEMPRE retorna 0 (startup.forceEnabled()==false).
+                // Ligamos o engine aqui. Pulamos o align open-loop do brain (já FOC-calibramos por stage1a) e
+                // usamos ramp curto (soft-start). O centro do FFB fica na posição atual (setCenterHere).
+                focEncoder.setCenterHere();
+                engine.startup.cfg.alignSeconds = 0.0f;
+                engine.startup.cfg.rampSeconds  = 0.5f;
+                engine.enableRequested = true;
                 g_focPhase = FOC_RUN; g_gameFfbT = nowMs;
-                drivelab::dbgRingPrintf("-> FFB DO JOGO (%s), teto 1A. Desarma em runaway/fault/USB-drop/app-off.\n",
+                drivelab::dbgRingPrintf("-> FFB DO JOGO (%s), teto 1A, engine ARMADO (enableRequested=1). Desarma em runaway/fault/USB-drop/app-off.\n",
                                      g_gameFfbSynthetic ? "SINTETICO" : "ACC");
             } else {
                 g_focPhase = FOC_RUN;
@@ -648,8 +675,12 @@ static void stage1aTick(uint32_t nowMs)
 
     // FOC_RUN (giro por velocidade OU sweep de posição ±900°)
     if (runawayCut()) return;                                        // segurança: corta se a velocidade disparar
-    const uint32_t runDur = g_sweepMode ? 24000u : ((g_ffbMode || g_gameFfbMode) ? 20000u : 6000u);   // ffb/sweep duram mais p/ brincar
-    if ((int32_t)(nowMs - g_focT) > (int32_t)runDur) {
+    // Modo FFB do JOGO (M6): roda CONTÍNUO enquanto armado (como um volante de verdade) — NÃO tem
+    // timeout fixo; para só por desarme (shouldDisarmGameFfb: USB-drop/app-off, checado no branch abaixo),
+    // runawayCut (acima) ou watchdog do engine (força decai se o jogo parar de mandar). Os modos de bancada
+    // (mola/sweep/velocidade) mantêm o timeout de segurança.
+    const uint32_t runDur = g_sweepMode ? 24000u : (g_ffbMode ? 20000u : 6000u);
+    if (!g_gameFfbMode && (int32_t)(nowMs - g_focT) > (int32_t)runDur) {
         motor.feed_forward_voltage.q = 0.0f;
         motor.move(0.0f); motor.loopFOC(); motor.disable();
         g_focPhase = FOC_IDLE;
@@ -662,10 +693,31 @@ static void stage1aTick(uint32_t nowMs)
         // aqui cobrimos USB-drop e app-off (fault do engine é tratado internamente por engine.step()).
         if (shouldDisarmGameFfb(/*runaway=*/false, /*fault=*/false,
                                 TinyUSBDevice.mounted(), g_a0.forceEnabled())) {
+            engine.enableRequested = false;   // desliga o engine (soft-start reseta na próxima)
             motor.move(0.0f); motor.loopFOC(); motor.disable();
             g_focPhase = FOC_IDLE;
             drivelab::dbgRingPrintf("FFB JOGO: desarmado (USB/app)\n");
             return;
+        }
+        // CORTE POR CORRENTE (M6, segurança): o current_limit clampa o SETPOINT, mas com zero FOC ruim a
+        // corrente REAL sobe (foi o que deu 13A na bancada, ângulo errado). Se |Iq| medido passar do limiar
+        // por > kOverIqMs, algo está errado (zero/ângulo) → desarma NA HORA. Deixa transiente curto passar.
+        {
+            static const float    kOverIqA  = 1.5f;   // A (acima do cap de 1A; pega sobrecorrente real)
+            static const uint32_t kOverIqMs = 150u;   // ms tolerados acima do limiar
+            static uint32_t s_overIqT = 0;
+            const float iqAbs = fabsf(motor.current.q);
+            if (iqAbs > kOverIqA) {
+                if (s_overIqT == 0) s_overIqT = nowMs;
+                if ((int32_t)(nowMs - s_overIqT) > (int32_t)kOverIqMs) {
+                    engine.enableRequested = false;
+                    motor.move(0.0f); motor.loopFOC(); motor.disable();
+                    g_focPhase = FOC_IDLE; g_motorFault = true;
+                    drivelab::dbgRingPrintf("FFB JOGO: CORTE por corrente Iq=%dmA (>%dmA por >%dms) — zero/angulo FOC ruim?\n",
+                        (int)(iqAbs*1000.0f), (int)(kOverIqA*1000.0f), (int)kOverIqMs);
+                    return;
+                }
+            } else s_overIqT = 0;
         }
         // ⚠️ Nota de unidade, NÃO-bloqueante: focMotor.setTorque(nm) faz motor.move(nm), e em foc_current o
         // move() trata o valor como CORRENTE (A). Então o "Nm" do engine é lido como "A" — a SEGURANÇA está
@@ -942,6 +994,10 @@ static void applyBenchBusWindow(drivelab::FfbEngine &e)
 {
     e.startup.cfg.busMinV = 12; e.startup.cfg.busMaxV = 30;  // aceita 19V (bancada) — AJUSTAR na rampa
     e.guard.overVoltageV  = 30;
+    // Teto de torque do engine (M6 feel): durável por cima do applyCfgToEngine (que deriva de maxTorqueLimit%).
+    // 3.0 fica logo ACIMA do cap de corrente (2.5A), então quem realmente limita é o current_limit=2.5A
+    // (clamp de HW). Sem isto, um maxTorqueLimit% baixo clamparia o torque abaixo do cap e a força sumiria.
+    e.force.torqueLimitNm = 1.0f;   // teto gentil (casa com current_limit 1A do modo jogo); reavaliar com engine ligado
 }
 
 void setup()
@@ -987,7 +1043,7 @@ void setup()
     motor.voltage_limit = 2.0f;
 
     // ---- Config do "cérebro" (lib/brain) — CONSERVADORA ----
-    engine.force.maxTorqueNm   = 2.5f;  // nominal placeholder — AJUSTAR na bancada
+    engine.force.maxTorqueNm   = 2.5f;  // escala nominal (revertido: a escala 15 foi chute sobre dado ruim — o engine estava DESLIGADO). Reavaliar com o engine ligado
     engine.force.torqueLimitNm = 1.0f;  // teto DURO de segurança, baixo neste passo
     engine.currentLimitA       = 1.5f;  // corte por sobrecorrente bem conservador
     engine.enableRequested     = false; // NUNCA setado true neste arquivo
