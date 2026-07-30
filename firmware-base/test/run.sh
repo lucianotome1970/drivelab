@@ -74,3 +74,7 @@ c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out17" test_encode
 out18="$(mktemp -d)/ffb_arm_guard_test"
 c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out18" test_ffb_arm_guard.cpp
 "$out18"
+
+out19="$(mktemp -d)/contactor_manager_test"
+c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out19" test_contactor_manager.cpp
+"$out19"
