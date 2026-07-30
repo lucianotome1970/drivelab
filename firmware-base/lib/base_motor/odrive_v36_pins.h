@@ -112,5 +112,5 @@ static constexpr int kOdrivePinContactor = PC6;  // PLACEHOLDER seguro — CONFI
 // (mapear os pinos livres do header GPIO do board). Só usados quando powerButtonEnable=1; no
 // default (0) nunca são tocados.
 // ----------------------------------------------------------------------------
-static constexpr int kOdrivePinPowerBtn    = PC7;  // PLACEHOLDER — leitura do botão de power; CONFIRMAR na bancada
+static constexpr int kOdrivePinPowerBtn    = PA3;  // GPIO4 do header MKS (livre no m5; ao lado do OLED PA0/PA1/PA2). Botão momentâneo p/ GND, INPUT_PULLUP.
 static constexpr int kOdrivePinPowerEnable = PA15; // PLACEHOLDER — latch de energia (self-hold); CONFIRMAR na bancada
