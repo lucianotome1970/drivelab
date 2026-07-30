@@ -53,4 +53,5 @@ public enum BaseSettingId : byte
     FrictionGain = 41,
     InertiaGain = 42,
     SoftPowerEnable = 43,
+    PowerButtonEnable = 44,
 }

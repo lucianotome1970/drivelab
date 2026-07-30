@@ -61,6 +61,7 @@ public static class CompositionRoot
             BaseSettingId.CurrentI,
             BaseSettingId.CalibrationCurrent,
             BaseSettingId.SoftPowerEnable,  // soft-power/contator: 0=como hoje, 1=contator ativo (opt-in)
+            BaseSettingId.PowerButtonEnable,  // soft-power por botão: 0=como hoje, 1=tap-liga/segura-desliga (opt-in)
         }),
         new("Feel", new[]
         {

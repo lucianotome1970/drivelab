@@ -55,6 +55,7 @@ public static class BaseSettingsSchema
         new(BaseSettingId.FrictionGain, "friction_gain", "Ganho de Friction (jogo)", SettingType.UInt8, 0, 200, "%", SettingTab.Feel, 100),
         new(BaseSettingId.InertiaGain, "inertia_gain", "Ganho de Inertia (jogo)", SettingType.UInt8, 0, 200, "%", SettingTab.Feel, 100),
         new(BaseSettingId.SoftPowerEnable, "soft_power_enable", "Soft-power/contator (0=como hoje · 1=contator ativo)", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0),
+        new(BaseSettingId.PowerButtonEnable, "power_button_enable", "Soft-power por botão (0=como hoje · 1=botão tap-liga/segura-desliga)", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0),
     };
 
     private static readonly Dictionary<byte, SettingDescriptor> ById =

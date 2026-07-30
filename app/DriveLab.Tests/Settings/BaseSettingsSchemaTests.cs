@@ -85,6 +85,23 @@ public class BaseSettingsSchemaTests
         Assert.Equal(SettingTab.Hardware, d.Tab);
     }
 
+    [Fact]
+    public void PowerButtonEnable_Bid_Matches_Firmware()
+    {
+        Assert.Equal(44, (byte)BaseSettingId.PowerButtonEnable);
+    }
+
+    [Fact]
+    public void PowerButtonEnable_Has_Expected_Metadata()
+    {
+        var d = BaseSettingsSchema.Get(BaseSettingId.PowerButtonEnable);
+        Assert.Equal(SettingType.UInt8, d.Type);
+        Assert.Equal(0, d.Min);
+        Assert.Equal(1, d.Max);
+        Assert.Equal(0, d.Default);
+        Assert.Equal(SettingTab.Hardware, d.Tab);
+    }
+
     [Theory]
     [InlineData(BaseSettingId.SpringGain, 39)]
     [InlineData(BaseSettingId.DamperGain, 40)]
