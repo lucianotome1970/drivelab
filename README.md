@@ -130,6 +130,17 @@ The desktop app that connects to all of them: **[DriveLab Studio (app) »](app/R
 Want to run the app against **your own board**? The full USB-HID contract is documented in **[docs/PROTOCOL.md »](docs/PROTOCOL.md)** — implement it and the Studio drives your hardware, no app changes.
 <br/>🇧🇷 *Quer rodar o app na **sua própria placa**? O contrato USB-HID completo está em **[docs/PROTOCOL.md »](docs/PROTOCOL.md)** — implemente-o e o Studio controla seu hardware, sem mexer no app.*
 
+### 📚 Guides / Guias
+
+Hardware & build guides · *Guias de hardware e montagem:*
+
+- **[Encoder guide / Guia de encoders](docs/encoders.md)** — which position sensor to buy (E6B2 · MT6701 · AS5047P). *Qual sensor de posição comprar.*
+- **[Brake resistor / Resistor de frenagem](docs/brake-resistor.md)** — why 2Ω, and the Ω vs W ratings. *Por que 2Ω, e os ratings Ω vs W.*
+- **[Soft-power & contactor / Soft-power e contator](docs/soft-power-contator.md)** — safe power-off, contactor wiring, soft-power button. *Desligar com segurança, fiação do contator, botão soft-power.*
+- **[Torque / Cálculo de torque](docs/calculo-torque.md)** — sizing the motor's Nm. *Dimensionar o torque do motor.*
+- **[Maker's guide / Guia do criador](docs/guia-criador.md)** — configure hardware & ship a Windows installer. *Configurar hardware e gerar instalador Windows.*
+- **[USB-HID protocol / Protocolo USB-HID](docs/PROTOCOL.md)** — the full contract to drive your own board. *O contrato completo para sua própria placa.*
+
 ---
 
 ## 🧠 Why the RP2040? / Por que o RP2040?
