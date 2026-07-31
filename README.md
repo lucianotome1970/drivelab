@@ -5,7 +5,7 @@
 <h1 align="center">DriveLab</h1>
 
 <p align="center"><b>Open-source Direct-Drive sim-racing wheel</b><br/>
-Custom firmware for the ODESC v4.2 + a cross-platform configurator app.</p>
+Custom firmware for ODrive v3.6-class boards (validated on the MKS ODRIVE-S V3.6-S6V) + a cross-platform configurator app.</p>
 
 <p align="center">
   <a href="https://discord.gg/Xp2pGm5wj"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
@@ -105,7 +105,7 @@ Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake re
 </tr>
 </table>
 
-> Any F405 ODrive-class board works (ODESC, MKS XDrive, ODrive v3.6…). The MKS **XDrive MINI** adds an onboard AS5047P encoder, but on a hub motor you usually mount an external encoder on the shaft anyway. · *Qualquer placa F405 classe-ODrive serve (ODESC, MKS XDrive, ODrive v3.6…). A **XDrive MINI** traz um AS5047P onboard, mas num hub motor você normalmente usa um encoder externo no eixo.*
+> ℹ️ The firmware is currently **pinned to the ODrive v3.6 layout** and **validated on an MKS ODRIVE-S V3.6-S6V**. Other F405 ODrive-class boards share the MCU and USB, but a board with a **different pinout (e.g. ODESC v4.2)** may need a pin remap in `firmware-base/lib/base_motor/odrive_v36_pins.h`. · *🇧🇷 O firmware está **pinado para o layout ODrive v3.6** e **validado numa MKS ODRIVE-S V3.6-S6V**. Outras placas F405 classe-ODrive compartilham o MCU e o USB, mas uma placa com **pinout diferente (ex.: ODESC v4.2)** pode exigir remapear os pinos em `odrive_v36_pins.h`.*
 
 ---
 
@@ -115,8 +115,8 @@ DriveLab is split into independent firmwares — one per device, each with its o
 
 🇧🇷 *O DriveLab é dividido em firmwares independentes — um por dispositivo, cada um com seu README. O app Studio conecta a cada um via USB HID e os autodetecta por VID/PID.*
 
-- **[Wheelbase / Base »](firmware-base/README.md)** — ODESC v4.2 · STM32F405 · the FFB motor stage (SimpleFOC). *Draft (M0/M0.5), no hardware yet.*
-  <br/>🇧🇷 *Estágio do motor FFB (ODESC/STM32F405). Rascunho (M0/M0.5), ainda sem hardware.*
+- **[Wheelbase / Base »](firmware-base/README.md)** — ODrive v3.6-class (MKS ODRIVE-S V3.6-S6V) · STM32F405 · the FFB motor stage (SimpleFOC). *Runs the motor under FOC; FFB pipe validated with ACC/AMS2/EVO. Game-effects (M6) on the bench.*
+  <br/>🇧🇷 *Estágio do motor FFB (ODrive v3.6-class / STM32F405). Roda o motor em FOC; pipe de FFB validado com ACC/AMS2/EVO. Efeitos de jogo (M6) na bancada.*
 - **[Pedals / Pedaleira »](firmware-pedal/README.md)** — RP2040 · 3 axes · load cell (HX711) · **P0** protocol. **✅ Validated on hardware.**
   <br/>🇧🇷 *RP2040, 3 eixos, load cell (HX711), protocolo **P0**. **✅ Validado em hardware.***
 - **[Handbrake / Freio de mão »](firmware-handbrake/README.md)** — RP2040 · 1 axis + button · **P0** protocol. **✅ Validated on hardware** (physical sensor still to test).
@@ -172,14 +172,14 @@ The pedals, handbrake and rim all run on a **Waveshare RP2040-Zero**. The device
 
 ### What is DriveLab?
 
-DriveLab turns cheap, widely-available parts — an **ODESC v4.2** motor controller and a **hoverboard hub motor** — into a real **Direct-Drive force-feedback steering wheel** for sim racing (Assetto Corsa Competizione, iRacing, rFactor 2, Automobilista 2, and any DirectInput title).
+DriveLab turns cheap, widely-available parts — an **ODrive v3.6-class** motor controller (validated on an **MKS ODRIVE-S V3.6-S6V**) and a **hoverboard hub motor** — into a real **Direct-Drive force-feedback steering wheel** for sim racing (Assetto Corsa Competizione, iRacing, rFactor 2, Automobilista 2, and any DirectInput title).
 
 It is a fully open alternative to closed solutions like FFBeast, with two halves:
 
 - **DriveLab Studio** — a desktop app (.NET 8 / Avalonia) to configure and monitor the wheel. Runs on Windows, and on macOS/Linux for development.
-- **DriveLab Firmware** — firmware for the ODESC v4.2 board that enumerates as a standard DirectInput force-feedback wheel and drives the motor with [SimpleFOC](https://simplefoc.com).
+- **DriveLab Firmware** — firmware for the ODrive v3.6-class board that enumerates as a standard DirectInput force-feedback wheel and drives the motor with [SimpleFOC](https://simplefoc.com).
 
-> ⚠️ **Status: in active development.** The app is functional (with a hardware simulator you can use today, no board required). The firmware is in bring-up. See the [Roadmap](#roadmap).
+> ⚠️ **Status: in active development.** The app is functional (with a hardware simulator, no board required). The firmware **runs the motor under FOC** and the **FFB pipe is validated with real games (ACC 400 Hz, AMS2, EVO)**; full on-track FFB tuning is waiting on the magnetic encoder. See the [Roadmap](#roadmap).
 
 ### Features
 
@@ -187,16 +187,16 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 - Clean, modern UI with **Wheel Base**, **Pedals**, **Handbrake**, and **Wheel** (rim/LEDs) modules.
 - **Named profiles per module** — save, apply, rename and delete named configs (e.g. "GT3", "Rain") for the base, pedals, handbrake and wheel; selecting a profile writes it to the controller, and *Save* lights up only when the current config differs from the loaded profile.
 - **Wheel LEDs** — per-button colors + global brightness; the rim **stores its colors in flash** (lights up on its own after a power-cycle) and the app **reads them back** from the board on connect.
-- Live **settings** grouped in tabs (Basic / Advanced / Hardware) — total force, damper, spring, soft-stop, torque & power limits, encoder config, current loop, etc. Auto-load on connect, auto-save on change.
+- Live **settings** grouped in tabs (Basic / Advanced / **Feel** / Hardware) — total force, damper, spring, soft-stop, **per-effect FFB gains** (spring/damper/friction/inertia), torque & power limits, encoder config, current loop, etc. Auto-load on connect, auto-save on change.
 - **Telemetry monitor** in the Hardware tab: bus voltage + FET/motor/MCU temperatures + motor current, with ok/warning/critical thresholds.
-- **Two encoder types supported** — you choose which one you built: incremental **quadrature** (Omron E6B2) or absolute **magnetic SPI** (AS5047). Absolute keeps its zero across power cycles.
+- **Three encoder types** — incremental **quadrature** (Omron E6B2, the current bench sensor) or absolute **magnetic** (MT6701 planned default · AS5047P planned). Absolute keeps its zero across power cycles. *(Magnetic drivers land in Stage 1.)*
 - **Simulator mode** — a virtual wheel with real physics, so you can develop and test the whole UI without any hardware.
 - Bilingual (English / Portuguese), auto-detected from the OS.
 
 **Firmware**
 - Enumerates as a **DirectInput FFB wheel** — games send force feedback to it exactly like they would to any commercial wheel, no plugin needed.
 - **SimpleFOC** field-oriented control of the hub motor.
-- Multi-stage safety: brake resistor, current/torque limits, soft-stop, over-voltage cutoff.
+- Multi-stage safety: brake-resistor chopper, current/torque limits, soft-stop, over-voltage cutoff, plus **opt-in off-state contactor and soft-power button** (host-tested groundwork).
 - Companion firmware for **pedals** and **handbrake** modules (RP2040 + HX711 load cell).
 
 ### Hardware — wheelbase / base (bill of materials)
@@ -205,7 +205,7 @@ This is the **base** (the direct-drive wheelbase). Each other module is an indep
 
 | Part | Notes |
 |------|-------|
-| **ODESC v4.2** or **MKS XDrive** (STM32F405) | Any F405 ODrive-class board — see [Base board](#-base-board--placa-base). ODESC comes in **24 V** (35 V caps → keep the bus ≤ ~24 V) and **56 V** (63 V caps → up to 56 V); MKS XDrive is 12–56 V. Match the PSU to your board. Running a **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. |
+| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board--placa-base). Comes in **24 V** (35 V caps → keep the bus ≤ ~24 V) and **56 V** (63 V caps → up to 56 V). Match the PSU to your board. Running a **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. Other F405 boards (ODESC, MKS XDrive) may need a pin remap. |
 | **Hoverboard hub motor** | The direct-drive actuator. |
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
@@ -231,7 +231,7 @@ The game does **not** send telemetry — it sends the **already-computed force**
 Game physics (ACC/iRacing)  →  one torque value for the wheel  (~360–400 Hz)
         ↓  DirectInput / HID PID  (Windows)
         ↓  USB
-Firmware (ArduinoJoystickWithFFBLibrary.getForce)  →  force  [-255..255]
+Firmware (TinyUSB HID PID parser → FfbEngine.step)  →  torque
         ↓  SimpleFOC
 Motor torque  →  you feel it
 ```
@@ -242,7 +242,7 @@ Condition effects (spring/damper) are computed on the device from the **encoder*
 
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, tests
-firmware-base/       Wheelbase firmware — ODESC v4.2 / STM32F405, the FFB motor (PlatformIO)  [MIT]
+firmware-base/       Wheelbase firmware — ODrive v3.6-class / STM32F405, the FFB motor (PlatformIO)  [MIT]
 firmware-pedal/      Pedals firmware — RP2040 + HX711                                        [MIT]
 firmware-handbrake/  Handbrake firmware — RP2040 + HX711                                     [MIT]
 firmware-wheel/      Rim firmware — RP2040 (Waveshare Zero): gamepad + WS2812 LEDs (PlatformIO)  [MIT]
@@ -264,7 +264,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ```bash
 ./scripts/build.sh    # or scripts/build.ps1 on Windows
-./scripts/test.sh     # 264 tests
+./scripts/test.sh     # ~470 app tests + firmware host tests
 ```
 
 **Ship a Windows build** (self-contained single-file `.exe`, no .NET needed on the target):
@@ -278,7 +278,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ### Roadmap
 
-`M0` toolchain/serial → `M0.5` USB FFB enumeration → `M1` open-loop motor → `M2` encoder + closed loop + brake resistor → `M2.5` telemetry → `M3` app ↔ firmware link → `M4` settings → `M5` FFB force → motor → `M6` game effects → `M7` sim validation. Details in `docs/`.
+`M0` ✅ → `M0.5` ✅ USB FFB → `M1`–`M2` motor + encoder + closed loop ✅ → `M2.5` telemetry ✅ → `M3` app↔firmware ✅ → `M4` settings ✅ → `M5` FFB force → motor ✅ *(firmware; bench-tested)* → `M6` game effects 🔧 *(firmware done; on-track validation waiting on the magnetic encoder)* → `M7` sim validation ⏳. The brake-resistor chopper, off-state contactor and soft-power are implemented as **opt-in groundwork**. Details in `docs/` — start with **[how-it-works.md](docs/how-it-works.md)**.
 
 ### ⚠️ Safety
 
@@ -304,14 +304,14 @@ Issues and pull requests are welcome. New source files should include the standa
 
 ### O que é o DriveLab?
 
-O DriveLab transforma peças baratas e fáceis de achar — uma controladora **ODESC v4.2** e um **motor de roda de hoverboard** — num verdadeiro **volante Direct-Drive com force feedback** para simuladores (Assetto Corsa Competizione, iRacing, rFactor 2, Automobilista 2 e qualquer título DirectInput).
+O DriveLab transforma peças baratas e fáceis de achar — uma controladora **ODrive v3.6-class** (validada numa **MKS ODRIVE-S V3.6-S6V**) e um **motor de roda de hoverboard** — num verdadeiro **volante Direct-Drive com force feedback** para simuladores (Assetto Corsa Competizione, iRacing, rFactor 2, Automobilista 2 e qualquer título DirectInput).
 
 É uma alternativa totalmente aberta a soluções fechadas como o FFBeast, com duas metades:
 
 - **DriveLab Studio** — um app desktop (.NET 8 / Avalonia) para configurar e monitorar o volante. Roda no Windows, e no macOS/Linux para desenvolvimento.
-- **DriveLab Firmware** — firmware para a placa ODESC v4.2 que se apresenta como um volante DirectInput de force feedback padrão e aciona o motor com [SimpleFOC](https://simplefoc.com).
+- **DriveLab Firmware** — firmware para a placa ODrive v3.6-class que se apresenta como um volante DirectInput de force feedback padrão e aciona o motor com [SimpleFOC](https://simplefoc.com).
 
-> ⚠️ **Status: em desenvolvimento ativo.** O app já funciona (com um simulador de hardware que você usa hoje, sem placa). O firmware está em bring-up. Veja o [Roadmap](#roadmap-1).
+> ⚠️ **Status: em desenvolvimento ativo.** O app já funciona (com um simulador de hardware, sem placa). O firmware **roda o motor em FOC** e o **pipe de FFB está validado com jogos reais (ACC 400 Hz, AMS2, EVO)**; o ajuste fino de FFB em pista depende do encoder magnético. Veja o [Roadmap](#roadmap-1).
 
 ### Recursos
 
@@ -319,16 +319,16 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **O
 - Interface limpa e moderna com os módulos **Base do Volante**, **Pedais**, **Freio de mão** e **Volante** (aro/LEDs).
 - **Perfis nomeados por módulo** — salvar, aplicar, renomear e excluir perfis (ex.: "GT3", "Chuva") na base, pedais, freio de mão e volante; selecionar um perfil grava no controlador, e o *Salvar* só habilita quando a config atual difere do perfil carregado.
 - **LEDs do volante** — cores por botão + brilho global; o aro **guarda as cores na flash** (acende sozinho após religar) e o app **lê as cores de volta** da placa ao conectar.
-- **Ajustes** ao vivo em abas (Básico / Avançado / Hardware) — força total, damper, mola, soft-stop, limites de torque e potência, config do encoder, malha de corrente, etc. Carrega ao conectar, salva ao alterar.
+- **Ajustes** ao vivo em abas (Básico / Avançado / **Feel** / Hardware) — força total, damper, mola, soft-stop, **ganhos de FFB por efeito** (mola/damper/atrito/inércia), limites de torque e potência, config do encoder, malha de corrente, etc. Carrega ao conectar, salva ao alterar.
 - **Monitor de telemetria** na aba Hardware: tensão do barramento + temperaturas FET/motor/MCU + corrente do motor, com limiares ok/alerta/crítico.
-- **Dois tipos de encoder suportados** — você escolhe qual construiu: **quadratura** incremental (Omron E6B2) ou **SPI magnético** absoluto (AS5047). O absoluto mantém o zero mesmo desligando.
+- **Três tipos de encoder** — **quadratura** incremental (Omron E6B2, o sensor atual da bancada) ou **magnético** absoluto (MT6701 padrão planejado · AS5047P planejado). O absoluto mantém o zero mesmo desligando. *(Os drivers magnéticos chegam no Stage 1.)*
 - **Modo simulador** — um volante virtual com física real, para desenvolver e testar toda a UI sem hardware nenhum.
 - Bilíngue (Português / Inglês), detectado automaticamente pelo sistema.
 
 **Firmware**
 - Se apresenta como **volante FFB DirectInput** — os jogos mandam force feedback pra ele igualzinho a qualquer volante comercial, sem plugin.
 - Controle **SimpleFOC** (orientado a campo) do motor.
-- Segurança em múltiplos estágios: brake resistor, limites de corrente/torque, soft-stop, corte por sobretensão.
+- Segurança em múltiplos estágios: chopper do brake resistor, limites de corrente/torque, soft-stop, corte por sobretensão, mais **contator off-state e botão soft-power (opt-in)** — groundwork testado no host.
 - Firmwares companheiros para os módulos de **pedais** e **freio de mão** (RP2040 + célula de carga HX711).
 
 ### Hardware — base do volante (lista de materiais)
@@ -337,7 +337,7 @@ Esta é a **base** (o wheelbase direct-drive). Cada outro módulo é um disposit
 
 | Peça | Observações |
 |------|-------------|
-| **ODESC v4.2** ou **MKS XDrive** (STM32F405) | Qualquer placa F405 classe-ODrive — ver [Placa base](#-base-board--placa-base). A ODESC vem em **24 V** (caps 35 V → manter ~24 V) e **56 V** (caps 63 V → até 56 V); a MKS XDrive é 12–56 V. Case a fonte com a sua placa. Usar uma **placa 56 V numa fonte mais baixa (ex.: 24 V) dá folga extra** contra picos de regen. |
+| **Placa ODrive v3.6-class** (STM32F405) — validada: **MKS ODRIVE-S V3.6-S6V** | Qualquer placa F405 classe-ODrive — ver [Placa base](#-base-board--placa-base). Vem em **24 V** (caps 35 V → manter ~24 V) e **56 V** (caps 63 V → até 56 V). Case a fonte com a sua placa. Usar uma **placa 56 V numa fonte mais baixa (ex.: 24 V) dá folga extra** contra picos de regen. Outras placas F405 (ODESC, MKS XDrive) podem exigir remapear pinos. |
 | **Motor de roda de hoverboard** | O atuador direct-drive. |
 | **Encoder** | Omron E6B2-CWZ6C incremental **ou** magnético absoluto AS5047P/MT6701 — sua escolha. |
 | **Brake resistor 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia de frenagem regenerativa para não destruir os capacitores. |
@@ -363,7 +363,7 @@ O jogo **não** manda telemetria — ele manda a **força já calculada**:
 Física do jogo (ACC/iRacing)  →  um valor de torque pro volante  (~360–400 Hz)
         ↓  DirectInput / HID PID  (Windows)
         ↓  USB
-Firmware (ArduinoJoystickWithFFBLibrary.getForce)  →  força  [-255..255]
+Firmware (parser HID PID do TinyUSB → FfbEngine.step)  →  torque
         ↓  SimpleFOC
 Torque no motor  →  você sente
 ```
@@ -374,7 +374,7 @@ Os efeitos de condição (mola/damper) são calculados no dispositivo a partir d
 
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, testes
-firmware-base/       Firmware da base — ODESC v4.2 / STM32F405, o motor FFB (PlatformIO)  [MIT]
+firmware-base/       Firmware da base — ODrive v3.6-class / STM32F405, o motor FFB (PlatformIO)  [MIT]
 firmware-pedal/      Firmware dos pedais — RP2040 + HX711                                [MIT]
 firmware-handbrake/  Firmware do freio de mão — RP2040 + HX711                           [MIT]
 firmware-wheel/      Firmware do aro — RP2040 (Waveshare Zero): gamepad + LEDs WS2812 (PlatformIO)  [MIT]
@@ -396,7 +396,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ```bash
 ./scripts/build.sh    # ou scripts/build.ps1 no Windows
-./scripts/test.sh     # 264 testes
+./scripts/test.sh     # ~470 testes do app + host tests do firmware
 ```
 
 **Gerar o executável Windows** (self-contained, single-file `.exe`, sem precisar de .NET na máquina alvo):
@@ -410,7 +410,7 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 ### Roadmap
 
-`M0` toolchain/serial → `M0.5` enumeração USB FFB → `M1` motor malha aberta → `M2` encoder + malha fechada + brake resistor → `M2.5` telemetria → `M3` app ↔ firmware → `M4` settings → `M5` força FFB → motor → `M6` efeitos de jogo → `M7` validação no sim. Detalhes em `docs/`.
+`M0` ✅ → `M0.5` ✅ USB FFB → `M1`–`M2` motor + encoder + malha fechada ✅ → `M2.5` telemetria ✅ → `M3` app↔firmware ✅ → `M4` settings ✅ → `M5` força FFB → motor ✅ *(firmware; testado na bancada)* → `M6` efeitos de jogo 🔧 *(firmware pronto; validação em pista depende do encoder magnético)* → `M7` validação no sim ⏳. O chopper do brake resistor, o contator off-state e o soft-power estão implementados como **groundwork opt-in**. Detalhes em `docs/` — comece por **[how-it-works.md](docs/how-it-works.md)**.
 
 ### ⚠️ Segurança
 

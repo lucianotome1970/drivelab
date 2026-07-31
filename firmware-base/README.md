@@ -1,6 +1,6 @@
 # DriveLab Firmware — Base / Wheelbase (Trilho B)
 
-Firmware for the DriveLab **base** (wheelbase) — **ODESC v4.2 (STM32F405)** + direct-drive motor.
+Firmware for the DriveLab **base** (wheelbase) — **ODrive v3.6-class (STM32F405)**, validated on an **MKS ODRIVE-S V3.6-S6V** + direct-drive motor.
 *(The firmware for the removable rim/wheel — buttons, LEDs, paddles — lives in `firmware-wheel/` (RP2040).)*
 Design/decisions: kept in internal project notes (not versioned in the public repo).
 
@@ -12,9 +12,15 @@ Design/decisions: kept in internal project notes (not versioned in the public re
 
 ## 🇬🇧 English
 
-### Current milestone: M0 — bring-up (serial only, NO motor)
+### Where the firmware is now
 
-**Goal:** prove toolchain + flashing + USB serial on your ODESC. Harmless (does not touch the motor/power).
+The base **runs the hub motor under SimpleFOC/FOC**, and the **FFB pipe is validated end-to-end with real games** (ACC 400 Hz, AMS2, EVO). Implemented and host-tested: **selectable encoder type** (E6B2 / MT6701 / AS5047P), **per-effect FFB gains**, and opt-in **off-state contactor**, **soft-power button** and **brake-resistor chopper** groundwork. Full on-track FFB tuning is waiting on the **magnetic encoder** (the incremental E6B2 mount has rotational play that a magnetic on-axis sensor removes). Config persists in flash (magic `DLB7`, up to BID 44).
+
+> The milestone log below is the **bring-up record** (M0 → M0.5 → M3), kept for reference — start here if you're flashing a fresh board.
+
+### Bring-up log — M0: toolchain + serial (NO motor)
+
+**Goal:** prove toolchain + flashing + USB serial on your board. Harmless (does not touch the motor/power).
 
 > **Status (2026-07-18): M0 FULLY VALIDATED on real hardware ✅** — an **MKS ODRIVE-S V3.6-S6V** (STM32F405), flashed over **ST-Link + OpenOCD** (recipe below). Execution confirmed over SWD *and* the **USB CDC serial streams** `DriveLab M0 vivo, tick=…` (enumerates as `GENERIC_F405RGTX CDC in FS Mode`). The 8 MHz HSE / 48 MHz USB clock is correct — **this de-risks the whole USB/FFB path (M0.5+)**.
 >
@@ -22,7 +28,7 @@ Design/decisions: kept in internal project notes (not versioned in the public re
 
 #### Prerequisites
 - **VS Code + PlatformIO extension** (installs the STM32duino toolchain by itself on the first build).
-- **ODESC v4.2** + **USB** cable (micro-USB).
+- **ODrive v3.6-class board** (validated on an MKS ODRIVE-S V3.6-S6V) + **USB** cable (micro-USB).
 - To flash, **one** of the two:
   - **ST-Link V2** (recommended) connected to the ODESC **SWD** header: `SWDIO`, `SWCLK`, `GND`, `3V3`.
   - **DFU** (no ST-Link): put the board in DFU mode (BOOT0 high at reset — BOOT pad/button) and use `upload_protocol = dfu` in `platformio.ini`.
@@ -148,10 +154,10 @@ pio run -e m05 -t upload      # or select the "m05" env in the PlatformIO bar
 The STM32F405 OTG_FS core has only **~3 usable IN endpoints**, so the device can't do 2× HID + CDC (one HID for FFB, one for A0, plus CDC). Instead, **A0 shares the single HID interface with the FFB** — one combined report descriptor — plus **CDC**, kept for debug logging. The A0 reports live in a vendor collection (usage page `0xFF00`) with **report IDs remapped** so they don't collide with the FFB's: `DeviceState 0x21`, `Command 0x22`, `DirectControl 0x10`, `SettingWrite 0x14`, `SettingReadRequest 0x15`, `SettingValue 0x16`.
 
 #### Settings model
-A `BaseCfg` struct mirrors the app's frozen `BaseSettingId` enum — **19 fields** (TotalStrength, SoftStop\*, Spring/Damper, encoder, current-loop gains, etc.). Settings persist to **flash** (STM32duino EEPROM emulation, magic `"DLB1"`): `SaveSettings` writes them, and they survive a power-cycle (validated above).
+A `BaseCfg` struct mirrors the app's `BaseSettingId` enum — now **~45 fields** (TotalStrength, SoftStop\*, Spring/Damper, per-effect FFB gains, encoder type, board variant, contactor/soft-power opt-ins, current-loop gains, etc.). Settings persist to **flash** (STM32duino EEPROM emulation, magic `"DLB7"` — bumped on every layout change so older configs reseed to safe defaults): `SaveSettings` writes them, and they survive a power-cycle (validated above).
 
 #### Telemetry
-The base pushes a periodic `DeviceState` (`0x21`) report carrying the firmware version. **Sensor fields (bus voltage, current, temperatures) are placeholder `0` until M1** — they need the power stage, which isn't wired up yet.
+The base pushes a periodic `DeviceState` (`0x21`) report carrying the firmware version. **MCU temperature is live** (F405 internal sensor); FET temperature and bus voltage were deferred (the MKS clone's pinout diverges from the genuine ODrive here) and land with the motor/telemetry work.
 
 #### Two macOS/HidSharp gotchas
 - The combined-interface base enumerates with **device-level usage `0x00`** (not the FFB's joystick usage), so the app detects it by **VID/PID**, not by usage-page.
@@ -217,9 +223,15 @@ For a quick-release rim, the base is meant to host a small **USB hub** (the ODES
 
 ## 🇧🇷 Português
 
-### Marco atual: M0 — bring-up (só serial, SEM motor)
+### Onde o firmware está hoje
 
-**Objetivo:** provar toolchain + gravação + USB serial na sua ODESC. Inofensivo (não mexe no motor/potência).
+A base **roda o hub motor em SimpleFOC/FOC**, e o **pipe de FFB está validado de ponta a ponta com jogos reais** (ACC 400 Hz, AMS2, EVO). Implementado e testado no host: **tipo de encoder selecionável** (E6B2 / MT6701 / AS5047P), **ganhos de FFB por efeito**, e groundwork opt-in de **contator off-state**, **botão soft-power** e **chopper do brake resistor**. O ajuste fino de FFB em pista depende do **encoder magnético** (a montagem do E6B2 incremental tem folga rotacional que um sensor magnético no eixo remove). A config persiste na flash (magic `DLB7`, até BID 44).
+
+> O log de marcos abaixo é o **registro de bring-up** (M0 → M0.5 → M3), mantido para referência — comece por ele se estiver gravando uma placa nova.
+
+### Log de bring-up — M0: toolchain + serial (SEM motor)
+
+**Objetivo:** provar toolchain + gravação + USB serial na sua placa. Inofensivo (não mexe no motor/potência).
 
 > **Status (2026-07-18): M0 TOTALMENTE VALIDADO no hardware real ✅** — uma **MKS ODRIVE-S V3.6-S6V** (STM32F405), gravada via **ST-Link + OpenOCD** (receita abaixo). Execução confirmada pelo SWD *e* a **serial USB CDC transmite** `DriveLab M0 vivo, tick=…` (enumera como `GENERIC_F405RGTX CDC in FS Mode`). O clock HSE 8 MHz / USB 48 MHz está certo — **isso de-risca todo o caminho USB/FFB (M0.5+)**.
 >
@@ -227,7 +239,7 @@ For a quick-release rim, the base is meant to host a small **USB hub** (the ODES
 
 #### Pré-requisitos
 - **VS Code + extensão PlatformIO** (instala o toolchain STM32duino sozinho na primeira build).
-- **ODESC v4.2** + cabo **USB** (micro-USB).
+- **Placa ODrive v3.6-class** (validada numa MKS ODRIVE-S V3.6-S6V) + cabo **USB** (micro-USB).
 - Para gravar, **um** dos dois:
   - **ST-Link V2** (recomendado) ligado ao header **SWD** da ODESC: `SWDIO`, `SWCLK`, `GND`, `3V3`.
   - **DFU** (sem ST-Link): colocar a placa em modo DFU (BOOT0 em alto no reset — pad/botão de BOOT) e usar `upload_protocol = dfu` no `platformio.ini`.
@@ -353,10 +365,10 @@ O `env:m05` **não** usa `USBD_USE_CDC` pro caminho do joystick — a CDC é com
 O core OTG_FS do STM32F405 tem só **~3 endpoints IN utilizáveis**, então o dispositivo não consegue fazer 2× HID + CDC (um HID pro FFB, outro pro A0, mais a CDC). Em vez disso, o **A0 divide a única interface HID com o FFB** — um único report descriptor combinado — mais a **CDC**, mantida pro log de debug. Os reports do A0 vivem numa coleção vendor (usage page `0xFF00`) com os **report IDs remapeados** pra não colidir com os do FFB: `DeviceState 0x21`, `Command 0x22`, `DirectControl 0x10`, `SettingWrite 0x14`, `SettingReadRequest 0x15`, `SettingValue 0x16`.
 
 #### Modelo de settings
-Uma struct `BaseCfg` espelha o enum `BaseSettingId` congelado do app — **19 campos** (TotalStrength, SoftStop\*, Spring/Damper, encoder, ganhos da malha de corrente, etc.). As settings persistem em **flash** (emulação de EEPROM do STM32duino, magic `"DLB1"`): `SaveSettings` grava, e elas sobrevivem a um power-cycle (validado acima).
+Uma struct `BaseCfg` espelha o enum `BaseSettingId` do app — hoje **~45 campos** (TotalStrength, SoftStop\*, Spring/Damper, ganhos de FFB por efeito, tipo de encoder, variante da placa, opt-ins de contator/soft-power, ganhos da malha de corrente, etc.). As settings persistem em **flash** (emulação de EEPROM do STM32duino, magic `"DLB7"` — incrementado a cada mudança de layout, então configs antigas voltam a defaults seguros): `SaveSettings` grava, e elas sobrevivem a um power-cycle (validado acima).
 
 #### Telemetria
-A base envia periodicamente um report `DeviceState` (`0x21`) com a versão do firmware. **Os campos de sensor (tensão do barramento, corrente, temperaturas) são placeholder `0` até o M1** — precisam do estágio de potência, que ainda não está ligado.
+A base envia periodicamente um report `DeviceState` (`0x21`) com a versão do firmware. **A temperatura do MCU está viva** (sensor interno do F405); a temperatura dos FETs e a tensão do barramento foram adiadas (o pinout do clone MKS diverge do ODrive genuíno aqui) e chegam junto com o trabalho de motor/telemetria.
 
 #### Duas pegadinhas do macOS/HidSharp
 - A base com interface combinada enumera com **usage de nível de dispositivo `0x00`** (não o usage de joystick do FFB), então o app a detecta por **VID/PID**, não por usage-page.
