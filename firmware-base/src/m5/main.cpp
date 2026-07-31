@@ -1240,7 +1240,7 @@ void loop()
             // desarma o motor e pede o contator abrir (driveIntent=false via g_driveWanted)
             g_driveWanted = false;
             g_focPhase = FOC_IDLE;
-            motor.disable();
+            if (motor.driver != nullptr) motor.disable();   // driver só é linkado após um Calibrate; sem isso, disable() null-derefa
         }
         digitalWrite(kOdrivePinPowerEnable, g_powerButton.powerEnable() ? HIGH : LOW);
     }
@@ -1294,7 +1294,7 @@ void loop()
             uint8_t brakeArg;
             if (g_a0.brakeBenchRequested(brakeArg)) {
                 BrakeBenchState b = brakeBenchCommand(brakeArg);
-                motor.disable();                 // motor SEMPRE desabilitado no teste do freio
+                if (motor.driver != nullptr) motor.disable();   // driver só é linkado após um Calibrate; sem isso, disable() null-derefa
                 g_focPhase = FOC_IDLE;
                 if (b.exitBench) {
                     focBrake.disarm();
