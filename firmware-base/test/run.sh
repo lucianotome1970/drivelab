@@ -82,3 +82,7 @@ c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out19" test_contac
 out20="$(mktemp -d)/power_button_test"
 c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out20" test_power_button.cpp
 "$out20"
+
+out21="$(mktemp -d)/brake_bench_test"
+c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out21" test_brake_bench.cpp
+"$out21"
