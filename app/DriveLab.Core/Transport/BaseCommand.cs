@@ -20,4 +20,7 @@ public enum BaseCommand : byte
     /// flash do dispositivo). Exige motor energizado — só roda na bancada (Stage 1). Só o criador tem acesso
     /// (botão na aba Hardware). Ver coggingCalibRequested no firmware.</summary>
     CalibrateCogging = 7,
+
+    /// <summary>Bancada: arma o brake chopper + duty manual (cmd 8). Enviado por tools/a0_cmd.py, não pela UI.</summary>
+    BrakeBench = 8,
 }

@@ -246,6 +246,14 @@ static int g_oledPage = 0;
 static drivelab::FocMotor   focMotor(motor);
 static drivelab::FocBrake   focBrake;
 
+#ifdef DRVLAB_BRAKE_CHOPPER_HW
+#include "brake_bench.h"
+static bool     g_brakeBenchActive = false;   // true = modo bancada do freio ativo
+static uint8_t  g_brakeDutyManual  = 0;        // duty manual em % (0..20)
+static uint32_t g_brakeBenchT      = 0;        // timestamp do último cmd (auto-desarme)
+static constexpr uint32_t kBrakeBenchTimeoutMs = 60000;  // 60s sem novo cmd → desarma
+#endif
+
 // ===================== O "cérebro" FFB (lib/brain) =====================
 static drivelab::FfbEngine engine;
 
@@ -1277,7 +1285,45 @@ void loop()
         uint8_t calArg = 0;
         const bool wantCal = g_a0.calibrateRequested(calArg);
         const bool wantCog = g_a0.coggingCalibRequested();
-        if (g_focPhase == FOC_IDLE)
+#ifdef DRVLAB_BRAKE_CHOPPER_HW
+        // Bancada do brake chopper (cmd A0=8): arma/aplica duty manual no FocBrake, fora do callback USB.
+        // Sempre desabilita o motor e força g_focPhase=FOC_IDLE — o duty manual (abaixo) é a AUTORIDADE
+        // sobre o chopper enquanto g_brakeBenchActive; nenhum stage1a/engine.step roda nesta janela (guardado
+        // logo abaixo, "!g_brakeBenchActive", contra um Calibrate concorrente reabrir o FOC por engano).
+        {
+            uint8_t brakeArg;
+            if (g_a0.brakeBenchRequested(brakeArg)) {
+                BrakeBenchState b = brakeBenchCommand(brakeArg);
+                motor.disable();                 // motor SEMPRE desabilitado no teste do freio
+                g_focPhase = FOC_IDLE;
+                if (b.exitBench) {
+                    focBrake.disarm();
+                    g_brakeBenchActive = false;
+                    drivelab::dbgRingPrintf("BRAKE: desarmado\n");
+                } else {
+                    if (!focBrake.armed()) focBrake.arm();
+                    g_brakeDutyManual  = b.dutyPct;
+                    g_brakeBenchActive = true;
+                    g_brakeBenchT      = now;
+                    drivelab::dbgRingPrintf("BRAKE: armed duty=%d%%\n", (int)b.dutyPct);
+                }
+            }
+        }
+        if (g_brakeBenchActive) {
+            if (g_motorFault || (int32_t)(now - g_brakeBenchT) > (int32_t)kBrakeBenchTimeoutMs) {
+                focBrake.disarm();
+                g_brakeBenchActive = false;
+                drivelab::dbgRingPrintf("BRAKE: auto-desarme (timeout/fault)\n");
+            } else {
+                focBrake.setDuty(g_brakeDutyManual / 100.0f);   // duty manual (setDuty já valida dead-time)
+            }
+        }
+#endif
+        if (g_focPhase == FOC_IDLE
+#ifdef DRVLAB_BRAKE_CHOPPER_HW
+            && !g_brakeBenchActive   // não deixa um Calibrate concorrente reabrir o FOC durante a bancada do freio
+#endif
+        )
         {
             if (wantCog)                       stage1aStart(now, 4, true);   // mede cogging a 4 rad/s no RUN
             else if (wantCal && calArg >= 100) currentSenseDiag(now, calArg); // 100=init/repouso do current sense

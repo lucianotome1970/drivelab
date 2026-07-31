@@ -145,6 +145,14 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 m_coggingCalibRequested = true;
                 drivelab::dbgRingPrintf("A0 cmd=%u (CalibrateCogging) -> m_coggingCalibRequested\n", cmd);
             }
+            else if (cmd == 8 /* BrakeBench (bancada: brake chopper) */)
+            {
+                // BaseCommand.BrakeBench (app, reservado): só marca. O m5 (gated DRVLAB_BRAKE_CHOPPER_HW)
+                // consome via brakeBenchRequested() e aplica no FocBrake. Ver docs do brake chopper.
+                m_brakeBenchRequested = true;
+                m_brakeBenchArg = arg;
+                drivelab::dbgRingPrintf("A0 cmd=%u (BrakeBench) arg=%u -> m_brakeBenchRequested\n", cmd, arg);
+            }
             else
             {
                 drivelab::dbgRingPrintf("A0 cmd=%u arg=%u (sem handler ainda)\n", cmd, arg);

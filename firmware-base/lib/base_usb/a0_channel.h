@@ -212,6 +212,15 @@ public:
         return false;
     }
 
+    /// Consome um pedido de "bancada do brake chopper" (BaseCommand.BrakeBench / cmd 8). Retorna true UMA vez
+    /// por pedido — o m5 (gated DRVLAB_BRAKE_CHOPPER_HW) usa isso para armar/aplicar duty manual no FocBrake
+    /// FORA do callback USB (ver brake_bench.h). M0.5 não tem chopper: fica inerte se ninguém consumir.
+    bool brakeBenchRequested(uint8_t& argOut)
+    {
+        if (m_brakeBenchRequested) { m_brakeBenchRequested = false; argOut = m_brakeBenchArg; return true; }
+        return false;
+    }
+
     /// Consome a última força ADITIVA de telemetria recebida no report DIRECT (0x10). Retorna true (e o valor
     /// em `out`, unidades force255) só quando chegou um report novo desde a última chamada — o m5 usa isso para
     /// aplicar engine.setTelemetryForce e, no silêncio, zerar por timeout.
@@ -245,6 +254,8 @@ private:
     bool m_coggingCalibRequested = false; ///< pedido pendente de CalibrateCogging (cmd 7), consumido por coggingCalibRequested()
     bool m_calibrateRequested = false; ///< pedido pendente de Calibrate (cmd 5, Stage 1a), consumido por calibrateRequested()
     uint8_t m_calibrateArg = 0;        ///< arg do cmd 5 = tensão open-loop em décimos de volt (ex.: 15 = 1,5V)
+    bool    m_brakeBenchRequested = false; ///< pedido pendente do comando de bancada do chopper (cmd 8), consumido por brakeBenchRequested()
+    uint8_t m_brakeBenchArg = 0;           ///< arg do cmd 8 (ver brake_bench.h)
     int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
     bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()
 
