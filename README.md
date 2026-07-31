@@ -132,6 +132,10 @@ Want to run the app against **your own board**? The full USB-HID contract is doc
 
 ### 📚 Guides / Guias
 
+Start here · *Comece por aqui:*
+
+- **[How it works / Como funciona](docs/how-it-works.md)** — study guide: how a DD wheel works, grounded in DriveLab (motor · encoder · FOC · FFB · safety). *Guia de estudo: como um volante DD funciona, aterrado no DriveLab.*
+
 Hardware & build guides · *Guias de hardware e montagem:*
 
 - **[Encoder guide / Guia de encoders](docs/encoders.md)** — which position sensor to buy (E6B2 · MT6701 · AS5047P). *Qual sensor de posição comprar.*
