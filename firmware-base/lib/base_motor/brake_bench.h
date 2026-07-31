@@ -1,5 +1,5 @@
 /*
- * brake_bench.h — mapa puro do comando de bancada do brake chopper (cmd=6).
+ * brake_bench.h — mapa puro do comando de bancada do brake chopper (cmd=8, BrakeBench).
  *
  * Traduz o arg do A0 em {armar, duty%, sair do modo bancada}, com teto de 20% (proteção contra engano).
  * Puro e host-testável (sem Arduino). A ação real no hardware (arm/disarm/setDuty do FocBrake) fica no m5.
