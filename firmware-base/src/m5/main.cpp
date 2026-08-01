@@ -192,16 +192,25 @@ static void adc2Config()
 
 static PhaseCurrent_s genCurrentRead()
 {
-    adc2Config();   // reconfig completo por leitura → sobrevive a qualquer analogRead que de-inicializou o ADC
+    // CONFIG-ONCE (fix #3, pesquisa): NÃO reconfigurar o ADC2 por leitura. O ADC2 é configurado UMA vez em
+    // genCurrentInit (na entrada da calibração). Os únicos analogRead que de-inicializam o ADC (temps + bus da
+    // telemetria) estão BLOQUEADOS enquanto o current sense está ativo (g_csReady, gates ~1315/1483), então nada
+    // de-inicializa o ADC2 durante a leitura de corrente. O re-config a cada read (removido) só CORROMPIA o JDR —
+    // reescrever JSQR/CR2 async à conversão em curso é undefined (RM0090) → garbage mid-scale intermitente.
     // DIR-GATE (jeito ODrive, low_level.cpp:506-507 `counting_down = CR1 & TIM_CR1_DIR`): em PWM CENTER-ALIGNED
     // o TIM1 Update dispara DUAS vezes por período — no VALE (CNT≈0, todos os low-side ON = corrente de fase
     // REAL) e no PICO (CNT≈ARR, all-high-side = vetor zero, amp ~0V). SÓ o vale é corrente real. DIR=0
     // (up-counting = acabamos de sair do vale) → o JDR é a amostra boa: aceita e guarda; DIR=1 (down = saiu do
     // pico) → o JDR é ~0 legítimo (não corrente) → SEGURA a última do vale. Sem isto ~metade das amostras era o
     // pico ~0 → -80A fantasma → falso corte (bug confirmado na bancada). Ver docs/reference/current-sense-research.md.
-    if (!(TIM1->CR1 & TIM_CR1_DIR)) {                                 // up-counting → JDR = amostra do vale (real)
-        g_lastJ1 = (uint16_t)ADC2->JDR1;
-        g_lastJ2 = (uint16_t)ADC2->JDR2;
+    // ANTI-RACE do polling: como a gente LÊ o JDR (não é ISR pós-conversão como o ODrive), ler no DIR=0 logo após
+    // o Update do vale pega o JDR AINDA com o valor do PICO (~0, conversão do vale não terminou). Aceita só quando
+    // DIR=0 (janela do vale) E o JDR não é rail ~0 (>=500 counts) → senão é pico stale → SEGURA a última do vale.
+    // Sem isto, um pico stale ~0 fazia o PI achar corrente=0 → sobre-excitava Uq → pico real (7,5A) → falso corte.
+    const uint32_t j1 = ADC2->JDR1, j2 = ADC2->JDR2;
+    if (!(TIM1->CR1 & TIM_CR1_DIR) && j1 >= 500u && j2 >= 500u) {     // vale, conversão pronta (não é pico stale)
+        g_lastJ1 = (uint16_t)j1;
+        g_lastJ2 = (uint16_t)j2;
     }
     const float ib = ((float)g_lastJ1 - g_off10) * kAmpsPerCount;     // IN10 = PC0 = IB
     const float ic = ((float)g_lastJ2 - g_off11) * kAmpsPerCount;     // IN11 = PC1 = IC
