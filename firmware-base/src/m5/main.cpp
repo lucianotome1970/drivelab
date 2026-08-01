@@ -71,6 +71,7 @@
 #include "apply_cfg.h"
 #include "ffb_arm_guard.h"   // predicados puros de arme/desarme do modo FFB do jogo (M6)
 #include "cogging_store.h"   // (de)serializacao da tabela de cogging p/ a flash
+#include "foc_offset_cal.h"  // offset medio (media circular) + corte por corrente da calibracao (Task 1/2)
 #include <EEPROM.h>          // EEPROM emulada (STM32duino) — blob da tabela de cogging
 
 #ifdef DRVLAB_OLED
@@ -290,7 +291,7 @@ static float    g_elecAngle  = 0.0f;  // ângulo elétrico do sweep manual (rad)
 // (atrito) e inverte → mapa de compensação. No RUN, soma compensation(mech) ao feed_forward_voltage.q do
 // SimpleFOC a cada tick → cancela o ripple. cmd 5 = cal + RUN (aplica cogging SE já medido); cmd 7 = cal +
 // MEDE + RUN com compensação. A/B: rode cmd 5 (baseline) e depois cmd 7 (com cogging) e compare a ondulação.
-enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_ZERO, FOC_VERIFY, FOC_COG, FOC_RUN };
+enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_VERIFY, FOC_COG, FOC_RUN };
 static FocPhase g_focPhase  = FOC_IDLE;
 static uint32_t g_focT      = 0;
 static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem do arg do cmd 5, sem reflash
@@ -375,20 +376,36 @@ static const float    kCalOmega = 4.0f;   // rad/s ELÉTRICO da varredura (mais 
 static const uint32_t kLockMs   = 1500;   // assentamento inicial (maior → parte de posição mais estável)
 static const uint32_t kScanMs   = 6000;   // duração por sentido (~24 rad elec ≈ 3,8 voltas → média melhor)
 static const float    kScanSpan = kCalOmega * (kScanMs / 1000.0f);   // rad elétricos por sentido (~20)
-static double   g_sinP=0, g_cosP=0, g_sinM=0, g_cosM=0;
-static uint32_t g_calN=0;
+static drivelab::OffsetAccumulator g_offAcc;        // média circular do offset (Task 1) — substitui os g_sinP/... inline
+static const float    kMinOffsetFit  = 0.5f;        // raio mínimo do phasor médio p/ aceitar o zero (0..1)
+static const float    kCalMaxCurrentA = 3.0f;       // corte de segurança por corrente durante cal/verify (conservador; tunar na bancada)
 static float    g_contStart=0.0f, g_contFwd=0.0f;   // getAngle (contínuo) no início e no fim do FWD
 
 // Acumula uma amostra da calibração p/ as 2 hipóteses de direção (campo em ângulo elétrico `angField`).
+// Frame preservado do código antigo: aP = pm - angField + _3PI_2 (dir=+1/CW). O OffsetAccumulator calcula
+// aP = poleMechAngle - fieldAngle internamente, então passamos fieldAngle = angField - _3PI_2 pra bater.
 static inline void calAccum(float angField)
 {
     encoder.update();
     const float pm = (float)motor.pole_pairs * encoder.getMechanicalAngle();
-    const float aP = pm - angField + _3PI_2;    // dir=+1 (CW)
-    const float aM = -pm - angField + _3PI_2;   // dir=-1 (CCW)
-    g_sinP += sinf(aP); g_cosP += cosf(aP);
-    g_sinM += sinf(aM); g_cosM += cosf(aM);
-    g_calN++;
+    g_offAcc.add(pm, angField - _3PI_2);
+}
+
+// Corte de segurança por corrente durante a calibração/verify (Task 2). Lê a corrente q via
+// getFOCCurrents(angElectric) — não há loopFOC() rodando durante o scan (setPhaseVoltage direto), então o
+// ângulo elétrico usado pro cálculo é passado explicitamente pelo chamador (o `ang` do próprio tick, ou
+// motor.electrical_angle no VERIFY onde loopFOC() já roda).
+static bool calCurrentCutoff(float angElectric)
+{
+    const float iq = currentSense.getFOCCurrents(angElectric).q;
+    if (drivelab::currentOverLimit(iq, kCalMaxCurrentA)) {
+        drivelab::dbgRingPrintf("CAL CORTE: Iq=%dmA > teto %dmA — abortando\n",
+                                 (int)(iq*1000.0f), (int)(kCalMaxCurrentA*1000.0f));
+        motor.setPhaseVoltage(0,0,0); motor.disable();
+        g_motorFault = true; g_focPhase = FOC_IDLE;
+        return true;
+    }
+    return false;
 }
 
 // Diagnóstico do sensor de corrente (cmd 5 arg=100). Isolado — NÃO mexe no stage1a provado nem energiza
@@ -441,7 +458,7 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
 // (Re)inicia a varredura de calibração de zero (usado no início e em cada tentativa do VERIFY).
 static void restartScan(uint32_t nowMs)
 {
-    g_sinP=g_cosP=g_sinM=g_cosM=0; g_calN=0;
+    g_offAcc = drivelab::OffsetAccumulator{};
     motor.controller = MotionControlType::torque;
     motor.feed_forward_voltage.q = 0.0f;
     motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);       // trava no início da varredura
@@ -519,6 +536,7 @@ static void stage1aTick(uint32_t nowMs)
 
     if (g_focPhase == FOC_LOCK) {
         motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);
+        if (calCurrentCutoff(_3PI_2)) return;
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kLockMs) {
             encoder.update(); g_contStart = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_FWD;
@@ -532,6 +550,7 @@ static void stage1aTick(uint32_t nowMs)
         const float ang = _3PI_2 + kCalOmega * t;         // campo avança devagar
         motor.setPhaseVoltage(kCalV, 0.0f, ang);
         calAccum(ang);
+        if (calCurrentCutoff(ang)) return;
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kScanMs) {
             encoder.update(); g_contFwd = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_BWD;
@@ -546,43 +565,43 @@ static void stage1aTick(uint32_t nowMs)
         const float ang = _3PI_2 + kScanSpan - kCalOmega * t;   // campo volta
         motor.setPhaseVoltage(kCalV, 0.0f, ang);
         calAccum(ang);
+        if (calCurrentCutoff(ang)) return;
         if ((int32_t)(nowMs - g_focT) < (int32_t)kScanMs) return;
 
         // fim da varredura: direção + zero + sanidade
         motor.setPhaseVoltage(0.0f, 0.0f, 0.0f);
         const float dFwd     = g_contFwd - g_contStart;             // mech percorrido na ida (contínuo)
         const float expected = kScanSpan / (float)motor.pole_pairs; // mech esperado se seguiu 1:1
-        const bool  cw       = (dFwd >= 0.0f);
         if (fabsf(dFwd) < 0.4f * expected) {   // ODrive: resposta insuficiente = escorregou
             drivelab::dbgRingPrintf("CAL ABORT: rotor ESCORREGOU (andou %dmrad, esperado %dmrad) — cogging forte, subir tensao.\n",
                                  (int)(dFwd*1000.0f), (int)(expected*1000.0f));
             motor.disable(); g_motorFault=true; g_focPhase=FOC_IDLE; return;
         }
-        motor.sensor_direction = cw ? Direction::CW : Direction::CCW;
         // pp check (jeito SimpleFOC): mech percorrido × pp deve ≈ span elétrico (kScanSpan). Se divergir muito,
         // pole_pairs provavelmente está errado (dá "muita corrente, sem torque"). Só loga (não aborta).
         const float ppEst = fabsf(dFwd) > 1e-4f ? kScanSpan / fabsf(dFwd) : 0.0f;
-        drivelab::dbgRingPrintf("CAL: dir=%s dFwd=%dmrad pp_est=%d (cfg=%d) -> lock-and-settle p/ o ZERO\n",
-                             cw?"CW":"CCW", (int)(dFwd*1000.0f), (int)(ppEst+0.5f), (int)motor.pole_pairs);
-        // ZERO por LOCK-AND-SETTLE (jeito SimpleFOC, robusto ao cogging) em vez do sweep-correlate (frágil,
-        // escorregava). Trava o campo em _3PI_2 e deixa o rotor ASSENTAR (estado FOC_ZERO) — só precisa de
-        // torque de fixação num ponto, não rastreio contínuo. Ver FOCMotor::alignSensor do SimpleFOC.
-        motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);
-        g_focPhase = FOC_ZERO; g_focT = nowMs;
-        return;
-    }
-
-    // FOC_ZERO — LOCK-AND-SETTLE do zero elétrico (jeito SimpleFOC::alignSensor, robusto ao cogging):
-    // segura o campo em _3PI_2, deixa o rotor ASSENTAR, e lê zero_electric_angle = electricalAngle().
-    if (g_focPhase == FOC_ZERO) {
-        motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);
-        if ((int32_t)(nowMs - g_focT) < 800) return;    // ~800ms p/ o rotor assentar em _3PI_2
-        encoder.update();
-        motor.zero_electric_angle = 0.0f;
-        motor.zero_electric_angle = motor.electricalAngle();   // offset elétrico no ponto travado (SimpleFOC)
-        drivelab::dbgRingPrintf("CAL: ZERO lock-and-settle = %dmrad (dir=%s) -> MALHA FECHADA %d rad/s\n",
-                             (int)(motor.zero_electric_angle*1000.0f),
-                             motor.sensor_direction==Direction::CW?"CW":"CCW", (int)g_velTarget);
+        drivelab::dbgRingPrintf("CAL: dFwd=%dmrad pp_est=%d (cfg=%d) -> offset medio (Task 2)\n",
+                             (int)(dFwd*1000.0f), (int)(ppEst+0.5f), (int)motor.pole_pairs);
+        // ZERO pela MÉDIA CIRCULAR do offset (Task 1/2) em vez do lock-and-settle de 1 ponto — mais robusto
+        // ao cogging/ruído (usa TODA a amostragem do FWD+BWD, não só o ponto final). computeOffset escolhe a
+        // direção (CW/CCW) cujo phasor médio é mais "apertado" (fit=raio, 0..1) e devolve o offset elétrico
+        // médio dessa direção; se o fit for baixo (escorregão/ruído), aborta em vez de usar um zero ruim.
+        const drivelab::OffsetResult off = drivelab::computeOffset(g_offAcc, kMinOffsetFit);
+        if (!off.ok) {
+            drivelab::dbgRingPrintf("CAL ABORT: fit baixo (%d/1000) — escorregou/ruido\n",
+                                    (int)(off.fit*1000.0f));
+            motor.disable(); g_motorFault = true; g_focPhase = FOC_IDLE; return;
+        }
+        motor.sensor_direction = (off.direction > 0) ? Direction::CW : Direction::CCW;
+        // Mapeamento de volta ao frame do SimpleFOC: a OffsetAccumulator trabalhou com fieldAngle = ang - _3PI_2
+        // (ver calAccum acima), então o offset elétrico "puro" (frame do SimpleFOC, sem o deslocamento de
+        // _3PI_2 usado só durante o scan) é off.zeroElectric + _3PI_2 — mesma convenção que o lock-and-settle
+        // antigo produzia (motor.electricalAngle() travado em _3PI_2). ⚠️ SINAL/FRAME NÃO VALIDADO EM BANCADA
+        // (sem fonte com limite de corrente ainda) — se o VERIFY der runaway sistemático, é o 1º suspeito.
+        motor.zero_electric_angle = off.zeroElectric + _3PI_2;
+        drivelab::dbgRingPrintf("CAL: ZERO(medio)=%dmrad dir=%s fit=%d/1000 -> MALHA FECHADA %d rad/s\n",
+                                (int)(off.zeroElectric*1000.0f),
+                                off.direction>0?"CW":"CCW", (int)(off.fit*1000.0f), (int)g_velTarget);
         motor.controller = MotionControlType::velocity;
         motor.feed_forward_voltage.q = 0.0f;
         encoder.update(); g_verStart = encoder.getAngle();
@@ -607,6 +626,7 @@ static void stage1aTick(uint32_t nowMs)
         }
         motor.feed_forward_voltage.q = 0.0f;
         motor.loopFOC();
+        if (calCurrentCutoff(motor.electrical_angle)) return;
         motor.move(4.0f);
         if ((int32_t)(nowMs - g_focT) < 1200) return;
         encoder.update();
