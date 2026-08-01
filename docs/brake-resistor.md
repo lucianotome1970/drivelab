@@ -6,7 +6,8 @@
 > decelerated or back-driven, the motor becomes a generator and pushes energy back into
 > the DC bus, raising its voltage. The **brake (dump) resistor** burns that excess energy
 > as heat so the bus voltage stays safe. This guide explains the two ratings (Ω and W) and
-> why **2Ω** is the recommended value.
+> **which resistance to pick for a sim wheel** — the short answer is more nuanced than the
+> ODrive spec suggests.
 
 > ⚠️ **The brake resistor only protects while the base is POWERED ON** (the chopper has to
 > be actively switching). Spinning the motor with the base **off** rectifies back-EMF
@@ -28,40 +29,58 @@ that energy as heat and clamps the bus voltage. It is an *electrical brake*.
 
 | Rating | Meaning | Rule of thumb |
 |---|---|---|
-| **Ω (ohms)** | How much **current/power the system can dump** when the chopper is on. Current = Voltage ÷ Resistance. | **Lower Ω = stronger brake** (more dump capacity), but must respect the brake-FET current limit. |
+| **Ω (ohms)** | How much **current/power the system can dump** when the chopper is on. Current = Voltage ÷ Resistance. | Lower Ω = more dump capacity, **but also higher peak current** (more EMI, more FET stress). |
 | **W (watts)** | The **continuous thermal endurance** — how much sustained heat the resistor survives. | **Higher W = runs cooler / safer.** Braking is pulsed, so average power is low. |
 
-### Why 2Ω (and not 10Ω / 12Ω)
+### Which resistance — 2Ω or 12Ω?
 
-**2Ω is the official ODrive specification.** A low resistance lets the chopper sink enough
-current to hold the bus voltage down during a strong regen event. Peak dump capability at
-a **56V** bus (chopper fully on):
+Two values are common, and they suit **different goals**:
 
-| Resistor | Dump current (56V) | Peak dump power | Notes |
-|---|---|---|---|
-| **2Ω** ✅ (recommended) | 56 / 2 = **28 A** | ~3.1 kW | ODrive spec; handles abrupt braking |
-| 10Ω | 5.6 A | ~0.31 kW | Sinks **~10× less** → bus voltage can spike on a hard counter-steer |
-| 12Ω | 4.7 A | ~0.26 kW | Even weaker |
+| | **2Ω** (ODrive spec — ships with the ODESC) | **12Ω** (DD-wheel / FFBeast community) |
+|---|---|---|
+| Dump capacity | **High** — matches the brake-FET current rating | Lower, **but plenty for a steering wheel** |
+| Peak current `V/R` (→ EMI / di/dt) | **High** → more switching noise | **~6× lower** → much less noise |
+| Best for | High-power / **robotics** (ODrive's origin) | A **DD sim wheel** |
 
-- On a **24V** variant the currents halve (2Ω → 12 A), but **2Ω is still the right choice** —
-  the value is set by the board's brake FET, not by the PSU.
-- **Do not go below 2Ω** (e.g. 1Ω): you would exceed the brake-FET current rating. 2Ω is the
-  **safe floor**.
-- Someone using **10Ω/12Ω** simply has a **weaker brake** (probably parts on hand, or a
-  low-power setup). It works until a hard regen event pushes the bus into over-voltage fault.
+**For a DD sim wheel, 12Ω is the community standard** — people running *working* FFBeast
+setups use it — and there are two solid reasons:
 
-### Wattage: 100W vs 50W
+1. **A wheel's regen is small.** A steering wheel has **low inertia** (it's not a vehicle);
+   even a hard counter-steer is a few tens of watts, well within 12Ω's capacity. You don't
+   need 2Ω's huge dump.
+2. **~6× lower peak current = far less EMI.** The chopper *hard-switches* the resistor, so
+   the peak current (`V/R`) sets the di/dt. A **2Ω** resistor pulls **6–28 A** pulses whose
+   switching noise can **reset the board / drop the USB link** — *we hit exactly this on the
+   DriveLab bench with a ~2Ω resistor, and only fixed it by twisting the resistor leads*. A
+   **12Ω** resistor pulls **~1–5 A** → the noise is far smaller → the problem largely
+   **disappears at the source**.
 
-The **W rating is thermal headroom, not the peak dump power**. Braking happens in **short
-pulses**, so the average power is low and even 50W works. A **100W** resistor has **double the
-headroom** of the ODrive 50W minimum → it runs cooler and is safer. **A 2Ω/100W is better
-than a 50W/12Ω.**
+**2Ω also works** (it's the ODrive spec and what the ODESC ships), especially with clean
+wiring (short, twisted resistor leads). But for a DD wheel, **12Ω is likely the better
+choice** — adequate dump *and* much gentler on EMI.
+
+Peak dump (chopper fully on):
+
+| Resistor | @24V (peak A / peak W) | @56V (peak A / peak W) |
+|---|---|---|
+| **2Ω** | 12 A / 288 W | 28 A / 3.1 kW |
+| **12Ω** | 2 A / 48 W | 4.7 A / 261 W |
+
+- **Don't go *below* 2Ω** (e.g. 1Ω): you'd exceed the brake-FET current rating. 2Ω is the low floor.
+- The trade-off is real but mild: 12Ω dumps less, so in a *pathological* high-energy regen it
+  could let the bus climb higher than 2Ω would. For a sim wheel that case basically doesn't occur.
+
+### Wattage: 50W or 100W?
+
+The **W rating is thermal headroom, not the peak dump power.** Braking happens in **short
+pulses**, so the average power is low and **50W is the community/ODESC standard** and works.
+A **100W** part just runs cooler / has more margin — nice to have, not required.
 
 ### Two things that matter
 
-1. **The config must match the resistor.** Set `brake_resistance = 2.0` in the
-   firmware/app to match the real part. If the config says 2Ω but you fit 10Ω, the brake
-   regulation is miscalibrated.
+1. **The config must match the resistor.** Set `brake_resistance` in the firmware/app to the
+   **measured** value (`2.0` for a 2Ω part, `~12` for a 12Ω part). If the config disagrees
+   with the real part, the brake regulation is miscalibrated.
 2. **Powered-on only.** The resistor + chopper only work while the base is on. Off-state
    back-EMF is the **contactor's** job (phase disconnect). Different problem, different part.
 
@@ -73,10 +92,11 @@ than a 50W/12Ω.**
 
 ### Shopping summary
 
-- **Buy: 2Ω, 50–100W** wire-wound / aluminium-clad power resistor. **100W preferred** for
-  headroom. Rated ≥ your bus voltage. Mount on metal / with airflow — it gets hot.
-- Wire it to the base's **AUX brake output** (the dump terminals), and set
-  `brake_resistance = 2.0`.
+- **DD sim wheel → 12Ω, 50W** wire-wound / aluminium-clad (the FFBeast-community pick — gentler
+  on EMI, adequate for a wheel). The **2Ω 50W** that ships with the ODESC also works, especially
+  with short/twisted leads. Rated ≥ your bus voltage; mount on metal / with airflow.
+- Wire it to the base's **AUX brake output** (the dump terminals), and set `brake_resistance` to
+  the value you actually fitted.
 
 ---
 
@@ -94,43 +114,59 @@ essa energia em calor e segura a tensão. É um *freio elétrico*.
 
 | Rating | O que significa | Regra prática |
 |---|---|---|
-| **Ω (ohms)** | Quanta **corrente/potência o sistema consegue dissipar** com o chopper ligado. Corrente = Tensão ÷ Resistência. | **Menor Ω = freio mais forte** (mais capacidade), mas tem que respeitar o limite de corrente do FET de freio. |
+| **Ω (ohms)** | Quanta **corrente/potência o sistema consegue dissipar** com o chopper ligado. Corrente = Tensão ÷ Resistência. | Menor Ω = mais capacidade, **mas também maior corrente de pico** (mais EMI, mais estresse no FET). |
 | **W (watts)** | O **aguento térmico contínuo** — quanto calor sustentado o resistor suporta. | **Maior W = roda mais frio / mais seguro.** Frenagem é em pulsos, então a média é baixa. |
 
-### Por que 2Ω (e não 10Ω / 12Ω)
+### Qual resistência — 2Ω ou 12Ω?
 
-**2Ω é a especificação oficial do ODrive.** A resistência baixa deixa o chopper sorver
-corrente suficiente pra segurar a tensão do bus num regen forte. Pico de dissipação num
-bus de **56V** (chopper 100% ligado):
+Dois valores são comuns, e servem a **objetivos diferentes**:
 
-| Resistor | Corrente de dump (56V) | Potência de pico | Comentário |
-|---|---|---|---|
-| **2Ω** ✅ (recomendado) | 56 / 2 = **28 A** | ~3,1 kW | Spec ODrive; dá conta de frenagem brusca |
-| 10Ω | 5,6 A | ~0,31 kW | Sorve **~10× menos** → tensão pode disparar num contra-esterço forte |
-| 12Ω | 4,7 A | ~0,26 kW | Ainda mais fraco |
+| | **2Ω** (spec ODrive — vem com a ODESC) | **12Ω** (comunidade DD / FFBeast) |
+|---|---|---|
+| Capacidade de dump | **Alta** — casa com o limite de corrente do FET de freio | Menor, **mas de sobra pra um volante** |
+| Corrente de pico `V/R` (→ EMI / di/dt) | **Alta** → mais ruído de chaveamento | **~6× menor** → muito menos ruído |
+| Melhor pra | Alta potência / **robótica** (origem do ODrive) | Um **volante DD** |
 
-- Na variante **24V** as correntes caem pela metade (2Ω → 12 A), mas **2Ω continua sendo a
-  escolha certa** — o valor é ditado pelo FET de freio da placa, não pela fonte.
-- **Não desça abaixo de 2Ω** (ex.: 1Ω): você estoura o limite de corrente do FET de freio.
-  2Ω é o **piso seguro**.
-- Quem usa **10Ω/12Ω** está com um freio **mais fraco** (provavelmente peça à mão, ou setup
-  de menor potência). Funciona até um regen forte empurrar o bus pra falha de sobretensão.
+**Pra um volante DD, o 12Ω é o padrão da comunidade** — quem tem setup FFBeast *funcionando*
+usa ele — e por dois motivos sólidos:
 
-### Watts: 100W vs 50W
+1. **O regen de um volante é pequeno.** Um volante tem **inércia baixa** (não é um veículo);
+   mesmo um contra-esterço forte são umas dezenas de watts, bem dentro da capacidade do 12Ω.
+   Não precisa do dump gigante do 2Ω.
+2. **Corrente de pico ~6× menor = MUITO menos EMI.** O chopper *chaveia duro* o resistor, então
+   o pico (`V/R`) define o di/dt. Um **2Ω** puxa pulsos de **6–28 A** cujo ruído pode **resetar a
+   placa / derrubar o USB** — *foi exatamente o que aconteceu na bancada do DriveLab com um
+   resistor de ~2Ω, e só resolveu trançando os cabos do resistor*. Um **12Ω** puxa **~1–5 A** → o
+   ruído é muito menor → o problema **some na origem**.
 
-O **W é folga térmica, não a potência de pico.** Frenagem acontece em **pulsos curtos**,
-então a média é baixa e mesmo 50W funciona. Um resistor de **100W** tem o **dobro da folga**
-do mínimo do ODrive (50W) → roda mais frio e mais seguro. **Um 2Ω/100W é melhor que um
-50W/12Ω.**
+**2Ω também funciona** (é a spec do ODrive e o que a ODESC manda), principalmente com fiação
+limpa (cabos curtos e trançados). Mas pra um volante DD, **o 12Ω provavelmente é a melhor
+escolha** — dump suficiente *e* muito mais gentil com a EMI.
+
+Pico de dissipação (chopper 100% ligado):
+
+| Resistor | @24V (pico A / pico W) | @56V (pico A / pico W) |
+|---|---|---|
+| **2Ω** | 12 A / 288 W | 28 A / 3,1 kW |
+| **12Ω** | 2 A / 48 W | 4,7 A / 261 W |
+
+- **Não desça *abaixo* de 2Ω** (ex.: 1Ω): estoura o limite de corrente do FET de freio. 2Ω é o piso.
+- O trade-off é real mas leve: o 12Ω dissipa menos, então num regen *patológico* de muita energia
+  ele deixaria o bus subir mais que o 2Ω. Pra um volante, esse caso basicamente não acontece.
+
+### Watts: 50W ou 100W?
+
+O **W é folga térmica, não a potência de pico.** Frenagem é em **pulsos curtos**, então a média
+é baixa e **50W é o padrão da comunidade/ODESC** e funciona. Um de **100W** só roda mais frio /
+tem mais margem — bom ter, não obrigatório.
 
 ### Duas coisas que importam
 
-1. **A config tem que casar com o resistor.** Ajuste `brake_resistance = 2.0` no
-   firmware/app pra bater com a peça real. Se a config disser 2Ω mas você instalar 10Ω, a
+1. **A config tem que casar com o resistor.** Ajuste o `brake_resistance` no firmware/app pro
+   valor **medido** (`2.0` pra um 2Ω, `~12` pra um 12Ω). Se a config discordar da peça real, a
    regulação do freio fica errada.
-2. **Só com a placa LIGADA.** O resistor + chopper só funcionam com a base ligada. O
-   back-EMF de estado desligado é tarefa do **contator** (desconecta as fases). Problema
-   diferente, peça diferente.
+2. **Só com a placa LIGADA.** O resistor + chopper só funcionam com a base ligada. O back-EMF de
+   estado desligado é tarefa do **contator** (desconecta as fases). Problema diferente, peça diferente.
 
 ### Códigos de marcação
 
@@ -140,12 +176,13 @@ do mínimo do ODrive (50W) → roda mais frio e mais seguro. **Um 2Ω/100W é me
 
 ### Resumo de compra
 
-- **Compre: 2Ω, 50–100W**, resistor de potência wire-wound / aluminium-clad (aletado).
-  **100W preferível** pela folga. Tensão nominal ≥ a do seu bus. Monte em metal / com
-  ventilação — ele esquenta.
-- Ligue na **saída de freio AUX** da base (os terminais de dump) e ajuste
-  `brake_resistance = 2.0`.
+- **Volante DD → 12Ω, 50W** wire-wound / aluminium-clad (a escolha da comunidade FFBeast — mais
+  gentil com a EMI, suficiente pra um volante). O **2Ω 50W** que vem com a ODESC também funciona,
+  principalmente com cabos curtos/trançados. Tensão nominal ≥ a do seu bus; monte em metal / com
+  ventilação.
+- Ligue na **saída de freio AUX** da base (os terminais de dump) e ajuste o `brake_resistance` pro
+  valor que você de fato instalou.
 
 ---
 
-<sub>DriveLab — Autor: Luciano Tomé — Licença MIT</sub>
+<sub>DriveLab — Autor: Luciano Tomé — Licença MIT. Revisão: 2Ω (spec ODrive) vs 12Ω (comunidade DD) — o 12Ω é provavelmente melhor pra volante por causa da EMI/pico de corrente, a confirmar com o motor sob FFB.</sub>
