@@ -593,12 +593,12 @@ static void stage1aTick(uint32_t nowMs)
             motor.disable(); g_motorFault = true; g_focPhase = FOC_IDLE; return;
         }
         motor.sensor_direction = (off.direction > 0) ? Direction::CW : Direction::CCW;
-        // Mapeamento de volta ao frame do SimpleFOC: a OffsetAccumulator trabalhou com fieldAngle = ang - _3PI_2
-        // (ver calAccum acima), então o offset elétrico "puro" (frame do SimpleFOC, sem o deslocamento de
-        // _3PI_2 usado só durante o scan) é off.zeroElectric + _3PI_2 — mesma convenção que o lock-and-settle
-        // antigo produzia (motor.electricalAngle() travado em _3PI_2). ⚠️ SINAL/FRAME NÃO VALIDADO EM BANCADA
-        // (sem fonte com limite de corrente ainda) — se o VERIFY der runaway sistemático, é o 1º suspeito.
-        motor.zero_electric_angle = off.zeroElectric + _3PI_2;
+        // O _3PI_2 já está embutido em aP/aM via o calAccum acima (add(pm, angField - _3PI_2) => aP = pm -
+        // angField + _3PI_2), então off.zeroElectric JÁ é o zero elétrico no frame do SimpleFOC — não soma
+        // _3PI_2 de novo aqui (bate com o antigo sweep-correlate: zero_electric_angle = atan2f(g_sinP, g_cosP),
+        // sem termo extra). ⚠️ SINAL/DIREÇÃO NÃO VALIDADO EM BANCADA (sem fonte com limite de corrente ainda)
+        // — se o VERIFY der runaway sistemático, é o 1º suspeito.
+        motor.zero_electric_angle = off.zeroElectric;
         drivelab::dbgRingPrintf("CAL: ZERO(medio)=%dmrad dir=%s fit=%d/1000 -> MALHA FECHADA %d rad/s\n",
                                 (int)(off.zeroElectric*1000.0f),
                                 off.direction>0?"CW":"CCW", (int)(off.fit*1000.0f), (int)g_velTarget);
