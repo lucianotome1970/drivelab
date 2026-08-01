@@ -251,7 +251,7 @@ static drivelab::FocBrake   focBrake;
 static bool     g_brakeBenchActive = false;   // true = modo bancada do freio ativo
 static uint8_t  g_brakeDutyManual  = 0;        // duty manual em % (0..20)
 static uint32_t g_brakeBenchT      = 0;        // timestamp do último cmd (auto-desarme)
-static constexpr uint32_t kBrakeBenchTimeoutMs = 60000;  // 60s sem novo cmd → desarma
+static constexpr uint32_t kBrakeBenchTimeoutMs = 120000; // 120s sem novo cmd → desarma (folga p/ o ritmo humano de leitura/comando na bancada)
 #endif
 
 // ===================== O "cérebro" FFB (lib/brain) =====================
