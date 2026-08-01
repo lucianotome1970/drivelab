@@ -117,6 +117,18 @@ static void jumpToBootloaderEarly()
     SCB->VTOR = 0x1FFF0000;
     __set_MSP(boot[0]);
 
+    // REABILITAR as interrupções antes de entregar o controle ao ROM. A USB
+    // DFU do bootloader por ROM é DIRIGIDA POR INTERRUPÇÃO (IRQ do OTG_FS) —
+    // se saltarmos com o PRIMASK=1 (setado pelo __disable_irq() acima), o
+    // handler do USB NUNCA dispara e o dispositivo não enumera, mesmo com o
+    // clock da USB ligado. Causa raiz do "warm jump não sobe a USB do
+    // bootloader" (cold boot funciona porque nasce com PRIMASK=0): CONFIRMADA
+    // por SWD (2026-08-01) — com o ROM rodando o PRIMASK lia 0x01, OTGFSEN=1.
+    // Mantemos as IRQs mascaradas durante o ajuste de VTOR/MSP (nenhuma fonte
+    // de IRQ está habilitada neste ponto, pós NVIC_SystemReset + HAL_DeInit) e
+    // só reabilitamos aqui, imediatamente antes do branch pro ROM.
+    __enable_irq();
+
     void (*blReset)(void) = (void (*)(void))boot[1];
     blReset();
 
