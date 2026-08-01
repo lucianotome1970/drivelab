@@ -90,3 +90,7 @@ c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out21" test_brake_
 out22="$(mktemp -d)/brake_auto_test"
 c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out22" test_brake_auto.cpp
 "$out22"
+
+out23="$(mktemp -d)/foc_offset_cal_test"
+c++ -std=c++17 -I../lib/base_motor -Wall -Wextra -Werror -o "$out23" test_foc_offset_cal.cpp
+"$out23"
