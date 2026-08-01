@@ -466,6 +466,7 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
 static void restartScan(uint32_t nowMs)
 {
     g_offAcc = drivelab::OffsetAccumulator{};
+    motor.PID_current_q.reset(); motor.PID_current_d.reset();   // zera integrador: sem isso, retry herda estado do FWD/BWD/VERIFY anterior
     motor.controller = MotionControlType::torque;
     motor.feed_forward_voltage.q = 0.0f;
     motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);       // trava no início da varredura
