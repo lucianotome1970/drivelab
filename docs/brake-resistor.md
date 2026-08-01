@@ -70,6 +70,13 @@ Peak dump (chopper fully on):
 - The trade-off is real but mild: 12Ω dumps less, so in a *pathological* high-energy regen it
   could let the bus climb higher than 2Ω would. For a sim wheel that case basically doesn't occur.
 
+> **Most DIY DD-wheel builds run a 24V supply.** At 24V the peak currents are moderate (table
+> above), and the **~8–12Ω range is the sweet spot** — low EMI *and* plenty of dump for a wheel.
+> **12Ω** is the lowest-EMI / community pick; **~8Ω** keeps a bit more capacity margin (a hedge if
+> your FFB is aggressive). Both are cheap, so the honest move is to **buy an 8Ω and a 12Ω and
+> compare them under real FFB** — pick the highest R (least EMI) that still holds the bus on your
+> worst counter-steer. (At **56V** the peaks are ~2× higher, so lean toward 12Ω+.)
+
 ### Wattage: 50W or 100W?
 
 The **W rating is thermal headroom, not the peak dump power.** Braking happens in **short
@@ -92,9 +99,10 @@ A **100W** part just runs cooler / has more margin — nice to have, not require
 
 ### Shopping summary
 
-- **DD sim wheel → 12Ω, 50W** wire-wound / aluminium-clad (the FFBeast-community pick — gentler
-  on EMI, adequate for a wheel). The **2Ω 50W** that ships with the ODESC also works, especially
-  with short/twisted leads. Rated ≥ your bus voltage; mount on metal / with airflow.
+- **DD sim wheel (most run 24V) → 8–12Ω, 50W** wire-wound / aluminium-clad. **12Ω** = community /
+  lowest-EMI; **~8Ω** = a bit more capacity margin — both are cheap, so buy both and compare under
+  FFB. The **2Ω 50W** that ships with the ODESC also works, especially with short/twisted leads.
+  Rated ≥ your bus voltage; mount on metal / with airflow.
 - Wire it to the base's **AUX brake output** (the dump terminals), and set `brake_resistance` to
   the value you actually fitted.
 
@@ -154,6 +162,13 @@ Pico de dissipação (chopper 100% ligado):
 - O trade-off é real mas leve: o 12Ω dissipa menos, então num regen *patológico* de muita energia
   ele deixaria o bus subir mais que o 2Ω. Pra um volante, esse caso basicamente não acontece.
 
+> **A maioria dos setups DIY de volante DD usa fonte de 24V.** A 24V os picos de corrente são
+> moderados (tabela acima), e a **faixa ~8–12Ω é o ponto ótimo** — pouca EMI *e* dump de sobra pra
+> um volante. **12Ω** = menor EMI / escolha da comunidade; **~8Ω** = um pouco mais de margem de
+> capacidade (hedge se o FFB for agressivo). Os dois são baratos, então o jeito honesto é **comprar
+> um 8Ω e um 12Ω e comparar sob FFB de verdade** — escolher o maior R (menos EMI) que ainda segura o
+> bus no pior contra-esterço. (A **56V** os picos são ~2× maiores → puxe pra 12Ω+.)
+
 ### Watts: 50W ou 100W?
 
 O **W é folga térmica, não a potência de pico.** Frenagem é em **pulsos curtos**, então a média
@@ -176,10 +191,10 @@ tem mais margem — bom ter, não obrigatório.
 
 ### Resumo de compra
 
-- **Volante DD → 12Ω, 50W** wire-wound / aluminium-clad (a escolha da comunidade FFBeast — mais
-  gentil com a EMI, suficiente pra um volante). O **2Ω 50W** que vem com a ODESC também funciona,
-  principalmente com cabos curtos/trançados. Tensão nominal ≥ a do seu bus; monte em metal / com
-  ventilação.
+- **Volante DD (a maioria usa 24V) → 8–12Ω, 50W** wire-wound / aluminium-clad. **12Ω** = comunidade
+  / menor EMI; **~8Ω** = um pouco mais de margem de capacidade — baratos, então compre os dois e
+  compare sob FFB. O **2Ω 50W** que vem com a ODESC também funciona, principalmente com cabos
+  curtos/trançados. Tensão nominal ≥ a do seu bus; monte em metal / com ventilação.
 - Ligue na **saída de freio AUX** da base (os terminais de dump) e ajuste o `brake_resistance` pro
   valor que você de fato instalou.
 
