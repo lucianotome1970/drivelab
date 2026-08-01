@@ -1041,6 +1041,21 @@ void setup()
     // fracos que FALHARAM estão comentados lá; não repetido aqui).
     __asm__ __volatile__("" : : "r"(&fw_signature) : "memory");
 
+    // Causa do ÚLTIMO reset (RCC_CSR) — diagnóstico do reset sob o chopper (bancada 2026-07-31).
+    // " BOR" = brown-out (dip de VDD/bus), " IWDG"/" WWDG" = watchdog, " PIN"/" POR" = power/NRST glitch,
+    // " SFT" = software. Ler ANTES de limpar; fica no dbgRing p/ ler por SWD/CDC quando a USB subir.
+    {
+        const uint32_t csr = RCC->CSR;
+        drivelab::dbgRingPrintf("RESET cause: CSR=0x%08lx%s%s%s%s%s%s\n", (unsigned long)csr,
+            (csr & RCC_CSR_BORRSTF)  ? " BOR"  : "",
+            (csr & RCC_CSR_PINRSTF)  ? " PIN"  : "",
+            (csr & RCC_CSR_PORRSTF)  ? " POR"  : "",
+            (csr & RCC_CSR_SFTRSTF)  ? " SFT"  : "",
+            (csr & RCC_CSR_IWDGRSTF) ? " IWDG" : "",
+            (csr & RCC_CSR_WWDGRSTF) ? " WWDG" : "");
+        RCC->CSR |= RCC_CSR_RMVF;   // limpa os flags → próxima leitura reflete só o próximo reset
+    }
+
     // ---- DRV8301: único hardware de fato configurado antes do USB (SPI
     // puro, sem PWM) ----
     // Só armazena voltage_power_supply — NÃO chama driver.init() (isso
@@ -1300,6 +1315,13 @@ void loop()
                     focBrake.disarm();
                     g_brakeBenchActive = false;
                     drivelab::dbgRingPrintf("BRAKE: desarmado\n");
+                } else if (focPower.busVoltage() < 8.0f) {
+                    // Gate estilo OpenFFBoard: NÃO armar/dumpar com o bus baixo (evita loop de reset —
+                    // eles gatearam o brake quando só-USB pelo mesmo motivo). Mesmo limiar do stage1aStart.
+                    focBrake.disarm();
+                    g_brakeBenchActive = false;
+                    drivelab::dbgRingPrintf("BRAKE: recusado — bus baixo %dmV (min 8000mV)\n",
+                        (int)(focPower.busVoltage() * 1000.0f));
                 } else {
                     if (!focBrake.armed()) focBrake.arm();
                     g_brakeDutyManual  = b.dutyPct;
