@@ -153,6 +153,14 @@ bool A0Channel::handleOutReport(const uint8_t* buf, uint16_t len)
                 m_brakeBenchArg = arg;
                 drivelab::dbgRingPrintf("A0 cmd=%u (BrakeBench) arg=%u -> m_brakeBenchRequested\n", cmd, arg);
             }
+            else if (cmd == 9 /* BrakeAuto (bancada: chopper em modo automático) */)
+            {
+                // BaseCommand.BrakeAuto (app, reservado): só marca. O m5 (gated DRVLAB_BRAKE_CHOPPER_HW)
+                // consome via brakeAutoRequested() e dirige o FocBrake pelo BrakeController. Ver docs.
+                m_brakeAutoRequested = true;
+                m_brakeAutoArg = arg;
+                drivelab::dbgRingPrintf("A0 cmd=%u (BrakeAuto) arg=%u -> m_brakeAutoRequested\n", cmd, arg);
+            }
             else
             {
                 drivelab::dbgRingPrintf("A0 cmd=%u arg=%u (sem handler ainda)\n", cmd, arg);

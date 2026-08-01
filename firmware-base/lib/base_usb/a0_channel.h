@@ -221,6 +221,15 @@ public:
         return false;
     }
 
+    /// Consome um pedido de "modo automático do brake chopper" (BaseCommand.BrakeAuto / cmd 9). Retorna true UMA vez
+    /// por pedido — o m5 (gated DRVLAB_BRAKE_CHOPPER_HW) usa isso para armar o FocBrake e deixar o BrakeController
+    /// dirigir o duty pela tensão do bus (ver brake_auto.h). M0.5 não tem chopper: fica inerte se ninguém consumir.
+    bool brakeAutoRequested(uint8_t& argOut)
+    {
+        if (m_brakeAutoRequested) { m_brakeAutoRequested = false; argOut = m_brakeAutoArg; return true; }
+        return false;
+    }
+
     /// Consome a última força ADITIVA de telemetria recebida no report DIRECT (0x10). Retorna true (e o valor
     /// em `out`, unidades force255) só quando chegou um report novo desde a última chamada — o m5 usa isso para
     /// aplicar engine.setTelemetryForce e, no silêncio, zerar por timeout.
@@ -256,6 +265,8 @@ private:
     uint8_t m_calibrateArg = 0;        ///< arg do cmd 5 = tensão open-loop em décimos de volt (ex.: 15 = 1,5V)
     bool    m_brakeBenchRequested = false; ///< pedido pendente do comando de bancada do chopper (cmd 8), consumido por brakeBenchRequested()
     uint8_t m_brakeBenchArg = 0;           ///< arg do cmd 8 (ver brake_bench.h)
+    bool    m_brakeAutoRequested = false; ///< pedido pendente do modo auto-brake (cmd 9), consumido por brakeAutoRequested()
+    uint8_t m_brakeAutoArg = 0;           ///< arg do cmd 9 (0=desarma, 1=arma-auto)
     int16_t m_telemetryForce = 0; ///< última força aditiva de telemetria recebida (report DIRECT)
     bool m_hasNewDirect = false;  ///< um report DIRECT novo chegou desde o último consumeTelemetryForce()
 

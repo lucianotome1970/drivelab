@@ -23,4 +23,7 @@ public enum BaseCommand : byte
 
     /// <summary>Bancada: arma o brake chopper + duty manual (cmd 8). Enviado por tools/a0_cmd.py, não pela UI.</summary>
     BrakeBench = 8,
+
+    /// <summary>Bancada: arma o brake chopper em modo AUTOMÁTICO (controlador dirige o duty pela tensão do bus; cmd 9). Enviado por tools/a0_cmd.py.</summary>
+    BrakeAuto = 9,
 }

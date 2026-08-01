@@ -248,10 +248,16 @@ static drivelab::FocBrake   focBrake;
 
 #ifdef DRVLAB_BRAKE_CHOPPER_HW
 #include "brake_bench.h"
+#include "brake_auto.h"
 static bool     g_brakeBenchActive = false;   // true = modo bancada do freio ativo
 static uint8_t  g_brakeDutyManual  = 0;        // duty manual em % (0..20)
 static uint32_t g_brakeBenchT      = 0;        // timestamp do último cmd (auto-desarme)
 static constexpr uint32_t kBrakeBenchTimeoutMs = 120000; // 120s sem novo cmd → desarma (folga p/ o ritmo humano de leitura/comando na bancada)
+static drivelab::BrakeController g_brakeAutoCtrl;   // controlador auto (ffb_power.h) — cfg setada no arm
+static bool     g_brakeAutoActive = false;          // true = modo auto-brake ativo
+static uint32_t g_brakeAutoT      = 0;              // timestamp do último cmd (auto-desarme)
+static constexpr float kBrakeAutoResOhm   = 1.8f;   // resistor medido (~1,8Ω)
+static constexpr float kBrakeAutoMaxCurrA = 2.0f;   // cap de corrente (resistor 50W)
 #endif
 
 // ===================== O "cérebro" FFB (lib/brain) =====================
@@ -1326,6 +1332,7 @@ void loop()
                     if (!focBrake.armed()) focBrake.arm();
                     g_brakeDutyManual  = b.dutyPct;
                     g_brakeBenchActive = true;
+                    g_brakeAutoActive  = false;   // mútua exclusão: bancada manual desarma o modo automático
                     g_brakeBenchT      = now;
                     drivelab::dbgRingPrintf("BRAKE: armed duty=%d%%\n", (int)b.dutyPct);
                 }
@@ -1340,10 +1347,54 @@ void loop()
                 focBrake.setDuty(g_brakeDutyManual / 100.0f);   // duty manual (setDuty já valida dead-time)
             }
         }
+        // Modo auto-brake de bancada (cmd A0=9): arma o FocBrake e deixa o BrakeController (ffb_power.h)
+        // dirigir o duty pela tensão do bus, a partir de limiares auto-calibrados no ocioso (brake_auto.h).
+        // Mesmo padrão de segurança do cmd=8: motor SEMPRE off, gate de bus baixo, auto-desarme por timeout/fault.
+        {
+            uint8_t autoArg;
+            if (g_a0.brakeAutoRequested(autoArg)) {
+                if (motor.driver != nullptr) motor.disable();   // motor SEMPRE off no teste do freio
+                g_focPhase = FOC_IDLE;
+                g_brakeBenchActive = false;                      // mútua exclusão com o cmd=8 manual
+                if (autoArg == 0) {
+                    focBrake.disarm();
+                    g_brakeAutoActive = false;
+                    drivelab::dbgRingPrintf("BRAKE AUTO: desarmado\n");
+                } else if (focPower.busVoltage() < 8.0f) {
+                    focBrake.disarm();
+                    g_brakeAutoActive = false;
+                    drivelab::dbgRingPrintf("BRAKE AUTO: recusado — bus baixo %dmV\n",
+                        (int)(focPower.busVoltage() * 1000.0f));
+                } else {
+                    const float idle = focPower.busVoltage();
+                    const BrakeAutoThresholds th = brakeAutoThresholds(idle);
+                    g_brakeAutoCtrl.cfg.onVoltage     = th.onVoltage;
+                    g_brakeAutoCtrl.cfg.fullVoltage   = th.fullVoltage;
+                    g_brakeAutoCtrl.cfg.offVoltage    = th.offVoltage;
+                    g_brakeAutoCtrl.cfg.resistanceOhm = kBrakeAutoResOhm;
+                    g_brakeAutoCtrl.cfg.maxCurrentA   = kBrakeAutoMaxCurrA;
+                    if (!focBrake.armed()) focBrake.arm();
+                    g_brakeAutoActive = true;
+                    g_brakeAutoT      = now;
+                    drivelab::dbgRingPrintf("BRAKE AUTO: armado on=%dmV full=%dmV off=%dmV\n",
+                        (int)(th.onVoltage * 1000.0f), (int)(th.fullVoltage * 1000.0f), (int)(th.offVoltage * 1000.0f));
+                }
+            }
+        }
+        if (g_brakeAutoActive) {
+            if (g_motorFault || (int32_t)(now - g_brakeAutoT) > (int32_t)kBrakeBenchTimeoutMs) {
+                focBrake.disarm();
+                g_brakeAutoActive = false;
+                drivelab::dbgRingPrintf("BRAKE AUTO: auto-desarme (timeout/fault)\n");
+            } else {
+                focBrake.setDuty(g_brakeAutoCtrl.update(focPower.busVoltage()));   // controlador dirige o duty
+            }
+        }
 #endif
         if (g_focPhase == FOC_IDLE
 #ifdef DRVLAB_BRAKE_CHOPPER_HW
             && !g_brakeBenchActive   // não deixa um Calibrate concorrente reabrir o FOC durante a bancada do freio
+            && !g_brakeAutoActive    // idem para o modo auto-brake
 #endif
         )
         {
