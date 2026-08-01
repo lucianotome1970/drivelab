@@ -389,7 +389,7 @@ static const float    kCogMeasV   = 2.0f;       // rad/s da medição (lento →
 static const uint32_t kCogMeasMs  = 12000;      // ~4 voltas mecânicas a 2 rad/s (2π/2 ≈ 3,14s/volta)
 static const float    kCogFFClamp = 0.5f;       // teto do feed-forward de cogging (A, foc_current) — segurança
 
-static const float    kCalV     = 6.0f;   // tensão de arrasto (3V/4V escorregavam no cogging forte — 6V arrasta firme)
+static const float    kCalV     = 2.0f;   // tensão de arrasto (Lei de Ohm, jeito ODrive: V≈I_cal×R; ~2V ≈ 1,5A no ~1,3Ω → frio. 6V puxava 4-6A → cozinhava o DRV). Ideal: medir R e computar V=I_cal×R.
 static const float    kCalOmega = 4.0f;   // rad/s ELÉTRICO da varredura (mais devagar → rastreio mais firme)
 static const uint32_t kLockMs   = 1500;   // assentamento inicial (maior → parte de posição mais estável)
 static const uint32_t kScanMs   = 6000;   // duração por sentido (~24 rad elec ≈ 3,8 voltas → média melhor)
@@ -397,7 +397,6 @@ static const float    kScanSpan = kCalOmega * (kScanMs / 1000.0f);   // rad elé
 static drivelab::OffsetAccumulator g_offAcc;        // média circular do offset (Task 1) — substitui os g_sinP/... inline
 static const float    kMinOffsetFit  = 0.5f;        // raio mínimo do phasor médio p/ aceitar o zero (0..1)
 static const float    kCalMaxCurrentA = 3.0f;       // corte de segurança por corrente durante cal/verify (conservador; tunar na bancada)
-static const float    kCalCurrentA    = 0.4f;       // corrente de arrasto da varredura FWD/BWD (loop de corrente em ângulo forçado, jeito ODrive; conservador — sinal/ganhos/tuning ficam pra bancada com fonte limitada)
 static float    g_contStart=0.0f, g_contFwd=0.0f;   // getAngle (contínuo) no início e no fim do FWD
 
 // Acumula uma amostra da calibração p/ as 2 hipóteses de direção (campo em ângulo elétrico `angField`).
@@ -574,21 +573,15 @@ static void stage1aTick(uint32_t nowMs)
     if (g_focPhase == FOC_FWD) {
         const float t   = (nowMs - g_focT) * 0.001f;
         const float ang = _3PI_2 + kCalOmega * t;         // campo avança devagar
-        // Loop de corrente em ÂNGULO FORÇADO (jeito ODrive), causa-raiz do escorregão: em vez de arrastar
-        // com tensão fixa (torque inconsistente sob cogging/carga variável), mede Iq/Id no ângulo do CAMPO
-        // FORÇADO `ang` (não no do sensor — o sensor é o que estamos calibrando) e usa o PI de corrente já
-        // configurado (motor.PID_current_q/d, ganhos ao vivo via cfg) pra convergir em kCalCurrentA no eixo
-        // q (torque de arrasto) com Id->0. O PID já clampa em .limit=motor.voltage_limit (setado no
-        // stage1aStart). kCalCurrentA=0.4A é conservador — sinal/direção e tuning fino dos ganhos ficam
-        // pra sessão de bancada com fonte limitada (ver brief da Task 3).
-        PhaseCurrent_s ph = currentSense.getPhaseCurrents();
-        ABCurrent_s    ab = currentSense.getABCurrents(ph);
-        DQCurrent_s    dq = currentSense.getDQCurrents(ab, ang);
-        const float Uq = motor.PID_current_q(kCalCurrentA - dq.q);
-        const float Ud = motor.PID_current_d(0.0f - dq.d);
-        motor.setPhaseVoltage(Uq, Ud, ang);
+        // TENSÃO ABERTA dimensionada por Lei de Ohm (jeito ODrive run_offset_calibration, encoder.cpp:197-203):
+        // V ≈ calibration_current × R. NÃO é controle de corrente (o PI em ângulo forçado OSCILAVA — ganhos no
+        // chute P=1.5/I=60 têm mismatch ~60-250x vs R/L) e NÃO é 6V (puxava 4-6A → I²R ~40W → cozinhava o DRV).
+        // kCalV~2V ≈ 1,5A no nosso ~1,3Ω → I²R ~3W (frio). O offset médio (calAccum/computeOffset) cancela o
+        // cogging; o corte (calCurrentCutoff, sensor consertado DIR-gate) é a rede de segurança. Ver
+        // docs/reference/calibration-currentloop-research.md.
+        motor.setPhaseVoltage(kCalV, 0.0f, ang);
         calAccum(ang);
-        if (calCurrentCutoffValue(dq.q)) return;
+        if (calCurrentCutoff(ang)) return;
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kScanMs) {
             encoder.update(); g_contFwd = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_BWD;
@@ -601,17 +594,9 @@ static void stage1aTick(uint32_t nowMs)
     if (g_focPhase == FOC_BWD) {
         const float t   = (nowMs - g_focT) * 0.001f;
         const float ang = _3PI_2 + kScanSpan - kCalOmega * t;   // campo volta
-        // Mesmo loop de corrente em ângulo forçado do FWD acima — a direção do arrasto vem da trajetória de
-        // `ang` (decrescente aqui), não do sinal de Iq, então o alvo continua +kCalCurrentA (ver comentário
-        // no FOC_FWD).
-        PhaseCurrent_s ph = currentSense.getPhaseCurrents();
-        ABCurrent_s    ab = currentSense.getABCurrents(ph);
-        DQCurrent_s    dq = currentSense.getDQCurrents(ab, ang);
-        const float Uq = motor.PID_current_q(kCalCurrentA - dq.q);
-        const float Ud = motor.PID_current_d(0.0f - dq.d);
-        motor.setPhaseVoltage(Uq, Ud, ang);
+        motor.setPhaseVoltage(kCalV, 0.0f, ang);   // tensão aberta (ver FOC_FWD)
         calAccum(ang);
-        if (calCurrentCutoffValue(dq.q)) return;
+        if (calCurrentCutoff(ang)) return;
         if ((int32_t)(nowMs - g_focT) < (int32_t)kScanMs) return;
 
         // fim da varredura: direção + zero + sanidade
