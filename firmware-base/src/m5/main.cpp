@@ -1,47 +1,35 @@
 // ============================================================================
 //  DriveLab Firmware
-//  main.cpp (m5) — Task 4 (M5 firmware-base — Montagem final): USB/A0 (Stage 0)
-//  + FfbEngine (lib/brain) + DRV8301/SimpleFOC (Task 1-3) costurados no MESMO
-//  firmware. Motor continua FISICAMENTE INCAPAZ de produzir torque — ver o
-//  bloco ">>> MOTOR NÃO PODE SE MOVER <<<" logo abaixo.
+//  main.cpp (m5) — firmware-base "montagem final": USB/A0 (Stage 0) + FfbEngine
+//  (lib/brain) + DRV8301/SimpleFOC (Task 1-3) + brake chopper — tudo no MESMO
+//  binário. O motor É ACIONADO (FOC) por comando DELIBERADO de bancada e o
+//  brake chopper está ATIVO — ver o "MODELO DE SEGURANÇA" abaixo.
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 //
-// >>> MOTOR NÃO PODE SE MOVER NESTE ARQUIVO. <<<
-//   Esta é a "montagem" final do M5: USB/A0 (Stage 0, lib/base_usb) + o
-//   canal FFB (lib/base_shared/ffb_report.h) + o "cérebro" (lib/brain/
-//   ffb_engine.h) + a HAL SimpleFOC (Task 3, lib/base_motor/motor_hal.h) —
-//   tudo no mesmo binário, mas a fiação até o motor físico continua cortada
-//   de propósito:
-//     * NUNCA chamamos driver.init() (não configura os timers/PWM/dead-time
-//       de verdade — TIM1 nunca gera sinal nenhum nas fases).
-//     * NUNCA chamamos motor.linkDriver()/linkSensor()/init()/initFOC()/
-//       enable() — motor.init() SOZINHO já chamaria motor.enable() por
-//       dentro (ver Arduino-FOC BLDCMotor::init(), Task 3 do M5), então nem
-//       essa chamada aparece aqui.
-//     * NUNCA chamamos encoder.init() — o encoder fica sem contagem alguma.
-//     * O gate `g_calibrated` (const, sempre false neste arquivo) protege o
-//       ÚNICO lugar que chamaria motor.loopFOC()/engine.step()/motor.move()/
-//       motor.disable() — o bloco correspondente nunca EXECUTA. Isso importa
-//       porque BLDCMotor::disable() desreferencia `driver` SEM checar null
-//       (`driver->setPwm(...)`) e FOCMotor::move() desreferencia `sensor`
-//       fora do modo open-loop — como driver/sensor nunca foram linkados
-//       aqui, chamar qualquer um dos dois sem o gate seria um crash de
-//       ponteiro nulo, não só "motor não se move". motor.loopFOC() sozinho
-//       seria tecnicamente seguro mesmo sem o gate (checa `if(!enabled)
-//       return` logo após um `if(sensor)` guardado — enabled=0 por padrão,
-//       nunca setado porque enable() nunca é chamado), mas fica atrás do
-//       mesmo gate por clareza: um único ponto decide "o motor pode se
-//       mexer" em vez de espalhar a lógica de segurança.
-//     * Só o DRV8301 é de fato configurado (drv.begin()+drv.configure()),
-//       que é SPI puro (config de registro) — não gera PWM nas fases.
-//     * FocBrake::setDuty() é NO-OP de propósito (ver motor_hal.cpp) — o
-//       resistor de frenagem é um half-bridge (AUX_L/AUX_H, TIM2) cuja PWM
-//       própria ainda não foi portada.
-//   O Stage 1 (bancada, task futura) é quem vai flipar `g_calibrated` para
-//   true DEPOIS de chamar driver.init()/motor.linkDriver()/linkSensor()/
-//   init()/initFOC() na ordem certa — nada disso mora neste arquivo.
+// >>> MODELO DE SEGURANÇA (atualizado 2026-08). <<<
+//   [O header antigo dizia "MOTOR NÃO PODE SE MOVER" — era do snapshot Task 4 e
+//    ficou OBSOLETO quando o acionamento do motor (M5/M6) e o brake chopper
+//    entraram. Validado em bancada a sessão inteira.]
+//   No BOOT o motor fica INERTE: driver.init()/motor.init()/enable() NÃO são
+//   chamados, TIM1 não gera PWM nas fases, o encoder não conta — nada se move.
+//   O motor só é ARMADO por comando DELIBERADO (operador de mão na tomada):
+//     * cmd 5 (Calibrate) → stage1aStart(): chama driver.init()/motor.init(),
+//       calibra o zero em MALHA ABERTA (velocidade aplicada — SEM o initFOC
+//       bloqueante que pendurava a USB) → FOC_RUN → modos de FFB (mola / jogo
+//       arg=97/96, cap de corrente 1A). AQUI o motor GIRA / produz torque —
+//       validado (spring FFB, M5/M6, ACC/AMS2/EVO).
+//     * cmd 8 (BrakeBench) / cmd 9 (BrakeAuto) → o brake chopper (FocBrake,
+//       AUX_L/AUX_H no TIM2, gated DRVLAB_BRAKE_CHOPPER_HW) dumpa no resistor —
+//       validado (sem shoot-through; o auto dispara sozinho no regen). NÃO é
+//       mais NO-OP.
+//   O gate `g_calibrated` (const false) ainda segura o ÚNICO caminho de FFB
+//   AUTOMÁTICO (o engine.step que rodaria SEM o cmd 5) — protege contra o
+//   null-deref de BLDCMotor::disable()/FOCMotor::move() com driver/sensor não
+//   linkados. Ou seja: a força automática de PRODUÇÃO ainda é opt-in; na
+//   bancada, o motor se move pelo caminho deliberado do cmd 5 acima.
+//   Só o DRV8301 é configurado no setup (drv.begin()+drv.configure(), SPI puro).
 //
 // USB/A0: reaproveita os módulos do M5 Stage 0 (lib/base_usb) exatamente
 // como src/m05/main.cpp — dfuCheckAtBootOrJump() no topo do setup(),
