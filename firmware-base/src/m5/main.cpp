@@ -379,6 +379,7 @@ static const float    kScanSpan = kCalOmega * (kScanMs / 1000.0f);   // rad elé
 static drivelab::OffsetAccumulator g_offAcc;        // média circular do offset (Task 1) — substitui os g_sinP/... inline
 static const float    kMinOffsetFit  = 0.5f;        // raio mínimo do phasor médio p/ aceitar o zero (0..1)
 static const float    kCalMaxCurrentA = 3.0f;       // corte de segurança por corrente durante cal/verify (conservador; tunar na bancada)
+static const float    kCalCurrentA    = 0.4f;       // corrente de arrasto da varredura FWD/BWD (loop de corrente em ângulo forçado, jeito ODrive; conservador — sinal/ganhos/tuning ficam pra bancada com fonte limitada)
 static float    g_contStart=0.0f, g_contFwd=0.0f;   // getAngle (contínuo) no início e no fim do FWD
 
 // Acumula uma amostra da calibração p/ as 2 hipóteses de direção (campo em ângulo elétrico `angField`).
@@ -391,13 +392,10 @@ static inline void calAccum(float angField)
     g_offAcc.add(pm, angField - _3PI_2);
 }
 
-// Corte de segurança por corrente durante a calibração/verify (Task 2). Lê a corrente q via
-// getFOCCurrents(angElectric) — não há loopFOC() rodando durante o scan (setPhaseVoltage direto), então o
-// ângulo elétrico usado pro cálculo é passado explicitamente pelo chamador (o `ang` do próprio tick, ou
-// motor.electrical_angle no VERIFY onde loopFOC() já roda).
-static bool calCurrentCutoff(float angElectric)
+// Corte de segurança por corrente durante a calibração/verify (Task 2), a partir de um Iq já medido.
+// Compartilhado pelas duas variantes abaixo — abort limpo (desliga PWM, desabilita, sinaliza fault).
+static bool calCurrentCutoffValue(float iq)
 {
-    const float iq = currentSense.getFOCCurrents(angElectric).q;
     if (drivelab::currentOverLimit(iq, kCalMaxCurrentA)) {
         drivelab::dbgRingPrintf("CAL CORTE: Iq=%dmA > teto %dmA — abortando\n",
                                  (int)(iq*1000.0f), (int)(kCalMaxCurrentA*1000.0f));
@@ -406,6 +404,15 @@ static bool calCurrentCutoff(float angElectric)
         return true;
     }
     return false;
+}
+
+// Corte de segurança por corrente a partir do ÂNGULO ELÉTRICO (LOCK/VERIFY, onde o tick ainda não mediu
+// DQ por conta própria). Lê a corrente q via getFOCCurrents(angElectric) — não há loopFOC() rodando
+// durante o scan (setPhaseVoltage direto), então o ângulo é passado explicitamente pelo chamador (o `ang`
+// do próprio tick, ou motor.electrical_angle no VERIFY onde loopFOC() já roda).
+static bool calCurrentCutoff(float angElectric)
+{
+    return calCurrentCutoffValue(currentSense.getFOCCurrents(angElectric).q);
 }
 
 // Diagnóstico do sensor de corrente (cmd 5 arg=100). Isolado — NÃO mexe no stage1a provado nem energiza
@@ -548,9 +555,21 @@ static void stage1aTick(uint32_t nowMs)
     if (g_focPhase == FOC_FWD) {
         const float t   = (nowMs - g_focT) * 0.001f;
         const float ang = _3PI_2 + kCalOmega * t;         // campo avança devagar
-        motor.setPhaseVoltage(kCalV, 0.0f, ang);
+        // Loop de corrente em ÂNGULO FORÇADO (jeito ODrive), causa-raiz do escorregão: em vez de arrastar
+        // com tensão fixa (torque inconsistente sob cogging/carga variável), mede Iq/Id no ângulo do CAMPO
+        // FORÇADO `ang` (não no do sensor — o sensor é o que estamos calibrando) e usa o PI de corrente já
+        // configurado (motor.PID_current_q/d, ganhos ao vivo via cfg) pra convergir em kCalCurrentA no eixo
+        // q (torque de arrasto) com Id->0. O PID já clampa em .limit=motor.voltage_limit (setado no
+        // stage1aStart). kCalCurrentA=0.4A é conservador — sinal/direção e tuning fino dos ganhos ficam
+        // pra sessão de bancada com fonte limitada (ver brief da Task 3).
+        PhaseCurrent_s ph = currentSense.getPhaseCurrents();
+        ABCurrent_s    ab = currentSense.getABCurrents(ph);
+        DQCurrent_s    dq = currentSense.getDQCurrents(ab, ang);
+        const float Uq = motor.PID_current_q(kCalCurrentA - dq.q);
+        const float Ud = motor.PID_current_d(0.0f - dq.d);
+        motor.setPhaseVoltage(Uq, Ud, ang);
         calAccum(ang);
-        if (calCurrentCutoff(ang)) return;
+        if (calCurrentCutoffValue(dq.q)) return;
         if ((int32_t)(nowMs - g_focT) >= (int32_t)kScanMs) {
             encoder.update(); g_contFwd = encoder.getAngle();
             g_focT = nowMs; g_focPhase = FOC_BWD;
@@ -563,9 +582,17 @@ static void stage1aTick(uint32_t nowMs)
     if (g_focPhase == FOC_BWD) {
         const float t   = (nowMs - g_focT) * 0.001f;
         const float ang = _3PI_2 + kScanSpan - kCalOmega * t;   // campo volta
-        motor.setPhaseVoltage(kCalV, 0.0f, ang);
+        // Mesmo loop de corrente em ângulo forçado do FWD acima — a direção do arrasto vem da trajetória de
+        // `ang` (decrescente aqui), não do sinal de Iq, então o alvo continua +kCalCurrentA (ver comentário
+        // no FOC_FWD).
+        PhaseCurrent_s ph = currentSense.getPhaseCurrents();
+        ABCurrent_s    ab = currentSense.getABCurrents(ph);
+        DQCurrent_s    dq = currentSense.getDQCurrents(ab, ang);
+        const float Uq = motor.PID_current_q(kCalCurrentA - dq.q);
+        const float Ud = motor.PID_current_d(0.0f - dq.d);
+        motor.setPhaseVoltage(Uq, Ud, ang);
         calAccum(ang);
-        if (calCurrentCutoff(ang)) return;
+        if (calCurrentCutoffValue(dq.q)) return;
         if ((int32_t)(nowMs - g_focT) < (int32_t)kScanMs) return;
 
         // fim da varredura: direção + zero + sanidade
