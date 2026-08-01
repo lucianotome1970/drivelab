@@ -168,12 +168,11 @@ static bool g_csReady = false;
 // de telemetria. Escala 0,0403 A/count; offset em counts medido em repouso.
 static const float kAmpsPerCount = 3.3f / 4096.0f / (40.0f * 0.0005f);   // ~0,0403 A/count
 static float g_off10 = 2048.0f, g_off11 = 2048.0f;                        // offset de repouso (counts)
+static uint16_t g_lastJ1 = 2048, g_lastJ2 = 2048;                         // última amostra VÁLIDA (do vale) — DIR-gate
 
-// SINCRONIZAÇÃO POR HARDWARE, SEM interrupção (o ADC_IRQHandler é do SimpleFOC; o TIM1_UP é do core — os dois
-// tomados). Truque: ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_CC4, com o CC4 comparando perto do
-// PICO do PWM (low-side conduzindo) → o hardware faz 1 conversão/período no ponto certo e guarda em JDR1/JDR2.
-// O loop só LÊ o JDR (registrador pronto, ~0µs, sem espera) → sincronizado, sem busy-wait, sem ISR, sem conflito.
-// (Não habilita CC4E: PA11=USB DM; o OC4REF interno dispara o ADC sem precisar do pino.)
+// SINCRONIZAÇÃO POR HARDWARE, SEM interrupção. ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_TRGO=Update.
+// ⚠️ Em center-aligned o Update dispara no VALE (low-side ON = corrente real) E no PICO (all-high-side = ~0V):
+// a discriminação vale/pico é feita no genCurrentRead pelo bit DIR (ver lá). O loop LÊ o JDR (pronto, ~0µs).
 // Config COMPLETA e IDEMPOTENTE do ADC2 injected (TRGO=update do ODrive: o update SEMPRE fira, mesmo com MOE).
 // Chamada A CADA leitura pra sobreviver a qualquer analogRead, que DE-INICIALIZA o ADC (limitação conhecida do
 // SimpleFOC STM32 — analogRead init/deinit o ADC toda vez). ADON escrito JUNTO no CR2 (não pisca ligado→desligado).
@@ -194,8 +193,18 @@ static void adc2Config()
 static PhaseCurrent_s genCurrentRead()
 {
     adc2Config();   // reconfig completo por leitura → sobrevive a qualquer analogRead que de-inicializou o ADC
-    const float ib = ((float)ADC2->JDR1 - g_off10) * kAmpsPerCount;   // IN10 = PC0 = IB
-    const float ic = ((float)ADC2->JDR2 - g_off11) * kAmpsPerCount;   // IN11 = PC1 = IC
+    // DIR-GATE (jeito ODrive, low_level.cpp:506-507 `counting_down = CR1 & TIM_CR1_DIR`): em PWM CENTER-ALIGNED
+    // o TIM1 Update dispara DUAS vezes por período — no VALE (CNT≈0, todos os low-side ON = corrente de fase
+    // REAL) e no PICO (CNT≈ARR, all-high-side = vetor zero, amp ~0V). SÓ o vale é corrente real. DIR=0
+    // (up-counting = acabamos de sair do vale) → o JDR é a amostra boa: aceita e guarda; DIR=1 (down = saiu do
+    // pico) → o JDR é ~0 legítimo (não corrente) → SEGURA a última do vale. Sem isto ~metade das amostras era o
+    // pico ~0 → -80A fantasma → falso corte (bug confirmado na bancada). Ver docs/reference/current-sense-research.md.
+    if (!(TIM1->CR1 & TIM_CR1_DIR)) {                                 // up-counting → JDR = amostra do vale (real)
+        g_lastJ1 = (uint16_t)ADC2->JDR1;
+        g_lastJ2 = (uint16_t)ADC2->JDR2;
+    }
+    const float ib = ((float)g_lastJ1 - g_off10) * kAmpsPerCount;     // IN10 = PC0 = IB
+    const float ic = ((float)g_lastJ2 - g_off11) * kAmpsPerCount;     // IN11 = PC1 = IC
     PhaseCurrent_s r; r.b = ib; r.c = ic; r.a = -(ib + ic);           // fase A por KCL
     return r;
 }
