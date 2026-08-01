@@ -1321,12 +1321,12 @@ void loop()
                     focBrake.disarm();
                     g_brakeBenchActive = false;
                     drivelab::dbgRingPrintf("BRAKE: desarmado\n");
-                } else if (focPower.busVoltage() < 8.0f) {
+                } else if (focPower.busVoltage() < 4.0f) {
                     // Gate estilo OpenFFBoard: NÃO armar/dumpar com o bus baixo (evita loop de reset —
                     // eles gatearam o brake quando só-USB pelo mesmo motivo). Mesmo limiar do stage1aStart.
                     focBrake.disarm();
                     g_brakeBenchActive = false;
-                    drivelab::dbgRingPrintf("BRAKE: recusado — bus baixo %dmV (min 8000mV)\n",
+                    drivelab::dbgRingPrintf("BRAKE: recusado — bus baixo %dmV (min 4000mV)\n",
                         (int)(focPower.busVoltage() * 1000.0f));
                 } else {
                     if (!focBrake.armed()) focBrake.arm();
@@ -1360,7 +1360,7 @@ void loop()
                     focBrake.disarm();
                     g_brakeAutoActive = false;
                     drivelab::dbgRingPrintf("BRAKE AUTO: desarmado\n");
-                } else if (focPower.busVoltage() < 8.0f) {
+                } else if (focPower.busVoltage() < 4.0f) {
                     focBrake.disarm();
                     g_brakeAutoActive = false;
                     drivelab::dbgRingPrintf("BRAKE AUTO: recusado — bus baixo %dmV\n",
@@ -1387,7 +1387,17 @@ void loop()
                 g_brakeAutoActive = false;
                 drivelab::dbgRingPrintf("BRAKE AUTO: auto-desarme (timeout/fault)\n");
             } else {
-                focBrake.setDuty(g_brakeAutoCtrl.update(focPower.busVoltage()));   // controlador dirige o duty
+                const float busV = focPower.busVoltage();
+                const float duty = g_brakeAutoCtrl.update(busV);
+                focBrake.setDuty(duty);   // o controlador dirige o duty
+                // Diagnóstico (bancada): loga a transição DESLIGADO->LIGADO — o chopper "disparou sozinho".
+                // O dump pode ser breve/pequeno demais pra sentir no resistor, mas o disparo aparece aqui (SWD/CDC).
+                static bool prevAutoOn = false;
+                if (g_brakeAutoCtrl.isOn() && !prevAutoOn) {
+                    drivelab::dbgRingPrintf("BRAKE AUTO: DISPAROU! busV=%dmV duty=%d%%\n",
+                                            (int)(busV * 1000.0f), (int)(duty * 100.0f));
+                }
+                prevAutoOn = g_brakeAutoCtrl.isOn();
             }
         }
 #endif
