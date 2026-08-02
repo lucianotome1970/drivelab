@@ -765,8 +765,8 @@ static void stage1aTick(uint32_t nowMs)
                 motor.controller = MotionControlType::torque;      // torque direto (mola via foc_current)
                 encoder.update(); g_ffbCenter = encoder.getAngle();
                 const uint8_t ss = g_a0.cfg().springStrength, ds = g_a0.cfg().damperStrength;  // AO VIVO
-                g_ffbSpring = (ss > 0 ? ss : 25) / 100.0f * 0.6f;   // default 25 → 0.15 A/rad (mola CLARA — 0.072 ficou fraca demais, só amortecimento)
-                g_ffbDamp   = (ds > 0 ? ds : 20) / 100.0f * 0.40f;  // default 20 → 0.08 A/(rad/s) (amortece o bastante p/ não oscilar, sem dominar a mola)
+                g_ffbSpring = (ss > 0 ? ss : 25) / 100.0f * 0.6f;   // default 25 → 0.15 A/rad (mola clara)
+                g_ffbDamp   = (ds > 0 ? ds : 40) / 100.0f * 0.40f;  // default 40 → 0.16 A/(rad/s) (subido 0.08→0.16: absorve o snap-back violento do retorno que disparava o corte)
                 g_focPhase = FOC_RUN;
                 drivelab::dbgRingPrintf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
                                      (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
