@@ -186,6 +186,8 @@ static volatile float    g_integQ = 0.0f, g_integD = 0.0f;  // integradores do P
 // A ISR lê o pulse_counter do encoder (atualizado por interrupt, independe do loop); a cada ~5ms mede o delta;
 // se implica velocidade alta, ZERA o PWM e para o PI NA HORA — motor coasta, mesmo com o loop faminto.
 static const float       kIsrRunawayRad = 0.1f;  // rad/5ms ≈ 20 rad/s (bate com o runawayCut do loop; girar a mola com a mão fica <0,06)
+static const float       kMotorMaxC = 100.0f;    // sobretemp do MOTOR (pré-arme; NTC no PA5, -128 sem sensor → não trips)
+static const float       kFetMaxC   = 90.0f;     // sobretemp dos FETs (NTC onboard PC5)
 static volatile bool     g_isrRunaway   = false; // a ISR setou o fail-safe → o loop desarma de vez
 
 // SINCRONIZAÇÃO POR HARDWARE, SEM interrupção. ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_TRGO=Update.
@@ -564,6 +566,16 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 
     const float busV = focPower.busVoltage();
     if (busV < 8.0f) { drivelab::dbgRingPrintf("FOC ABORT: bus baixo %dmV\n",(int)(busV*1000.0f)); g_driveWanted=false; g_motorFault=true; return; }
+
+    // PRÉ-ARME: não energizar um motor JÁ QUENTE (sobretemp acumulada de teste/runaway). Leitura segura aqui
+    // (antes do FOC/current-sense; o busVoltage acima já lê o ADC). Sem termistor do motor (motorTempC=-128) não
+    // trips. NB: o corte DURANTE o FFB contínuo precisa de um read dedicado (ADC1) que não bata no current-sense
+    // (ADC2) — follow-up quando o NTC do motor for soldado. Ver [[drivelab-motor-overtemp]].
+    const float motC = focPower.motorTempC(), fetC = focPower.mosfetTempC();
+    if (motC > kMotorMaxC || fetC > kFetMaxC) {
+        drivelab::dbgRingPrintf("FOC ABORT: sobretemp pre-arme (motor=%dC fet=%dC) — esfriar antes\n", (int)motC, (int)fetC);
+        g_driveWanted = false; g_motorFault = true; return;
+    }
 
     // Contator (se ligado): não energizar o motor até as fases estarem conectadas (contator fechado).
     if (g_a0.cfg().softPowerEnable && !g_contactor.readyToDrive()) {
