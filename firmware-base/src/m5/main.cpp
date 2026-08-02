@@ -413,7 +413,7 @@ static volatile bool g_pidStateDirty = false;
 // Corte de RUNAWAY (segurança): se a velocidade disparar muito acima do esperado, desabilita NA HORA.
 static bool runawayCut()
 {
-    if (fabsf(motor.shaft_velocity) > 30.0f) {   // rad/s — teto 0.5A ja e a seguranca; corte relaxado p/ nao falso-tripar no ruido do geartrain
+    if (fabsf(motor.shaft_velocity) > 45.0f) {   // rad/s — relaxado 30→45 p/ girar a MOLA com a mão não falso-tripar (runaway real é sustentado/mais rápido); teto 1A já é a segurança
         engine.enableRequested = false;          // desliga o engine no runaway (M6)
         g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
         g_focPhase = FOC_IDLE; g_motorFault = true;
@@ -430,7 +430,7 @@ static const float    kCogMeasV   = 2.0f;       // rad/s da medição (lento →
 static const uint32_t kCogMeasMs  = 12000;      // ~4 voltas mecânicas a 2 rad/s (2π/2 ≈ 3,14s/volta)
 static const float    kCogFFClamp = 0.5f;       // teto do feed-forward de cogging (A, foc_current) — segurança
 
-static const float    kCalV     = 2.0f;   // tensão de arrasto (Lei de Ohm, jeito ODrive: V≈I_cal×R; ~2V ≈ 1,5A no ~1,3Ω → frio. 6V puxava 4-6A → cozinhava o DRV). Ideal: medir R e computar V=I_cal×R.
+static const float    kCalV     = 3.0f;   // tensão de arrasto: 3V (~2,3A no ~1,3Ω) — FIRME p/ o rotor não escorregar no cogging (fit inconsistente a 2V). Ainda frio p/ scan curto; 6V puxava 4-6A → cozinhava. Ideal: medir R.
 static const float    kCalOmega = 4.0f;   // rad/s ELÉTRICO da varredura (mais devagar → rastreio mais firme)
 static const uint32_t kLockMs   = 1500;   // assentamento inicial (maior → parte de posição mais estável)
 static const uint32_t kScanMs   = 6000;   // duração por sentido (~24 rad elec ≈ 3,8 voltas → média melhor)
@@ -749,7 +749,7 @@ static void stage1aTick(uint32_t nowMs)
                                      (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
             } else if (g_gameFfbMode && canEnterGameFfb(g_motorReady)) {
                 motor.controller = MotionControlType::torque;   // torque via foc_current (idem mola)
-                if (g_gameFfbSynthetic) engine.setGameForce(1500.0f);  // força constante pequena e CONHECIDA (~1500/32767)
+                if (g_gameFfbSynthetic) engine.setGameForce(8000.0f);  // força constante FIRME p/ SENTIR (satura o cap de 1A no zero bom)
                 // >>> BUG FIX (M6): SEM isto o engine.step() SEMPRE retorna 0 (startup.forceEnabled()==false).
                 // Ligamos o engine aqui. Pulamos o align open-loop do brain (já FOC-calibramos por stage1a) e
                 // usamos ramp curto (soft-start). O centro do FFB fica na posição atual (setCenterHere).
@@ -815,7 +815,9 @@ static void stage1aTick(uint32_t nowMs)
     // runawayCut (acima) ou watchdog do engine (força decai se o jogo parar de mandar). Os modos de bancada
     // (mola/sweep/velocidade) mantêm o timeout de segurança.
     const uint32_t runDur = g_sweepMode ? 24000u : (g_ffbMode ? 20000u : 6000u);
-    if (!g_gameFfbMode && (int32_t)(nowMs - g_focT) > (int32_t)runDur) {
+    // g_ffbMode (MOLA) agora é CONTÍNUO como o modo do jogo (pedido do usuário: mola persistente que sempre centra;
+    // só desarma por cmd=6/runaway). Antes o timeout de 20s derrubava no meio do teste ("FOC: fim"/click).
+    if (!g_gameFfbMode && !g_ffbMode && (int32_t)(nowMs - g_focT) > (int32_t)runDur) {
         motor.feed_forward_voltage.q = 0.0f;
         g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
         g_focPhase = FOC_IDLE;
