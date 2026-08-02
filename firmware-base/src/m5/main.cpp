@@ -188,6 +188,7 @@ static volatile float    g_integQ = 0.0f, g_integD = 0.0f;  // integradores do P
 static const float       kIsrRunawayRad = 0.1f;  // rad/5ms ≈ 20 rad/s (bate com o runawayCut do loop; girar a mola com a mão fica <0,06)
 static const float       kMotorMaxC = 100.0f;    // sobretemp do MOTOR (pré-arme; NTC no PA5, -128 sem sensor → não trips)
 static const float       kFetMaxC   = 90.0f;     // sobretemp dos FETs (NTC onboard PC5)
+static const float       kIsrOverIqA = 2.5f;     // corte por SOBRECORRENTE na ISR (acima do cap 1A; pega corrente presa alta c/ vel~0 — o 13A do M6 que o corte de velocidade não vê)
 static volatile bool     g_isrRunaway   = false; // a ISR setou o fail-safe → o loop desarma de vez
 
 // SINCRONIZAÇÃO POR HARDWARE, SEM interrupção. ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_TRGO=Update.
@@ -1227,6 +1228,14 @@ static void focFastLoopISR()
         // ESCREVE motor.current (NÃO usar local!): a telemetria E o corte de sobrecorrente do FFB do jogo dependem disto.
         motor.current.q = motor.LPF_current_q(c.q);
         motor.current.d = motor.LPF_current_d(c.d);
+        // FAIL-SAFE por SOBRECORRENTE (na ISR, não faminha): corrente presa alta por >5ms → de-energiza. O corte
+        // de velocidade não pega corrente alta com vel~0 (o 13A do M6 com zero ruim). Reusa g_isrRunaway (loop desarma).
+        static uint16_t s_ovIqTicks = 0;
+        if (fabsf(motor.current.q) > kIsrOverIqA) {
+            if (++s_ovIqTicks >= 40) {   // ~5ms sustentado
+                motor.setPhaseVoltage(0.0f, 0.0f, 0.0f); g_fastPiActive = false; g_isrRunaway = true; return;
+            }
+        } else s_ovIqTicks = 0;
         // PI de corrente MANUAL com dt FIXO (o PID do SimpleFOC usa _micros() → congela o integrador na ISR de
         // 8kHz → Iq travava em 175mA com setpoint 813mA = mola fraca). Com dt fixo o integrador fecha a malha.
         const float dt = 1.0f / 8000.0f;
