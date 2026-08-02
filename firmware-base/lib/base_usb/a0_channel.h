@@ -92,6 +92,7 @@ public:
     // estado (inerte aqui). Default true no boot (nenhum comando recebido
     // ainda == força habilitada, mesmo default implícito do M5).
     bool forceEnabled() const { return m_forceEnabled; }
+    void setForceEnabled(bool e) { m_forceEnabled = e; }   // reset no arme (cmd=5): senão um cmd=6 arg=0 anterior persiste e o kill universal mata o re-arme na hora
 
     // Monta o payload do report DeviceState (A0_RID_STATE / 0x21) — função
     // PURA (sem tocar hardware), espelha byte-a-byte

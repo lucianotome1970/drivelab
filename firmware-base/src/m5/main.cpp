@@ -177,6 +177,16 @@ extern uint32_t          adc_val[5][4]; // def. em Arduino-FOC .../stm32f4_mcu.c
 static volatile bool     g_jeocArmed  = false;  // true = captura JEOC acesa → genCurrentRead lê adc_val (coerente)
 static volatile uint32_t g_jeocReject = 0;      // DIAG: amostras JEOC seguradas por sanidade (glitch >20A)
 static volatile bool     g_fastPiActive = false; // Stage 3b: true = a ISR TIM6 roda o current loop (loopFOC) — só nas fases FECHADAS
+static const float       kAngLagS = 0.0003f;     // compensação do atraso do ângulo cacheado (Option B, ~loop lento/2) — prevê a Park pela velocidade
+// PI de corrente MANUAL na ISR (dt FIXO=125µs) — o PID do SimpleFOC usa _micros() p/ o dt, que não avança
+// direito na ISR de 8kHz → integrador congela → Iq trava abaixo do setpoint (comanda 813mA, entrega 175mA).
+static volatile float    g_curP = 0.18f, g_curI = 780.0f;   // ganhos (setados no arme de cP/cI)
+static volatile float    g_integQ = 0.0f, g_integD = 0.0f;  // integradores do PI de corrente (reset no arme)
+// FAIL-SAFE de runaway DENTRO da ISR (NÃO faminha como o corte do loop — que fez o usuário puxar o cabo 3x).
+// A ISR lê o pulse_counter do encoder (atualizado por interrupt, independe do loop); a cada ~5ms mede o delta;
+// se implica velocidade alta, ZERA o PWM e para o PI NA HORA — motor coasta, mesmo com o loop faminto.
+static const float       kIsrRunawayRad = 0.1f;  // rad/5ms ≈ 20 rad/s (bate com o runawayCut do loop; girar a mola com a mão fica <0,06)
+static volatile bool     g_isrRunaway   = false; // a ISR setou o fail-safe → o loop desarma de vez
 
 // SINCRONIZAÇÃO POR HARDWARE, SEM interrupção. ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_TRGO=Update.
 // ⚠️ Em center-aligned o Update dispara no VALE (low-side ON = corrente real) E no PICO (all-high-side = ~0V):
@@ -549,6 +559,7 @@ static void restartScan(uint32_t nowMs)
 static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 {
     g_fastPiActive = false;   // Stage 3b: garante que a ISR NÃO dirige durante o setup/scan (só liga no VERIFY)
+    g_a0.setForceEnabled(true);   // reset: senão um cmd=6 arg=0 anterior (auto-desarme do monitor) persiste e o kill universal mata o re-arme na hora
     if (g_a0.cfg().softPowerEnable) g_driveWanted = true;   // sinaliza intenção → contator começa a fechar no loop
 
     const float busV = focPower.busVoltage();
@@ -598,11 +609,12 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     // Ganhos R/L CASADOS (IMC/jeito ODrive: P=ωc·L, I=ωc·R) → cancelam o polo do motor → resposta 1ª ordem SEM
     // overshoot. ωc=300 rad/s (conservador), L~0.3mH, R~1.3Ω. O 1.5/60 antigo era chute NÃO-casado (P→ωc5000,
     // I→ωc46) → windup → estourava (0,5A→6A). Só é estável com o PI RÁPIDO (ISR 8kHz, Stage 3b). AO VIVO via app.
-    const float cP = (g_a0.cfg().currentP > 0.0f) ? g_a0.cfg().currentP : 0.09f;   // 300 · 0,0003
-    const float cI = (g_a0.cfg().currentI > 0.0f) ? g_a0.cfg().currentI : 390.0f;  // 300 · 1,3
+    const float cP = (g_a0.cfg().currentP > 0.0f) ? g_a0.cfg().currentP : 0.18f;   // wc=600 · L=0,0003 (afiado 300→600: rastreia melhor o comando; PI rápido a 8kHz aguenta)
+    const float cI = (g_a0.cfg().currentI > 0.0f) ? g_a0.cfg().currentI : 780.0f;  // wc=600 · R=1,3
     motor.PID_current_q.P = cP; motor.PID_current_q.I = cI; motor.PID_current_q.D = 0.0f;
     motor.PID_current_d.P = cP; motor.PID_current_d.I = cI; motor.PID_current_d.D = 0.0f;
     motor.PID_current_q.limit = motor.voltage_limit; motor.PID_current_d.limit = motor.voltage_limit;
+    g_curP = cP; g_curI = cI; g_integQ = 0.0f; g_integD = 0.0f; g_isrRunaway = false;   // PI manual da ISR (dt fixo) + fail-safe: reset no arme
     motor.LPF_current_q.Tf = 0.005f; motor.LPF_current_d.Tf = 0.005f;
     // PID de velocidade: saída é CORRENTE (A) → limite = current_limit. Mais firme (menos drift do "acelerou no
     // meio") e rampa mais rápida (alvo em ~0.5s em vez de rastejar). Ainda gentil (torque capado em 0.5A).
@@ -753,8 +765,8 @@ static void stage1aTick(uint32_t nowMs)
                 motor.controller = MotionControlType::torque;      // torque direto (mola via foc_current)
                 encoder.update(); g_ffbCenter = encoder.getAngle();
                 const uint8_t ss = g_a0.cfg().springStrength, ds = g_a0.cfg().damperStrength;  // AO VIVO
-                g_ffbSpring = (ss > 0 ? ss : 12) / 100.0f * 0.6f;   // default 12 → 0.072 A/rad (GENTIL: mola forte demais + damp baixo = oscilava)
-                g_ffbDamp   = (ds > 0 ? ds : 50) / 100.0f * 0.40f;  // default 50 → 0.20 A/(rad/s) (FORTE: mata a oscilação; escala 0.10→0.40)
+                g_ffbSpring = (ss > 0 ? ss : 25) / 100.0f * 0.6f;   // default 25 → 0.15 A/rad (mola CLARA — 0.072 ficou fraca demais, só amortecimento)
+                g_ffbDamp   = (ds > 0 ? ds : 20) / 100.0f * 0.40f;  // default 20 → 0.08 A/(rad/s) (amortece o bastante p/ não oscilar, sem dominar a mola)
                 g_focPhase = FOC_RUN;
                 drivelab::dbgRingPrintf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
                                      (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
@@ -820,6 +832,13 @@ static void stage1aTick(uint32_t nowMs)
     }
 
     // FOC_RUN (giro por velocidade OU sweep de posição ±900°)
+    if (g_isrRunaway) {   // a ISR de 8kHz já de-energizou (fail-safe que NÃO faminha); o loop desarma de vez
+        g_fastPiActive = false;
+        if (motor.driver != nullptr) motor.disable();
+        g_driveWanted = false; g_focPhase = FOC_IDLE; g_motorFault = true; g_isrRunaway = false;
+        drivelab::dbgRingPrintf("RUN: FAIL-SAFE da ISR (runaway pego pelo encoder) — desarmado\n");
+        return;
+    }
     if (runawayCut()) return;                                        // segurança: corta se a velocidade disparar
     // KILL SWITCH UNIVERSAL (cmd=6 arg=0 → forceEnabled=false): desarma QUALQUER modo do RUN (mola/sweep/veloc/
     // jogo). BUG 2026-08-02: a MOLA persistente NÃO tinha desarme por sw (só runawayCut) → o usuário teve que
@@ -1174,15 +1193,38 @@ static void focFastLoopISR()
     // atualizarem o encoder = velocidade corrompida). Só nas fases FECHADAS (g_fastPiActive) + motor armado.
     // É o fix do overshoot do PI que estourava no loop lento (0,5A→6,5A): agora o PI roda a 8kHz (dt=125µs).
     if (g_fastPiActive && motor.enabled) {
+        // FAIL-SAFE RUNAWAY na ISR (NÃO faminha como o corte do loop): lê o pulse_counter do encoder (atualizado
+        // por interrupt, independe do loop). A cada ~5ms mede o delta; se implica velocidade alta, ZERA o PWM e
+        // para o PI NA HORA (motor coasta) — mesmo com o loop faminto. Foi o gap que fez o usuário puxar o cabo 3x.
+        static float s_isrAngRef = 0.0f; static uint16_t s_isrCntTick = 0;
+        if (++s_isrCntTick >= 40) {   // ~5ms @ 8kHz
+            s_isrCntTick = 0;
+            const float a = encoder.getAngle();                 // ângulo cru do encoder (lê o count fresco)
+            const float d = a - s_isrAngRef; s_isrAngRef = a;
+            if (d > kIsrRunawayRad || d < -kIsrRunawayRad) {
+                motor.setPhaseVoltage(0.0f, 0.0f, 0.0f);   // de-energiza (Uq=Ud=0 → sem torque)
+                g_fastPiActive = false; g_isrRunaway = true; // o loop desarma de vez ao ver g_isrRunaway
+                return;
+            }
+        }
         const float sp = _constrain(motor.current_sp, -motor.current_limit, motor.current_limit) + motor.feed_forward_current.q;
-        DQCurrent_s c = currentSense.getFOCCurrents(motor.electrical_angle);   // amostra coerente (adc_val) + Clarke/Park
-        // ESCREVE motor.current (NÃO usar local!): a telemetria E o corte de sobrecorrente do FFB do jogo
-        // (kOverIqA, lê motor.current.q) dependem disto — senão ficam CEGOS (leem 0) e o corte não protege.
+        // COMPENSA O ATRASO DO ÂNGULO (Option B: electrical_angle vem do loop lento ~1,8kHz → girando atrasa até
+        // ~0,5ms → Park erra → Iq errático/oposto → torque ruim + oscilação). Prevê com a velocidade elétrica.
+        const float angComp = motor.electrical_angle + motor.shaft_velocity * (float)motor.pole_pairs * kAngLagS;
+        DQCurrent_s c = currentSense.getFOCCurrents(angComp);   // amostra coerente (adc_val) + Clarke/Park no ângulo previsto
+        // ESCREVE motor.current (NÃO usar local!): a telemetria E o corte de sobrecorrente do FFB do jogo dependem disto.
         motor.current.q = motor.LPF_current_q(c.q);
         motor.current.d = motor.LPF_current_d(c.d);
-        const float Uq = motor.PID_current_q(sp - motor.current.q) + motor.feed_forward_voltage.q;
-        const float Ud = motor.PID_current_d(motor.feed_forward_current.d - motor.current.d) + motor.feed_forward_voltage.d;
-        motor.setPhaseVoltage(Uq, Ud, motor.electrical_angle);
+        // PI de corrente MANUAL com dt FIXO (o PID do SimpleFOC usa _micros() → congela o integrador na ISR de
+        // 8kHz → Iq travava em 175mA com setpoint 813mA = mola fraca). Com dt fixo o integrador fecha a malha.
+        const float dt = 1.0f / 8000.0f;
+        const float eq = sp - motor.current.q;
+        g_integQ = _constrain(g_integQ + g_curI * eq * dt, -motor.voltage_limit, motor.voltage_limit);
+        const float Uq = _constrain(g_curP * eq + g_integQ, -motor.voltage_limit, motor.voltage_limit) + motor.feed_forward_voltage.q;
+        const float ed = motor.feed_forward_current.d - motor.current.d;
+        g_integD = _constrain(g_integD + g_curI * ed * dt, -motor.voltage_limit, motor.voltage_limit);
+        const float Ud = _constrain(g_curP * ed + g_integD, -motor.voltage_limit, motor.voltage_limit) + motor.feed_forward_voltage.d;
+        motor.setPhaseVoltage(Uq, Ud, angComp);   // aplica no ângulo previsto (compensado)
     }
 }
 static void focFastLoopBegin()
