@@ -354,6 +354,7 @@ enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_VERIFY, FOC_COG, FOC_R
 static FocPhase g_focPhase  = FOC_IDLE;
 static uint32_t g_focT      = 0;
 static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem do arg do cmd 5, sem reflash
+static bool     g_skipVerifySpin = false;   // fit alto no scan => pula o giro-teste do VERIFY (finicky: runaway/TRAVOU) e vai direto pro modo
 
 static ContactorManager g_contactor;   // proteção off-state (só ativa com cfg().softPowerEnable)
 static bool g_contactorPinInit = false;
@@ -413,7 +414,7 @@ static volatile bool g_pidStateDirty = false;
 // Corte de RUNAWAY (segurança): se a velocidade disparar muito acima do esperado, desabilita NA HORA.
 static bool runawayCut()
 {
-    if (fabsf(motor.shaft_velocity) > 45.0f) {   // rad/s — relaxado 30→45 p/ girar a MOLA com a mão não falso-tripar (runaway real é sustentado/mais rápido); teto 1A já é a segurança
+    if (fabsf(motor.shaft_velocity) > 20.0f) {   // rad/s — APERTADO p/ 20 (lição do runaway 2026-08-02: a 45 o motor esquentou demais antes de cortar). Girar a MOLA com a mão fica <10 rad/s; runaway pega cedo.
         engine.enableRequested = false;          // desliga o engine no runaway (M6)
         g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
         g_focPhase = FOC_IDLE; g_motorFault = true;
@@ -671,11 +672,13 @@ static void stage1aTick(uint32_t nowMs)
         const float ppEst = fabsf(dFwd) > 1e-4f ? kScanSpan / fabsf(dFwd) : 0.0f;
         drivelab::dbgRingPrintf("CAL: dFwd=%dmrad pp_est=%d (cfg=%d) -> offset medio (Task 2)\n",
                              (int)(dFwd*1000.0f), (int)(ppEst+0.5f), (int)motor.pole_pairs);
-        // ZERO pela MÉDIA CIRCULAR do offset (Task 1/2) em vez do lock-and-settle de 1 ponto — mais robusto
-        // ao cogging/ruído (usa TODA a amostragem do FWD+BWD, não só o ponto final). computeOffset escolhe a
-        // direção (CW/CCW) cujo phasor médio é mais "apertado" (fit=raio, 0..1) e devolve o offset elétrico
-        // médio dessa direção; se o fit for baixo (escorregão/ruído), aborta em vez de usar um zero ruim.
-        const drivelab::OffsetResult off = drivelab::computeOffset(g_offAcc, kMinOffsetFit);
+        // ZERO pela MÉDIA CIRCULAR do offset (Task 1/2). A DIREÇÃO (CW/CCW) agora vem da FÍSICA do scan: o sinal
+        // do dFwd (quanto o encoder REALMENTE andou enquanto o campo avançava) — NÃO mais do fit "mais apertado"
+        // (que apontava direção errada no ruído → mola pro lado errado → RUNAWAY). O fit vira só medida de
+        // qualidade; se baixo (escorregão/ruído), aborta. VALIDAR na bancada (motor frio): se a 1ª cal der runaway
+        // no VERIFY, o mapeamento do sinal está invertido (trocar dFwd>=0 por dFwd<0).
+        const int physDir = (dFwd >= 0.0f) ? +1 : -1;
+        const drivelab::OffsetResult off = drivelab::computeOffset(g_offAcc, kMinOffsetFit, physDir);
         if (!off.ok) {
             drivelab::dbgRingPrintf("CAL ABORT: fit baixo (%d/1000) — escorregou/ruido\n",
                                     (int)(off.fit*1000.0f));
@@ -696,33 +699,41 @@ static void stage1aTick(uint32_t nowMs)
         encoder.update(); g_verStart = encoder.getAngle();
         slowFocSensorUpdate();   // Stage 3b: ângulo FRESCO antes de ligar a ISR (senão os 1ºs ticks usam angle stale)
         g_fastPiActive = true;   // Stage 3b: daqui pra frente (VERIFY→COG/RUN) o current loop roda na ISR de 8kHz
+        g_skipVerifySpin = false;   // DESABILITADO (segurança): fit alto NÃO garante a DIREÇÃO do zero → mola empurrava pro lado errado → runaway. O VERIFY (giro-teste) PRECISA validar a direção. Fix real da direção = pela física do scan (sign(dFwd)), não pelo fit.
         g_focPhase = FOC_VERIFY; g_focT = nowMs;
-        drivelab::dbgRingPrintf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
+        drivelab::dbgRingPrintf(g_skipVerifySpin ? "VERIFY: fit alto (%d/1000) -> PULANDO giro-teste, modo direto\n"
+                                                 : "VERIFY: giro-teste 4 rad/s (fit %d/1000)...\n", (int)(off.fit*1000.0f));
         return;
     }
 
     // VERIFY — confirma que o zero gira; se travou, recalibra (o scan em modo-tensão nao e repetivel)
     if (g_focPhase == FOC_VERIFY) {
-        // runaway no VERIFY = zero ruim (geartrain deixa a cal não-repetível) → RECALIBRA em vez de abortar
-        if (fabsf(motor.shaft_velocity) > 30.0f) {
-            g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
-            if (++g_calRetry <= kCalMaxRetry) {
-                drivelab::dbgRingPrintf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
-                motor.enable(); restartScan(nowMs);
-            } else {
-                drivelab::dbgRingPrintf("VERIFY runaway apos %d tentativas — abortando\n", kCalMaxRetry);
-                g_motorFault = true; g_focPhase = FOC_IDLE;
+        float moved = 999.0f;   // caminho SKIP (fit alto): trata como zero bom SEM o giro-teste finicky
+        if (!g_skipVerifySpin) {
+            // runaway no VERIFY = zero ruim (geartrain deixa a cal não-repetível) → RECALIBRA em vez de abortar
+            if (fabsf(motor.shaft_velocity) > 20.0f) {   // apertado 30→20 (segurança: pega a direção errada cedo, antes de esquentar)
+                g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
+                if (++g_calRetry <= kCalMaxRetry) {
+                    drivelab::dbgRingPrintf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
+                    motor.enable(); restartScan(nowMs);
+                } else {
+                    drivelab::dbgRingPrintf("VERIFY runaway apos %d tentativas — abortando\n", kCalMaxRetry);
+                    g_motorFault = true; g_focPhase = FOC_IDLE;
+                }
+                return;
             }
-            return;
+            motor.feed_forward_voltage.q = 0.0f;
+            slowFocSensorUpdate();   // Stage 3b: sensor+ângulos aqui; o current-PI roda na ISR de 8kHz
+            if (calCurrentCutoff(motor.electrical_angle)) return;
+            motor.move(4.0f);
+            if ((int32_t)(nowMs - g_focT) < 1200) return;
+            encoder.update();
+            moved = fabsf(encoder.getAngle() - g_verStart);
+        } else {
+            motor.feed_forward_voltage.q = 0.0f;
+            slowFocSensorUpdate();   // mantém o ângulo fresco pra ISR no caminho do skip (sem giro-teste)
         }
-        motor.feed_forward_voltage.q = 0.0f;
-        slowFocSensorUpdate();   // Stage 3b: sensor+ângulos aqui; o current-PI roda na ISR de 8kHz
-        if (calCurrentCutoff(motor.electrical_angle)) return;
-        motor.move(4.0f);
-        if ((int32_t)(nowMs - g_focT) < 1200) return;
-        encoder.update();
-        const float moved = fabsf(encoder.getAngle() - g_verStart);
-        if (moved > 1.5f) {                        // girou ~1/4 volta -> zero bom
+        if (moved > 1.5f) {                        // girou ~1/4 volta -> zero bom (ou SKIP por fit alto)
             drivelab::dbgRingPrintf("VERIFY OK: girou %dmrad (zero bom)\n", (int)(moved*1000.0f));
             g_motorReady = true; g_focT = nowMs;
             if (g_doCogMeasure) {

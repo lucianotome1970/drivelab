@@ -39,13 +39,24 @@ struct OffsetResult {
 };
 
 // Escolhe a direção com o phasor mais "apertado" (maior raio = ajuste mais coerente).
-inline OffsetResult computeOffset(const OffsetAccumulator& a, float minFit) {
+// physicalDir: direção FÍSICA medida no scan (sign do dFwd = quanto o encoder REALMENTE andou enquanto o campo
+// avançava +). +1 => usa o phasor P (+1), -1 => phasor M (-1). 0 (default) = legado: escolhe pelo fit (tightness).
+// >>> Escolher a direção pela FÍSICA (não pelo fit) é a correção do RUNAWAY: o fit podia apontar a direção errada
+// (phasor do lado errado mais "apertado" no ruído) → a mola empurrava pro lado errado → motor disparava. O dFwd é
+// o movimento REAL do rotor, não erra de sentido. Mapeamento: campo sobe (aP=poleMech-field const p/ +1) → rotor
+// segue → encoder sobe → dFwd>0 => +1 (P); encoder desce => -1 (M). VALIDAR na bancada (motor frio) — se a 1ª cal
+// der runaway no VERIFY, o mapeamento está invertido (trocar o sinal); o VERIFY + corte de runaway protegem.
+inline OffsetResult computeOffset(const OffsetAccumulator& a, float minFit, int physicalDir = 0) {
     OffsetResult r{0.0f, +1, 0.0f, false};
     if (a.n <= 0) return r;
     const float invN = 1.0f / (float)a.n;
     const float rP = (float)(hypot(a.sinP, a.cosP) * invN);
     const float rM = (float)(hypot(a.sinM, a.cosM) * invN);
-    if (rP >= rM) {
+    bool useP;
+    if (physicalDir > 0)      useP = true;           // direção pela FÍSICA do scan (confiável)
+    else if (physicalDir < 0) useP = false;
+    else                      useP = (rP >= rM);     // fallback legado: pelo fit
+    if (useP) {
         r.direction = +1; r.fit = rP;
         r.zeroElectric = (float)atan2(a.sinP, a.cosP);
     } else {
