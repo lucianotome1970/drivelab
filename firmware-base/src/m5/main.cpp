@@ -1183,6 +1183,11 @@ void setup()
         drvOk = drv.configure();
         drivelab::dbgRingPrintf("DRV8301 cold-boot retry %d/4: %s\n", attempt, drvOk ? "OK" : "ainda FAIL");
     }
+    if (!drvOk) {
+        uint16_t s1 = 0, s2 = 0; const bool spiok = drv.readStatusRegs(s1, s2);
+        drivelab::dbgRingPrintf("DRV DIAG: nFAULT=%d SPIok=%d SR1=0x%03x SR2=0x%03x (SR1: b0-5=OC das FETs, b6=OTW, b7=OTSD, b8=PVDD_UV, b9=GVDD_UV, b10=FAULT)\n",
+                             drv.nFaultActive() ? 1 : 0, spiok ? 1 : 0, (unsigned)s1, (unsigned)s2);
+    }
 
     // ---- Motor em modo torque por tensão — só CAMPOS, sem init/enable ----
     motor.torque_controller = TorqueControlType::voltage;

@@ -101,6 +101,19 @@ bool Drv8301::configure()
     return true;
 }
 
+bool Drv8301::readStatusRegs(uint16_t& s1, uint16_t& s2)
+{
+    s1 = 0; s2 = 0;
+    bool ok = readReg(kDrv8301RegStatus1, s1);
+    ok = readReg(kDrv8301RegStatus2, s2) && ok;
+    return ok;
+}
+
+bool Drv8301::nFaultActive()
+{
+    return digitalRead(nFaultPin_) == LOW;
+}
+
 bool Drv8301::faulted()
 {
     if (digitalRead(nFaultPin_) == LOW)

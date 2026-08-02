@@ -154,6 +154,11 @@ public:
 
     bool isReady() const { return ready_; }
 
+    // Diagnóstico: lê os Status Registers crus (SR1 bits 0-5=OC das 6 FETs, 6=OTW, 7=OTSD, 8=PVDD_UV,
+    // 9=GVDD_UV, 10=FAULT; SR2 bit 7=GVDD_OV). Retorna false se a comunicação SPI falhar.
+    bool readStatusRegs(uint16_t& s1, uint16_t& s2);
+    bool nFaultActive();   // true = pino nFAULT em nível baixo (fault de hardware ativo)
+
 private:
     bool writeReg(uint8_t addr, uint16_t data);
     bool readReg(uint8_t addr, uint16_t& outData);
