@@ -169,7 +169,12 @@ static bool g_csReady = false;
 // de telemetria. Escala 0,0403 A/count; offset em counts medido em repouso.
 static const float kAmpsPerCount = 3.3f / 4096.0f / (40.0f * 0.0005f);   // ~0,0403 A/count
 static float g_off10 = 2048.0f, g_off11 = 2048.0f;                        // offset de repouso (counts)
-static uint16_t g_lastJ1 = 2048, g_lastJ2 = 2048;                         // última amostra VÁLIDA (do vale) — DIR-gate
+static uint16_t g_lastJ1 = 2048, g_lastJ2 = 2048;                         // última amostra VÁLIDA (do vale) — DIR-gate (fallback)
+// Stage 3: reusa a cadeia de captura injetada do SimpleFOC (já linkada) — a ISR JEOC dele preenche adc_val[idx][rank]
+// COERENTEMENTE no vale (RepetitionCounter=1 → Update 1x/período no vale). idx do ADC2 = 1; rank1/2 = JDR1/JDR2.
+extern ADC_HandleTypeDef hadc[];        // def. em Arduino-FOC .../stm32f4_hal.cpp (C++ linkage, símbolo não-mangled)
+extern uint32_t          adc_val[5][4]; // def. em Arduino-FOC .../stm32f4_mcu.cpp
+static volatile bool     g_jeocArmed = false;   // true = captura JEOC acesa → genCurrentRead lê adc_val (coerente)
 
 // SINCRONIZAÇÃO POR HARDWARE, SEM interrupção. ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_TRGO=Update.
 // ⚠️ Em center-aligned o Update dispara no VALE (low-side ON = corrente real) E no PICO (all-high-side = ~0V):
@@ -208,14 +213,21 @@ static PhaseCurrent_s genCurrentRead()
     // o Update do vale pega o JDR AINDA com o valor do PICO (~0, conversão do vale não terminou). Aceita só quando
     // DIR=0 (janela do vale) E o JDR não é rail ~0 (>=500 counts) → senão é pico stale → SEGURA a última do vale.
     // Sem isto, um pico stale ~0 fazia o PI achar corrente=0 → sobre-excitava Uq → pico real (7,5A) → falso corte.
-    const uint32_t j1 = ADC2->JDR1, j2 = ADC2->JDR2;
-    if (!(TIM1->CR1 & TIM_CR1_DIR) && j1 >= 500u && j2 >= 500u) {     // vale, conversão pronta (não é pico stale)
-        g_lastJ1 = (uint16_t)j1;
-        g_lastJ2 = (uint16_t)j2;
+    uint32_t j1, j2;
+    if (g_jeocArmed) {
+        // STAGE 3: amostra do VALE capturada COERENTEMENTE pela ISR JEOC do SimpleFOC (adc_val[1][rank1/2] = os
+        // JDR1/JDR2 do ADC2, lidos NO fim da conversão do vale). Sem DIR-gate/≥500 — a ISR já garante um vale
+        // válido (aqueles hacks compensavam o LATCH assíncrono do polling, não pico/vale). Coerente com a tensão.
+        j1 = adc_val[1][0]; j2 = adc_val[1][1];
+    } else {
+        // FALLBACK (offset init + diagnósticos ANTES do arme JEOC): polling do JDR com DIR-gate + anti-race ≥500.
+        const uint32_t r1 = ADC2->JDR1, r2 = ADC2->JDR2;
+        if (!(TIM1->CR1 & TIM_CR1_DIR) && r1 >= 500u && r2 >= 500u) { g_lastJ1 = (uint16_t)r1; g_lastJ2 = (uint16_t)r2; }
+        j1 = g_lastJ1; j2 = g_lastJ2;
     }
-    const float ib = ((float)g_lastJ1 - g_off10) * kAmpsPerCount;     // IN10 = PC0 = IB
-    const float ic = ((float)g_lastJ2 - g_off11) * kAmpsPerCount;     // IN11 = PC1 = IC
-    PhaseCurrent_s r; r.b = ib; r.c = ic; r.a = -(ib + ic);           // fase A por KCL
+    const float ib = ((float)j1 - g_off10) * kAmpsPerCount;          // IN10 = PC0 = IB
+    const float ic = ((float)j2 - g_off11) * kAmpsPerCount;          // IN11 = PC1 = IC
+    PhaseCurrent_s r; r.b = ib; r.c = ic; r.a = -(ib + ic);          // fase A por KCL
     return r;
 }
 
@@ -229,6 +241,22 @@ static void genCurrentInit()
     drivelab::dbgRingPrintf("CS init: off IB=%d IC=%d | ADC2 SR=0x%lx JDR1=%lu JDR2=%lu MMS=%lu\n",
                          (int)g_off10, (int)g_off11, (unsigned long)ADC2->SR,
                          (unsigned long)ADC2->JDR1, (unsigned long)ADC2->JDR2, (unsigned long)((TIM1->CR2 >> 4) & 7u));
+}
+
+// Stage 3: acende a cadeia de captura injetada DORMENTE do SimpleFOC (ADC_IRQHandler → HAL_ADC_IRQHandler →
+// HAL_ADCEx_InjectedConvCpltCallback → adc_val[1][]), sincronizada ao vale — SEM o LowsideCurrentSense.init()
+// (que PENDURA nesta placa). O hang é no INIT do SimpleFOC, não na ISR; slots vazios do hadc[] são pulados
+// (NP==0). Só populamos hadc[1].Instance=ADC2 + habilitamos o JEOC. Ver docs/reference/synced-current-loop-research.md.
+static void focFastLoopArm()
+{
+    if (g_jeocArmed) return;
+    hadc[1].Instance = ADC2;              // idx 1 = ADC2 (_adcToIndex); HAL_ADC_IRQHandler precisa do Instance
+    ADC2->SR = ~(uint32_t)ADC_SR_JEOC;    // limpa JEOC pendente antes de habilitar
+    ADC2->CR1 |= ADC_CR1_JEOCIE;          // habilita a interrupção de fim-de-conversão-injetada
+    HAL_NVIC_SetPriority(ADC_IRQn, 1, 0); // acima da USB (a ISR do SimpleFOC é curta)
+    HAL_NVIC_EnableIRQ(ADC_IRQn);
+    g_jeocArmed = true;
+    drivelab::dbgRingPrintf("FOC FAST: captura JEOC do SimpleFOC acesa (adc_val[1], sincronizada ao vale)\n");
 }
 
 static GenericCurrentSense currentSense(genCurrentRead, genCurrentInit);
@@ -530,6 +558,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     motor.init();
     motor.enable();                                   // EXPLÍCITO — sequência que PRODUZIU torque na bancada
     adc2Config();                                 // RE-ARMA o gatilho do ADC (motor.init/enable reconfigurou o TIM1)
+    focFastLoopArm();                             // Stage 3a: acende a captura JEOC coerente (genCurrentRead lê adc_val[1])
     motor.controller        = MotionControlType::torque;
     motor.torque_controller = TorqueControlType::foc_current;   // <— era voltage: controle de CORRENTE (torque limpo)
     // ⚠️ SEGURANÇA (2026-07-28: um lurch quebrou o suporte do encoder). Limites BAIXÍSSIMOS até o tuning ficar
