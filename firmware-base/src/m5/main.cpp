@@ -753,8 +753,8 @@ static void stage1aTick(uint32_t nowMs)
                 motor.controller = MotionControlType::torque;      // torque direto (mola via foc_current)
                 encoder.update(); g_ffbCenter = encoder.getAngle();
                 const uint8_t ss = g_a0.cfg().springStrength, ds = g_a0.cfg().damperStrength;  // AO VIVO
-                g_ffbSpring = (ss > 0 ? ss : 30) / 100.0f * 0.6f;   // 0..0.6 A/rad
-                g_ffbDamp   = (ds > 0 ? ds : 20) / 100.0f * 0.10f;  // 0..0.10 A/(rad/s)
+                g_ffbSpring = (ss > 0 ? ss : 12) / 100.0f * 0.6f;   // default 12 → 0.072 A/rad (GENTIL: mola forte demais + damp baixo = oscilava)
+                g_ffbDamp   = (ds > 0 ? ds : 50) / 100.0f * 0.40f;  // default 50 → 0.20 A/(rad/s) (FORTE: mata a oscilação; escala 0.10→0.40)
                 g_focPhase = FOC_RUN;
                 drivelab::dbgRingPrintf("-> FFB MOLA k=%dmA/rad d=%dmA/(rad/s) (gire e sinta!)\n",
                                      (int)(g_ffbSpring*1000.0f), (int)(g_ffbDamp*1000.0f));
@@ -821,6 +821,16 @@ static void stage1aTick(uint32_t nowMs)
 
     // FOC_RUN (giro por velocidade OU sweep de posição ±900°)
     if (runawayCut()) return;                                        // segurança: corta se a velocidade disparar
+    // KILL SWITCH UNIVERSAL (cmd=6 arg=0 → forceEnabled=false): desarma QUALQUER modo do RUN (mola/sweep/veloc/
+    // jogo). BUG 2026-08-02: a MOLA persistente NÃO tinha desarme por sw (só runawayCut) → o usuário teve que
+    // PUXAR O CABO. forceEnabled default=true (arma normal); cmd=6 arg=0 → false → para na hora. Universal.
+    if (!g_a0.forceEnabled()) {
+        g_fastPiActive = false;
+        if (motor.driver != nullptr) motor.disable();
+        g_driveWanted = false; g_focPhase = FOC_IDLE;
+        drivelab::dbgRingPrintf("RUN: KILL (cmd=6) — desarmado\n");
+        return;
+    }
     // Modo FFB do JOGO (M6): roda CONTÍNUO enquanto armado (como um volante de verdade) — NÃO tem
     // timeout fixo; para só por desarme (shouldDisarmGameFfb: USB-drop/app-off, checado no branch abaixo),
     // runawayCut (acima) ou watchdog do engine (força decai se o jogo parar de mandar). Os modos de bancada
