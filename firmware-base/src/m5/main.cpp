@@ -174,7 +174,8 @@ static uint16_t g_lastJ1 = 2048, g_lastJ2 = 2048;                         // úl
 // COERENTEMENTE no vale (RepetitionCounter=1 → Update 1x/período no vale). idx do ADC2 = 1; rank1/2 = JDR1/JDR2.
 extern ADC_HandleTypeDef hadc[];        // def. em Arduino-FOC .../stm32f4_hal.cpp (C++ linkage, símbolo não-mangled)
 extern uint32_t          adc_val[5][4]; // def. em Arduino-FOC .../stm32f4_mcu.cpp
-static volatile bool     g_jeocArmed = false;   // true = captura JEOC acesa → genCurrentRead lê adc_val (coerente)
+static volatile bool     g_jeocArmed  = false;  // true = captura JEOC acesa → genCurrentRead lê adc_val (coerente)
+static volatile uint32_t g_jeocReject = 0;      // DIAG: amostras JEOC seguradas por sanidade (glitch >20A)
 
 // SINCRONIZAÇÃO POR HARDWARE, SEM interrupção. ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_TRGO=Update.
 // ⚠️ Em center-aligned o Update dispara no VALE (low-side ON = corrente real) E no PICO (all-high-side = ~0V):
@@ -216,9 +217,19 @@ static PhaseCurrent_s genCurrentRead()
     uint32_t j1, j2;
     if (g_jeocArmed) {
         // STAGE 3: amostra do VALE capturada COERENTEMENTE pela ISR JEOC do SimpleFOC (adc_val[1][rank1/2] = os
-        // JDR1/JDR2 do ADC2, lidos NO fim da conversão do vale). Sem DIR-gate/≥500 — a ISR já garante um vale
-        // válido (aqueles hacks compensavam o LATCH assíncrono do polling, não pico/vale). Coerente com a tensão.
-        j1 = adc_val[1][0]; j2 = adc_val[1][1];
+        // JDR1/JDR2 do ADC2, lidos NO fim da conversão do vale). Coerente com a tensão (a ISR síncrona resolve o
+        // que o DIR-gate/latch do polling compensava). GUARD DE SANIDADE: uma amostra que implica corrente
+        // FISICAMENTE IMPOSSÍVEL (>kPhysMaxA, ~o dobro do máx de hardware do bus/R) é glitch (transição do PWM no
+        // giro rápido / conversão espúria) → SEGURA a última boa (não alimenta o PI nem dispara o corte com
+        // fantasma). Corrente real (≤~14A) passa e ainda corta em kCalMaxCurrentA=3A.
+        const uint32_t v1 = adc_val[1][0], v2 = adc_val[1][1];
+        const float maxDev = 20.0f / kAmpsPerCount;   // ±20A em counts (~496); >isso = glitch
+        if (fabsf((float)v1 - g_off10) < maxDev && fabsf((float)v2 - g_off11) < maxDev) {
+            g_lastJ1 = (uint16_t)v1; g_lastJ2 = (uint16_t)v2;
+        } else {
+            g_jeocReject++;                            // DIAG: conta glitches segurados
+        }
+        j1 = g_lastJ1; j2 = g_lastJ2;
     } else {
         // FALLBACK (offset init + diagnósticos ANTES do arme JEOC): polling do JDR com DIR-gate + anti-race ≥500.
         const uint32_t r1 = ADC2->JDR1, r2 = ADC2->JDR2;
