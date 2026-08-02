@@ -31,7 +31,7 @@
 // "firmware vX.Y.Z"). Mantenha os dois em sincronia bumpando SÓ aqui.
 #define DRVLAB_FW_VER_MAJOR 0
 #define DRVLAB_FW_VER_MINOR 3
-#define DRVLAB_FW_VER_PATCH 11
+#define DRVLAB_FW_VER_PATCH 12
 
 struct FwSignature {
     char magic[8];

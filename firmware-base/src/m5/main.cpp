@@ -521,6 +521,17 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
 }
 
 // (Re)inicia a varredura de calibração de zero (usado no início e em cada tentativa do VERIFY).
+// Stage 3b (opção B): a parte do loopFOC que NÃO é corrente — atualiza o sensor + os ângulos (shaft/electrical)
+// pro current-PI da ISR de 8kHz usar. Roda 1x por iteração nas fases FECHADAS do loop lento → o encoder é
+// atualizado em UM único contexto (aqui), nunca também na ISR (evita a velocidade corrompida da reentrância).
+static inline void slowFocSensorUpdate()
+{
+    if (motor.sensor) motor.sensor->update();
+    motor.shaft_angle      = motor.shaftAngle();
+    motor.shaft_velocity   = motor.shaftVelocity();
+    motor.electrical_angle = motor.electricalAngle();
+}
+
 static void restartScan(uint32_t nowMs)
 {
     g_offAcc = drivelab::OffsetAccumulator{};
@@ -680,6 +691,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.controller = MotionControlType::velocity;
         motor.feed_forward_voltage.q = 0.0f;
         encoder.update(); g_verStart = encoder.getAngle();
+        slowFocSensorUpdate();   // Stage 3b: ângulo FRESCO antes de ligar a ISR (senão os 1ºs ticks usam angle stale)
         g_fastPiActive = true;   // Stage 3b: daqui pra frente (VERIFY→COG/RUN) o current loop roda na ISR de 8kHz
         g_focPhase = FOC_VERIFY; g_focT = nowMs;
         drivelab::dbgRingPrintf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
@@ -701,7 +713,7 @@ static void stage1aTick(uint32_t nowMs)
             return;
         }
         motor.feed_forward_voltage.q = 0.0f;
-        // loopFOC() agora roda na ISR de 8kHz (Stage 3b, g_fastPiActive). Aqui só o corte (lê motor.current da ISR).
+        slowFocSensorUpdate();   // Stage 3b: sensor+ângulos aqui; o current-PI roda na ISR de 8kHz
         if (calCurrentCutoff(motor.electrical_angle)) return;
         motor.move(4.0f);
         if ((int32_t)(nowMs - g_focT) < 1200) return;
@@ -769,7 +781,7 @@ static void stage1aTick(uint32_t nowMs)
     if (g_focPhase == FOC_COG) {
         if (runawayCut()) return;
         motor.feed_forward_current.q = 0.0f;   // NÃO compensa enquanto mede
-        // loopFOC() na ISR de 8kHz (Stage 3b)
+        slowFocSensorUpdate();   // Stage 3b: sensor+ângulos aqui; current-PI na ISR
         motor.move(kCogMeasV);
         encoder.update();
         g_cogCal.addSample(encoder.getMechanicalAngle(), motor.current.q);   // Iq medido = torque p/ manter a vel = atrito+cogging
@@ -807,7 +819,7 @@ static void stage1aTick(uint32_t nowMs)
         drivelab::dbgRingPrintf("FOC: fim\n");
         return;
     }
-    // loopFOC() na ISR de 8kHz (Stage 3b)
+    slowFocSensorUpdate();   // Stage 3b: sensor+ângulos aqui; current-PI na ISR de 8kHz
     if (g_gameFfbMode) {
         // Desarme por segurança (predicado puro, Task 1): runaway JÁ foi checado por runawayCut() no topo;
         // aqui cobrimos USB-drop e app-off (fault do engine é tratado internamente por engine.step()).
@@ -1130,11 +1142,20 @@ static volatile uint32_t g_focIsrCount = 0;   // DIAG: conta ticks da ISR (confi
 static void focFastLoopISR()
 {
     g_focIsrCount++;
-    // STAGE 3b: current loop RÁPIDO a 8kHz — loopFOC = sense coerente (adc_val do JEOC) + PI de corrente +
-    // setPhaseVoltage. Só nas fases de MALHA FECHADA (g_fastPiActive) e com o motor armado (motor.enabled).
-    // O scan (malha ABERTA) NÃO ativa isto (usa setPhaseVoltage direto). move()/engine.step ficam no loop()
-    // (jeito SimpleFOC real_time_loop). É o fix do overshoot do PI que estourava no loop lento (0,5A→6,5A).
-    if (g_fastPiActive && motor.enabled) motor.loopFOC();
+    // STAGE 3b (opção B): current loop RÁPIDO a 8kHz — SÓ a matemática de corrente (foc_current), replicada do
+    // loopFOC do SimpleFOC (FOCMotor.cpp:640-657), usando o electrical_angle CACHEADO pelo loop lento
+    // (slowFocSensorUpdate). O sensor NÃO é tocado aqui → evita a DUPLA atualização (a ISR e o loop lento
+    // atualizarem o encoder = velocidade corrompida). Só nas fases FECHADAS (g_fastPiActive) + motor armado.
+    // É o fix do overshoot do PI que estourava no loop lento (0,5A→6,5A): agora o PI roda a 8kHz (dt=125µs).
+    if (g_fastPiActive && motor.enabled) {
+        const float sp = _constrain(motor.current_sp, -motor.current_limit, motor.current_limit) + motor.feed_forward_current.q;
+        DQCurrent_s c = currentSense.getFOCCurrents(motor.electrical_angle);   // amostra coerente (adc_val) + Clarke/Park
+        const float iq = motor.LPF_current_q(c.q);
+        const float id = motor.LPF_current_d(c.d);
+        const float Uq = motor.PID_current_q(sp - iq) + motor.feed_forward_voltage.q;
+        const float Ud = motor.PID_current_d(motor.feed_forward_current.d - id) + motor.feed_forward_voltage.d;
+        motor.setPhaseVoltage(Uq, Ud, motor.electrical_angle);
+    }
 }
 static void focFastLoopBegin()
 {
