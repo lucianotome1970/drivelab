@@ -1144,7 +1144,16 @@ void setup()
 
     spi3.begin();
     drv.begin(spi3, kOdrivePinCsM0, kOdrivePinEnGate, kOdrivePinNFault, Drv8301Gain::G40);
-    const bool drvOk = drv.configure();
+    // Fault de COLD-BOOT do DRV8301: no POR o configure() roda antes do charge-pump/GVDD estabilizar → faulted()
+    // (o SPI já responde, mas o fault flag está setado por undervoltage). Warm reset "recuperava" só porque o
+    // charge-pump já estava de pé. Fix = retry com settle crescente; cada configure() re-cicla EN_GATE (LOW→HIGH)
+    // → limpa o fault latchado + dá tempo pra subir. ~500ms de pior caso, só no boot.
+    bool drvOk = drv.configure();
+    for (int attempt = 1; !drvOk && attempt <= 4; ++attempt) {
+        delay(50 * attempt);   // 50/100/150/200ms — settle do charge-pump
+        drvOk = drv.configure();
+        drivelab::dbgRingPrintf("DRV8301 cold-boot retry %d/4: %s\n", attempt, drvOk ? "OK" : "ainda FAIL");
+    }
 
     // ---- Motor em modo torque por tensão — só CAMPOS, sem init/enable ----
     motor.torque_controller = TorqueControlType::voltage;
