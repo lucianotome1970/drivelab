@@ -594,8 +594,11 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     motor.current_limit     = g_gameFfbMode ? 1.0f : (g_doCogMeasure ? 1.0f : 0.5f);  // jogo: cap 1A GENTIL (motor quente + 1º teste com engine ligado); cogging 1A; senão 0.5A
     motor.velocity_limit    = 12.0f;
     // PI de corrente — AO VIVO pelo config (currentP/currentI via app/HID) p/ tunar sem reflash. 0 = default.
-    const float cP = (g_a0.cfg().currentP > 0.0f) ? g_a0.cfg().currentP : 1.5f;
-    const float cI = (g_a0.cfg().currentI > 0.0f) ? g_a0.cfg().currentI : 60.0f;
+    // Ganhos R/L CASADOS (IMC/jeito ODrive: P=ωc·L, I=ωc·R) → cancelam o polo do motor → resposta 1ª ordem SEM
+    // overshoot. ωc=300 rad/s (conservador), L~0.3mH, R~1.3Ω. O 1.5/60 antigo era chute NÃO-casado (P→ωc5000,
+    // I→ωc46) → windup → estourava (0,5A→6A). Só é estável com o PI RÁPIDO (ISR 8kHz, Stage 3b). AO VIVO via app.
+    const float cP = (g_a0.cfg().currentP > 0.0f) ? g_a0.cfg().currentP : 0.09f;   // 300 · 0,0003
+    const float cI = (g_a0.cfg().currentI > 0.0f) ? g_a0.cfg().currentI : 390.0f;  // 300 · 1,3
     motor.PID_current_q.P = cP; motor.PID_current_q.I = cI; motor.PID_current_q.D = 0.0f;
     motor.PID_current_d.P = cP; motor.PID_current_d.I = cI; motor.PID_current_d.D = 0.0f;
     motor.PID_current_q.limit = motor.voltage_limit; motor.PID_current_d.limit = motor.voltage_limit;
