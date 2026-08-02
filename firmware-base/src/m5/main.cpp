@@ -591,7 +591,7 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     // voltage_limit ALTO = autoridade pro PI de corrente (NÃO é a segurança). A SEGURANÇA de torque é o
     // current_limit BAIXO (0.5A gentil). Com 2V o PI nao chegava nem a 1A e o motor nao girava.
     motor.voltage_limit     = 5.0f;
-    motor.current_limit     = g_gameFfbMode ? 1.0f : (g_doCogMeasure ? 1.0f : 0.5f);  // jogo: cap 1A GENTIL (motor quente + 1º teste com engine ligado); cogging 1A; senão 0.5A
+    motor.current_limit     = 1.0f;  // 1A: agora SEGURO (o PI R/L na ISR 8kHz não overshoota — v0.3.13). 0,5A era gentil demais p/ girar no VERIFY. Teto duro do torque de teste.
     motor.velocity_limit    = 12.0f;
     // PI de corrente — AO VIVO pelo config (currentP/currentI via app/HID) p/ tunar sem reflash. 0 = default.
     // Ganhos R/L CASADOS (IMC/jeito ODrive: P=ωc·L, I=ωc·R) → cancelam o polo do motor → resposta 1ª ordem SEM
