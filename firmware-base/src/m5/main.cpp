@@ -47,6 +47,7 @@
 // SimpleFOCDebug.h tentarem usá-la, senão vira auto-referência circular.
 #include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
+#include <HardwareTimer.h>
 #include <SimpleFOC.h>
 
 #include "ffb_hid_descriptor.h"
@@ -1075,6 +1076,27 @@ static void applyBenchBusWindow(drivelab::FfbEngine &e)
     e.force.torqueLimitNm = 1.0f;   // teto gentil (casa com current_limit 1A do modo jogo); reavaliar com engine ligado
 }
 
+// ===== FOC FAST LOOP (Stage 1 — esqueleto a 8kHz; jeito ODrive/SimpleFOC real_time_loop) =====
+// ISR dedicada num HardwareTimer (TIM6, básico, sem pino) a 8kHz — vai rodar o caminho rápido do FOC
+// (genCurrentRead DIR-gated → Park → PI → setPhaseVoltage) FORA do loop() lento (~1,8kHz). STAGE 1 = só o
+// esqueleto (conta ticks), SEM tocar no motor, pra verificar a taxa (por SWD) e que a USB não quebra.
+// Prioridade NVIC ALTA (preempta a USB, cuja ISR é curtíssima e adia p/ o .task() no loop() — ver pesquisa).
+static HardwareTimer* g_focTimer = nullptr;
+static volatile uint32_t g_focIsrCount = 0;   // DIAG: conta ticks da ISR (confirmar 8kHz por SWD)
+static void focFastLoopISR()
+{
+    g_focIsrCount++;   // STAGE 1 STUB — nada de motor ainda (só prova a taxa + coexistência com a USB)
+}
+static void focFastLoopBegin()
+{
+    g_focTimer = new HardwareTimer(TIM6);
+    g_focTimer->setOverflow(8000u, HERTZ_FORMAT);   // 8kHz (mesma razão do ODrive vs o PWM de 24kHz)
+    g_focTimer->setInterruptPriority(1, 0);         // prioridade alta (ODrive: current loop prio 0; USB fica bem abaixo)
+    g_focTimer->attachInterrupt(focFastLoopISR);
+    g_focTimer->resume();
+    drivelab::dbgRingPrintf("FOC FAST LOOP: TIM6 @ 8kHz armado (Stage 1 stub, prio 1)\n");
+}
+
 void setup()
 {
     // EnterDfu — PRIMEIRÍSSIMA coisa de setup(), antes de qualquer init de
@@ -1238,6 +1260,8 @@ void setup()
                   drvOk ? "OK" : "FAIL",
                   drv.isReady() ? "true" : "false",
                   drv.faulted() ? "true" : "false");
+
+    focFastLoopBegin();   // Stage 1: ISR do FOC rápido a 8kHz (stub) — depois da USB estar de pé
 }
 
 void loop()
