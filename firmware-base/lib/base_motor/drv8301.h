@@ -146,7 +146,7 @@ public:
 
     // Roda a sequência de init completa (reset + CR1 x5 + CR2 x1 + readback +
     // checagem de fault). Retorna true só se tudo bateu. Não habilita PWM.
-    bool configure();
+    bool configure(uint32_t settleMs = 20);   // settleMs = espera após EN_GATE alto p/ o GVDD/charge-pump subir. 20ms serve warm; no COLD-BOOT o charge-pump precisa muito mais (~300-500ms) — passar settle longo no boot.
 
     // true se nFAULT estiver ativo (ativo baixo) OU se o Status Register 1/2
     // reportar algum bit de fault setado.

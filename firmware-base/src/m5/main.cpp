@@ -1288,11 +1288,14 @@ void setup()
     // (o SPI já responde, mas o fault flag está setado por undervoltage). Warm reset "recuperava" só porque o
     // charge-pump já estava de pé. Fix = retry com settle crescente; cada configure() re-cicla EN_GATE (LOW→HIGH)
     // → limpa o fault latchado + dá tempo pra subir. ~500ms de pior caso, só no boot.
-    bool drvOk = drv.configure();
-    for (int attempt = 1; !drvOk && attempt <= 4; ++attempt) {
-        delay(50 * attempt);   // 50/100/150/200ms — settle do charge-pump
-        drvOk = drv.configure();
-        drivelab::dbgRingPrintf("DRV8301 cold-boot retry %d/4: %s\n", attempt, drvOk ? "OK" : "ainda FAIL");
+    // COLD-BOOT: o charge-pump/GVDD do DRV precisa de MUITO mais settle que o warm (20ms) — sem isto o configure
+    // falha com GVDD_UV e exige a dança de warm reset (bancada 2026-08-02). O settle agora é DENTRO do configure
+    // (após EN_GATE alto), crescente 300ms→~1s, até 6x. Rápido se configurar de 1ª; ~4,6s no pior caso.
+    bool drvOk = drv.configure(300);
+    for (int attempt = 1; !drvOk && attempt <= 6; ++attempt) {
+        const uint32_t settle = 300u + 120u * (uint32_t)attempt;   // 420, 540, ... 1020ms
+        drvOk = drv.configure(settle);
+        drivelab::dbgRingPrintf("DRV8301 cold-boot retry %d/6 (settle %lums): %s\n", attempt, (unsigned long)settle, drvOk ? "OK" : "ainda FAIL");
     }
     if (!drvOk) {
         uint16_t s1 = 0, s2 = 0; const bool spiok = drv.readStatusRegs(s1, s2);

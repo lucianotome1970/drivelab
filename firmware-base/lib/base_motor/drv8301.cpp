@@ -59,7 +59,7 @@ void Drv8301::begin(SPIClass& spi, int csPin, int enGatePin, int nFaultPin, Drv8
     ready_ = false;
 }
 
-bool Drv8301::configure()
+bool Drv8301::configure(uint32_t settleMs)
 {
     ready_ = false;
 
@@ -67,7 +67,7 @@ bool Drv8301::configure()
     digitalWrite(enGatePin_, LOW);
     delayMicroseconds(40); // mínimo do datasheet p/ reset completo: 20us
     digitalWrite(enGatePin_, HIGH);
-    delay(20); // t_spi_ready (datasheet: até 10ms; ODrive usa 20ms de folga)
+    delay(settleMs); // t_spi_ready + settle do GVDD/charge-pump (20ms warm; ~300-500ms no cold-boot)
 
     const uint16_t cr1 = drv8301ControlReg1();
     const uint16_t cr2 = drv8301ControlReg2(gain_);
