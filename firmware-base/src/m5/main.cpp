@@ -176,6 +176,7 @@ extern ADC_HandleTypeDef hadc[];        // def. em Arduino-FOC .../stm32f4_hal.c
 extern uint32_t          adc_val[5][4]; // def. em Arduino-FOC .../stm32f4_mcu.cpp
 static volatile bool     g_jeocArmed  = false;  // true = captura JEOC acesa → genCurrentRead lê adc_val (coerente)
 static volatile uint32_t g_jeocReject = 0;      // DIAG: amostras JEOC seguradas por sanidade (glitch >20A)
+static volatile bool     g_fastPiActive = false; // Stage 3b: true = a ISR TIM6 roda o current loop (loopFOC) — só nas fases FECHADAS
 
 // SINCRONIZAÇÃO POR HARDWARE, SEM interrupção. ADC2 injected IN10/IN11 (PC0/PC1) disparado pelo TIM1_TRGO=Update.
 // ⚠️ Em center-aligned o Update dispara no VALE (low-side ON = corrente real) E no PICO (all-high-side = ~0V):
@@ -414,7 +415,7 @@ static bool runawayCut()
 {
     if (fabsf(motor.shaft_velocity) > 30.0f) {   // rad/s — teto 0.5A ja e a seguranca; corte relaxado p/ nao falso-tripar no ruido do geartrain
         engine.enableRequested = false;          // desliga o engine no runaway (M6)
-        motor.move(0.0f); motor.loopFOC(); motor.disable();
+        g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
         g_focPhase = FOC_IDLE; g_motorFault = true;
         drivelab::dbgRingPrintf("RUNAWAY! |vel|=%dmrad/s > 30 rad/s — DESABILITADO\n", (int)(motor.shaft_velocity*1000.0f));
         return true;
@@ -523,6 +524,7 @@ static void currentSenseDiag(uint32_t nowMs, uint8_t arg)
 static void restartScan(uint32_t nowMs)
 {
     g_offAcc = drivelab::OffsetAccumulator{};
+    g_fastPiActive = false;   // Stage 3b: o scan é MALHA ABERTA (setPhaseVoltage direto) — a ISR NÃO roda loopFOC aqui
     motor.PID_current_q.reset(); motor.PID_current_d.reset();   // zera integrador: sem isso, retry herda estado do FWD/BWD/VERIFY anterior
     motor.controller = MotionControlType::torque;
     motor.feed_forward_voltage.q = 0.0f;
@@ -534,6 +536,7 @@ static void restartScan(uint32_t nowMs)
 
 static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
 {
+    g_fastPiActive = false;   // Stage 3b: garante que a ISR NÃO dirige durante o setup/scan (só liga no VERIFY)
     if (g_a0.cfg().softPowerEnable) g_driveWanted = true;   // sinaliza intenção → contator começa a fechar no loop
 
     const float busV = focPower.busVoltage();
@@ -677,6 +680,7 @@ static void stage1aTick(uint32_t nowMs)
         motor.controller = MotionControlType::velocity;
         motor.feed_forward_voltage.q = 0.0f;
         encoder.update(); g_verStart = encoder.getAngle();
+        g_fastPiActive = true;   // Stage 3b: daqui pra frente (VERIFY→COG/RUN) o current loop roda na ISR de 8kHz
         g_focPhase = FOC_VERIFY; g_focT = nowMs;
         drivelab::dbgRingPrintf("VERIFY: giro-teste 4 rad/s (confirmando o zero)...\n");
         return;
@@ -686,7 +690,7 @@ static void stage1aTick(uint32_t nowMs)
     if (g_focPhase == FOC_VERIFY) {
         // runaway no VERIFY = zero ruim (geartrain deixa a cal não-repetível) → RECALIBRA em vez de abortar
         if (fabsf(motor.shaft_velocity) > 30.0f) {
-            motor.move(0.0f); motor.loopFOC(); motor.disable();
+            g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
             if (++g_calRetry <= kCalMaxRetry) {
                 drivelab::dbgRingPrintf("VERIFY runaway (zero ruim) — recalibrando %d/%d\n", g_calRetry, kCalMaxRetry);
                 motor.enable(); restartScan(nowMs);
@@ -697,7 +701,7 @@ static void stage1aTick(uint32_t nowMs)
             return;
         }
         motor.feed_forward_voltage.q = 0.0f;
-        motor.loopFOC();
+        // loopFOC() agora roda na ISR de 8kHz (Stage 3b, g_fastPiActive). Aqui só o corte (lê motor.current da ISR).
         if (calCurrentCutoff(motor.electrical_angle)) return;
         motor.move(4.0f);
         if ((int32_t)(nowMs - g_focT) < 1200) return;
@@ -754,7 +758,7 @@ static void stage1aTick(uint32_t nowMs)
                 restartScan(nowMs);
             } else {
                 drivelab::dbgRingPrintf("VERIFY: travou apos %d tentativas — abortando (cal instavel; fix real = sensor de corrente)\n", kCalMaxRetry);
-                motor.move(0.0f); motor.loopFOC(); motor.disable();
+                g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
                 g_motorFault=true; g_focPhase=FOC_IDLE;
             }
         }
@@ -765,7 +769,7 @@ static void stage1aTick(uint32_t nowMs)
     if (g_focPhase == FOC_COG) {
         if (runawayCut()) return;
         motor.feed_forward_current.q = 0.0f;   // NÃO compensa enquanto mede
-        motor.loopFOC();
+        // loopFOC() na ISR de 8kHz (Stage 3b)
         motor.move(kCogMeasV);
         encoder.update();
         g_cogCal.addSample(encoder.getMechanicalAngle(), motor.current.q);   // Iq medido = torque p/ manter a vel = atrito+cogging
@@ -798,19 +802,19 @@ static void stage1aTick(uint32_t nowMs)
     const uint32_t runDur = g_sweepMode ? 24000u : (g_ffbMode ? 20000u : 6000u);
     if (!g_gameFfbMode && (int32_t)(nowMs - g_focT) > (int32_t)runDur) {
         motor.feed_forward_voltage.q = 0.0f;
-        motor.move(0.0f); motor.loopFOC(); motor.disable();
+        g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
         g_focPhase = FOC_IDLE;
         drivelab::dbgRingPrintf("FOC: fim\n");
         return;
     }
-    motor.loopFOC();
+    // loopFOC() na ISR de 8kHz (Stage 3b)
     if (g_gameFfbMode) {
         // Desarme por segurança (predicado puro, Task 1): runaway JÁ foi checado por runawayCut() no topo;
         // aqui cobrimos USB-drop e app-off (fault do engine é tratado internamente por engine.step()).
         if (shouldDisarmGameFfb(/*runaway=*/false, /*fault=*/false,
                                 TinyUSBDevice.mounted(), g_a0.forceEnabled())) {
             engine.enableRequested = false;   // desliga o engine (soft-start reseta na próxima)
-            motor.move(0.0f); motor.loopFOC(); motor.disable();
+            g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
             g_focPhase = FOC_IDLE;
             drivelab::dbgRingPrintf("FFB JOGO: desarmado (USB/app)\n");
             return;
@@ -827,7 +831,7 @@ static void stage1aTick(uint32_t nowMs)
                 if (s_overIqT == 0) s_overIqT = nowMs;
                 if ((int32_t)(nowMs - s_overIqT) > (int32_t)kOverIqMs) {
                     engine.enableRequested = false;
-                    motor.move(0.0f); motor.loopFOC(); motor.disable();
+                    g_fastPiActive = false; motor.disable();   // Stage 3b: para a ISR ANTES de desarmar (não re-energiza)
                     g_focPhase = FOC_IDLE; g_motorFault = true;
                     drivelab::dbgRingPrintf("FFB JOGO: CORTE por corrente Iq=%dmA (>%dmA por >%dms) — zero/angulo FOC ruim?\n",
                         (int)(iqAbs*1000.0f), (int)(kOverIqA*1000.0f), (int)kOverIqMs);
@@ -1125,7 +1129,12 @@ static HardwareTimer* g_focTimer = nullptr;
 static volatile uint32_t g_focIsrCount = 0;   // DIAG: conta ticks da ISR (confirmar 8kHz por SWD)
 static void focFastLoopISR()
 {
-    g_focIsrCount++;   // STAGE 1 STUB — nada de motor ainda (só prova a taxa + coexistência com a USB)
+    g_focIsrCount++;
+    // STAGE 3b: current loop RÁPIDO a 8kHz — loopFOC = sense coerente (adc_val do JEOC) + PI de corrente +
+    // setPhaseVoltage. Só nas fases de MALHA FECHADA (g_fastPiActive) e com o motor armado (motor.enabled).
+    // O scan (malha ABERTA) NÃO ativa isto (usa setPhaseVoltage direto). move()/engine.step ficam no loop()
+    // (jeito SimpleFOC real_time_loop). É o fix do overshoot do PI que estourava no loop lento (0,5A→6,5A).
+    if (g_fastPiActive && motor.enabled) motor.loopFOC();
 }
 static void focFastLoopBegin()
 {
