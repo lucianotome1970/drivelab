@@ -310,17 +310,7 @@ static float    g_elecAngle  = 0.0f;  // ângulo elétrico do sweep manual (rad)
 // (atrito) e inverte → mapa de compensação. No RUN, soma compensation(mech) ao feed_forward_voltage.q do
 // SimpleFOC a cada tick → cancela o ripple. cmd 5 = cal + RUN (aplica cogging SE já medido); cmd 7 = cal +
 // MEDE + RUN com compensação. A/B: rode cmd 5 (baseline) e depois cmd 7 (com cogging) e compare a ondulação.
-enum FocPhase { FOC_IDLE, FOC_MEASL, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_VERIFY, FOC_COG, FOC_RUN };
-// Ganhos do PI de corrente COMPUTADOS de R/L (jeito ODrive: P=bw·L, I=bw·R). L é medido na ISR de 8kHz
-// (Stage 2) — a 8kHz dt=125µs < τ=L/R≈154µs, então a corrente ainda está na rampa de L (mensurável);
-// no loop() lento (~1,8kHz, dt=544µs) NÃO dava. R medido na calibração (kCalV/I ~1,3Ω).
-static const float    kCurBw  = 1000.0f;   // bandwidth do loop de corrente (rad/s), default do ODrive
-static const float    kMotorR = 1.3f;      // R do motor (Ω) — TODO medir por rampa
-static const int      kMeasLTicks = 4000;  // ticks da medição de L na ISR (4000 @ 8kHz = 0,5s)
-static volatile bool   g_measLActive  = false;      // a ISR está medindo L?
-static volatile int    g_measLN       = 0;          // ticks já medidos
-static volatile double g_measLAcc[2]  = {0.0, 0.0}; // acumula Iq por polaridade
-static bool            g_measLStarted = false;      // (main) a fase FOC_MEASL já disparou a ISR?
+enum FocPhase { FOC_IDLE, FOC_LOCK, FOC_FWD, FOC_BWD, FOC_VERIFY, FOC_COG, FOC_RUN };
 static FocPhase g_focPhase  = FOC_IDLE;
 static uint32_t g_focT      = 0;
 static float    g_velTarget = 6.0f;   // velocidade alvo (rad/s) do RUN — vem do arg do cmd 5, sem reflash
@@ -563,41 +553,12 @@ static void stage1aStart(uint32_t nowMs, uint8_t arg, bool doMeasure)
     motor.PID_velocity.limit = motor.current_limit;
     motor.LPF_velocity.Tf = 0.04f;   // filtro na velocidade (estimada é ruidosa)
     g_calRetry = 0;
-    // Stage 2: mede L na ISR de 8kHz ANTES do scan → computa P=bw·L, I=bw·R (jeito ODrive, não chuta).
-    // O scan (FOC_LOCK/FWD/BWD) é malha ABERTA e não usa os ganhos; medir aqui deixa VERIFY/RUN já corretos.
-    g_measLStarted = false;
-    g_focT = nowMs;
-    g_focPhase = FOC_MEASL;
+    restartScan(nowMs);
 }
 
 static void stage1aTick(uint32_t nowMs)
 {
     if (g_focPhase == FOC_IDLE) return;
-
-    if (g_focPhase == FOC_MEASL) {
-        if (!g_measLStarted) {                       // 1ª entrada: dispara a medição na ISR
-            g_measLAcc[0] = g_measLAcc[1] = 0.0; g_measLN = 0;
-            g_measLStarted = true; g_measLActive = true;
-            drivelab::dbgRingPrintf("CAL: medindo L na ISR de 8kHz (%d ticks, +-%dV no eixo q)...\n",
-                                 kMeasLTicks, (int)kCalV);
-            return;
-        }
-        if (g_measLActive) return;                   // a ISR ainda mede (o rotor não gira)
-        // pronto: dt=125µs é CONHECIDO (taxa fixa da ISR) → dI/dt e L confiáveis
-        const float dt   = 1.0f / 8000.0f;
-        const int   ncy  = kMeasLTicks / 2;
-        const float dIdt = fabsf((float)(g_measLAcc[1] - g_measLAcc[0])) / (dt * (float)ncy);
-        float L = (dIdt > 1e-3f) ? (kCalV / dIdt) : 200e-6f;
-        if (L < 5e-6f || L > 5000e-6f) L = 200e-6f;  // sanidade: fora de faixa → default 200µH
-        const float cP = kCurBw * L;                 // P do PI de corrente = bw·L (jeito ODrive motor.cpp:60-64)
-        const float cI = kCurBw * kMotorR;           // I = bw·R
-        motor.PID_current_q.P = cP; motor.PID_current_d.P = cP;
-        motor.PID_current_q.I = cI; motor.PID_current_d.I = cI;
-        drivelab::dbgRingPrintf("CAL: L=%duH -> Pcur=%d/1000 Icur=%d/1000 (bw=%d rad/s, dt=125us ISR)\n",
-                             (int)(L*1e6f), (int)(cP*1000.0f), (int)(cI*1000.0f), (int)kCurBw);
-        restartScan(nowMs);                          // segue pro scan de zero (malha aberta), agora com ganhos bons
-        return;
-    }
 
     if (g_focPhase == FOC_LOCK) {
         motor.setPhaseVoltage(kCalV, 0.0f, _3PI_2);
@@ -1124,20 +1085,7 @@ static HardwareTimer* g_focTimer = nullptr;
 static volatile uint32_t g_focIsrCount = 0;   // DIAG: conta ticks da ISR (confirmar 8kHz por SWD)
 static void focFastLoopISR()
 {
-    g_focIsrCount++;
-    if (g_measLActive) {
-        // STAGE 2 — medição de L jeito ODrive (measure_phase_inductance) DENTRO da ISR de 8kHz.
-        // ±kCalV alternado no eixo q (campo travado em _3PI_2); acumula Iq por polaridade. A 8kHz o passo
-        // dt=125µs < τ=L/R≈154µs → a corrente ainda está na rampa de L (mensurável); no loop() lento não dava.
-        // A alternância ±V a 8kHz tem média ~0 → sem torque líquido, o rotor NÃO gira (igual ao ODrive).
-        const int idx = g_measLN & 1;
-        g_measLAcc[idx] += (double)currentSense.getFOCCurrents(_3PI_2).q;   // corrente DIR-gated + Clarke/Park
-        motor.setPhaseVoltage(idx ? kCalV : -kCalV, 0.0f, _3PI_2);
-        if (++g_measLN >= kMeasLTicks) {
-            motor.setPhaseVoltage(0.0f, 0.0f, _3PI_2);   // solta o motor
-            g_measLActive = false;                        // sinaliza pronto p/ o coordenador no loop()
-        }
-    }
+    g_focIsrCount++;   // STAGE 1 STUB — nada de motor ainda (só prova a taxa + coexistência com a USB)
 }
 static void focFastLoopBegin()
 {
