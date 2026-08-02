@@ -1153,10 +1153,12 @@ static void focFastLoopISR()
     if (g_fastPiActive && motor.enabled) {
         const float sp = _constrain(motor.current_sp, -motor.current_limit, motor.current_limit) + motor.feed_forward_current.q;
         DQCurrent_s c = currentSense.getFOCCurrents(motor.electrical_angle);   // amostra coerente (adc_val) + Clarke/Park
-        const float iq = motor.LPF_current_q(c.q);
-        const float id = motor.LPF_current_d(c.d);
-        const float Uq = motor.PID_current_q(sp - iq) + motor.feed_forward_voltage.q;
-        const float Ud = motor.PID_current_d(motor.feed_forward_current.d - id) + motor.feed_forward_voltage.d;
+        // ESCREVE motor.current (NÃO usar local!): a telemetria E o corte de sobrecorrente do FFB do jogo
+        // (kOverIqA, lê motor.current.q) dependem disto — senão ficam CEGOS (leem 0) e o corte não protege.
+        motor.current.q = motor.LPF_current_q(c.q);
+        motor.current.d = motor.LPF_current_d(c.d);
+        const float Uq = motor.PID_current_q(sp - motor.current.q) + motor.feed_forward_voltage.q;
+        const float Ud = motor.PID_current_d(motor.feed_forward_current.d - motor.current.d) + motor.feed_forward_voltage.d;
         motor.setPhaseVoltage(Uq, Ud, motor.electrical_angle);
     }
 }
