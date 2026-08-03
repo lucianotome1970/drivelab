@@ -1,0 +1,125 @@
+// firmware-wheel-dd — modelo FFB (STAGE 3b). Dono dos objetos do pipeline puro do
+// firmware-base (portados): EffectManager (banco de efeitos PID), ForceReconstructor
+// (força do jogo → contínua) e computeTorqueRaw (força+efeitos+endstop → Nm). A cola HID
+// alimenta os reports; o laço de 1kHz pede o torque. O ODrive faz a FOC/proteção — aqui
+// só a MATEMÁTICA da força (o que resolveu a dor: separar FFB da malha de corrente).
+// Autor: Luciano Tomé <lucianotome1970@gmail.com> — Licença MIT
+#include "ffb_model.h"
+#include "effect_manager.h"
+#include "force_reconstruct.h"
+#include "ffb_math.h"
+#include "ffb_report.h"
+#include "ffb_hid_descriptor.h"
+#include "odrive_bridge.h"
+#include <cmath>
+
+using namespace drivelab;
+
+static constexpr float k2Pi = 6.28318530718f;
+
+// --- estado do modelo (compartilhado entre a task USB e a task de 1kHz, sem mutex —
+//     mesmo padrão provado do firmware-base a 400Hz; ops curtas, torque capado) ---
+static EffectManager      s_effects;
+static ForceReconstructor s_recon;
+
+// Config de bancada (ajustável pelo DriveLab Studio no Stage 4). Teto subido após a
+// leitura por SWD provar que o ODrive entrega o torque pedido a corrente baixa (0,48A
+// p/ 0,29Nm) — 1,0Nm era só fraco, não limitado por corrente. Subir com cautela.
+static ForceConfig  s_fc = { /*totalStrengthPct*/100.0f, /*maxTorqueNm*/4.0f,
+                             /*torqueLimitNm*/5.0f, /*direction*/1.0f, /*linearity*/1.0f, {} };
+// SEM mola de centragem sempre-ativa (decisão do usuário 2026-08-03): o FFB é 100% do JOGO,
+// como os concorrentes (Moza/Simucube) — sem jogo, o volante fica LIVRE. Isso também tira o
+// susto de "runaway/notchy ao girar à mão" (era a mola reagindo à calibração marginal).
+// Mantido um damper LEVE só p/ estabilidade do DD livre (não centra, só freia o movimento).
+static EffectConfig s_ef = { /*springNmPerRad*/0.0f,      // SEM centragem sempre-ativa (game-driven)
+                             /*damperNmPerRadPerSec*/0.03f, // damper leve de estabilidade (não é mola)
+                             /*frictionNm*/0.0f };
+static EndstopConfig s_ec = { /*rangeRad*/1.4f * k2Pi,  // batente por SW ~±1.4 volta (antes do fundo de escala do eixo)
+                              /*stiffnessNm*/8.0f, /*dampingNmPerRadPerSec*/0.05f };
+
+static uint32_t s_nowMs     = 0;
+static uint32_t s_lastFfbMs = 0;
+static uint8_t  s_deviceGain = 255;
+
+// Escala on-wire da força PID (±32767) → escala do engine (±255).
+static constexpr float kPidForceToF255 = 255.0f / 32767.0f;
+
+// Sinal GLOBAL da força do jogo no NOSSO frame. -1 CASA com o odrive-wheel
+// (result_torque = -forceVector × angle_ratio): a força do jogo é NEGADA relativa ao
+// nosso eixo, senão o auto-alinhamento do ACC vira runaway ao soltar e os solavancos
+// empurram pro lado errado (incoerência). Ajustável no Stage 4 pelo app.
+static constexpr float kGameForceSign = -1.0f;
+
+// Instrumentação p/ leitura por SWD (openocd mdw &g_ffb_dbg) — diagnostica o fluxo
+// de força do jogo sem USB/printf. NÃO otimizar: volatile + símbolo global.
+volatile int32_t g_ffb_dbg[12] = {0};
+// [0]=handle_out calls  [1]=set-constant count  [2]=last constantForce(raw ±32767)
+// [3]=last hostF(±255)  [4]=last torque*1000(Nm)  [5]=compute(armed) calls
+// [6]=last deviceGain   [7]=last pos*1000(turns) [8]=usedBlocks  [9]=last Iq*1000(A)
+// [10]=last dirFactor*1000  [11]=last directed force(±32767)
+
+// Watchdog: 1.0 até 500ms de silêncio; rampa 1→0 em +300ms; 0 depois (segurança).
+static float watchdogGain(uint32_t silentMs) {
+    if (silentMs <= 500) return 1.0f;
+    uint32_t over = silentMs - 500;
+    if (over >= 300) return 0.0f;
+    return 1.0f - (float)over / 300.0f;
+}
+
+extern "C" void ffb_model_advance_clock(uint32_t dms) { s_nowMs += dms; }
+
+extern "C" float ffb_model_compute_torque(float posTurns, float velTurnsPerSec) {
+    const float posRad = posTurns * k2Pi;
+    const float velRad = velTurnsPerSec * k2Pi;
+
+    float hostF = s_recon.tick();                              // força constante do jogo, reconstruída
+    hostF += s_effects.computeForce(posRad, velRad, s_nowMs);  // + efeitos periódicos/condição (Constant é pulado lá)
+    hostF *= watchdogGain(s_nowMs - s_lastFfbMs);              // sinal do jogo perdido → decai a 0
+    hostF *= (float)s_deviceGain / 255.0f;                     // Device Gain global do host (0x0D)
+
+    float t = computeTorqueRaw(hostF, posRad, velRad, s_fc, s_ef, s_ec);  // força→Nm + spring/endstop
+    t = clampf(t, -s_fc.torqueLimitNm, s_fc.torqueLimitNm);               // TETO DURO por último
+
+    g_ffb_dbg[5]++;
+    g_ffb_dbg[3] = (int32_t)hostF;
+    g_ffb_dbg[4] = (int32_t)(t * 1000.0f);
+    g_ffb_dbg[6] = s_deviceGain;
+    g_ffb_dbg[7] = (int32_t)(posTurns * 1000.0f);
+    g_ffb_dbg[8] = s_effects.usedBlocks();
+    g_ffb_dbg[9] = (int32_t)(odrive_bridge_get_iq_measured() * 1000.0f);
+    return t;
+}
+
+extern "C" uint8_t ffb_model_create_effect(void) { return s_effects.allocateBlock(); }
+extern "C" int     ffb_model_used_blocks(void)   { return s_effects.usedBlocks(); }
+extern "C" int     ffb_model_max_blocks(void)    { return kEffectSlots; }
+extern "C" void    ffb_model_set_device_gain(uint8_t g) { s_deviceGain = g; }
+
+extern "C" void ffb_model_handle_out(const uint8_t* buf, uint16_t len) {
+    if (buf == nullptr || len < 1) return;
+    s_lastFfbMs = s_nowMs;                          // qualquer report = jogo ativo (reseta watchdog)
+    g_ffb_dbg[0]++;
+
+    s_effects.handleReport(buf, len, s_nowMs);      // roteia 0x01-0x06, 0x0A, 0x0B, 0x0C pro banco
+
+    if (buf[0] == RID_PID_DEVICE_GAIN && len >= 2)  // 0x0D Device Gain global
+        s_deviceGain = buf[1];
+
+    if (buf[0] == RID_PID_DEVICE_CONTROL && len >= 2) {   // 0x0C: stop/reset → zera a força constante também
+        s_recon.setTarget(0.0f);
+    }
+
+    FfbOut o = ffb_parse_out(buf, len);
+    if (o.type == FFB_SET_CONSTANT_FORCE) {         // força constante do jogo → reconstrutor (suave)
+        // SENTIDO: aplica o campo Direction do Set Effect (axisMagnitudes[0]) — sem isso a
+        // força fica com sinal fixo/errado (incoerente + runaway ao soltar). CASADO c/ odrive-wheel.
+        const float dir = s_effects.axisDirFactor(o.effectBlock);
+        const float directed = (float)o.constantForce * dir * kGameForceSign;
+        // FIX de escala: ±32767 (on-wire PID) → ±255 (escala do engine).
+        s_recon.setTarget(directed * kPidForceToF255);
+        g_ffb_dbg[1]++;
+        g_ffb_dbg[2] = o.constantForce;
+        g_ffb_dbg[10] = (int32_t)(dir * 1000.0f);
+        g_ffb_dbg[11] = (int32_t)directed;
+    }
+}

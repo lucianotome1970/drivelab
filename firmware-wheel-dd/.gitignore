@@ -1,0 +1,7 @@
+# Artefatos de build (regeneráveis por `make`)
+build/
+*.o
+*.d
+*.elf
+*.bin
+*.map
