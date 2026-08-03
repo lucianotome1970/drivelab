@@ -20,6 +20,12 @@ void    ffb_model_set_device_gain(uint8_t g);                // Device Gain glob
 int     ffb_model_used_blocks(void);                         // blocos reservados (p/ Block Load / Pool)
 int     ffb_model_max_blocks(void);
 
+// --- canal A0 (app DriveLab Studio) ---
+void    ffb_model_set_telemetry_force(float f255);           // DirectControl 0x10 (aditivo)
+void    ffb_model_set_config(float total_pct, float maxlimit_pct, int direction,
+                             float spring_pct, float damper_pct, int motion_range_deg,
+                             int gspring, int gdamper, int gfriction, int ginertia);
+
 #ifdef __cplusplus
 }
 #endif

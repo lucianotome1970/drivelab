@@ -11,7 +11,8 @@
 #include "ffb_model.h"
 
 // Definido em ffb_hid.cpp: joystick (direção pro jogo).
-extern "C" int hid_send_joystick(void);
+extern "C" int hid_send_joystick(void);      // joystick (direção pro jogo) — PRIORIDADE
+extern "C" int a0_service(uint32_t nowMs);   // canal A0 do app (0x16 resposta / 0x21 telemetria) — na sobra
 
 // Diagnóstico do eixo, lido por SWD (SÓ leitura — não age no motor).
 volatile int32_t g_axis_dbg[7] = {0};   // [0]armed [1]state [2]axis_err [3]motor_err [4]enc_err [5]pos*1e3 [6]vel*1e3
@@ -67,8 +68,12 @@ static void ffb_thread(void*) {
             s_was_idle = (st == 1);
         }
 
-        // Direção pro host a ~500Hz (motor ligado ou não) → controle de jogo vivo.
-        if ((n++ & 1) == 0) hid_send_joystick();
+        // Disciplina de envio (1 report por janela de EP, como o firmware-base): JOYSTICK tem
+        // prioridade (o jogo precisa da direção); o canal A0 do app pega a SOBRA (janela 3 de 4).
+        // Se A0 não tem nada a enviar, o joystick usa a janela.
+        if ((n & 3) == 3) { if (!a0_service(n)) hid_send_joystick(); }
+        else              { hid_send_joystick(); }
+        n++;
 
         if (g_axis_dbg[0]) {   // só age com o motor ARMADO (CLOSED_LOOP)
             const float pos = odrive_bridge_get_pos_turns();     // turns (encoder)

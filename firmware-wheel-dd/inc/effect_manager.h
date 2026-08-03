@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ffb_effects.h"
+#include "biquad_lp.h"
 
 #include <cmath>
 #include <cstdint>
@@ -26,6 +27,12 @@ static constexpr int kEffectSlots = 40;
 
 class EffectManager {
     FxEffect m_slots[kEffectSlots];
+
+    // Filtros lowpass (biquad RBJ) por tipo de condition — mata os PICOS do Damper (velocidade
+    // ruidosa) e do Inertia (derivada DUPLA) a 1kHz. Defaults do OpenFFBoard como ponto de partida:
+    // damper 30Hz/Q0.4, inertia 15Hz/Q0.2, friction 50Hz/Q0.2 (fs=1000). Spring NÃO filtra (posição,
+    // baixo ruído). Estado persistente entre ticks → resetado em reset()/freeBlock().
+    drivelab::BiquadLP m_damperFilter, m_inertiaFilter, m_frictionFilter;
 
     // Reserva de bloco (2026-07-29, fix 400Hz): distinto de "configurado"/"ativo".
     // Create New Effect RESERVA um bloco livre (allocateBlock) ANTES do host mandar
@@ -44,6 +51,13 @@ class EffectManager {
 
     // ---- Normalização física (metric em [-1,1] p/ efeitos Condition) ----
 public:
+    EffectManager() {
+        // Cortes do OpenFFBoard (ajustar na bancada). fs=1000Hz (laço FFB).
+        m_damperFilter.configure(30.0f, 0.4f, 1000.0f);
+        m_inertiaFilter.configure(15.0f, 0.2f, 1000.0f);
+        m_frictionFilter.configure(50.0f, 0.2f, 1000.0f);
+    }
+
     // Defaults das escalas de normalização. Públicos p/ referência/testes; o ponto de partida quando
     // ninguém configura. AJUSTAR na bancada os de velocidade/aceleração.
     static constexpr float kMaxPosRad = 3.14159265358979323846f; // curso físico default (±180°)
@@ -309,6 +323,7 @@ public:
             m_slots[i] = FxEffect{};
             m_allocated[i] = false;
         }
+        m_damperFilter.reset(); m_inertiaFilter.reset(); m_frictionFilter.reset();
     }
 
     // Desativa todos os slots, preservando os parâmetros.
@@ -394,10 +409,16 @@ public:
                     break;
 
                 case FxType::Spring:
+                    f = conditionForce(e, posRad, velRadPerSec, accel);           // posição, baixo ruído: sem filtro
+                    break;
                 case FxType::Damper:
+                    f = m_damperFilter.process(conditionForce(e, posRad, velRadPerSec, accel));   // 30Hz
+                    break;
                 case FxType::Friction:
+                    f = m_frictionFilter.process(conditionForce(e, posRad, velRadPerSec, accel)); // 50Hz
+                    break;
                 case FxType::Inertia:
-                    f = conditionForce(e, posRad, velRadPerSec, accel);
+                    f = m_inertiaFilter.process(conditionForce(e, posRad, velRadPerSec, accel));  // 15Hz (mata o pico da derivada dupla)
                     break;
 
                 default:

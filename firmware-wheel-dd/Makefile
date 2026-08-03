@@ -104,6 +104,7 @@ CPP_SOURCES_LOCAL = \
   src/board_v3.cpp \
   src/ffb_task.cpp \
   src/ffb_hid.cpp \
+  src/a0_channel.cpp \
   src/ffb_model.cpp \
   src/ffb_effects.cpp \
   src/ffb_report.cpp \

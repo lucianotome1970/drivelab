@@ -18,6 +18,9 @@
 #include "odrive_bridge.h"
 #include "ffb_model.h"
 
+// Canal A0 (app DriveLab Studio) — trata os OUT reports vendor (a0_channel.cpp).
+extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len);
+
 // --- Report de Input do RID_JOYSTICK (idêntico ao firmware-base): 8 botões + 8 eixos x16b = 24 bytes ---
 typedef struct __attribute__((packed)) {
     uint8_t buttons[8];
@@ -68,8 +71,13 @@ extern "C" void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id,
         return;
     }
 
-    // OUTPUT reports (efeitos/força/device control do jogo) → banco de efeitos + reconstrutor.
-    ffb_model_handle_out(buf, len);
+    // OUTPUT reports: canal A0 do app (0x10 DIRECT / 0x14 SETWRITE / 0x15 SETREAD / 0x22 CMD) vs
+    // FFB do jogo (0x01-0x06,0x0A-0x0D...). Despacha por report ID (buf[0]=rid quando veio pelo EP OUT).
+    if (rid == 0x10 || rid == 0x14 || rid == 0x15 || rid == 0x22) {
+        a0_handle_out(buf, len);
+    } else {
+        ffb_model_handle_out(buf, len);
+    }
 }
 
 // ---------------------------------------------------------------------------

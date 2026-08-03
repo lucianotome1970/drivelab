@@ -40,6 +40,26 @@ static EndstopConfig s_ec = { /*rangeRad*/1.4f * k2Pi,  // batente por SW ~±1.4
 static uint32_t s_nowMs     = 0;
 static uint32_t s_lastFfbMs = 0;
 static uint8_t  s_deviceGain = 255;
+static float    s_telemetryForce = 0.0f;   // força aditiva de telemetria do app (DirectControl 0x10)
+
+// --- Setters do canal A0 (app DriveLab Studio) ---
+extern "C" void ffb_model_set_telemetry_force(float f255) { s_telemetryForce = f255; }
+
+// Aplica os settings do app no config do FFB. Defaults do schema reproduzem o config VALIDADO:
+// total 100% × maxlimit 80% × 5Nm = 4Nm (maxTorque validado); teto duro 5Nm; damper 10%×0.3=0.03.
+extern "C" void ffb_model_set_config(float total_pct, float maxlimit_pct, int direction,
+                                     float spring_pct, float damper_pct, int motion_range_deg,
+                                     int gspring, int gdamper, int gfriction, int ginertia) {
+    const float kFullScaleTorqueNm = 5.0f;
+    s_fc.maxTorqueNm   = (total_pct * 0.01f) * (maxlimit_pct * 0.01f) * kFullScaleTorqueNm;
+    s_fc.torqueLimitNm = kFullScaleTorqueNm;                        // teto duro fixo (segurança)
+    s_fc.direction     = (direction < 0) ? -1.0f : 1.0f;           // flip extra do usuário (base já é kGameForceSign)
+    s_ef.springNmPerRad       = (spring_pct * 0.01f) * 0.5f;       // 100% → 0.5 Nm/rad
+    s_ef.damperNmPerRadPerSec = (damper_pct * 0.01f) * 0.3f;       // 10% → 0.03 (validado)
+    const float half_rad = (float)motion_range_deg * 0.5f * 0.01745329f;  // DOR/2 em rad
+    if (half_rad > 0.1f) s_ec.rangeRad = half_rad;
+    s_effects.setTypeGains((uint8_t)gspring, (uint8_t)gdamper, (uint8_t)gfriction, (uint8_t)ginertia);
+}
 
 // Escala on-wire da força PID (±32767) → escala do engine (±255).
 static constexpr float kPidForceToF255 = 255.0f / 32767.0f;
@@ -76,6 +96,7 @@ extern "C" float ffb_model_compute_torque(float posTurns, float velTurnsPerSec) 
     hostF += s_effects.computeForce(posRad, velRad, s_nowMs);  // + efeitos periódicos/condição (Constant é pulado lá)
     hostF *= watchdogGain(s_nowMs - s_lastFfbMs);              // sinal do jogo perdido → decai a 0
     hostF *= (float)s_deviceGain / 255.0f;                     // Device Gain global do host (0x0D)
+    hostF += s_telemetryForce;                                 // + efeitos por telemetria do app (aditivo)
 
     float t = computeTorqueRaw(hostF, posRad, velRad, s_fc, s_ef, s_ec);  // força→Nm + spring/endstop
     t = clampf(t, -s_fc.torqueLimitNm, s_fc.torqueLimitNm);               // TETO DURO por último

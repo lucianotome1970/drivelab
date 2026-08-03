@@ -21,6 +21,9 @@ extern "C" {
 #include "usbd_cdc.h"
 }
 
+// Monta o report descriptor combinado (ffb+a0) numa fonte única de tamanho — usb_descriptors.c.
+extern "C" void usb_hid_report_desc_build(void);
+
 // Globais do lado do ODrive (interface_usb.cpp / board.cpp / main.cpp)
 extern "C" USBD_HandleTypeDef usb_dev_handle;                 // dummy em board_v3.cpp
 extern "C" osMessageQId usb_event_queue;                      // fila de eventos (main.cpp)
@@ -90,6 +93,7 @@ extern "C" void MX_USB_DEVICE_Init(void) {
     HAL_Delay(50);
     HAL_NVIC_SetPriority(OTG_FS_IRQn, 6, 0);   // >= MAX_SYSCALL (5) pro TinyUSB usar FromISR
     HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+    usb_hid_report_desc_build();   // monta ffb+a0 (fonte única de tamanho) ANTES do tud_init
     tusb_init();
     osThreadDef(tusbTask, usb_tusb_task, osPriorityNormal, 0, 2048 / sizeof(StackType_t));
     osThreadCreate(osThread(tusbTask), NULL);

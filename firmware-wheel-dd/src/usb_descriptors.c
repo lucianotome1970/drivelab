@@ -8,8 +8,8 @@
 // Derivado dos exemplos TinyUSB (MIT). Autor: Luciano Tomé <lucianotome1970@gmail.com> — MIT.
 #include "tusb.h"
 #include <string.h>
-#include "ffb_hid_descriptor.h"   // define ffb_hid_report_desc[] (joystick+PID FFB) — nesta TU
-// (canal A0/app REVERTIDO — desestabilizava o reconhecimento no Windows; reabordar isolado depois)
+#include "ffb_hid_descriptor.h"   // ffb_hid_report_desc[] (joystick+PID FFB) — nesta TU
+#include "a0_hid_descriptor.h"    // a0_hid_report_desc[] (canal A0 vendor 0xFF00 do app) — nesta TU
 
 // Identidade NOSSA (VID pid.codes 0x1209, = firmware-base → DriveLab Studio reconhece).
 #define USB_VID   0x1209
@@ -35,12 +35,25 @@ static const tusb_desc_device_t desc_device = {
 };
 uint8_t const * tud_descriptor_device_cb(void) { return (uint8_t const *)&desc_device; }
 
-// --- Report descriptor do HID (só-FFB: joystick + PID). Estado que o Windows reconhecia. ---
-#define HID_REPORT_DESC_LEN (sizeof(ffb_hid_report_desc))
+// --- Report descriptor do HID = ffb_hid_report_desc + a0_hid_report_desc concatenados.
+// FIX da enumeração (por que o A0 quebrou o Windows antes): o `wDescriptorLength` do Config
+// Descriptor (HID_REPORT_DESC_LEN abaixo) e os bytes entregues em tud_hid_descriptor_report_cb
+// SAEM DO MESMO `sizeof(s_hid_report_desc)` → impossível divergir. Preenchido ANTES do tud_init
+// (usb_hid_report_desc_build, chamado de MX_USB_DEVICE_Init) + rede lazy no callback. ---
+static uint8_t s_hid_report_desc[sizeof(ffb_hid_report_desc) + sizeof(a0_hid_report_desc)];
+#define HID_REPORT_DESC_LEN (sizeof(s_hid_report_desc))
+static uint8_t s_hid_desc_ready = 0;
+
+void usb_hid_report_desc_build(void) {   // chamar ANTES do tud_init()
+    memcpy(s_hid_report_desc, ffb_hid_report_desc, sizeof(ffb_hid_report_desc));
+    memcpy(s_hid_report_desc + sizeof(ffb_hid_report_desc), a0_hid_report_desc, sizeof(a0_hid_report_desc));
+    s_hid_desc_ready = 1;
+}
 
 uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance) {
     (void)instance;
-    return ffb_hid_report_desc;
+    if (!s_hid_desc_ready) usb_hid_report_desc_build();   // garante preenchido antes de entregar
+    return s_hid_report_desc;
 }
 
 // --- Layout de interfaces + endpoints do composite ---
