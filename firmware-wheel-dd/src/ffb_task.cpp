@@ -90,12 +90,11 @@ extern "C" void ffb_init_storage_early(void) {
     // SEM APITO + arme confiável: pula a medição do motor no boot (usa o R/L já guardado,
     // motor.pre_calibrated=TRUE). Roda ANTES do eixo iniciar (main.cpp:544 < :604). Mantém a
     // cal de offset do encoder (movimento) + o auto-arme nativo (startup_closed_loop na NVM).
-    odrive_bridge_skip_motor_cal();
-    // Brake resistor: o da bancada nunca arma (brake_resistor_armed=0) → o motor DESARMA sozinho no arme
-    // (checagem de segurança do ODrive: enable&&!armed → BRAKE_RESISTOR_DISARMED). Desliga a exigência a
-    // ~19,6V (regen pequena, caps + proteção de sobretensão cobrem). ⚠️ Reabilitar com o brake validado /
-    // em bus 56V. Confirmado por SWD: era só isso travando o arme na bancada (2026-08-03). Ver 08e1b22.
-    odrive_bridge_disable_brake_resistor();
+    // ⚠️ BRING-UP DE PLACA NOVA (2026-08-03): a placa nova tem cal de fábrica de OUTRO motor. Em vez de
+    // pular a cal (skip_motor_cal), fazemos a cal COMPLETA do nosso motor (pole_pairs=15, cpr=4000,
+    // mede R/L, offset do encoder) com corrente segura. Já inclui o disable_brake_resistor. Testa o DRV
+    // limpo. Ao voltar pra placa antiga (NVM já calibrada), trocar de volta por skip+disable.
+    odrive_bridge_newboard_bringup();
 }
 
 extern "C" void ffb_task_init(void) {

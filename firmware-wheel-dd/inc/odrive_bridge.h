@@ -32,6 +32,7 @@ int32_t  odrive_bridge_motor_R_uohm(void);
 int32_t  odrive_bridge_motor_L_nH(void);
 void     odrive_bridge_skip_motor_cal(void);      // pula motor cal no boot (sem apito, usa R/L pré-calibrado)
 void     odrive_bridge_disable_brake_resistor(void); // desliga a exigência do brake resistor pro arme (bancada)
+void     odrive_bridge_newboard_bringup(void);       // calibra do zero o nosso motor na placa nova (pp=15, cpr=4000)
 #ifdef __cplusplus
 }
 #endif

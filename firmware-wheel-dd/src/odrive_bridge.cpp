@@ -81,6 +81,44 @@ extern "C" void odrive_bridge_disable_brake_resistor(void) {
     odrv.config_.enable_brake_resistor = false;
 }
 
+// BRING-UP de PLACA NOVA: calibra o NOSSO motor do zero (a NVM de fábrica é de outro motor). Seta a
+// geometria (pole_pairs=15 do hoverboard, cpr=4000 do E6B2 1000 PPR ×4, incremental), corrente de cal
+// SEGURA (10A, não os 30 do perfil) e limite modesto (falha-seguro). Faz cal completa (mede R/L → "apito")
+// + offset do encoder + arma no fim. Brake desligado. Roda 1x na placa nova pra testar o DRV limpo.
+extern "C" void odrive_bridge_newboard_bringup(void) {
+    // MOTOR — geometria + R/L do NOSSO hoverboard (medidos na placa antiga: 0,20Ω/0,35mH; batem com o
+    // config hoverboard do Odrive-Wheel 0,174Ω/0,349mH). PRÉ-CALIBRADO → is_calibrated_ SEM medir R/L.
+    // ⚠️ CHAVE: pular a medição de indutância é o que EVITA o DRV_FAULT (L baixa → ΔI=V·Δt/L explode →
+    // OCP do DRV8301). Confirmado pelo core do ODrive (measure_phase_inductance). NÃO por
+    // startup_motor_calibration=true (foi o meu erro anterior — rodava a medição perigosa).
+    axes[0].motor_.config_.motor_type               = Motor::MOTOR_TYPE_HIGH_CURRENT;
+    axes[0].motor_.config_.pole_pairs               = 15;
+    axes[0].motor_.config_.torque_constant          = 0.55f;      // hoverboard (Odrive-Wheel)
+    axes[0].motor_.config_.phase_resistance         = 0.20f;      // medido na placa antiga
+    axes[0].motor_.config_.phase_inductance         = 0.00035f;   // medido na placa antiga (L baixa)
+    axes[0].motor_.config_.pre_calibrated           = true;       // aplica is_calibrated_ no apply_config
+    axes[0].motor_.config_.calibration_current      = 3.0f;       // VALIDADO na bancada: 3A calibra + arma + endstop dos 2 lados. 8A tripava o DRV (o churn "UNKNOWN_PHASE" era o SWD halt, não a corrente).
+    axes[0].motor_.config_.requested_current_range  = 60.0f;      // headroom de saturação (não abaixar!)
+    axes[0].motor_.config_.current_control_bandwidth= 200.0f;     // L baixa → NÃO 1000 (default nosso já 200)
+    axes[0].motor_.config_.current_lim              = 25.0f;
+    axes[0].motor_.config_.current_lim_margin       = 8.0f;
+    // ENCODER — incremental SEM Z → offset cal OBRIGATÓRIA a cada boot (o ODrive recusa is_ready pra
+    // incremental sem índice; pre_calibrated não vale). Consistência real só ligando o fio Z depois.
+    axes[0].encoder_.config_.mode                   = Encoder::MODE_INCREMENTAL;
+    axes[0].encoder_.config_.cpr                    = 4000;       // E6B2 1000 PPR ×4
+    axes[0].encoder_.config_.bandwidth              = 200.0f;
+    axes[0].encoder_.config_.calib_range            = 0.02f;
+    axes[0].encoder_.config_.use_index              = false;
+    axes[0].encoder_.config_.pre_calibrated         = false;
+    // STARTUP — PULA a medição de R/L (pre_calibrated), roda SÓ a offset do encoder, e arma.
+    axes[0].config_.startup_motor_calibration            = false; // ← FIX: não mede R/L (sem DRV_FAULT)
+    axes[0].config_.startup_encoder_offset_calibration   = true;  // obrigatório: incremental sem Z
+    axes[0].config_.startup_closed_loop_control          = true;  // auto-arma no fim
+    // Sim racing: sem clamp de velocidade cortando torque (girar na mão sem OVERSPEED)
+    axes[0].controller_.config_.enable_vel_limit         = false;
+    odrv.config_.enable_brake_resistor = false;                   // brake da bancada nunca arma
+}
+
 // Afrouxa a calibração p/ vencer o cogging do hoverboard (raiz do CPR_MISMATCH intermitente):
 // mais tolerância no check de CPR + mais corrente no scan (motion suave → counts corretos).
 extern "C" void odrive_bridge_relax_calibration(void) {
