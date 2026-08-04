@@ -89,38 +89,43 @@ extern "C" uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
                                           uint8_t* buffer, uint16_t reqlen) {
     (void)instance;
 
-    if (report_type == HID_REPORT_TYPE_INPUT && report_id == RID_PID_STATE) {
-        if (reqlen < 1) return 0;
+    if (report_type == HID_REPORT_TYPE_INPUT && report_id == RID_PID_STATE && reqlen >= 1) {
         buffer[0] = buildPidStateByte(false /*devicePaused*/, true /*actuatorsEnabled*/,
                                       true /*safetySwitch*/, false /*actuatorOverride*/,
                                       true /*actuatorPower*/);
         return 1;
     }
 
-    if (report_type != HID_REPORT_TYPE_FEATURE) return 0;
+    if (report_type == HID_REPORT_TYPE_FEATURE) {
+        // Block Load (Feature, 0x12) — 4 bytes, CASADO com o m5 provado (ACC ok):
+        //   [block, status(1=Success/2=Full), ramPoolAvail_lo, ramPoolAvail_hi]. Budget 16 B/slot.
+        if (report_id == RID_PID_BLOCK_LOAD && reqlen >= 4) {
+            buffer[0] = s_last_effect_block;
+            buffer[1] = (s_last_effect_block != 0) ? 1 : 2;   // 2 = pool cheio (bloco 0)
+            uint16_t avail = (uint16_t)((ffb_model_max_blocks() - ffb_model_used_blocks()) * 16);
+            buffer[2] = (uint8_t)(avail & 0xFF);
+            buffer[3] = (uint8_t)(avail >> 8);
+            return 4;
+        }
 
-    // Block Load (Feature, 0x12) — 4 bytes, CASADO com o m5 provado (ACC ok):
-    //   [block, status(1=Success/2=Full), ramPoolAvail_lo, ramPoolAvail_hi]. Budget 16 B/slot.
-    if (report_id == RID_PID_BLOCK_LOAD) {
-        if (reqlen < 4) return 0;
-        buffer[0] = s_last_effect_block;
-        buffer[1] = (s_last_effect_block != 0) ? 1 : 2;   // 2 = pool cheio (bloco 0)
-        uint16_t avail = (uint16_t)((ffb_model_max_blocks() - ffb_model_used_blocks()) * 16);
-        buffer[2] = (uint8_t)(avail & 0xFF);
-        buffer[3] = (uint8_t)(avail >> 8);
-        return 4;
+        // Pool (Feature, 0x13) — 4 bytes: [ramPoolSize_lo, hi, simultaneousMax, flags].
+        if (report_id == RID_PID_POOL && reqlen >= 4) {
+            uint16_t poolSize = (uint16_t)(ffb_model_max_blocks() * 16);
+            buffer[0] = (uint8_t)(poolSize & 0xFF);
+            buffer[1] = (uint8_t)(poolSize >> 8);
+            buffer[2] = 8;      // efeitos simultâneos (Device Managed Pool)
+            buffer[3] = 0;
+            return 4;
+        }
     }
 
-    // Pool (Feature, 0x13) — 4 bytes: [ramPoolSize_lo, hi, simultaneousMax, flags].
-    if (report_id == RID_PID_POOL) {
-        if (reqlen < 4) return 0;
-        uint16_t poolSize = (uint16_t)(ffb_model_max_blocks() * 16);
-        buffer[0] = (uint8_t)(poolSize & 0xFF);
-        buffer[1] = (uint8_t)(poolSize >> 8);
-        buffer[2] = 8;      // efeitos simultâneos (Device Managed Pool)
-        buffer[3] = 0;
-        return 4;
-    }
-
-    return 0;
+    // ⚠️ CRÍTICO (fix ACC 2026-08-03): NUNCA retornar 0. O TinyUSB faz TU_ASSERT(xferlen>0) no
+    // get_report → retorno 0 = STALL no EP0 → o Windows HALTA a pipe do device → para de pollar o
+    // endpoint IN → o eixo do joystick CONGELA (e fica congelado mesmo após sair do jogo). O ACC dispara
+    // GET_REPORT (Block Load/Pool/State) ao ligar a FFB; qualquer consulta não tratada caía aqui.
+    // Fallback: preenche com zeros e retorna comprimento não-nulo (espelha o Odrive-Wheel, mesma placa).
+    uint16_t n = reqlen ? reqlen : 1;
+    if (n > 64) n = 64;                 // limite do buffer do EP (CFG_TUD_HID_EP_BUFSIZE)
+    memset(buffer, 0, n);
+    return n;
 }
