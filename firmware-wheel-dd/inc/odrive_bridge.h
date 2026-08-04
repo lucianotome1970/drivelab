@@ -31,6 +31,7 @@ int32_t  odrive_bridge_precal_flags(void);        // bit0 motor.precal bit1 enc.
 int32_t  odrive_bridge_motor_R_uohm(void);
 int32_t  odrive_bridge_motor_L_nH(void);
 void     odrive_bridge_skip_motor_cal(void);      // pula motor cal no boot (sem apito, usa R/L pré-calibrado)
+void     odrive_bridge_disable_brake_resistor(void); // desliga a exigência do brake resistor pro arme (bancada)
 #ifdef __cplusplus
 }
 #endif

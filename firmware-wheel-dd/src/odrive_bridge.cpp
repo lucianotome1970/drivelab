@@ -73,6 +73,14 @@ extern "C" void odrive_bridge_skip_motor_cal(void) {
     axes[0].config_.startup_motor_calibration = false;
 }
 
+// Desliga a EXIGÊNCIA do brake resistor pro arme (o ODrive desarma se enable&&!armed). O resistor da
+// bancada nunca conduziu → brake_resistor_armed=0 → o motor desarmava (BRAKE_RESISTOR_DISARMED). A ~19,6V
+// a regen do volante é pequena (caps + proteção de sobretensão cobrem). ⚠️ Reabilitar quando o brake
+// resistor for validado / em bus alto (56V). Runtime override (não NVM). Ver 08e1b22 / drivelab-brake-chopper.
+extern "C" void odrive_bridge_disable_brake_resistor(void) {
+    odrv.config_.enable_brake_resistor = false;
+}
+
 // Afrouxa a calibração p/ vencer o cogging do hoverboard (raiz do CPR_MISMATCH intermitente):
 // mais tolerância no check de CPR + mais corrente no scan (motion suave → counts corretos).
 extern "C" void odrive_bridge_relax_calibration(void) {
