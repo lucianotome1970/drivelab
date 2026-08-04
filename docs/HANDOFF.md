@@ -52,7 +52,12 @@ aguenta ~13,7 Nm pico. **No Windows** isto vira trivial: ler a **CDC serial ao v
 **leio telemetria (porta COM/CDC) AO VIVO** e **correlaciono com o ACC** — tudo local, sem halt de SWD.
 
 **Setup no Windows (as ferramentas o Claude instala por comando quando estivermos lá):**
-- Toolchain: `arm-none-eabi-gcc`, **openocd** (+ driver ST-Link/WinUSB), `make` (MSYS2) ou **PlatformIO**,
-  `python`, `dotnet` (app).
+- **Toolchain = O MESMO DO MAC.** Instalar **PlatformIO** → ele traz o pacote **`toolchain-gccarmnoneeabi`**
+  (mesmo `arm-none-eabi-gcc`, versão pinada → builds **idênticos** aos do Mac) + **`tool-openocd`**.
+  Build igual ao Mac: `make` (via MSYS2) com o toolchain do PlatformIO no PATH →
+  `%USERPROFILE%\.platformio\packages\toolchain-gccarmnoneeabi\bin`.
+  (No Mac era `~/.platformio/packages/toolchain-gccarmnoneeabi/bin`.)
+- Ainda: **driver do ST-Link** (WinUSB via Zadig p/ o openocd), `python` (autogen; o PlatformIO já traz um),
+  `dotnet` (app).
 - Repo: `git clone` + `git checkout` da branch conforme o trabalho.
 - Memória: copiar `~/.claude/.../memory/` pra pasta que o Claude Code criar no Windows (nome do caminho muda).
