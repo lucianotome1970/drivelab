@@ -129,10 +129,16 @@ extern "C" void odrive_bridge_relax_calibration(void) {
 extern "C" void odrive_bridge_request_closed_loop(void) {
     axes[0].requested_state_ = Axis::AXIS_STATE_CLOSED_LOOP_CONTROL;
 }
-// Limpa erros (axis/motor/encoder) p/ permitir nova tentativa de arme.
+// Limpa erros p/ permitir nova tentativa de arme. Delega ao clear_errors() do ODrive
+// (MotorControl/main.cpp) em vez de zerar os campos na mão, porque ele faz DUAS coisas
+// que a versão manual não fazia e que travavam a recuperação:
+//   1) zera o erro GLOBAL (odrv.error_) — senão o BUS_OVER_V fica grudado pra sempre;
+//   2) RE-ARMA o brake resistor se enable_brake_resistor estiver ligado.
+// Sem (2) o motor NUNCA voltava com o chopper ligado: a sobretensão da regen chama
+// ODrive::disarm_with_error(), que desarma o brake junto (low_level.cpp:97); a partir daí
+// (enable && !armed) faz apply_pwm_timings() derrubar TODA tentativa de arme com
+// BRAKE_RESISTOR_DISARMED, até o auto-arme esgotar as 15 tentativas e desistir de vez.
+// Diagnosticado na bancada 2026-08-04 (perda TOTAL de FFB, 82 amostras presas em IDLE).
 extern "C" void odrive_bridge_clear_errors(void) {
-    axes[0].error_ = Axis::ERROR_NONE;
-    axes[0].motor_.error_ = Motor::ERROR_NONE;
-    axes[0].encoder_.error_ = Encoder::ERROR_NONE;
-    axes[0].controller_.error_ = Controller::ERROR_NONE;
+    odrv.clear_errors();
 }

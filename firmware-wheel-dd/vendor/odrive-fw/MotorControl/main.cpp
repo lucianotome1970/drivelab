@@ -309,10 +309,39 @@ void vApplicationIdleHook(void) {
  * It should finish as quickly as possible.
  */
 void ODrive::do_fast_checks() {
-    if (!(vbus_voltage >= config_.dc_bus_undervoltage_trip_level))
+    // --- PATCH DriveLab: instrumentação do trip de sobretensão ---------------
+    // Roda a cada medição de corrente (~8 kHz), a MESMA taxa do trip. Mede o que
+    // nenhum polling por CDC (5 Hz) alcança.
+    //
+    // POR QUE: em 2026-08-04 o trip de OVER_VOLTAGE disparou várias vezes enquanto o
+    // peak-hold nunca viu o vbus passar de 22,2 V (trip em 24,79 V). Suspeita: o teste
+    // `!(vbus <= trip)` também é VERDADEIRO quando vbus é NaN — logo uma leitura ruim
+    // do ADC dispara "sobretensão" SEM tensão alta. O comentário no topo deste arquivo
+    // já previa "OVER_VOLTAGE transiente" com o scale do vbus errado.
+    //
+    // Lê vbus_voltage UMA vez numa local: a global é atualizada por ISR, e ler duas
+    // vezes (uma pro peak, outra pro check) permitia o check ver um valor que o peak
+    // não viu — bug da versão anterior deste patch.
+    //
+    // test_property_ (uint32 exposto no ASCII, read-write) empacota DOIS campos em
+    // centivolts:  bits 31..16 = pico de vbus  |  bits 15..0 = vbus NO INSTANTE do trip
+    // (0 = nunca disparou, 0xFFFF = era NaN). Ler `r test_property`, zerar `w test_property 0`.
+    const float vbus = vbus_voltage;
+    const bool  vbus_nan = is_nan(vbus);   // -fno-finite-math-only mantém NaN válido
+    const uint32_t vbus_cv = vbus_nan ? 0u : (uint32_t)(vbus * 100.0f);
+    uint32_t peak_cv = test_property_ >> 16;
+    if (!vbus_nan && vbus_cv > peak_cv && vbus_cv < 0xFFFFu) peak_cv = vbus_cv;
+    // --- fim do patch (parte 1) ----------------------------------------------
+    if (!(vbus >= config_.dc_bus_undervoltage_trip_level))
         disarm_with_error(ERROR_DC_BUS_UNDER_VOLTAGE);
-    if (!(vbus_voltage <= config_.dc_bus_overvoltage_trip_level))
+    if (!(vbus <= config_.dc_bus_overvoltage_trip_level)) {
+        // PATCH DriveLab: grava o valor QUE disparou, antes de desarmar.
+        const uint32_t trip_cv = vbus_nan ? 0xFFFFu : (vbus_cv < 0xFFFFu ? vbus_cv : 0xFFFEu);
+        test_property_ = (peak_cv << 16) | trip_cv;
         disarm_with_error(ERROR_DC_BUS_OVER_VOLTAGE);
+    } else {
+        test_property_ = (peak_cv << 16) | (test_property_ & 0xFFFFu);
+    }
 }
 
 /**

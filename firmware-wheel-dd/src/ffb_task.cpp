@@ -45,27 +45,45 @@ static void ffb_thread(void*) {
         g_cfg_dbg[2] = odrive_bridge_motor_R_uohm();
         g_cfg_dbg[3] = odrive_bridge_motor_L_nH();
 
-        // Auto-arme com retry + timeout de segurança:
-        //  IDLE (com/sem erro) + g_arm_gate → limpa erros e pede closed loop (1 pedido por entrada em
-        //  IDLE; teto 15 tentativas). Preso numa cal (3/4/6/7) >12s → aborta (motor off). Armado → reseta.
+        // Auto-arme com retry ESPAÇADO + timeout de segurança.
+        //
+        // Era: 1 tentativa por ENTRADA em IDLE (`!s_was_idle`), teto 15 → uma vez preso em IDLE
+        // nunca mais tentava, e 15 falhas seguidas desistiam PARA SEMPRE (FFB morto, sem aviso).
+        // Foi o que travou o teste do brake chopper em 2026-08-04: a sobretensão desarma o motor E o
+        // brake resistor juntos (ODrive::disarm_with_error → safety_critical_disarm_brake_resistor),
+        // aí (enable && !armed) derruba toda tentativa de arme com BRAKE_RESISTOR_DISARMED até
+        // esgotar o teto. Agora clear_errors() re-arma o brake (ver odrive_bridge.cpp), então o
+        // retry PRECISA insistir para a recuperação acontecer.
+        //
+        // Agora: tenta enquanto estiver em IDLE, mas ESPAÇADO — 50 ms nas primeiras tentativas e
+        // 250 ms depois de 10 falhas seguidas. O espaçamento importa: re-armar a cada tick (1 ms)
+        // contra uma falha persistente vira churn arma/desarma (medimos ~140 Hz por SWD), que o
+        // usuário sente como "tec". O contador só zera quando o motor SUSTENTA o arme por 1 s —
+        // assim uma recuperação real limpa o histórico, mas um ciclo de falha não se disfarça.
         {
-            static uint32_t s_cal_ticks = 0;
-            static int  s_arm_attempts = 0;
-            static bool s_was_idle = false;
+            static uint32_t s_cal_ticks    = 0;
+            static int      s_arm_attempts = 0;
+            static uint32_t s_next_try     = 0;   // tick da próxima tentativa (backoff)
+            static uint32_t s_armed_ticks  = 0;   // há quanto tempo está armado
             const int st = g_axis_dbg[1];
             const bool in_cal = (st == 3 || st == 4 || st == 6 || st == 7);
             if (in_cal) {
                 if (++s_cal_ticks > 12000) odrive_bridge_request_idle();
             } else {
                 s_cal_ticks = 0;
-                if (st == 8) s_arm_attempts = 0;
-                else if (st == 1 && !s_was_idle && g_arm_gate == 1 && s_arm_attempts < 15) {
-                    odrive_bridge_clear_errors();
-                    odrive_bridge_request_closed_loop();
-                    s_arm_attempts++;
+                if (st == 8) {
+                    if (s_armed_ticks <= 1000 && ++s_armed_ticks > 1000) s_arm_attempts = 0;
+                } else if (st == 1 && g_arm_gate == 1) {
+                    s_armed_ticks = 0;
+                    // (int32_t) na diferença = seguro no wrap do contador de 1 kHz
+                    if ((int32_t)(n - s_next_try) >= 0 && s_arm_attempts < 300) {
+                        odrive_bridge_clear_errors();      // limpa erros + RE-ARMA o brake resistor
+                        odrive_bridge_request_closed_loop();
+                        s_arm_attempts++;
+                        s_next_try = n + (s_arm_attempts < 10 ? 50u : 250u);
+                    }
                 }
             }
-            s_was_idle = (st == 1);
         }
 
         // Disciplina de envio (1 report por janela de EP, como o firmware-base): JOYSTICK tem
