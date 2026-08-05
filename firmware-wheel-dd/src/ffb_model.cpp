@@ -72,6 +72,10 @@ extern "C" void ffb_model_apply_tuning(const FfbTuning* t) {
     // Setting 0-100% → 0..0.5 Nm de atrito constante. Default do schema 5% = 0,025 Nm (bem leve).
     if (t->static_damping_pct >= 0)
         s_ef.frictionNm = (float)t->static_damping_pct * 0.01f * 0.5f;
+    // P0: ENDSTOP DAMPING — amortecimento do batente (não quica). Era fixo 0.05. Setting 0-100% → 0..0.2
+    // Nm/rad/s. Default do schema = 25% ≈ 0,05 (sem regressão do anti-bounce atual).
+    if (t->endstop_damping_pct >= 0)
+        s_ec.dampingNmPerRadPerSec = (float)t->endstop_damping_pct * 0.01f * 0.2f;
 }
 
 // Escala on-wire da força PID (±32767) → escala do engine (±255).

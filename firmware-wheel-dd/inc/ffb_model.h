@@ -31,6 +31,7 @@ void    ffb_model_set_config(float total_pct, float maxlimit_pct, int direction,
 // (um por commit) — evita explodir os parâmetros do set_config. -1 num campo = "não mexer" (mantém default).
 typedef struct {
     int static_damping_pct;   // setting 6 — atrito always-on (frictionNm)
+    int endstop_damping_pct;  // setting 23 — amortecimento do batente (s_ec.damping)
 } FfbTuning;
 void    ffb_model_apply_tuning(const FfbTuning* t);
 

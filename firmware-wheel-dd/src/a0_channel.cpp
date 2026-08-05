@@ -90,7 +90,7 @@ static void a0_apply_settings(void) {
         (int)s_ival[24]   // P0: linearity (curva de resposta)
     );
     // P0: ajustes avançados (struct que cresce por setting ligado)
-    FfbTuning tune = { (int)s_ival[6] };   // static_damping
+    FfbTuning tune = { (int)s_ival[6], (int)s_ival[23] };   // static_damping, endstop_damping
     ffb_model_apply_tuning(&tune);
     // PERFIL DE HARDWARE (Placa + Fonte) → deriva divider + trips (mesma lógica espelhada no app).
     //   board_variant(33): 0=placa 24V · 1=placa 56V (default)   ·   bus_nominal_v(27): tensão da fonte [V]

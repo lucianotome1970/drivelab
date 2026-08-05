@@ -34,7 +34,7 @@ public static class BaseSettingsSchema
         new(BaseSettingId.ReconstructionLpf, "reconstruction_lpf", "Reconstrução (suavização)", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
         new(BaseSettingId.OutputFilterHz, "output_filter_hz", "Filtro de saída (corte)", SettingType.UInt16, 0, 2000, "Hz", SettingTab.Advanced, 0),
         new(BaseSettingId.OscGuardEnable, "osc_guard_enable", "Anti-oscilação", SettingType.UInt8, 0, 1, "", SettingTab.Advanced, 0),
-        new(BaseSettingId.EndstopDamping, "endstop_damping", "Amortecimento do batente", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
+        new(BaseSettingId.EndstopDamping, "endstop_damping", "Amortecimento do batente", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 25),
         new(BaseSettingId.Linearity, "linearity", "Linearidade da resposta", SettingType.UInt8, 50, 200, "%", SettingTab.Advanced, 100),
         new(BaseSettingId.CoggingEnable, "cogging_enable", "Compensação de cogging", SettingType.UInt8, 0, 1, "", SettingTab.Advanced, 0),
         new(BaseSettingId.SlewRate, "slew_rate", "Limite de variação (slew)", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
