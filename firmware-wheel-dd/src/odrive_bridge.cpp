@@ -81,6 +81,28 @@ extern "C" void odrive_bridge_disable_brake_resistor(void) {
     odrv.config_.enable_brake_resistor = false;
 }
 
+// Escala do vbus (divider ADC) — definida em ffb_task.cpp, aplicada no low_level (runtime, não compile-time).
+extern volatile float g_vbus_voltage_scale;
+
+// PERFIL DE HARDWARE (Placa + Fonte) → deriva os limites de segurança. É a MESMA lógica que o app espelha
+// pra mostrar pro criador. Chamado do a0_apply_settings quando o app manda o perfil (e no init com defaults).
+//   board_variant: 0 = placa 56V (divider 19, OVP 55V) · 1 = placa 24V (divider 11, OVP 28V — caps ~30V!)
+//   bus_nominal_v: tensão nominal da fonte [V] (reservado p/ display; UVP fixo em 8V "prevents brown-outs")
+//   supply_amps:   corrente máx da fonte [A] → dc_max_positive_current (trip de proteção da fonte). 0 = não aplica.
+extern "C" void odrive_bridge_apply_hw_profile(int board_variant, int bus_nominal_v, int supply_amps) {
+    if (board_variant == 1) {                                  // PLACA 24V
+        g_vbus_voltage_scale = 3.3f * 11.0f / 4096.0f;         // divider 11
+        odrv.config_.dc_bus_overvoltage_trip_level = 28.0f;    // caps ~30V → teto BAIXO
+    } else {                                                   // PLACA 56V (default)
+        g_vbus_voltage_scale = 3.3f * 19.0f / 4096.0f;         // divider 19
+        odrv.config_.dc_bus_overvoltage_trip_level = 55.0f;    // folga p/ regen (caps ~63V)
+    }
+    odrv.config_.dc_bus_undervoltage_trip_level = 8.0f;        // piso anti brown-out
+    if (supply_amps > 0)
+        odrv.config_.dc_max_positive_current = (float)supply_amps;  // proteção da fonte (trip se puxar demais)
+    (void)bus_nominal_v;                                       // reservado (display do nominal; UVP fixo por ora)
+}
+
 // BRING-UP de PLACA NOVA: calibra o NOSSO motor do zero (a NVM de fábrica é de outro motor). Seta a
 // geometria (pole_pairs=15 do hoverboard, cpr=4000 do E6B2 1000 PPR ×4, incremental), corrente de cal
 // SEGURA (10A, não os 30 do perfil) e limite modesto (falha-seguro). Faz cal completa (mede R/L → "apito")
