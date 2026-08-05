@@ -34,6 +34,8 @@ typedef struct {
     int endstop_damping_pct;  // setting 23 — amortecimento do batente (s_ec.damping)
     int slew_rate_pct;        // setting 26 — limite de variação de torque por tick (0 = off)
     int curve_pts[5];         // settings 28-32 — curva de força por 5 pontos (default 0/25/50/75/100 = linear). pts[0]<0 = não mexer
+    int recon_steps;          // setting 19 — janela do reconstrutor (0 = mantém default 8)
+    int recon_lpf_pct;        // setting 20 — LPF extra do reconstrutor (0 = off)
 } FfbTuning;
 void    ffb_model_apply_tuning(const FfbTuning* t);
 

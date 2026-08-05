@@ -93,6 +93,11 @@ extern "C" void ffb_model_apply_tuning(const FfbTuning* t) {
             s_fc.curve.p[i] = (uint8_t)(v < 0 ? 0 : (v > 100 ? 100 : v));
         }
     }
+    // P0: RECONSTRUCTION — janela + LPF do reconstrutor da força constante (s_recon já ativo com defaults).
+    // steps 0 = mantém o default 8 (sem regressão); >0 = janela fixa. lpf 0 = off; 1-100% → alpha 0.99..0.10
+    // (maior % = mais suave). Era guardado, não aplicado.
+    if (t->recon_steps > 0) s_recon.cfg.steps = t->recon_steps;
+    s_recon.cfg.lpfAlpha = (t->recon_lpf_pct > 0) ? (1.0f - (float)t->recon_lpf_pct * 0.009f) : 0.0f;
 }
 
 // Escala on-wire da força PID (±32767) → escala do engine (±255).
