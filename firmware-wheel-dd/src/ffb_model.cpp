@@ -41,6 +41,8 @@ static uint32_t s_nowMs     = 0;
 static uint32_t s_lastFfbMs = 0;
 static uint8_t  s_deviceGain = 255;
 static float    s_telemetryForce = 0.0f;   // força aditiva de telemetria do app (DirectControl 0x10)
+static float    s_slewMaxDeltaNm = 0.0f;    // P0 slew: variação máx de torque por tick (0 = off)
+static float    s_prevTorque     = 0.0f;    // P0 slew: torque do tick anterior (estado do slewLimit)
 
 // --- Setters do canal A0 (app DriveLab Studio) ---
 extern "C" void ffb_model_set_telemetry_force(float f255) { s_telemetryForce = f255; }
@@ -76,6 +78,13 @@ extern "C" void ffb_model_apply_tuning(const FfbTuning* t) {
     // Nm/rad/s. Default do schema = 25% ≈ 0,05 (sem regressão do anti-bounce atual).
     if (t->endstop_damping_pct >= 0)
         s_ec.dampingNmPerRadPerSec = (float)t->endstop_damping_pct * 0.01f * 0.2f;
+    // P0: SLEW-RATE — limita a variação de torque por tick (mata spikes/clunks). slewLimit já existia mas
+    // NUNCA era chamada. Setting 0=off; 1-100% → maxDelta = 2/pct Nm/tick (maior % = mais suave). Aplicado
+    // no output do compute_torque (loop 1kHz).
+    if (t->slew_rate_pct > 0)
+        s_slewMaxDeltaNm = 2.0f / (float)t->slew_rate_pct;
+    else
+        s_slewMaxDeltaNm = 0.0f;
 }
 
 // Escala on-wire da força PID (±32767) → escala do engine (±255).
@@ -117,6 +126,8 @@ extern "C" float ffb_model_compute_torque(float posTurns, float velTurnsPerSec) 
 
     float t = computeTorqueRaw(hostF, posRad, velRad, s_fc, s_ef, s_ec);  // força→Nm + spring/endstop
     t = clampf(t, -s_fc.torqueLimitNm, s_fc.torqueLimitNm);               // TETO DURO por último
+    if (s_slewMaxDeltaNm > 0.0f) t = slewLimit(t, s_prevTorque, s_slewMaxDeltaNm);  // P0 slew (0=off)
+    s_prevTorque = t;                                                     // estado do slew p/ o próximo tick
 
     g_ffb_dbg[5]++;
     g_ffb_dbg[3] = (int32_t)hostF;
