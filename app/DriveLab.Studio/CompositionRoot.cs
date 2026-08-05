@@ -145,7 +145,8 @@ public static class CompositionRoot
 
         // Base do Volante: abas de settings + Telemetria como última aba.
         // A aba Hardware só aparece no modo AVANÇADO (criador). Por padrão fica ESCONDIDA — o usuário final
-        // não vê os parâmetros perigosos; eles vêm do perfil de hardware do criador.
+        // não vê os parâmetros perigosos; o criador os configura e SALVA na base (a base é a fonte de verdade),
+        // depois envia o DD pro cliente, que só vê Feeling/Telemetria e lê tudo direto da base.
         var wheelBaseTabs = WheelBaseTabs
             .Where(t => t.Header != "Hardware" || advancedMode)
             .Select(t => new PageTab(L.Get($"Tab_{t.Header}"), t.Header == "Hardware"

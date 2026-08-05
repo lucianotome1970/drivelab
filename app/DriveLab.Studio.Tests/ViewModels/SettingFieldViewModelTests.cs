@@ -65,6 +65,26 @@ public class SettingFieldViewModelTests
     }
 
     [Fact]
+    public async Task Field_Is_Empty_Until_Loaded_And_Empties_On_Disconnect()
+    {
+        // A base é a fonte de verdade: sem ler da base, o campo não inventa o default do schema.
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.MotionRange));
+        Assert.False(vm.IsLoaded);
+        Assert.Equal("—", vm.ValueText);     // desconectado → vazio
+
+        await session.ConnectAsync();
+        await vm.LoadAsync();
+        Assert.True(vm.IsLoaded);
+        Assert.Equal("900", vm.ValueText);   // lido da base → mostra o valor real
+
+        await session.DisconnectAsync();     // dispara Disconnected → campo volta ao "não lido"
+        Assert.False(vm.IsLoaded);
+        Assert.Equal("—", vm.ValueText);     // desconectou → volta ao vazio
+    }
+
+    [Fact]
     public async Task Value_Syncs_When_Same_Setting_Changed_Elsewhere()
     {
         var vm = New(out var transport);
@@ -134,6 +154,7 @@ public class SettingFieldViewModelTests
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
 
         Assert.True(vm.IsInteger);
+        vm.IsLoaded = true;   // simula "já lido da base" (sem load o campo exibe "—")
         vm.Value = 12.81;
         Assert.Equal("13", vm.ValueText); // "0" format rounds to nearest integer
     }

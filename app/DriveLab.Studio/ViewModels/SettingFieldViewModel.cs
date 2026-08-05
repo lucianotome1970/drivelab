@@ -27,6 +27,14 @@ public partial class SettingFieldViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SelectPresetCommand))]
     private bool _isConnected;
 
+    /// <summary>O valor já foi LIDO da base? A base é a fonte de verdade: sem conexão / antes do load,
+    /// o campo NÃO exibe nada (mostra "—" e nenhum chip selecionado) — não inventa o default do schema como
+    /// se fosse o que está na placa. Vira true após <see cref="LoadAsync"/> ou um eco de escrita do device;
+    /// volta a false ao desconectar.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ValueText))]
+    private bool _isLoaded;
+
     public string DisplayName
     {
         get
@@ -46,7 +54,7 @@ public partial class SettingFieldViewModel : ViewModelBase
     public double Max => _descriptor.Max;
     public string Unit => _descriptor.Unit;
     public bool IsInteger => _descriptor.Type != SettingType.Float;
-    public string ValueText => IsInteger ? Value.ToString("0") : Value.ToString("0.##");
+    public string ValueText => !IsLoaded ? "—" : (IsInteger ? Value.ToString("0") : Value.ToString("0.##"));
 
     /// <summary>Valores fixos oferecidos como botões; vazio quando o campo usa slider livre.</summary>
     public IReadOnlyList<int> Presets { get; }
@@ -82,7 +90,12 @@ public partial class SettingFieldViewModel : ViewModelBase
         _session.Disconnected += OnConnectionChanged;
     }
 
-    private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
+    private void OnConnectionChanged(object? sender, EventArgs e)
+    {
+        IsConnected = _session.IsConnected;
+        // Ao desconectar, o campo deixa de refletir a base → volta ao estado "não lido" (vazio).
+        if (!IsConnected) IsLoaded = false;
+    }
 
     partial void OnIsConnectedChanged(bool value)
     {
@@ -92,18 +105,24 @@ public partial class SettingFieldViewModel : ViewModelBase
             option.CanSelect = value;
     }
 
+    partial void OnIsLoadedChanged(bool value)
+    {
+        UpdatePresetSelection();
+        UpdateOptionSelection();
+    }
+
     private void UpdatePresetSelection()
     {
         var current = (int)Math.Round(Value);
         foreach (var option in PresetOptions)
-            option.IsSelected = option.Value == current;
+            option.IsSelected = IsLoaded && option.Value == current;
     }
 
     private void UpdateOptionSelection()
     {
         var current = (int)Math.Round(Value);
         foreach (var option in Options)
-            option.IsSelected = option.Value == current;
+            option.IsSelected = IsLoaded && option.Value == current;
     }
 
     /// <summary>Volta o campo ao valor padrão do schema (grava se conectado).</summary>
@@ -125,6 +144,7 @@ public partial class SettingFieldViewModel : ViewModelBase
         _loading = true;
         Value = e.Value.AsDouble;
         _loading = false;
+        IsLoaded = true;   // veio do device (leitura/eco) → o campo agora reflete a base
     }
 
     public override void Dispose()
@@ -144,6 +164,7 @@ public partial class SettingFieldViewModel : ViewModelBase
         _loading = true;
         Value = value.AsDouble;
         _loading = false;
+        IsLoaded = true;   // lido da base → passa a exibir o valor real
     }
 
     public Task WriteAsync()
