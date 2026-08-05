@@ -85,6 +85,14 @@ extern "C" void ffb_model_apply_tuning(const FfbTuning* t) {
         s_slewMaxDeltaNm = 2.0f / (float)t->slew_rate_pct;
     else
         s_slewMaxDeltaNm = 0.0f;
+    // P0: FORCE CURVE — curva de força por 5 pontos. applyForceCurve já é chamada, mas s_fc.curve ficava
+    // na identidade (0/25/50/75/100). Default = linear → sem regressão. pts[0]<0 = não mexer.
+    if (t->curve_pts[0] >= 0) {
+        for (int i = 0; i < 5; ++i) {
+            int v = t->curve_pts[i];
+            s_fc.curve.p[i] = (uint8_t)(v < 0 ? 0 : (v > 100 ? 100 : v));
+        }
+    }
 }
 
 // Escala on-wire da força PID (±32767) → escala do engine (±255).

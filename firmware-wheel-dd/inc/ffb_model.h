@@ -33,6 +33,7 @@ typedef struct {
     int static_damping_pct;   // setting 6 — atrito always-on (frictionNm)
     int endstop_damping_pct;  // setting 23 — amortecimento do batente (s_ec.damping)
     int slew_rate_pct;        // setting 26 — limite de variação de torque por tick (0 = off)
+    int curve_pts[5];         // settings 28-32 — curva de força por 5 pontos (default 0/25/50/75/100 = linear). pts[0]<0 = não mexer
 } FfbTuning;
 void    ffb_model_apply_tuning(const FfbTuning* t);
 
