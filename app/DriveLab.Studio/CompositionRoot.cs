@@ -279,8 +279,6 @@ public static class CompositionRoot
 
         // Exportar/importar perfis (arquivo .json) — habilitado nos 4 módulos.
         var profilePicker = new AvaloniaProfileFilePicker();
-        // Export do perfil de hardware (só existe a aba Hardware no modo avançado/criador).
-        wheelBaseTabs.Select(t => t.Content).OfType<HardwareTabViewModel>().FirstOrDefault()?.EnableExport(profilePicker);
         basePage.ProfileLibrary.EnableFileExchange(profilePicker, "base");
         wheel.ProfileLibrary.EnableFileExchange(profilePicker, "wheel");
         pedals.ProfileLibrary.EnableFileExchange(profilePicker, "pedals");
