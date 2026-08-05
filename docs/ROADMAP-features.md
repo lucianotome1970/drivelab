@@ -73,6 +73,35 @@ knobs, persistir, e adicionar segurança/telemetria fina.**
 | **Board profiles** (`board_variant` já existe no A0) | só guardado | M 🔧 |
 | **Ler motor+encoder da flash** (não cravar) → 1 binário XDrive-S/MINI | cravado | L 🔧 |
 
+### ⭐ Perfil de Fonte + Hardware (criador configura, cliente recebe travado)
+
+**Visão (do usuário):** o **desenvolvedor** do DD preenche a fonte (tensão + amperagem), a placa e o motor
+numa área **fechada** (aba Hardware, hoje já **só do criador**); o firmware **deriva todos os limites de
+segurança + o torque**; embute no `hardware-profile.json` → **installer** → o **cliente recebe pré-configurado
+e travado** (não vê nem mexe na área de hardware). Base já existe: aba Hardware criador-only + export do perfil.
+
+**O criador seta → o firmware deriva:**
+| Entrada (aba Hardware) | Derivado pelo firmware |
+|---|---|
+| **Tensão da fonte** (24V / 56V…) | `vbus divider` (24V→11, 56V→19) + `dc_bus_undervoltage/overvoltage_trip_level` por variante (~28V na 24V, ~55V na 56V) |
+| **Amperagem da fonte** (13,5A / 30A…) | `dc_max_positive_current` (proteção da fonte) + limites sustentados |
+| **Motor** (Kt, pole_pairs, cpr, R/L) | `current_lim` (teto de torque) + exibe **pico = current_lim × Kt** |
+| **Brake** (Ω, on/off) | `brake_resistance` + `enable_brake_resistor` |
+
+**Nuance (não prometer errado):** o **pico de torque** vem do `current_lim × Kt` (lado **motor** — no stall
+a fonte quase não limita, `Ibus ≈ I²R/Vbus`); a **fonte (V+A)** define **trips de tensão + proteção de
+corrente do bus + o que sustenta movendo**. O cálculo usa fonte **E** motor juntos.
+
+**Divisão do trabalho:**
+- **App (off-bench):** campos de Fonte na aba Hardware + fórmulas de derivação (mostrar torque/limites pro
+  criador) + gravar tudo no `hardware-profile.json` / settings A0.
+- **Firmware (bancada, 1 por vez):** aplicar os derivados via settings A0 — `power_limit`(16)→`dc_max_positive_current`,
+  `bus_nominal`(27)→trips+`g_vbus_voltage_scale` (divider já é runtime!), `board_variant`(33). Validar o arme
+  após cada um.
+
+**Depende de:** P4 (board profile / ler config da flash) + o porte dos settings A0 (P1). É o "board/supply
+profile" do modelo FFBeast — o mesmo mecanismo do "1 binário pra família ODrive".
+
 ## P5 — Premium (longe; feel de DD caro)
 
 | Feature | Fonte | Nota |
