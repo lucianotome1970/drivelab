@@ -13,6 +13,8 @@
 // Definido em ffb_hid.cpp: joystick (direção pro jogo).
 extern "C" int hid_send_joystick(void);      // joystick (direção pro jogo) — PRIORIDADE
 extern "C" int a0_service(uint32_t nowMs);   // canal A0 do app (0x16 resposta / 0x21 telemetria) — na sobra
+extern "C" bool a0_save_pending(void);       // CMD_SAVE pediu persistir os settings na FFB_NVM?
+extern "C" bool a0_commit_save(void);        // empacota + grava na flash (chamar SÓ com motor IDLE)
 
 // Diagnóstico do eixo, lido por SWD (SÓ leitura — não age no motor).
 volatile int32_t g_axis_dbg[7] = {0};   // [0]armed [1]state [2]axis_err [3]motor_err [4]enc_err [5]pos*1e3 [6]vel*1e3
@@ -44,6 +46,21 @@ static void ffb_thread(void*) {
         g_cfg_dbg[1] = odrive_bridge_precal_flags();
         g_cfg_dbg[2] = odrive_bridge_motor_R_uohm();
         g_cfg_dbg[3] = odrive_bridge_motor_L_nH();
+
+        // Save de settings na FFB_NVM (deferido do CMD_SAVE): o erase/program CONGELA a CPU ~centenas de
+        // ms (F405 single-bank) → precisa do motor IDLE, senão a ISR do controle perde deadline. Suspende
+        // o auto-arme, desarma, grava, e re-permite o arme (o app re-liga a força). ⚠️ A força cai ~1s e
+        // o motor re-arma (pode re-calibrar o offset do encoder) — validar o feel na bancada.
+        if (a0_save_pending()) {
+            g_arm_gate = 0;                              // suspende o auto-arme (senão re-arma na hora)
+            if (odrive_bridge_motor_is_armed()) {
+                odrive_bridge_request_idle();            // desarma p/ a flash não estourar deadline
+            } else {
+                odrive_bridge_set_input_torque(0.0f);    // torque zero antes de congelar a CPU
+                a0_commit_save();                        // erase+program (bloqueia, mas motor OFF = ok)
+                g_arm_gate = 1;                          // re-permite o arme
+            }
+        }
 
         // Auto-arme com retry ESPAÇADO + timeout de segurança.
         //

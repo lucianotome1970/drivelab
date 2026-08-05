@@ -110,7 +110,8 @@ CPP_SOURCES_LOCAL = \
   src/ffb_report.cpp \
   src/odrive_bridge.cpp \
   src/usb_tinyusb_glue.cpp \
-  src/ffb_diag_stub.cpp
+  src/ffb_diag_stub.cpp \
+  src/settings_flash.cpp
 
 ASM_SOURCES_LOCAL =
 

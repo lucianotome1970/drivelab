@@ -14,6 +14,8 @@
 #include "tusb.h"
 #include "odrive_bridge.h"
 #include "ffb_model.h"
+#include "settings_store.h"   // (de)serialização pura do blob de settings (magic+versão+CRC)
+#include "settings_flash.h"   // I/O de flash da região FFB_NVM (setor 1 @0x08004000)
 
 // Report IDs do canal A0 (ver a0_hid_descriptor.h; definidos localmente p/ não re-incluir o array).
 #define A0_RID_STATE    0x21   // IN  DeviceState (telemetria/ângulo)
@@ -71,6 +73,7 @@ static bool    s_force_enabled = true;
 static uint8_t s_pending_read = 0xFF;     // fieldId pendente de resposta 0x16 (0xFF = nenhum)
 static uint32_t s_last_state_ms = 0;
 static bool    s_inited = false;
+static bool    s_save_requested = false;  // CMD_SAVE pediu persistir → o ffb_task grava com motor IDLE
 
 static inline uint16_t rd_u16(const uint8_t* p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
 static inline void put_i16(uint8_t* p, int16_t v)  { p[0] = (uint8_t)(v & 0xFF); p[1] = (uint8_t)((v >> 8) & 0xFF); }
@@ -102,8 +105,28 @@ static void a0_apply_settings(void) {
 
 static void a0_init(void) {
     a0_load_defaults();
+    // Sobrepõe os defaults com o que estiver salvo na FFB_NVM (blob válido: magic+versão+CRC). Blob
+    // inválido/apagado (flash 0xFF ou reflash) → unpackSettings retorna false SEM tocar os arrays → defaults.
+    {
+        static uint8_t blob[drivelab::settingsBlobSize(A0_NUM_SETTINGS)];
+        size_t got = settings_flash_read(blob, sizeof(blob));
+        drivelab::unpackSettings(blob, got, s_ival, s_fval, (uint16_t)A0_NUM_SETTINGS);
+    }
     a0_apply_settings();
     s_inited = true;
+}
+
+// Pedido de save pendente? O ffb_task consulta e grava SÓ com o motor IDLE (a flash congela a CPU).
+extern "C" bool a0_save_pending(void) { return s_save_requested; }
+
+// Empacota os settings atuais e grava na FFB_NVM. Chamado pelo ffb_task SÓ com o motor IDLE. Limpa o
+// pedido em qualquer caso (sucesso ou falha de flash) p/ não travar. Retorna true se gravou.
+extern "C" bool a0_commit_save(void) {
+    static uint8_t blob[drivelab::settingsBlobSize(A0_NUM_SETTINGS)];
+    size_t n = drivelab::packSettings(s_ival, s_fval, (uint16_t)A0_NUM_SETTINGS, blob, sizeof(blob));
+    bool ok = (n > 0) && settings_flash_write(blob, n);
+    s_save_requested = false;
+    return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +163,8 @@ extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len) {
             switch (cmd) {
                 case CMD_RESET_CENTER:  s_center_turns = odrive_bridge_get_pos_turns(); break;  // zero = posição atual
                 case CMD_SET_FORCE_ENABLED: s_force_enabled = (arg != 0); break;
-                // CMD_SAVE (flash), CMD_REBOOT, CMD_DFU, CMD_CALIBRATE: TODO (trabalho no loop, não aqui)
+                case CMD_SAVE: s_save_requested = true; break;  // grava na flash no ffb_task com motor IDLE
+                // CMD_REBOOT, CMD_DFU, CMD_CALIBRATE: TODO (trabalho no loop, não aqui)
                 default: break;
             }
             break;
