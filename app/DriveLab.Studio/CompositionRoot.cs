@@ -209,49 +209,10 @@ public static class CompositionRoot
         var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs,
             new JsonNamedProfileStore<BaseProfile>("base"));
 
-        // Perfil de HARDWARE (vendor profile): se existir ~/.config/DriveLab/hardware-profile.json, valida e
-        // aplica os parâmetros de hardware do construtor. (v1: aplica + LOGA no console; o diálogo de
-        // confirmação vem a seguir.) Reaplica ao conectar (a placa recarrega da flash no connect).
-        var hwStore = new JsonHardwareProfileStore();
-        System.Console.WriteLine($"[DriveLab][HW] Procurando perfil de hardware — bundled: {hwStore.BundledPath} | appdata: {hwStore.AppDataPath}");
-        var hwProfile = hwStore.Load();
-        if (hwProfile is not null)
-            System.Console.WriteLine($"[DriveLab][HW] Usando: {hwStore.EffectivePath}");
-        if (hwProfile is null)
-        {
-            System.Console.WriteLine("[DriveLab][HW] Nenhum perfil de hardware encontrado (ok).");
-        }
-        else
-        {
-            var issues = DriveLab.Core.Settings.HardwareProfileService.Validate(hwProfile);
-            if (issues.Count > 0)
-            {
-                System.Console.WriteLine($"[DriveLab][HW] Perfil de '{hwProfile.Vendor}' INVÁLIDO — NÃO aplicado:");
-                foreach (var it in issues) System.Console.WriteLine($"[DriveLab][HW]   - {it}");
-            }
-            else
-            {
-                // (a) reflete na UI do criador (no-op na distribuição, que não tem a aba Hardware).
-                int uiN = basePage.ApplyHardwareProfile(hwProfile);
-                System.Console.WriteLine($"[DriveLab][HW] Perfil de '{hwProfile.Vendor}' ({hwProfile.Device}) — {uiN} campos na UI; será gravado no dispositivo ao conectar.");
-
-                // (b) AUTORITATIVO: grava direto na sessão (por BID) ao conectar — funciona em QUALQUER modo,
-                // inclusive distribuição (sem campos de UI). A placa recarrega da flash no connect, então
-                // aplicamos por cima.
-                session.Connected += async (_, _) =>
-                {
-                    int n = 0;
-                    foreach (var d in DriveLab.Core.Settings.HardwareProfileService.HardwareSettings)
-                        if (hwProfile.Settings.TryGetValue(d.Key, out var v))
-                        {
-                            await session.WriteSettingAsync(d.Id,
-                                new DriveLab.Core.Settings.SettingValue(d.Type, v));
-                            n++;
-                        }
-                    System.Console.WriteLine($"[DriveLab][HW] Perfil gravado no dispositivo (connect): {n} parâmetros.");
-                };
-            }
-        }
+        // NOVO MODELO (2026-08-05): a BASE (firmware) é a fonte de verdade. Sem JSON de perfil de hardware.
+        // O criador configura o firmware e SALVA na flash (CMD_SAVE); a base carrega da flash no boot. O app
+        // apenas LÊ da base ao conectar (os SettingField chamam ReadSettingAsync) e ESCREVE/SALVA na base.
+        // Sem conexão → nada é lido. Ver docs/HANDOFF.md.
 
         // Atualização de firmware: por enquanto só a base, usando o MESMO transporte da sessão
         // (real → HID; simulador → transporte simulado, EnterDfu vira no-op).
