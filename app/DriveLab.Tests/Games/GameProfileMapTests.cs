@@ -15,12 +15,11 @@ public class GameProfileMapTests
     public void SetAndGet()
     {
         var map = new GameProfileMap();
-        map.Set("acc", new ModuleProfiles { Base = "GT3", Wheel = "Rain" });
+        map.Set("acc", new ModuleProfiles { Wheel = "Rain" });
 
         var m = map.For("acc");
         Assert.NotNull(m);
-        Assert.Equal("GT3", m!.Base);
-        Assert.Equal("Rain", m.Wheel);
+        Assert.Equal("Rain", m!.Wheel);
         Assert.Null(m.Pedals);
     }
 

@@ -206,8 +206,7 @@ public static class CompositionRoot
                 () => wheel.DisconnectCommand.ExecuteAsync(null),
                 wheelPresent, dispatcher));
         }
-        var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs,
-            new JsonNamedProfileStore<BaseProfile>("base"));
+        var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs);
 
         // NOVO MODELO (2026-08-05): a BASE (firmware) é a fonte de verdade. Sem JSON de perfil de hardware.
         // O criador configura o firmware e SALVA na flash (CMD_SAVE); a base carrega da flash no boot. O app
@@ -263,23 +262,21 @@ public static class CompositionRoot
             () => System.Diagnostics.Process.GetProcesses().Select(p => p.ProcessName).ToList(),
             () => DriveLab.Core.Games.GameCatalog.WithCustom(autoProfileMap.CustomGames));
         var autoProfileService = new AutoProfileService(gameDetector, () => autoProfileMap, dispatcher,
-            name => basePage.ProfileLibrary.SelectedName = name,
             name => wheel.ProfileLibrary.SelectedName = name,
             name => pedals.ProfileLibrary.SelectedName = name,
             name => handbrake.ProfileLibrary.SelectedName = name);
         var autoProfile = new AutoProfileViewModel(autoProfileService, autoProfileMap, autoProfileStore, dispatcher,
-            basePage.ProfileLibrary.Profiles, wheel.ProfileLibrary.Profiles,
+            wheel.ProfileLibrary.Profiles,
             pedals.ProfileLibrary.Profiles, handbrake.ProfileLibrary.Profiles);
         // Guarda: uma troca automática não pode descartar ajustes não salvos de nenhum módulo.
         autoProfileService.HasUnsavedChanges = () =>
-            basePage.ProfileLibrary.IsModified || wheel.ProfileLibrary.IsModified ||
+            wheel.ProfileLibrary.IsModified ||
             pedals.ProfileLibrary.IsModified || handbrake.ProfileLibrary.IsModified;
         autoProfileService.Enabled = autoProfileMap.Enabled;
         if (autoProfileMap.Enabled) autoProfileService.Start();
 
-        // Exportar/importar perfis (arquivo .json) — habilitado nos 4 módulos.
+        // Exportar/importar perfis (arquivo .json) — habilitado nos módulos com biblioteca de perfil.
         var profilePicker = new AvaloniaProfileFilePicker();
-        basePage.ProfileLibrary.EnableFileExchange(profilePicker, "base");
         wheel.ProfileLibrary.EnableFileExchange(profilePicker, "wheel");
         pedals.ProfileLibrary.EnableFileExchange(profilePicker, "pedals");
         handbrake.ProfileLibrary.EnableFileExchange(profilePicker, "handbrake");

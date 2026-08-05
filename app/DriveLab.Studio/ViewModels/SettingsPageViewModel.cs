@@ -40,11 +40,7 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _isDirty;
 
-    /// <summary>Perfis nomeados do módulo (selecionar aplica; salvar/salvar como/renomear/excluir).</summary>
-    public ProfileLibraryViewModel<BaseProfile> ProfileLibrary { get; }
-
-    public SettingsPageViewModel(BaseSession session, string title, IEnumerable<PageTab> tabs,
-                                 INamedProfileStore<BaseProfile>? library = null)
+    public SettingsPageViewModel(BaseSession session, string title, IEnumerable<PageTab> tabs)
     {
         _session = session;
         Title = title;
@@ -53,39 +49,11 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
         _session.Connected += OnConnectionChanged;
         _session.Disconnected += OnConnectionChanged;
         _session.SettingChanged += OnSettingWritten;
-
-        // Aplicar um perfil escreve os settings no controlador (via setters dos campos) e marca "não salvo".
-        ProfileLibrary = new ProfileLibraryViewModel<BaseProfile>(
-            library, ExportProfile, p => { ApplyProfile(p); IsDirty = true; });
     }
 
     /// <summary>Todos os campos de setting das abas (cada aba de config é um SettingsGroupViewModel).</summary>
     private IEnumerable<SettingFieldViewModel> AllFields() =>
         Tabs.Select(t => t.Content).OfType<SettingsGroupViewModel>().SelectMany(g => g.Fields);
-
-    public BaseProfile ExportProfile() =>
-        new(AllFields().ToDictionary(f => f.Key, f => f.Value));
-
-    public void ApplyProfile(BaseProfile profile)
-    {
-        foreach (var f in AllFields())
-            if (profile.Settings.TryGetValue(f.Key, out var v))
-                f.Value = v;   // dispara o write no controlador
-    }
-
-    /// <summary>Aplica um perfil de HARDWARE (chaves "snake_case" do schema) nos campos correspondentes.
-    /// Só toca os campos cuja SchemaKey está no perfil. Retorna quantos foram aplicados.</summary>
-    public int ApplyHardwareProfile(HardwareProfile profile)
-    {
-        int n = 0;
-        foreach (var f in AllFields())
-            if (profile.Settings.TryGetValue(f.SchemaKey, out var v))
-            {
-                f.Value = v;   // dispara o write no controlador
-                n++;
-            }
-        return n;
-    }
 
     private void OnConnectionChanged(object? sender, EventArgs e)
     {
@@ -99,7 +67,6 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     private void OnSettingWritten(object? sender, SettingChangedEventArgs e)
     {
         IsDirty = true;
-        ProfileLibrary.MarkConfigChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanSave))]

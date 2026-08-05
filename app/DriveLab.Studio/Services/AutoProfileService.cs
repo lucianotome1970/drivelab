@@ -23,7 +23,6 @@ public sealed class AutoProfileService
     private readonly GameDetector _detector;
     private readonly Func<GameProfileMap> _map;
     private readonly IUiDispatcher _dispatcher;
-    private readonly Action<string> _applyBase;
     private readonly Action<string> _applyWheel;
     private readonly Action<string> _applyPedals;
     private readonly Action<string> _applyHandbrake;
@@ -34,7 +33,6 @@ public sealed class AutoProfileService
         GameDetector detector,
         Func<GameProfileMap> map,
         IUiDispatcher dispatcher,
-        Action<string> applyBase,
         Action<string> applyWheel,
         Action<string> applyPedals,
         Action<string> applyHandbrake)
@@ -42,7 +40,6 @@ public sealed class AutoProfileService
         _detector = detector;
         _map = map;
         _dispatcher = dispatcher;
-        _applyBase = applyBase;
         _applyWheel = applyWheel;
         _applyPedals = applyPedals;
         _applyHandbrake = applyHandbrake;
@@ -88,7 +85,6 @@ public sealed class AutoProfileService
         var profiles = _map().For(game.Id);
         if (profiles is null) return;
 
-        if (!string.IsNullOrEmpty(profiles.Base)) _applyBase(profiles.Base!);
         if (!string.IsNullOrEmpty(profiles.Wheel)) _applyWheel(profiles.Wheel!);
         if (!string.IsNullOrEmpty(profiles.Pedals)) _applyPedals(profiles.Pedals!);
         if (!string.IsNullOrEmpty(profiles.Handbrake)) _applyHandbrake(profiles.Handbrake!);

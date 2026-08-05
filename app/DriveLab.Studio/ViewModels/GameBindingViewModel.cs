@@ -21,20 +21,18 @@ public partial class GameBindingViewModel : ViewModelBase
 
     public GameBindingViewModel(
         KnownGame game, ModuleProfiles? initial,
-        ObservableCollection<string> baseProfiles, ObservableCollection<string> wheelProfiles,
+        ObservableCollection<string> wheelProfiles,
         ObservableCollection<string> pedalsProfiles, ObservableCollection<string> handbrakeProfiles,
         Action onChanged)
     {
         GameId = game.Id;
         GameName = game.DisplayName;
-        BaseProfiles = baseProfiles;
         WheelProfiles = wheelProfiles;
         PedalsProfiles = pedalsProfiles;
         HandbrakeProfiles = handbrakeProfiles;
         _onChanged = onChanged;
 
         _loading = true;
-        _baseProfile = initial?.Base;
         _wheelProfile = initial?.Wheel;
         _pedalsProfile = initial?.Pedals;
         _handbrakeProfile = initial?.Handbrake;
@@ -47,17 +45,14 @@ public partial class GameBindingViewModel : ViewModelBase
     /// <summary>Jogo adicionado pelo usuário (pode ser removido; os do catálogo não).</summary>
     public bool IsCustom { get; init; }
 
-    public ObservableCollection<string> BaseProfiles { get; }
     public ObservableCollection<string> WheelProfiles { get; }
     public ObservableCollection<string> PedalsProfiles { get; }
     public ObservableCollection<string> HandbrakeProfiles { get; }
 
-    [ObservableProperty] private string? _baseProfile;
     [ObservableProperty] private string? _wheelProfile;
     [ObservableProperty] private string? _pedalsProfile;
     [ObservableProperty] private string? _handbrakeProfile;
 
-    partial void OnBaseProfileChanged(string? value) => Notify();
     partial void OnWheelProfileChanged(string? value) => Notify();
     partial void OnPedalsProfileChanged(string? value) => Notify();
     partial void OnHandbrakeProfileChanged(string? value) => Notify();
@@ -66,13 +61,12 @@ public partial class GameBindingViewModel : ViewModelBase
 
     public ModuleProfiles ToModuleProfiles() => new()
     {
-        Base = string.IsNullOrEmpty(BaseProfile) ? null : BaseProfile,
         Wheel = string.IsNullOrEmpty(WheelProfile) ? null : WheelProfile,
         Pedals = string.IsNullOrEmpty(PedalsProfile) ? null : PedalsProfile,
         Handbrake = string.IsNullOrEmpty(HandbrakeProfile) ? null : HandbrakeProfile,
     };
 
     public bool HasAny =>
-        !string.IsNullOrEmpty(BaseProfile) || !string.IsNullOrEmpty(WheelProfile)
+        !string.IsNullOrEmpty(WheelProfile)
         || !string.IsNullOrEmpty(PedalsProfile) || !string.IsNullOrEmpty(HandbrakeProfile);
 }

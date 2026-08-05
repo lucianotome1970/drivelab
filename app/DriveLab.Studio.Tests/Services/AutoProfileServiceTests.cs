@@ -23,7 +23,6 @@ public class AutoProfileServiceTests
         var map = new GameProfileMap();
         var detector = new GameDetector(processes);
         var svc = new AutoProfileService(detector, () => map, new NoopDispatcher(),
-            b => applied.Add("base:" + b),
             w => applied.Add("wheel:" + w),
             p => applied.Add("pedals:" + p),
             h => applied.Add("hb:" + h));
@@ -34,7 +33,7 @@ public class AutoProfileServiceTests
     public void Disabled_DoesNothing()
     {
         var (svc, applied, map) = Build(() => new[] { "acc" });
-        map.Set("acc", new ModuleProfiles { Base = "GT3" });
+        map.Set("acc", new ModuleProfiles { Wheel = "GT3" });
         svc.Tick();
         Assert.Empty(applied);
         Assert.Null(svc.CurrentGame);
@@ -44,13 +43,12 @@ public class AutoProfileServiceTests
     public void OnGameDetected_AppliesMappedProfiles_OnlySetModules()
     {
         var (svc, applied, map) = Build(() => new[] { "acc" });
-        map.Set("acc", new ModuleProfiles { Base = "GT3", Wheel = "Rain" });   // pedais/freio não mapeados
+        map.Set("acc", new ModuleProfiles { Wheel = "Rain" });   // pedais/freio não mapeados
         svc.Enabled = true;
 
         svc.Tick();
 
         Assert.Equal("acc", svc.CurrentGame?.Id);
-        Assert.Contains("base:GT3", applied);
         Assert.Contains("wheel:Rain", applied);
         Assert.DoesNotContain(applied, a => a.StartsWith("pedals:"));
         Assert.DoesNotContain(applied, a => a.StartsWith("hb:"));
@@ -60,7 +58,7 @@ public class AutoProfileServiceTests
     public void SameGameTwice_AppliesOnce()
     {
         var (svc, applied, map) = Build(() => new[] { "acc" });
-        map.Set("acc", new ModuleProfiles { Base = "GT3" });
+        map.Set("acc", new ModuleProfiles { Wheel = "GT3" });
         svc.Enabled = true;
 
         svc.Tick();
@@ -73,7 +71,7 @@ public class AutoProfileServiceTests
     public void UnsavedChanges_SkipsSwitch_InsteadOfClobbering()
     {
         var (svc, applied, map) = Build(() => new[] { "acc" });
-        map.Set("acc", new ModuleProfiles { Base = "GT3" });
+        map.Set("acc", new ModuleProfiles { Wheel = "GT3" });
         svc.Enabled = true;
         svc.HasUnsavedChanges = () => true;   // usuário está no meio de um ajuste
 
@@ -88,13 +86,13 @@ public class AutoProfileServiceTests
     public void NoUnsavedChanges_AppliesNormally()
     {
         var (svc, applied, map) = Build(() => new[] { "acc" });
-        map.Set("acc", new ModuleProfiles { Base = "GT3" });
+        map.Set("acc", new ModuleProfiles { Wheel = "GT3" });
         svc.Enabled = true;
         svc.HasUnsavedChanges = () => false;
 
         svc.Tick();
 
-        Assert.Contains("base:GT3", applied);
+        Assert.Contains("wheel:GT3", applied);
         Assert.False(svc.LastSwitchSkipped);
     }
 
@@ -103,7 +101,7 @@ public class AutoProfileServiceTests
     {
         var running = new List<string> { "acc" };
         var (svc, applied, map) = Build(() => running);
-        map.Set("acc", new ModuleProfiles { Base = "GT3" });
+        map.Set("acc", new ModuleProfiles { Wheel = "GT3" });
         svc.Enabled = true;
 
         svc.Tick();                 // detecta acc

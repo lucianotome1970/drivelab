@@ -29,7 +29,7 @@ public partial class AutoProfileViewModel : ViewModelBase
 
     public AutoProfileViewModel(
         AutoProfileService service, GameProfileMap map, JsonGameProfileMapStore store, IUiDispatcher dispatcher,
-        ObservableCollection<string> baseProfiles, ObservableCollection<string> wheelProfiles,
+        ObservableCollection<string> wheelProfiles,
         ObservableCollection<string> pedalsProfiles, ObservableCollection<string> handbrakeProfiles)
     {
         _service = service;
@@ -38,7 +38,6 @@ public partial class AutoProfileViewModel : ViewModelBase
         _dispatcher = dispatcher;
         _enabled = map.Enabled;
 
-        _baseProfiles = baseProfiles;
         _wheelProfiles = wheelProfiles;
         _pedalsProfiles = pedalsProfiles;
         _handbrakeProfiles = handbrakeProfiles;
@@ -57,13 +56,12 @@ public partial class AutoProfileViewModel : ViewModelBase
         });
     }
 
-    private readonly ObservableCollection<string> _baseProfiles;
     private readonly ObservableCollection<string> _wheelProfiles;
     private readonly ObservableCollection<string> _pedalsProfiles;
     private readonly ObservableCollection<string> _handbrakeProfiles;
 
     private GameBindingViewModel NewBinding(KnownGame g, bool isCustom) =>
-        new(g, _map.For(g.Id), _baseProfiles, _wheelProfiles, _pedalsProfiles, _handbrakeProfiles, Persist)
+        new(g, _map.For(g.Id), _wheelProfiles, _pedalsProfiles, _handbrakeProfiles, Persist)
         { IsCustom = isCustom };
 
     /// <summary>Liga/desliga a troca automática.</summary>

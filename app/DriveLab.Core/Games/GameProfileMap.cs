@@ -13,7 +13,6 @@ namespace DriveLab.Core.Games;
 /// módulo.</summary>
 public sealed class ModuleProfiles
 {
-    public string? Base { get; set; }
     public string? Wheel { get; set; }
     public string? Pedals { get; set; }
     public string? Handbrake { get; set; }
