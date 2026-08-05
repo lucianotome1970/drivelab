@@ -116,7 +116,16 @@ extern "C" void odrive_bridge_newboard_bringup(void) {
     axes[0].config_.startup_closed_loop_control          = true;  // auto-arma no fim
     // Sim racing: sem clamp de velocidade cortando torque (girar na mão sem OVERSPEED)
     axes[0].controller_.config_.enable_vel_limit         = false;
-    odrv.config_.enable_brake_resistor = false;                   // brake da bancada nunca arma
+    // BRAKE RESISTOR (chopper) — REPLICA o config funcional do Odrive-Wheel/ODESC: dissipa a regen que
+    // estourava dc_bus_overvoltage_trip_level (a queda de FFB na chicane). Antes ficava DESLIGADO (contorno
+    // do não-arme); agora o clear_errors (delegado a odrv.clear_errors, fix 046c421) RE-ARMA o brake no
+    // auto-arme → satisfaz enable&&armed → o motor arma junto. Setado no boot (não depende de NVM stale).
+    // ⚠️ Valores por-PLACA (56V aqui) → vira board profile na Fase 2. brake_resistance idealmente é setting
+    // da aba Hardware (feat/brake-resistance); aqui fixo em 2.0 = nosso resistor físico (Odrive-Wheel usa 12Ω).
+    odrv.config_.enable_brake_resistor           = true;   // LIGADO (arma via clear_errors → dissipa regen)
+    odrv.config_.brake_resistance                = 2.0f;   // nosso resistor físico de 2Ω
+    odrv.config_.dc_bus_overvoltage_trip_level   = 55.0f;  // teto seguro placa 56V (era ~24,79 na NVM → tripava)
+    odrv.config_.dc_bus_undervoltage_trip_level  = 8.0f;   // "prevents brown-outs" (Odrive-Wheel); garante no boot
 }
 
 // Afrouxa a calibração p/ vencer o cogging do hoverboard (raiz do CPR_MISMATCH intermitente):
