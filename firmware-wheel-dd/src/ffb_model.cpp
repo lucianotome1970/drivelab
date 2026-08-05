@@ -65,6 +65,15 @@ extern "C" void ffb_model_set_config(float total_pct, float maxlimit_pct, int di
     s_fc.linearity = (linearity_pct >= 10) ? (float)linearity_pct * 0.01f : 1.0f;
 }
 
+// Aplica os ajustes avançados (P0). Cada campo com valor válido é aplicado; -1 = mantém o default.
+extern "C" void ffb_model_apply_tuning(const FfbTuning* t) {
+    if (!t) return;
+    // P0: STATIC DAMPING — atrito always-on. frictionTorque já é chamada, mas frictionNm ficava fixo em 0.
+    // Setting 0-100% → 0..0.5 Nm de atrito constante. Default do schema 5% = 0,025 Nm (bem leve).
+    if (t->static_damping_pct >= 0)
+        s_ef.frictionNm = (float)t->static_damping_pct * 0.01f * 0.5f;
+}
+
 // Escala on-wire da força PID (±32767) → escala do engine (±255).
 static constexpr float kPidForceToF255 = 255.0f / 32767.0f;
 

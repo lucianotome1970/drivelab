@@ -27,6 +27,13 @@ void    ffb_model_set_config(float total_pct, float maxlimit_pct, int direction,
                              int gspring, int gdamper, int gfriction, int ginertia,
                              int linearity_pct);
 
+// Ajustes "avançados" (P0) aplicados no ffb_model. A struct CRESCE conforme os settings vão sendo ligados
+// (um por commit) — evita explodir os parâmetros do set_config. -1 num campo = "não mexer" (mantém default).
+typedef struct {
+    int static_damping_pct;   // setting 6 — atrito always-on (frictionNm)
+} FfbTuning;
+void    ffb_model_apply_tuning(const FfbTuning* t);
+
 #ifdef __cplusplus
 }
 #endif
