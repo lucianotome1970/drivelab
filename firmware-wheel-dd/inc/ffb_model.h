@@ -24,7 +24,8 @@ int     ffb_model_max_blocks(void);
 void    ffb_model_set_telemetry_force(float f255);           // DirectControl 0x10 (aditivo)
 void    ffb_model_set_config(float total_pct, float maxlimit_pct, int direction,
                              float spring_pct, float damper_pct, int motion_range_deg,
-                             int gspring, int gdamper, int gfriction, int ginertia);
+                             int gspring, int gdamper, int gfriction, int ginertia,
+                             int linearity_pct);
 
 #ifdef __cplusplus
 }

@@ -86,7 +86,8 @@ static void a0_apply_settings(void) {
         (float)s_ival[4],    // spring_strength %
         (float)s_ival[5],    // damper_strength %
         (int)s_ival[0],      // motion_range (graus, DOR)
-        (int)s_ival[39], (int)s_ival[40], (int)s_ival[41], (int)s_ival[42]  // gains do jogo
+        (int)s_ival[39], (int)s_ival[40], (int)s_ival[41], (int)s_ival[42], // gains do jogo
+        (int)s_ival[24]   // P0: linearity (curva de resposta)
     );
     // PERFIL DE HARDWARE (Placa + Fonte) → deriva divider + trips (mesma lógica espelhada no app).
     //   board_variant(33): 0=placa 24V · 1=placa 56V (default)   ·   bus_nominal_v(27): tensão da fonte [V]

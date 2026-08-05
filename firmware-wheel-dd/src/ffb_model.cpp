@@ -49,7 +49,8 @@ extern "C" void ffb_model_set_telemetry_force(float f255) { s_telemetryForce = f
 // total 100% × maxlimit 80% × 5Nm = 4Nm (maxTorque validado); teto duro 5Nm; damper 10%×0.3=0.03.
 extern "C" void ffb_model_set_config(float total_pct, float maxlimit_pct, int direction,
                                      float spring_pct, float damper_pct, int motion_range_deg,
-                                     int gspring, int gdamper, int gfriction, int ginertia) {
+                                     int gspring, int gdamper, int gfriction, int ginertia,
+                                     int linearity_pct) {
     const float kFullScaleTorqueNm = 5.0f;
     s_fc.maxTorqueNm   = (total_pct * 0.01f) * (maxlimit_pct * 0.01f) * kFullScaleTorqueNm;
     s_fc.torqueLimitNm = kFullScaleTorqueNm;                        // teto duro fixo (segurança)
@@ -59,6 +60,9 @@ extern "C" void ffb_model_set_config(float total_pct, float maxlimit_pct, int di
     const float half_rad = (float)motion_range_deg * 0.5f * 0.01745329f;  // DOR/2 em rad
     if (half_rad > 0.1f) s_ec.rangeRad = half_rad;
     s_effects.setTypeGains((uint8_t)gspring, (uint8_t)gdamper, (uint8_t)gfriction, (uint8_t)ginertia);
+    // P0: LINEARITY (curva de resposta |x|^lin). Setting 50-200% → expoente 0.5-2.0. 100% = linear.
+    // A responseCurve já é chamada no computeTorqueRaw; faltava aplicar o setting (era fixo 1.0).
+    s_fc.linearity = (linearity_pct >= 10) ? (float)linearity_pct * 0.01f : 1.0f;
 }
 
 // Escala on-wire da força PID (±32767) → escala do engine (±255).
