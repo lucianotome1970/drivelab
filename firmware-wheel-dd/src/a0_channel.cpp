@@ -88,9 +88,10 @@ static void a0_apply_settings(void) {
         (int)s_ival[0],      // motion_range (graus, DOR)
         (int)s_ival[39], (int)s_ival[40], (int)s_ival[41], (int)s_ival[42]  // gains do jogo
     );
-    // PERFIL DE HARDWARE (Placa + Fonte) → deriva trips/divider/dc_max (mesma lógica espelhada no app).
-    //   board_variant(33): 0=placa 56V · 1=placa 24V   ·   bus_nominal(27): tensão da fonte [V]   ·   power_limit(16): corrente da fonte [A]
-    odrive_bridge_apply_hw_profile((int)s_ival[33], (int)s_ival[27], (int)s_ival[16]);
+    // PERFIL DE HARDWARE (Placa + Fonte) → deriva divider + trips (mesma lógica espelhada no app).
+    //   board_variant(33): 0=placa 24V · 1=placa 56V (default)   ·   bus_nominal_v(27): tensão da fonte [V]
+    //   amperagem: 0 (sem campo dedicado ainda; power_limit(16) é "%", não A) → dc_max = follow-up.
+    odrive_bridge_apply_hw_profile((int)s_ival[33], (int)s_ival[27], 0);
 }
 
 static void a0_init(void) {
