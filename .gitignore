@@ -19,3 +19,9 @@ installer/windows/output/
 installer/windows/hardware-profile.json
 installer/windows/.dotnet/
 installer/windows/dotnet-install.ps1
+
+# Zips e backups soltos (um git add -A ja varreu um app.zip de 387MB pro commit — nunca mais)
+*.zip
+*.bak
+# Copias de trabalho do firmware antigo (build .pio, etc.) ficam locais
+firmware-*/.pio/
