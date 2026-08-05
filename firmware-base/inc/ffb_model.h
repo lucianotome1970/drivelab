@@ -1,4 +1,4 @@
-// firmware-wheel-dd — modelo FFB (STAGE 3b): API C plana sobre o pipeline puro do
+// firmware-base — modelo FFB (STAGE 3b): API C plana sobre o pipeline puro do
 // firmware-base (EffectManager + ForceReconstructor + computeTorqueRaw), portado.
 // A cola HID (ffb_hid.cpp, contexto USB) roteia os reports OUT/Feature pra cá; o laço
 // de 1kHz (ffb_task.cpp) pede o torque. Converte força do jogo → Nm, escrito na ponte.

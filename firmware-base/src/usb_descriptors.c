@@ -1,4 +1,4 @@
-// firmware-wheel-dd — descritores USB TinyUSB (STAGE 3a: CDC + HID composite).
+// firmware-base — descritores USB TinyUSB (STAGE 3a: CDC + HID composite).
 // O device se apresenta como "DriveLab Base" com DUAS funções:
 //   - HID (interface 0): Joystick + PID/Force-Feedback → aparece em "Controladores
 //     de Jogo" do Windows e é reconhecido pelo DriveLab Studio. Descriptor = o NOSSO

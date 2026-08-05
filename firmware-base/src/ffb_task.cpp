@@ -1,4 +1,4 @@
-// firmware-wheel-dd — ffb_task (STAGE 3b): o laço de FFB de 1 kHz. ESTADO VALIDADO (FFB testado
+// firmware-base — ffb_task (STAGE 3b): o laço de FFB de 1 kHz. ESTADO VALIDADO (FFB testado
 // no ACC 10+ vezes: força coerente + damper + auto-arme nativo do ODrive, sem runaway).
 //
 // Cada tick: avança o relógio do modelo, transmite a direção pro host (joystick HID) e, com o

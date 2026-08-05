@@ -1,4 +1,4 @@
-// firmware-wheel-dd — canal A0 (protocolo do DriveLab Studio). Replica a ABORDAGEM do firmware-base
+// firmware-base — canal A0 (protocolo do DriveLab Studio). Replica a ABORDAGEM do firmware-base
 // (lib/base_usb/a0_channel.cpp) adaptada ao TinyUSB CRU + ao nosso ffb_model:
 //   - a0_handle_out(): despacha OUT reports por buf[0] (0x14 SETWRITE / 0x15 SETREAD / 0x22 CMD /
 //     0x10 DIRECT). SÓ guarda valores/seta flags — trabalho pesado fica no laço, não no callback USB.

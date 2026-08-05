@@ -260,7 +260,7 @@ PwmInput pwm0_input{&htim5, {0, 0, 0, 4}}; // 0 means not in use
 PwmInput pwm0_input{&htim5, {1, 2, 3, 4}};
 #endif
 
-// firmware-wheel-dd: USB-lib do ST removida (usamos TinyUSB). Dummy pro interface_usb.cpp linkar;
+// firmware-base: USB-lib do ST removida (usamos TinyUSB). Dummy pro interface_usb.cpp linkar;
 // os shims em usb_tinyusb_glue.cpp ignoram o pdev. (derivado do board.cpp do ODrive, MIT)
 static USBD_HandleTypeDef usb_dev_handle_dummy{};
 USBD_HandleTypeDef& usb_dev_handle = usb_dev_handle_dummy;
@@ -586,6 +586,6 @@ void I2C1_ER_IRQHandler(void) {
     HAL_I2C_ER_IRQHandler(&hi2c1);
 }
 
-// firmware-wheel-dd: OTG_FS_IRQHandler movido pro usb_tinyusb_glue.cpp (chama tud_int_handler(0)).
+// firmware-base: OTG_FS_IRQHandler movido pro usb_tinyusb_glue.cpp (chama tud_int_handler(0)).
 
 }

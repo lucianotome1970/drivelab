@@ -3,13 +3,28 @@
 > Nota pra retomar o trabalho em **qualquer máquina** (esp. Windows). O contexto detalhado está na
 > memória do Claude Code (`~/.claude/projects/<projeto>/memory/`) — mas o essencial está aqui, no git.
 
-## Estado atual (2026-08-04) — GRANDE VITÓRIA
+## ⏭️ ONDE CONTINUAR (Windows, na bancada) — atualizado 2026-08-05
+Tudo abaixo já está **commitado e no `main`** (é só `git pull`). O que falta é **validar na bancada** (Windows,
+base plugada). Ordem sugerida — firmware é minha tarefa (gravo por ST-Link, leio por CDC), uma mudança por vez:
+
+1. **SAVE persistente** (commit `3ad7599`) — o passo-chave. Conectar o app, **mudar um setting**, **Salvar**,
+   **reiniciar a placa** → o valor **persistiu**? E a **cal do motor sobreviveu** (arma normal, roda no ACC)?
+   Sentir o Save: a força cai ~1 s e o motor re-arma (ver `ffb_task.cpp` — grava com o motor IDLE).
+2. **Ligações P0** (`e8757d5..10fe395`) — linearity / static-damping / endstop-damping / slew / curva / recon.
+   Validar **feel** (sem regressão do FFB que já funcionava).
+3. **Brake re-enable** (`f104503`) e **hw profile** (`18351eb`) — conferir que a placa arma e roda igual.
+4. Só depois: retomar o **teste de força** (subir o cap 5→8 Nm, game a 50% como válvula; calor é o limite —
+   ligar o corte por sobretemp antes). Ver memória `drivelab-features-roadmap`.
+
+O **lado do app** (device = fonte de verdade) está **concluído** (ver seção "App" abaixo) — não precisa bancada.
+
+## Estado atual (2026-08-05) — GRANDE VITÓRIA
 - ✅ **O volante DD roda no ACC com FFB** — validado: **2 voltas completas, 100% de força, sem travar.**
 - **Hardware:** MKS **XDrive-S** (ODRIVE-S v3.6-56V, STM32F405 + DRV8301) + motor **hoverboard** (15 pole
   pairs, R≈0,20 Ω / L≈0,35 mH) + encoder **E6B2 externo** incremental (4000 CPR).
 - **Fonte:** bus ~19,6 V.
 
-## A receita que funcionou (em `firmware-wheel-dd/src/odrive_bridge.cpp`)
+## A receita que funcionou (em `firmware-base/src/odrive_bridge.cpp`)
 - Motor **`pre_calibrated`** + R/L fixos (**pula a medição de R/L** — é a medição de indutância que dava
   DRV_FAULT em L baixa) + `startup_motor_calibration=false`.
 - `pole_pairs=15`, `cpr=4000`, `current_control_bandwidth=200`, `current_lim=25`, **`calibration_current=3.0`**
@@ -21,11 +36,16 @@
   com o motor armado.
 
 ## Onde está cada coisa (git)
-| Branch | Conteúdo |
-|---|---|
-| **`main`** | Firmware **funcional** + `docs/ROADMAP.md` + `docs/ROADMAP-features.md` + este handoff |
-| **`feat/incorporar-app-2026-08-04`** | App de ontem reincorporado (compila 0 erros); firmware = o funcional |
-| **`trabalho-2026-08-03`** | Trabalho COMPLETO de ontem (app + experimentos de firmware). Nada foi perdido |
+- **Tudo relevante está no `main`** — firmware ativo, app e docs. É só `git pull origin main`.
+- **Firmware ATIVO = `firmware-base/`** (ODrive-base, MIT; 522 arquivos rastreados, incl. `vendor/odrive-fw`;
+  só `autogen/` e `build/` são gitignored — regenerar autogen no clone, ver seção Windows). **É AQUI que
+  trabalhamos daqui pra frente.**
+- **`firmware-old/`** = o SimpleFOC antigo (ODESC/STM32duino), **arquivado** — não mexemos mais.
+- **RENAME concluído no main (2026-08-05):** `firmware-wheel-dd`→`firmware-base` (ODrive vira o ativo) e o
+  SimpleFOC antigo `firmware-base`→`firmware-old`. Antes o rename só existia nas branches de feature; agora o
+  `main` bate com elas. Memória: `drivelab-firmware-rename`.
+- **Untracked que NÃO vão pro git** (podem apagar): `app.zip` (~370 MB), `hardware-profile.json.bak` (sobra do
+  JSON removido), `firmware-*/build/`, `firmware-*/vendor/build` (regeneráveis por `make`).
 
 ## Diagnóstico da força — RESPONDIDO em 2026-08-04 (era outra coisa)
 A pergunta era: perder força numa curva é **teto de 5 Nm** ou **bug**? Resposta pela CDC ao vivo no ACC:
@@ -72,9 +92,22 @@ rodando). Endereços **mudam a cada build** — extrair sempre do ELF (`arm-none
   Ordem sugerida: (1) multímetro no resistor com a placa DESLIGADA (confirmar ~2 Ω e a fiação);
   (2) só então recompilar tornando o disable condicional; (3) testar na bancada.
 
+## App — device = fonte de verdade (CONCLUÍDO 2026-08-05, commits `c9ee58a..be6ce38`)
+Refactor do DriveLab Studio: **a BASE (firmware) é a fonte de verdade**. **Sem JSON de config, sem salvamento
+só-no-app.** O app **lê da base** ao conectar e **salva na base** (`CMD_SAVE`). Detalhes na memória
+`drivelab-app-device-source-of-truth`. Resumo: (1-2) removido load+export do `hardware-profile.json`;
+(3) removida a biblioteca de perfis da base (base saiu do auto-perfil-por-jogo; aro/pedais/freio seguem);
+(4) **modo criador/cliente** — `--advanced` (ou arquivo `advanced.flag` na pasta do exe) mostra a aba
+Hardware; cliente sem a flag **não vê Hardware**; (5) **campo vazio (`"—"`) sem conexão** (não inventa o
+default do schema); (6) classes mortas deletadas. **App build 0 erros; suite 464/464.**
+- ⚠️ **GOTCHA de teste:** `dotnet test app/DriveLab.sln` (solução inteira) dá **falsas falhas** por contenção
+  no `LocalizationManager` estático entre assemblies em paralelo. Veredito real: rodar o **projeto isolado**
+  ou `dotnet test app/DriveLab.sln -- -parallel none`.
+
 ## Roadmap (ver `docs/ROADMAP.md` + `docs/ROADMAP-features.md`)
-- **Fase 1 (core estável):** ligar P0 (linearity/expo, slew, friction — já codados, só conectar), P1 (SAVE
-  persistência — hoje no-op!, DOR real, force-disable real), P2 (sobretemp do motor + failsafe USB).
+- **Fase 1 (core estável):** P0 (linearity/expo, slew, friction) **✅ ligado** (`e8757d5..10fe395`, validar feel);
+  P1 **SAVE ✅ implementado** (`3ad7599`, **validar persistência na bancada**), falta DOR real + force-disable
+  real; P2 (sobretemp do motor + failsafe USB).
 - **Fase 2 (modelo FFBeast):** 1 binário pra família ODrive (XDrive-S/MINI) lendo motor+encoder da flash.
 - **Fase 3 (exploratória):** multi-arquitetura (só ESP32-**S3**; clássico não tem USB).
 

@@ -1,4 +1,4 @@
-// firmware-wheel-dd — ponte ODrive. ÚNICO arquivo que inclui odrive_main.h (isola o
+// firmware-base — ponte ODrive. ÚNICO arquivo que inclui odrive_main.h (isola o
 // class Axis do ODrive). API extern "C" plana pro nosso ffb_task. Autor: Luciano Tomé — MIT.
 #include "odrive_bridge.h"
 #include "odrive_main.h"

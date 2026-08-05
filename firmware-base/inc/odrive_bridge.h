@@ -1,4 +1,4 @@
-// firmware-wheel-dd — ponte ODrive (extern "C"): a ÚNICA costura que toca o core do
+// firmware-base — ponte ODrive (extern "C"): a ÚNICA costura que toca o core do
 // ODrive (isola o class Axis do ODrive do resto). Autor: Luciano Tomé — MIT.
 #pragma once
 #include <stdint.h>

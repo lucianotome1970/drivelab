@@ -1,4 +1,4 @@
-// firmware-wheel-dd — biquad_lp.h — filtro lowpass biquad (RBJ) p/ suavizar os efeitos de
+// firmware-base — biquad_lp.h — filtro lowpass biquad (RBJ) p/ suavizar os efeitos de
 // condição do FFB (Damper/Inertia/Friction), como o OpenFFBoard faz. Sem ele o Inertia (derivada
 // dupla) e o Damper (velocidade ruidosa) viram PICOS de torque a 1kHz → movimento inesperado do
 // FFB (ex.: T1 de Monza) e até desarme por INVALID_ESTIMATE (o pico chuta o volante rápido).

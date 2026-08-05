@@ -1,4 +1,4 @@
-# Análise: calibração/arme inconsistentes (runaway/notchy) — firmware-wheel-dd
+# Análise: calibração/arme inconsistentes (runaway/notchy) — firmware-base
 
 > FFB estava VALIDADO (mola lisa + ACC ótimo). Ficou inconsistente: às vezes cal boa
 > (lisa), às vezes ruim (DISPARA ao armar) ou NOTCHY (agarra/solta). Encoder CONFIRMADO bom.

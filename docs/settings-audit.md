@@ -1,7 +1,7 @@
 # DriveLab — Auditoria de Settings (app ↔ firmware)
 
 > Cruza os 45 settings do schema (`app/DriveLab.Core/Settings/BaseSettingsSchema.cs`) com o que o firmware
-> **realmente aplica** (`firmware-wheel-dd/src/a0_channel.cpp::a0_apply_settings` + `odrive_bridge_apply_hw_profile`).
+> **realmente aplica** (`firmware-base/src/a0_channel.cpp::a0_apply_settings` + `odrive_bridge_apply_hw_profile`).
 > **Princípio:** todo setting tem um **default pré-definido** (funciona out-of-box); o usuário só altera se quiser.
 
 ## Enviar/ler funciona pra TODOS os 45

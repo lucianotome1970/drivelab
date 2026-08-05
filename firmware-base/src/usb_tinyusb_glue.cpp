@@ -1,4 +1,4 @@
-// firmware-wheel-dd — cola TinyUSB ↔ interface USB do ODrive (STAGE 1: CDC).
+// firmware-base — cola TinyUSB ↔ interface USB do ODrive (STAGE 1: CDC).
 //
 // Estratégia (a mesma que projetos ODrive-base usam): manter o interface_usb.cpp
 // do ODrive INTACTO e implementar, via TinyUSB, as funções que ele chama:

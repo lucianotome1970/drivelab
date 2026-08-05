@@ -1,6 +1,6 @@
 # DriveLab — Roadmap de Features (gap vs OpenFFBoard / Odrive-Wheel)
 
-> Comparação do NOSSO firmware (`firmware-wheel-dd`) com **OpenFFBoard** e **Odrive-Wheel** (mesma base
+> Comparação do NOSSO firmware (`firmware-base`) com **OpenFFBoard** e **Odrive-Wheel** (mesma base
 > ODrive v0.5.6). Objetivo: o que eles têm e nós **ainda não** — priorizado.
 > Legenda: **[LIGAR]** = código já existe, só conectar · **[NOVO]** = implementar · Esforço S/M/L ·
 > 🔧 = precisa de bancada · 💻 = off-bench (app/host/doc).

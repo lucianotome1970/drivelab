@@ -1,4 +1,4 @@
-// firmware-wheel-dd — stub do cmdparser (MIT). NÃO usamos os comandos do OpenFFBoard;
+// firmware-base — stub do cmdparser (MIT). NÃO usamos os comandos do OpenFFBoard;
 // cmdparser_feed sempre retorna 0 → o ascii_protocol.cpp cai no switch ASCII do ODrive.
 #pragma once
 #include <stdint.h>

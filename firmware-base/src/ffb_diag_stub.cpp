@@ -1,4 +1,4 @@
-// firmware-wheel-dd — stubs MIT de TODAS as funcoes ffb_* que o ascii_protocol patchado usa.
+// firmware-base — stubs MIT de TODAS as funcoes ffb_* que o ascii_protocol patchado usa.
 // Diag/params FFB do Odrive-Wheel que nao usamos — retornam 0/no-op. Stage 4 = os nossos.
 #include <stdint.h>
 extern "C" {

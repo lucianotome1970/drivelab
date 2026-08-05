@@ -1,4 +1,4 @@
-// firmware-wheel-dd — stub MIT do cmdparser (não usamos os comandos OpenFFBoard).
+// firmware-base — stub MIT do cmdparser (não usamos os comandos OpenFFBoard).
 #include "cmdparser.h"
 size_t cmdparser_feed(const uint8_t *in, size_t in_len, char *out, size_t out_len) {
     (void)in; (void)in_len; (void)out; (void)out_len;

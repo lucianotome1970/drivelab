@@ -1,4 +1,4 @@
-// firmware-wheel-dd — modelo FFB (STAGE 3b). Dono dos objetos do pipeline puro do
+// firmware-base — modelo FFB (STAGE 3b). Dono dos objetos do pipeline puro do
 // firmware-base (portados): EffectManager (banco de efeitos PID), ForceReconstructor
 // (força do jogo → contínua) e computeTorqueRaw (força+efeitos+endstop → Nm). A cola HID
 // alimenta os reports; o laço de 1kHz pede o torque. O ODrive faz a FOC/proteção — aqui

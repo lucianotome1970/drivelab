@@ -1,4 +1,4 @@
-// firmware-wheel-dd — cola HID (STAGE 3a): TinyUSB HID ↔ DriveLab.
+// firmware-base — cola HID (STAGE 3a): TinyUSB HID ↔ DriveLab.
 //
 // Faz o device virar CONTROLE DE JOGO:
 //   - hid_send_joystick(): monta o RID_JOYSTICK (8 botões + 8 eixos int16) a partir
