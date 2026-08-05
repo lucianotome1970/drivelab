@@ -5,16 +5,34 @@
 
 ## ⏭️ ONDE CONTINUAR (Windows, na bancada) — atualizado 2026-08-05
 Tudo abaixo já está **commitado e no `main`** (é só `git pull`). O que falta é **validar na bancada** (Windows,
-base plugada). Ordem sugerida — firmware é minha tarefa (gravo por ST-Link, leio por CDC), uma mudança por vez:
+base plugada). Ordem sugerida — firmware é do Claude (grava por ST-Link, lê por CDC), uma mudança por vez.
 
-1. **SAVE persistente** (commit `3ad7599`) — o passo-chave. Conectar o app, **mudar um setting**, **Salvar**,
-   **reiniciar a placa** → o valor **persistiu**? E a **cal do motor sobreviveu** (arma normal, roda no ACC)?
-   Sentir o Save: a força cai ~1 s e o motor re-arma (ver `ffb_task.cpp` — grava com o motor IDLE).
-2. **Ligações P0** (`e8757d5..10fe395`) — linearity / static-damping / endstop-damping / slew / curva / recon.
-   Validar **feel** (sem regressão do FFB que já funcionava).
-3. **Brake re-enable** (`f104503`) e **hw profile** (`18351eb`) — conferir que a placa arma e roda igual.
-4. Só depois: retomar o **teste de força** (subir o cap 5→8 Nm, game a 50% como válvula; calor é o limite —
-   ligar o corte por sobretemp antes). Ver memória `drivelab-features-roadmap`.
+> **Nota pra sessão do Claude no Windows:** esta sessão não tem a memória da máquina do dev (a memória é por
+> caminho de projeto). Este arquivo (no git) é a fonte. Ao abrir, ler este bloco + a seção "App" abaixo.
+
+### ✅ JÁ VALIDADO na bancada (2026-08-05)
+- **Zero desarme mesmo em ZIGZAG** (reversão rápida = pior caso). Valida o fix da **subtensão** (churn/"tec")
+  e o auto-arme espaçado. **Provavelmente valida também o brake re-enable** (regen sendo drenada) — falta só
+  confirmar que o resistor conduz (teste 3 abaixo).
+
+### Pendente
+1. 🔑 **SAVE persistente** (commit `3ad7599`) — o passo-chave, destrava o modelo "base = fonte de verdade".
+   Passos: (a) app conectado, **mudar um setting** (ex.: Total Strength); (b) **Salvar** — a força deve cair
+   ~1 s e o motor re-armar (grava com o motor IDLE, ver `ffb_task.cpp`); (c) **reiniciar a placa** (power-cycle);
+   (d) reconectar o app → o valor **persistiu**? E a **cal do motor sobreviveu** (arma normal, roda no ACC)?
+   Persistiu na **FFB_NVM setor 1**, separada da cal do motor (setores 10/11) — as duas devem sobreviver.
+2. **Feel das ligações P0** (`e8757d5..10fe395`) — linearity / static-damping / endstop-damping / slew / curva /
+   recon. Validar que o FFB que já funcionava **não regrediu**.
+3. **Brake conduz?** (fecha o `f104503`) — **sem SWD**, pela CDC serial (ASCII do ODrive, endpoints read-only):
+   ```
+   r brake_resistor_armed     -> espera 1  (armado no boot)
+   r brake_resistor_current   -> durante ZIGZAG contínuo: espera > 0  (está sendo alimentado)
+   r vbus_voltage             -> no pico do zigzag: capado (~20,6 V c/ brake vs ~23,9 V sem)
+   ```
+   `armed=1` + `vbus` capado = evidência estável; `current>0` é transiente (pollar repetido no zigzag). Se
+   `current` ficar SEMPRE 0, o "sem desarme" veio só do trip a 55 V, não do brake.
+4. Só depois: **teste de força** (subir o cap 5→8 Nm em `ffb_model.cpp`, game a 50% como válvula; calor é o
+   limite — ligar o corte por sobretemp antes). Ver memória `drivelab-features-roadmap`.
 
 O **lado do app** (device = fonte de verdade) está **concluído** (ver seção "App" abaixo) — não precisa bancada.
 
