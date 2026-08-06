@@ -30,6 +30,29 @@ extern "C" uint32_t odrive_bridge_encoder_error(void) { return (uint32_t)axes[0]
 extern "C" float odrive_bridge_get_vbus(void) { return vbus_voltage; }
 extern "C" float odrive_bridge_get_input_torque(void) { return axes[0].controller_.input_torque_; }
 
+// Temperatura do MCU (STM32F405), do sensor INTERNO — a unica temperatura real desta placa: o clone
+// MKS nao tras os termistores de FET/motor que o ODrive genuino tem (por isso aqueles vao -128 = sem
+// sensor). Nao mede o motor, mas denuncia gabinete abafado/dissipacao ruim, que e o que o usuario
+// consegue agir. O canal 16 e amostrado com 480 ciclos na sequencia do ADC1 (ver low_level.cpp).
+//
+// Conversao do datasheet do F405 (tabela "Temperature sensor characteristics"):
+//   V25 = 0,76 V @ 25 C, Avg_Slope = 2,5 mV/C  →  T = (Vsense - V25)/slope + 25
+// Estes valores sao TIPICOS e nao vem calibrados de fabrica no F4 (o erro de offset chega a +-45 C
+// no pior caso do datasheet). Ou seja: serve para VARIACAO ("subiu 15 C depois de meia hora"), nao
+// como termometro absoluto — motivo pelo qual isto NAO alimenta nenhuma protecao, so a tela.
+//
+// Filtro EMA: 1 LSB de 12 bits (0,806 mV) ja vale 0,32 C, entao o valor cru pisca. tau ~1 s no
+// ritmo de chamada da telemetria (~50 Hz) deixa o numero legivel sem esconder tendencia.
+extern "C" float odrive_bridge_get_mcu_temp_c(void) {
+    static float s_filtered = 0.0f;
+    const float rel = get_adc_relative_voltage_ch(ADC_CHANNEL_MCU_TEMP);
+    if (rel < 0.0f) return -128.0f;                       // canal invalido = sem sensor
+    const float t = ((rel * adc_ref_voltage) - 0.76f) / 0.0025f + 25.0f;
+    if (s_filtered == 0.0f) s_filtered = t;               // primeira amostra: sem rampa desde zero
+    s_filtered += (t - s_filtered) * 0.02f;               // EMA ~1 s a 50 Hz
+    return s_filtered;
+}
+
 // SEGURANÇA: desabilita todo o auto-arme/calibração de boot. A calibração de offset do encoder
 // no boot é INSTÁVEL nesta placa (CPR_MISMATCH intermitente) e, quando trava, GIRA o motor sem
 // parar. Chamado em ffb_init_storage_early (antes dos threads do eixo) → boota em IDLE (motor off).

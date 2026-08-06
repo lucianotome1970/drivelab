@@ -44,6 +44,23 @@ static float    s_telemetryForce = 0.0f;   // força aditiva de telemetria do ap
 static float    s_slewMaxDeltaNm = 0.0f;    // P0 slew: variação máx de torque por tick (0 = off)
 static float    s_prevTorque     = 0.0f;    // P0 slew: torque do tick anterior (estado do slewLimit)
 
+// --- Medidor de CLIPPING ---------------------------------------------------------------------
+// Clipping = o jogo pediu mais força do que a base consegue expressar. Dali pra frente o DETALHE
+// some: zebra, perda de aderência e batida de suspensão saem todos no mesmo valor, achatados. É a
+// métrica que o piloto usa pra achar o ganho máximo útil — subir a força até o clipping começar a
+// aparecer nas curvas mais pesadas, e então recuar.
+//
+// Medimos a FRAÇÃO DO TEMPO saturado numa janela de 500 ms (a mesma cadência do monitor do app).
+// Tempo, e não pico: com pico, um único solavanco pintaria 100% na tela e o número não serviria
+// pra decidir nada. Duas saturações contam, porque as duas cortam detalhe:
+//   1) a força do jogo estourou o fundo de escala (|hostF| ≥ 255) — o clipping clássico, do SINAL;
+//   2) o teto duro de torque cortou a demanda crua — o clipping da SAÍDA.
+// Escala 0-255 no fio (o app converte pra %), casando com o campo Clipping do BaseState.
+static constexpr uint16_t kClipWindowTicks = 500;   // ticks de 1 ms
+static uint16_t s_clipTicks = 0;
+static uint16_t s_clipHits  = 0;
+static uint8_t  s_clipLevel = 0;
+
 // --- Setters do canal A0 (app DriveLab Studio) ---
 extern "C" void ffb_model_set_telemetry_force(float f255) { s_telemetryForce = f255; }
 
@@ -143,8 +160,18 @@ extern "C" float ffb_model_compute_torque(float posTurns, float velTurnsPerSec) 
     hostF *= (float)s_deviceGain / 255.0f;                     // Device Gain global do host (0x0D)
     hostF += s_telemetryForce;                                 // + efeitos por telemetria do app (aditivo)
 
-    float t = computeTorqueRaw(hostF, posRad, velRad, s_fc, s_ef, s_ec);  // força→Nm + spring/endstop
-    t = clampf(t, -s_fc.torqueLimitNm, s_fc.torqueLimitNm);               // TETO DURO por último
+    const float raw = computeTorqueRaw(hostF, posRad, velRad, s_fc, s_ef, s_ec);  // força→Nm + spring/endstop
+    float t = clampf(raw, -s_fc.torqueLimitNm, s_fc.torqueLimitNm);       // TETO DURO por último
+
+    // Clipping: conta este tick como saturado se o SINAL bateu no fundo de escala ou se o teto duro
+    // cortou a demanda. O 254.5 (e não 255.0) é de propósito: a conversão ±32767 → ±255 devolve
+    // 254,99… no fundo de escala exato, e um `>= 255.0f` nunca dispararia.
+    if (fabsf(hostF) >= 254.5f || fabsf(raw) > s_fc.torqueLimitNm) s_clipHits++;
+    if (++s_clipTicks >= kClipWindowTicks) {
+        s_clipLevel = (uint8_t)((uint32_t)s_clipHits * 255u / kClipWindowTicks);
+        s_clipTicks = 0;
+        s_clipHits  = 0;
+    }
     if (s_slewMaxDeltaNm > 0.0f) t = slewLimit(t, s_prevTorque, s_slewMaxDeltaNm);  // P0 slew (0=off)
     s_prevTorque = t;                                                     // estado do slew p/ o próximo tick
 
@@ -156,6 +183,17 @@ extern "C" float ffb_model_compute_torque(float posTurns, float velTurnsPerSec) 
     g_ffb_dbg[8] = s_effects.usedBlocks();
     g_ffb_dbg[9] = (int32_t)(odrive_bridge_get_iq_measured() * 1000.0f);
     return t;
+}
+
+// Nível de clipping 0-255 pra telemetria (a0_channel). Ver o bloco do medidor lá em cima.
+extern "C" uint8_t ffb_model_get_clipping(void) { return s_clipLevel; }
+
+// Zera o medidor quando o motor NÃO está armado. Sem isto o último valor medido congela na tela
+// (o compute_torque só roda armado), e o usuário veria "40% de clipping" numa base parada.
+extern "C" void ffb_model_reset_clipping(void) {
+    s_clipTicks = 0;
+    s_clipHits  = 0;
+    s_clipLevel = 0;
 }
 
 extern "C" uint8_t ffb_model_create_effect(void) { return s_effects.allocateBlock(); }

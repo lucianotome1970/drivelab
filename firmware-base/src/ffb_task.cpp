@@ -9,6 +9,8 @@
 #include <cmsis_os.h>
 #include "odrive_bridge.h"
 #include "ffb_model.h"
+#include "brake_meter.h"          // zerar o medidor do chopper no arme (ver autoscale, abaixo)
+extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
 
 // Definido em ffb_hid.cpp: joystick (direção pro jogo).
 extern "C" int hid_send_joystick(void);      // joystick (direção pro jogo) — PRIORIDADE
@@ -79,6 +81,13 @@ static void ffb_thread(void*) {
         // resistor em si é feito sem janela dentro da função — ver odrive_bridge.cpp.)
         if (!g_bus_autoscaled && g_axis_dbg[1] == 8) {
             g_bus_autoscaled = odrive_bridge_autoscale_bus_limits();
+            // Zera o medidor do chopper AQUI: a calibração de offset do boot GIRA o motor, e girar
+            // gera regeneração — acionamento legítimo, mas que não é uso. Sem isto a base mostra
+            // ~935 acionamentos / 0,8 J assim que liga, e o usuário lê "o chopper está trabalhando
+            // parado" (constatado na bancada 2026-08-06). Os contadores passam a medir a SESSÃO:
+            // do arme em diante. Zero depois de dirigir continua sendo diagnóstico de resistor
+            // desconectado ou rampa mal dimensionada, que é a razão de a feature existir.
+            brake_meter_init(&g_brake_meter);
         }
 
         // Auto-arme com retry ESPAÇADO + timeout de segurança.
@@ -135,6 +144,7 @@ static void ffb_thread(void*) {
             odrive_bridge_set_input_torque(ffb_model_compute_torque(pos, vel));
         } else {
             odrive_bridge_set_input_torque(0.0f);
+            ffb_model_reset_clipping();   // desarmado não clipa — não deixar o último valor congelado na tela
         }
         osDelayUntil(&tick, 1);   // 1 kHz absoluto (sem drift)
     }

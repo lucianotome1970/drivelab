@@ -206,14 +206,23 @@ static void a0_build_state(uint8_t* p) {
     if (norm > 1.0f) norm = 1.0f; else if (norm < -1.0f) norm = -1.0f;
     put_i16(&p[5], (int16_t)(norm * 10000.0f));            // Position ±10000
     put_i16(&p[7], clip_i16(turns * 3600.0f));            // AngleDeciDeg (décimos de grau) ← gira o volante
-    put_i16(&p[9], clip_i16(odrive_bridge_get_input_torque() / 5.0f * 10000.0f));  // Torque ±10000 (teto 5Nm)
+    // Torque ±10000 = fração do FUNDO DE ESCALA. O divisor tem de acompanhar o kFullScaleTorqueNm
+    // do ffb_model (subiu de 5 → 10 Nm em 2026-08-05); com o 5 antigo a barra marcava o DOBRO do real.
+    put_i16(&p[9], clip_i16(odrive_bridge_get_input_torque() / 10.0f * 10000.0f));
     put_i16(&p[11], clip_i16(odrive_bridge_get_iq_measured() * 1000.0f));          // MotorCurrentMa
     p[13] = (uint8_t)(int8_t)(-128);                       // FetTempC (sem sensor)
     p[14] = (uint8_t)(odrive_bridge_axis_error() & 0xFF);  // ErrorCode
     put_u16(&p[15], (uint16_t)(odrive_bridge_get_vbus() * 1000.0f));               // BusVoltageMv
     p[17] = (uint8_t)(int8_t)(-128);                       // MotorTempC (sem sensor)
-    p[18] = 0;                                             // McuTempC (TODO)
-    p[19] = 0;                                             // Clipping (TODO)
+    // Temperatura do MCU: sensor interno do STM32 (ver odrive_bridge). Única temperatura real desta
+    // placa. Satura em ±127 porque o campo é i8; -128 fica reservado p/ "sem sensor".
+    {
+        const float mcu = odrive_bridge_get_mcu_temp_c();
+        int8_t mcu_c = -128;                                // default: sem leitura
+        if (mcu > -127.5f) mcu_c = (int8_t)(mcu > 127.0f ? 127 : (mcu < -127.0f ? -127 : mcu));
+        p[18] = (uint8_t)mcu_c;                             // McuTempC
+    }
+    p[19] = ffb_model_get_clipping();                       // Clipping 0-255 (o app converte p/ %)
 
     // Medidor do brake chopper (bytes 20-29) — layout casado com BaseState.cs.
     // Bytes que antes iam zerados: nenhum pacote novo, nenhuma taxa nova.

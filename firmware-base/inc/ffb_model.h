@@ -13,6 +13,11 @@ extern "C" {
 void  ffb_model_advance_clock(uint32_t dms);                 // avança o relógio do engine (ms)
 float ffb_model_compute_torque(float posTurns, float velTurnsPerSec);  // roda o pipeline → torque Nm (com teto)
 
+// Clipping do FFB: fração do tempo (janela de 500 ms) em que a força pedida saturou, em 0-255.
+// Só é medido com o motor armado — o laço chama o reset enquanto ele estiver desarmado.
+uint8_t ffb_model_get_clipping(void);
+void    ffb_model_reset_clipping(void);
+
 // --- roteamento HID (ffb_hid.cpp, contexto USB) ---
 uint8_t ffb_model_create_effect(void);                       // Create New Effect → bloco 1-based (0 = pool cheio)
 void    ffb_model_handle_out(const uint8_t* buf, uint16_t len); // roteia um OUT report (efeitos/força/device ctrl)

@@ -46,6 +46,19 @@ public partial class HardwareMonitorViewModel : ViewModelBase
 
     private short _lastMotorCurrentMa;
 
+    /// <summary>Intervalo de atualização do monitor. A telemetria vem a ~50 Hz, mas número trocando 50×
+    /// por segundo é ilegível; 500 ms dá para ler e ainda acompanha o que está acontecendo.</summary>
+    private const int RefreshMs = 500;
+    private long _lastRefreshMs;
+    private long _accBusMv;
+    private long _accCurrentMa;
+    private int  _accCount;
+
+    /// <summary>Maior clipping visto no intervalo. Clipping é BURSTY (satura numa curva pesada e some),
+    /// então a média o esconderia e a última amostra o perderia por sorteio: o piloto precisa saber que
+    /// houve corte, não a média dele. Por isso este campo usa pico, ao contrário de tensão/corrente.</summary>
+    private int _peakClipping;
+
     public HardwareMonitorViewModel(BaseSession session)
     {
         _session = session;
@@ -60,14 +73,34 @@ public partial class HardwareMonitorViewModel : ViewModelBase
 
     private void OnState(object? sender, BaseState s)
     {
-        BusVoltageText = (s.BusVoltageMv / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " V";
-        MotorCurrentText = (s.MotorCurrentMa / 1000.0).ToString("0.00", CultureInfo.InvariantCulture) + " A";
-        _lastMotorCurrentMa = s.MotorCurrentMa;
+        // A telemetria chega a ~50 Hz. Reescrever os textos a cada pacote faz o numero "dancar" na
+        // tela e o valor fica ilegivel (constatado na bancada 2026-08-06). Atualizamos a cada
+        // RefreshMs e, nos campos que oscilam de verdade (tensao e corrente), mostramos a MEDIA do
+        // intervalo em vez de uma amostra instantanea — assim o numero fica estavel E representativo,
+        // em vez de congelar num pico aleatorio. Os demais campos (temperaturas, contadores do brake)
+        // usam o ultimo valor, que ja e estavel por natureza.
+        _accBusMv += s.BusVoltageMv;
+        _accCurrentMa += s.MotorCurrentMa;
+        _accCount++;
+        if (s.ClippingPercent > _peakClipping) _peakClipping = s.ClippingPercent;
+
+        long now = Environment.TickCount64;
+        if (_lastRefreshMs != 0 && (now - _lastRefreshMs) < RefreshMs) return;
+        _lastRefreshMs = now;
+
+        double avgBusMv = _accCount > 0 ? (double)_accBusMv / _accCount : s.BusVoltageMv;
+        double avgCurMa = _accCount > 0 ? (double)_accCurrentMa / _accCount : s.MotorCurrentMa;
+        int clipping = _peakClipping;
+        _accBusMv = 0; _accCurrentMa = 0; _accCount = 0; _peakClipping = 0;
+
+        BusVoltageText = (avgBusMv / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " V";
+        MotorCurrentText = (avgCurMa / 1000.0).ToString("0.00", CultureInfo.InvariantCulture) + " A";
+        _lastMotorCurrentMa = (short)avgCurMa;
         UpdateEstimatedTorque();
         FetTempText = TempText(s.FetTempC);
         MotorTempText = TempText(s.MotorTempC);
         McuTempText = TempText(s.McuTempC);
-        ClippingText = s.ClippingPercent + " %";
+        ClippingText = clipping + " %";
 
         // Medidor do brake chopper. Existe porque o resistor quase nunca esquenta
         // (a frenagem dura milissegundos) e "frio" passa a impressão de "quebrado".
@@ -80,7 +113,7 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         FetTempLevel = TempLevel(s.FetTempC);
         MotorTempLevel = TempLevel(s.MotorTempC);
         McuTempLevel = TempLevel(s.McuTempC);
-        ClippingLevel = ClipLevel(s.ClippingPercent);
+        ClippingLevel = ClipLevel(clipping);
 
         // Aviso de variante 24V/56V errada (flag do firmware). Mostra a tensão lida p/ ser acionável.
         VoltageWarning = s.Flags.HasFlag(BaseFlags.VoltageImplausible)
