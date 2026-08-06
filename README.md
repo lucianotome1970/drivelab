@@ -138,6 +138,7 @@ Start here · *Comece por aqui:*
 
 Hardware & build guides · *Guias de hardware e montagem:*
 
+- **[Hoverboard base FAQ / FAQ da base hoverboard](docs/faq-hoverboard.md)** — the most common build problems and what to do, sorted by symptom. Firmware-agnostic. *Os problemas de montagem mais comuns e o que fazer, organizados por sintoma. Serve para qualquer firmware.*
 - **[Encoder guide / Guia de encoders](docs/encoders.md)** — which position sensor to buy (E6B2 · MT6701 · AS5047P). *Qual sensor de posição comprar.*
 - **[Brake resistor / Resistor de frenagem](docs/brake-resistor.md)** — why 2Ω, and the Ω vs W ratings. *Por que 2Ω, e os ratings Ω vs W.*
 - **[Soft-power & contactor / Soft-power e contator](docs/soft-power-contator.md)** — safe power-off, contactor wiring, soft-power button. *Desligar com segurança, fiação do contator, botão soft-power.*
