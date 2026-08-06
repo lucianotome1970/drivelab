@@ -81,6 +81,15 @@ public sealed class HidButtonInputSource : IInputSource
     // deixa passar: um dispositivo extra é inofensivo (só vira fonte se o usuário atribuir um botão dele).
     private static bool IsEligible(HidDevice dev)
     {
+        // A BASE fica de fora SEMPRE, e antes de qualquer coisa: a BaseSession já a mantém aberta
+        // para o FFB, e abrir um segundo handle no mesmo endpoint HID a derruba do USB
+        // (visto na bancada 2026-08-05). O aro (PID 0x0004) segue elegível.
+        try
+        {
+            if (HidButtons.IsOwnBase(dev.VendorID, dev.ProductID)) return false;
+        }
+        catch { /* se nem VID/PID dá pra ler, segue para a checagem normal abaixo */ }
+
         try
         {
             var rd = dev.GetReportDescriptor();

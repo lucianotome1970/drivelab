@@ -32,7 +32,8 @@ public static class HidButtons
 
     /// <summary>Decide se um dispositivo HID entra como fonte do atalho. Escuta QUALQUER dispositivo que
     /// exponha botões (buttonbox, gamepad, joystick, volante, vendor-defined), EXCETO o mouse/teclado/keypad
-    /// do sistema (esses não são controladores de atalho; o teclado tem sua própria fonte por hook global).</summary>
+    /// do sistema (esses não são controladores de atalho; o teclado tem sua própria fonte por hook global)
+    /// e EXCETO a própria BASE — ver <see cref="IsOwnBase"/>.</summary>
     public static bool ShouldListen(bool hasButtons, int topUsagePage, int topUsageId)
     {
         if (!hasButtons) return false;
@@ -41,4 +42,17 @@ public static class HidButtons
             return false;
         return true;
     }
+
+    /// <summary>A BASE (VID 0x1209 / PID 0x0001) NUNCA pode ser escutada por esta fonte.
+    ///
+    /// Ela é um game controller com botões, então passava no <see cref="ShouldListen"/> e era aberta
+    /// aqui — enquanto a BaseSession já a mantém aberta para o FFB. Dois handles disputando o mesmo
+    /// endpoint HID derrubaram a base do USB na bancada (2026-08-05): o app reconhecia o dispositivo,
+    /// o volante parava de responder na tela e em seguida a base sumia do "controle de jogo" do Windows.
+    ///
+    /// O ARO (PID 0x0004) continua valendo como fonte — ele é um dispositivo separado, e usar um botão
+    /// do volante para centralizar é justamente um dos casos de uso.</summary>
+    public static bool IsOwnBase(int vendorId, int productId) =>
+        vendorId == DriveLab.Core.Protocol.BaseDeviceIdentity.VendorId &&
+        productId == DriveLab.Core.Protocol.BaseDeviceIdentity.ProductId;
 }

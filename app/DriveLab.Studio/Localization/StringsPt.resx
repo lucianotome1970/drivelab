@@ -205,4 +205,13 @@
   <data name="Update_NoFileSelected" xml:space="preserve"><value>Nenhum arquivo selecionado.</value></data>
   <data name="Update_Send" xml:space="preserve"><value>Enviar</value></data>
   <data name="Update_Warning" xml:space="preserve"><value>Não desconecte o dispositivo durante a atualização — interromper o flash pode deixá-lo inutilizável.</value></data>
+
+  <data name="Save_ToController" xml:space="preserve"><value>Salvar no controlador</value></data>
+  <data name="Save_ToController_Tip" xml:space="preserve"><value>Grava o ângulo de giro e o centro na flash da base. A força cai por cerca de um segundo durante a gravação.</value></data>
+  <data name="Center_Hotkey" xml:space="preserve"><value>Atalho de centralizar</value></data>
+  <data name="Center_Hotkey_Assign" xml:space="preserve"><value>Atribuir</value></data>
+  <data name="Center_Hotkey_ClearAll" xml:space="preserve"><value>Limpar tudo</value></data>
+  <data name="Center_Hotkey_Remove" xml:space="preserve"><value>Remover este atalho</value></data>
+  <data name="Center_Hotkey_Empty" xml:space="preserve"><value>Nenhum atalho — clique em Atribuir e aperte um botão ou tecla.</value></data>
+  <data name="Center_Hotkey_Capturing" xml:space="preserve"><value>Segure o botão/combo (ou as teclas, ex.: Ctrl + F9) e solte para confirmar…</value></data>
 </root>

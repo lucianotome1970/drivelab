@@ -45,7 +45,48 @@
                 <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
             </WrapPanel>
 
-            <Button Classes="accent" Content="{loc:Translate Center}" Command="{Binding CenterCommand}" HorizontalAlignment="Left" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="accent" Content="{loc:Translate Center}" Command="{Binding CenterCommand}" />
+                <!-- O "Salvar no controlador" das abas de config NÃO alcança o dashboard: o ângulo de
+                     giro (MotionRange) e o centro vivem aqui. Sem este botão o ângulo escolhido se
+                     perde no power-cycle (constatado na bancada em 2026-08-05). -->
+                <Button Classes="accent" Content="{loc:Translate Save_ToController}"
+                        Command="{Binding SaveToControllerCommand}"
+                        ToolTip.Tip="{loc:Translate Save_ToController_Tip}" />
+            </StackPanel>
+
+            <!-- Atalho de CENTRALIZAR (estilo ACC): vários mapeamentos, de qualquer controlador HID
+                 e/ou do teclado. "Atribuir" entra em captura: segure o botão/combo e solte p/ confirmar. -->
+            <StackPanel Spacing="8" IsVisible="{Binding IsConnected}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{loc:Translate Center_Hotkey}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                    <Button Classes="chip" Content="{loc:Translate Center_Hotkey_Assign}"
+                            Command="{Binding ToggleAssignCenterButtonCommand}"
+                            Classes.selected="{Binding IsAssigningCenterButton}" />
+                    <Button Classes="chip" Content="{loc:Translate Center_Hotkey_ClearAll}"
+                            Command="{Binding ClearAllCenterButtonsCommand}" />
+                </StackPanel>
+
+                <!-- Lista dos mapeamentos ativos; cada linha tem o rótulo + ✕ para remover só aquele. -->
+                <ItemsControl ItemsSource="{Binding CenterBindings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CenterBindingRowViewModel">
+                            <Border Classes="valueBox" HorizontalAlignment="Left" Margin="0,0,0,4" Padding="10,3">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                    <Button Content="✕" Command="{Binding RemoveCommand}" Padding="7,1"
+                                            VerticalAlignment="Center" ToolTip.Tip="{loc:Translate Center_Hotkey_Remove}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="{loc:Translate Center_Hotkey_Empty}" Opacity="0.6"
+                           IsVisible="{Binding HasNoCenterBindings}" />
+                <TextBlock Text="{loc:Translate Center_Hotkey_Capturing}" Opacity="0.7" FontStyle="Italic"
+                           IsVisible="{Binding IsAssigningCenterButton}" />
+            </StackPanel>
         </StackPanel>
     </Border>
 </UserControl>

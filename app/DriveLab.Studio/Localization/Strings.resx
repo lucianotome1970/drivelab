@@ -206,4 +206,13 @@
   <data name="Update_NoFileSelected" xml:space="preserve"><value>No file selected.</value></data>
   <data name="Update_Send" xml:space="preserve"><value>Send</value></data>
   <data name="Update_Warning" xml:space="preserve"><value>Do not disconnect the device while updating — interrupting the flash can leave it unusable.</value></data>
+
+  <data name="Save_ToController" xml:space="preserve"><value>Save to controller</value></data>
+  <data name="Save_ToController_Tip" xml:space="preserve"><value>Stores the steering angle and centre in the base's flash. Force drops for about a second while it writes.</value></data>
+  <data name="Center_Hotkey" xml:space="preserve"><value>Centre shortcut</value></data>
+  <data name="Center_Hotkey_Assign" xml:space="preserve"><value>Assign</value></data>
+  <data name="Center_Hotkey_ClearAll" xml:space="preserve"><value>Clear all</value></data>
+  <data name="Center_Hotkey_Remove" xml:space="preserve"><value>Remove this shortcut</value></data>
+  <data name="Center_Hotkey_Empty" xml:space="preserve"><value>No shortcut — click Assign and press a button or key.</value></data>
+  <data name="Center_Hotkey_Capturing" xml:space="preserve"><value>Hold the button/combo (or the keys, e.g. Ctrl + F9) and release to confirm…</value></data>
 </root>

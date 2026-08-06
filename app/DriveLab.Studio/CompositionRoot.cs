@@ -171,9 +171,27 @@ public static class CompositionRoot
             wheelIsRp2040 = true;
         }
 
+        // Atalho de CENTRALIZAR (estilo ACC): vários mapeamentos ao mesmo tempo, vindos de qualquer
+        // controlador HID (buttonbox/gamepad/aro) e/ou do teclado (hook global, funciona com o jogo em
+        // foco). O controlador junta as fontes, aprende o gesto ("segure o combo e solte") e dispara o
+        // ResetCenter na base. Persistido em %APPDATA%/DriveLab/center-button.json.
+        var centerButtonStore = new CenterButtonStore();
+        var centerSources = new IInputSource[]
+        {
+            new HidButtonInputSource(),
+            new KeyboardInputSource(),   // no-op fora do Windows
+        };
+        var centerHotkey = new CenterHotkeyController(
+            center: () => { if (session.IsConnected) _ = session.SendCommandAsync(BaseCommand.ResetCenter); },
+            sources: centerSources,
+            initial: centerButtonStore.Load(),
+            save: centerButtonStore.Save,
+            ui: dispatcher);
+
         // Home (dash): card do volante (acende com o aro) + card da base (força total) + resumo
         // ao vivo dos pedais e do freio de mão. Base usa a MESMA sessão FFB.
-        var home = new HomeViewModel(new DashboardViewModel(session, wheelSession), pedals, handbrake, new BaseViewModel(session));
+        var home = new HomeViewModel(new DashboardViewModel(session, wheelSession, centerHotkey),
+                                     pedals, handbrake, new BaseViewModel(session));
 
         // Rev-lights por telemetria de jogo: serviço que lê a telemetria (ACC/AC hoje; iRacing/rF2 depois) e
         // dirige a barra de LEDs do aro. Relógio monotônico compartilhado (varredura simulada + piscar do shift).
