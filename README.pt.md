@@ -180,7 +180,7 @@ Esta é a **base** (o wheelbase direct-drive). Cada outro módulo é um disposit
 
 | Peça | Observações |
 |------|-------------|
-| **Placa classe ODrive v3.6** (STM32F405) — validada: **MKS ODRIVE-S V3.6-S6V** | Qualquer placa F405 classe ODrive — veja [Placa base](#-placa-base). **As placas MKS aceitam de 12 a 56 V**, então a fonte é escolha sua dentro dessa faixa. **As ODESC vêm em duas variantes, 8–24 V e 8–56 V** — confira qual é a sua e fique dentro dela. Em qualquer caso, uma fonte mais baixa dá folga extra contra os picos de tensão da frenagem regenerativa. Placas fora do layout ODrive v3.6 podem exigir remapear pinos. |
+| **Placa classe ODrive v3.6** (STM32F405) — validada: **MKS ODRIVE-S V3.6-S6V** | Qualquer placa F405 classe ODrive — veja [Placa base](#-placa-base). **As placas MKS aceitam de 12 a 56 V**, então a fonte é escolha sua dentro dessa faixa. **As ODESC vêm em duas variantes, 8–24 V e 8–56 V** — confira no adesivo `QC PASS` (`24V` / `56V`) ou na cor do LED (roxo / verde) e fique dentro dela. Em qualquer caso, uma fonte mais baixa dá folga extra contra os picos de tensão da frenagem regenerativa. Placas fora do layout ODrive v3.6 podem exigir remapear pinos. |
 | **Motor de roda de hoverboard** | O atuador direct-drive. |
 | **Encoder** | Omron E6B2-CWZ6C incremental **ou** magnético absoluto AS5047P/MT6701 — sua escolha. |
 | **Resistor de freio 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia da frenagem regenerativa para ela não destruir os capacitores. |
@@ -259,7 +259,7 @@ O chopper do resistor de freio, o contator off-state e o soft-power estão imple
 
 ## ⚠️ Segurança
 
-- **Saiba o que a sua placa aceita antes de ligar uma fonte.** **As placas MKS aceitam de 12 a 56 V.** **As ODESC vêm em duas variantes, 8–24 V e 8–56 V** — a de 8–24 V tem capacitores de 35 V, a de 8–56 V tem capacitores de 63 V. **Nunca ultrapasse o limite da SUA placa**, e lembre que os picos da frenagem regenerativa jogam o barramento acima da tensão da fonte, então uma fonte mais baixa é a escolha mais segura.
+- **Saiba o que a sua placa aceita antes de ligar uma fonte.** **As placas MKS aceitam de 12 a 56 V.** **As ODESC vêm em duas variantes, 8–24 V e 8–56 V.** Dá pra diferenciar olhando a placa, sem datasheet: o **adesivo `QC PASS`** diz `24V` ou `56V`, e o **LED de status é roxo na placa de 24 V e verde na de 56 V**. Não se guie pelos capacitores — as duas variantes usam os de 63 V. **Nunca ultrapasse o limite da SUA placa**, e lembre que os picos da frenagem regenerativa jogam o barramento acima da tensão da fonte, então uma fonte mais baixa é a escolha mais segura.
 - O **resistor de freio de 2 Ω é obrigatório** antes de qualquer torque em malha fechada; a frenagem regenerativa devolve energia ao barramento e, sem ele, destrói os capacitores.
 - `M0` e `M0.5` rodam **sem motor conectado**. Suba a corrente aos poucos. Um volante direct-drive tem torque de sobra pra machucar o seu pulso — mantenha uma parada de emergência (a tomada) ao alcance.
 

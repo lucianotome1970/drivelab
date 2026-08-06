@@ -180,7 +180,7 @@ This is the **base** (the direct-drive wheelbase). Each other module is an indep
 
 | Part | Notes |
 |------|-------|
-| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board). **MKS boards take 12–56 V**, so the supply is your choice within that range. **ODESC boards ship in two variants, 8–24 V and 8–56 V** — check which one you have and stay inside it. Either way, a lower supply leaves extra headroom against regen voltage spikes. Boards other than the ODrive v3.6 layout may need a pin remap. |
+| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board). **MKS boards take 12–56 V**, so the supply is your choice within that range. **ODESC boards ship in two variants, 8–24 V and 8–56 V** — check the `QC PASS` sticker (`24V` / `56V`) or the LED colour (purple / green) and stay inside it. Either way, a lower supply leaves extra headroom against regen voltage spikes. Boards other than the ODrive v3.6 layout may need a pin remap. |
 | **Hoverboard hub motor** | The direct-drive actuator. |
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
@@ -259,7 +259,7 @@ The brake-resistor chopper, off-state contactor and soft-power are implemented a
 
 ## ⚠️ Safety
 
-- **Know what your board accepts before you plug in a supply.** **MKS boards take 12–56 V.** **ODESC boards come in two variants, 8–24 V and 8–56 V** — the 8–24 V one has 35 V capacitors, the 8–56 V one has 63 V capacitors. **Never exceed your board's rating**, and remember regen spikes push the bus above the supply voltage, so a lower supply is the safer choice.
+- **Know what your board accepts before you plug in a supply.** **MKS boards take 12–56 V.** **ODESC boards come in two variants, 8–24 V and 8–56 V.** You can tell them apart without a datasheet: the **QC PASS sticker** on the board reads `24V` or `56V`, and the status **LED is purple on the 24 V board and green on the 56 V board**. Do not go by the capacitors — both variants use 63 V ones. **Never exceed your board's rating**, and remember regen spikes push the bus above the supply voltage, so a lower supply is the safer choice.
 - The **2 Ω brake resistor is mandatory** before any closed-loop torque; regen braking pushes energy back onto the bus and will destroy the capacitors without it.
 - `M0`/`M0.5` run **with no motor connected**. Bring current up gradually. A direct-drive wheel has enough torque to hurt your wrist — keep an e-stop (the plug) within reach.
 

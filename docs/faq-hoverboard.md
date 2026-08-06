@@ -116,9 +116,12 @@ decide how much force you can hold before the supply gives up.
 
 **What to do**
 
-1. **Match the voltage to your board's variant first.** These boards come in a 24 V
-   version and a 56 V version. Feeding a 24 V board more than it accepts destroys it.
-   Check the board, not the motor.
+1. **Match the voltage to what your board accepts — check the board, not the motor.**
+   Some boards take a wide range (many accept 12–56 V). Others ship as two variants, a
+   lower-voltage one and a higher-voltage one, and feeding the low one too much destroys
+   it. On the common ODESC boards you can tell which you have by looking: the `QC PASS`
+   sticker reads `24V` or `56V`, and the status LED is purple on the 24 V board and green
+   on the 56 V one. Do not judge by the capacitors — both variants use the same ones.
 2. **Aim for 500-600 W** for a single wheel base. This is comfortable, not tight.
 3. Use a supply with a real, steady output. A laptop-style brick is not suitable —
    it cannot deliver the short, hard current spikes a wheel base demands.
@@ -905,9 +908,12 @@ decidem quanta força você consegue segurar antes da fonte desistir.
 
 **O que fazer**
 
-1. **Case a tensão com a versão da sua placa primeiro.** Essas placas existem em versão
-   de 24 V e de 56 V. Dar mais tensão do que a placa aceita destrói ela. Confira a
-   placa, não o motor.
+1. **Case a tensão com o que a sua placa aceita — confira a placa, não o motor.**
+   Algumas placas aceitam uma faixa larga (muitas vão de 12 a 56 V). Outras vêm em duas
+   variantes, uma de tensão menor e outra de tensão maior, e dar tensão demais na menor
+   destrói ela. Nas ODESC, que são as mais comuns, dá pra saber qual você tem olhando: o
+   adesivo `QC PASS` diz `24V` ou `56V`, e o LED de status é roxo na placa de 24 V e
+   verde na de 56 V. Não julgue pelos capacitores — as duas variantes usam os mesmos.
 2. **Mire em 500-600 W** para uma base de volante. Isso é confortável, não apertado.
 3. Use uma fonte de saída firme e estável. Fonte tipo tijolo de notebook não serve —
    ela não entrega os picos curtos e fortes de corrente que uma base exige.
