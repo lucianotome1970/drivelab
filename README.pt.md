@@ -86,12 +86,12 @@ A base (o estágio do motor de FFB) roda em qualquer **controladora STM32F405 cl
 <tr>
 <td width="50%" valign="top">
 <img src="docs/screenshots/board-odesc-v42.png" width="100%" alt="Ligação da ODESC v4.2" /><br/>
-<b>ODESC v4.2</b> — variante 24 V ou 56 V · ~70 A / 120 A de pico · já vem com resistor de freio.<br/>
+<b>ODESC v4.2</b> — variante 24 V ou 56 V · ~70 A / 120 A de pico.<br/>
 Ligação: motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>, resistor de freio → <code>AUX</code>.
 </td>
 <td width="50%" valign="top">
 <img src="docs/screenshots/board-mks-xdrive-s.png" width="100%" alt="MKS XDrive-S" /><br/>
-<b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A de pico · mesmo MCU F405, então é alternativa drop-in · já vem com dissipadores + resistor de freio.
+<b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A de pico · mesmo MCU F405, então é alternativa drop-in · já vem com dissipadores.
 </td>
 </tr>
 </table>
