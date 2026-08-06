@@ -38,6 +38,8 @@ public static class BaseSettingsSchema
         new(BaseSettingId.Linearity, "linearity", "Linearidade da resposta", SettingType.UInt8, 50, 200, "%", SettingTab.Advanced, 100),
         new(BaseSettingId.CoggingEnable, "cogging_enable", "Compensação de cogging", SettingType.UInt8, 0, 1, "", SettingTab.Advanced, 0),
         new(BaseSettingId.SlewRate, "slew_rate", "Limite de variação (slew)", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
+        // OBSOLETO: fora da UI desde 2026-08-06 (ver BaseSettingId.BusNominalV). Fica no schema porque o
+        // descritor define o layout do blob de settings — removê-lo mudaria o formato gravado na NVM.
         new(BaseSettingId.BusNominalV, "bus_nominal_v", "Tensão da fonte (nominal)", SettingType.UInt8, 12, 56, "V", SettingTab.Hardware, 56),
         new(BaseSettingId.FfbCurve0, "ffb_curve_0", "Curva de força — 0%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0),
         new(BaseSettingId.FfbCurve1, "ffb_curve_1", "Curva de força — 25%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 25),

@@ -17,6 +17,7 @@ uint32_t odrive_bridge_encoder_error(void);// EncoderError bitfield
 float    odrive_bridge_get_vbus(void);      // tensão do bus (V)
 float    odrive_bridge_get_input_torque(void); // torque comandado atual (Nm)
 float    odrive_bridge_get_mcu_temp_c(void);  // temperatura do STM32 (sensor interno); -128 = sem leitura
+float    odrive_bridge_get_fet_temp_c(void);  // temperatura dos FETs (termistor de bordo); -128 = sem leitura
 void     odrive_bridge_disable_autostart(void); // desliga auto-arme/calib de boot (boota IDLE, seguro)
 void     odrive_bridge_request_idle(void);      // aborta p/ IDLE (motor off)
 int32_t  odrive_bridge_enc_cpr(void);

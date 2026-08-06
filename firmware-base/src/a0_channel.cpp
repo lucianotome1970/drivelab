@@ -184,6 +184,16 @@ extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len) {
     }
 }
 
+// Temperatura em °C → o campo i8 do protocolo. -128 é o código de "sem sensor", então as leituras
+// reais saturam em ±127 e nunca podem cair nesse valor por acidente (um -128 vindo de saturação
+// faria o app mostrar "—" com o sensor funcionando).
+static uint8_t a0_temp_i8(float c) {
+    if (!(c > -127.5f)) return (uint8_t)(int8_t)(-128);   // inclui NaN (toda comparação com NaN é falsa)
+    if (c >  127.0f)    return (uint8_t)(int8_t)(127);
+    if (c < -127.0f)    return (uint8_t)(int8_t)(-127);
+    return (uint8_t)(int8_t)c;
+}
+
 // Posição do volante já com o offset de centro (ResetCenter).
 static float a0_centered_turns(void) { return odrive_bridge_get_pos_turns() - s_center_turns; }
 
@@ -210,18 +220,11 @@ static void a0_build_state(uint8_t* p) {
     // do ffb_model (subiu de 5 → 10 Nm em 2026-08-05); com o 5 antigo a barra marcava o DOBRO do real.
     put_i16(&p[9], clip_i16(odrive_bridge_get_input_torque() / 10.0f * 10000.0f));
     put_i16(&p[11], clip_i16(odrive_bridge_get_iq_measured() * 1000.0f));          // MotorCurrentMa
-    p[13] = (uint8_t)(int8_t)(-128);                       // FetTempC (sem sensor)
+    p[13] = a0_temp_i8(odrive_bridge_get_fet_temp_c());    // FetTempC (termistor de bordo, canal 15)
     p[14] = (uint8_t)(odrive_bridge_axis_error() & 0xFF);  // ErrorCode
     put_u16(&p[15], (uint16_t)(odrive_bridge_get_vbus() * 1000.0f));               // BusVoltageMv
     p[17] = (uint8_t)(int8_t)(-128);                       // MotorTempC (sem sensor)
-    // Temperatura do MCU: sensor interno do STM32 (ver odrive_bridge). Única temperatura real desta
-    // placa. Satura em ±127 porque o campo é i8; -128 fica reservado p/ "sem sensor".
-    {
-        const float mcu = odrive_bridge_get_mcu_temp_c();
-        int8_t mcu_c = -128;                                // default: sem leitura
-        if (mcu > -127.5f) mcu_c = (int8_t)(mcu > 127.0f ? 127 : (mcu < -127.0f ? -127 : mcu));
-        p[18] = (uint8_t)mcu_c;                             // McuTempC
-    }
+    p[18] = a0_temp_i8(odrive_bridge_get_mcu_temp_c());     // McuTempC (sensor interno do STM32)
     p[19] = ffb_model_get_clipping();                       // Clipping 0-255 (o app converte p/ %)
 
     // Medidor do brake chopper (bytes 20-29) — layout casado com BaseState.cs.
@@ -229,6 +232,10 @@ static void a0_build_state(uint8_t* p) {
     put_u32(&p[20], g_brake_meter.energy_mj);              // BrakeEnergyMilliJ
     put_u32(&p[24], g_brake_meter.activations);            // BrakeActivations
     put_u16(&p[28], g_brake_meter.peak_dw);                // BrakePeakDeciW
+
+    // Pico de clipping da SESSÃO (desde o arme). O nível ao vivo em p[19] dura 500 ms e some antes
+    // de quem está pilotando conseguir olhar; este sobrevive à volta inteira. Byte antes zerado.
+    p[30] = ffb_model_get_clipping_peak();                 // ClippingPeak 0-255
 }
 
 // ---------------------------------------------------------------------------

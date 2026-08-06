@@ -30,6 +30,18 @@ extern "C" uint32_t odrive_bridge_encoder_error(void) { return (uint32_t)axes[0]
 extern "C" float odrive_bridge_get_vbus(void) { return vbus_voltage; }
 extern "C" float odrive_bridge_get_input_torque(void) { return axes[0].controller_.input_torque_; }
 
+// Temperatura dos FETs, do termistor de bordo do eixo 0 (canal 15 do ADC = PC5/M0_TEMP). O ODrive já
+// faz a conversão (polinômio + LPF de 0,1 s); aqui só entregamos o valor pronto.
+//
+// Este campo ia -128 ("sem sensor") desde o firmware ANTIGO, de quando concluímos que os pinos do
+// clone MKS divergiam do ODrive genuíno. Com o firmware ODrive o mapeamento vem certo e a premissa
+// envelheceu: medido por SWD em 2026-08-06, o termistor lê 42,4 °C estável, coerente com os 49 °C do
+// MCU. NaN vira -128 — o LPF começa em NaN e leva ~0,1 s pra convergir depois do boot.
+extern "C" float odrive_bridge_get_fet_temp_c(void) {
+    const float t = axes[0].motor_.fet_thermistor_.temperature_;
+    return (t != t) ? -128.0f : t;   // t != t  ⇔  NaN
+}
+
 // Temperatura do MCU (STM32F405), do sensor INTERNO — a unica temperatura real desta placa: o clone
 // MKS nao tras os termistores de FET/motor que o ODrive genuino tem (por isso aqueles vao -128 = sem
 // sensor). Nao mede o motor, mas denuncia gabinete abafado/dissipacao ruim, que e o que o usuario

@@ -57,9 +57,15 @@ static float    s_prevTorque     = 0.0f;    // P0 slew: torque do tick anterior 
 //   2) o teto duro de torque cortou a demanda crua — o clipping da SAÍDA.
 // Escala 0-255 no fio (o app converte pra %), casando com o campo Clipping do BaseState.
 static constexpr uint16_t kClipWindowTicks = 500;   // ticks de 1 ms
-static uint16_t s_clipTicks = 0;
+static uint16_t s_clipWindowTicksSeen = 0;
 static uint16_t s_clipHits  = 0;
 static uint8_t  s_clipLevel = 0;
+
+// PICO DA SESSÃO. O nível ao vivo é inútil pra quem está pilotando: ele existe por 500 ms e some
+// antes de a pessoa tirar os olhos da pista. Este guarda o MAIOR nível desde o arme, então dá pra
+// sair do jogo e ler "bateu 34%" — que é o número com que se decide subir ou baixar o ganho.
+// Mesma escolha dos contadores do chopper: acumular, porque ninguém está olhando na hora.
+static uint8_t  s_clipPeak  = 0;
 
 // --- Setters do canal A0 (app DriveLab Studio) ---
 extern "C" void ffb_model_set_telemetry_force(float f255) { s_telemetryForce = f255; }
@@ -167,10 +173,11 @@ extern "C" float ffb_model_compute_torque(float posTurns, float velTurnsPerSec) 
     // cortou a demanda. O 254.5 (e não 255.0) é de propósito: a conversão ±32767 → ±255 devolve
     // 254,99… no fundo de escala exato, e um `>= 255.0f` nunca dispararia.
     if (fabsf(hostF) >= 254.5f || fabsf(raw) > s_fc.torqueLimitNm) s_clipHits++;
-    if (++s_clipTicks >= kClipWindowTicks) {
+    if (++s_clipWindowTicksSeen >= kClipWindowTicks) {
         s_clipLevel = (uint8_t)((uint32_t)s_clipHits * 255u / kClipWindowTicks);
-        s_clipTicks = 0;
-        s_clipHits  = 0;
+        if (s_clipLevel > s_clipPeak) s_clipPeak = s_clipLevel;
+        s_clipWindowTicksSeen = 0;
+        s_clipHits            = 0;
     }
     if (s_slewMaxDeltaNm > 0.0f) t = slewLimit(t, s_prevTorque, s_slewMaxDeltaNm);  // P0 slew (0=off)
     s_prevTorque = t;                                                     // estado do slew p/ o próximo tick
@@ -186,14 +193,17 @@ extern "C" float ffb_model_compute_torque(float posTurns, float velTurnsPerSec) 
 }
 
 // Nível de clipping 0-255 pra telemetria (a0_channel). Ver o bloco do medidor lá em cima.
-extern "C" uint8_t ffb_model_get_clipping(void) { return s_clipLevel; }
+extern "C" uint8_t ffb_model_get_clipping(void)      { return s_clipLevel; }
+extern "C" uint8_t ffb_model_get_clipping_peak(void) { return s_clipPeak; }
 
 // Zera o medidor quando o motor NÃO está armado. Sem isto o último valor medido congela na tela
 // (o compute_torque só roda armado), e o usuário veria "40% de clipping" numa base parada.
+// O PICO também zera aqui: ele mede a sessão, e sessão começa no arme — igual ao medidor do chopper.
 extern "C" void ffb_model_reset_clipping(void) {
-    s_clipTicks = 0;
-    s_clipHits  = 0;
-    s_clipLevel = 0;
+    s_clipWindowTicksSeen = 0;
+    s_clipHits            = 0;
+    s_clipLevel           = 0;
+    s_clipPeak            = 0;
 }
 
 extern "C" uint8_t ffb_model_create_effect(void) { return s_effects.allocateBlock(); }

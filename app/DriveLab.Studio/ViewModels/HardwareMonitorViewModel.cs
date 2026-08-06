@@ -29,6 +29,8 @@ public partial class HardwareMonitorViewModel : ViewModelBase
     [ObservableProperty] private string _brakePeakText = "—";
     [ObservableProperty] private string _mcuTempText = "—";
     [ObservableProperty] private string _clippingText = "—";
+    [ObservableProperty] private string _clippingPeakText = "—";
+    [ObservableProperty] private TelemetryLevel _clippingPeakLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _busVoltageLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _fetTempLevel = TelemetryLevel.Ok;
     [ObservableProperty] private TelemetryLevel _motorTempLevel = TelemetryLevel.Ok;
@@ -101,6 +103,8 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         MotorTempText = TempText(s.MotorTempC);
         McuTempText = TempText(s.McuTempC);
         ClippingText = clipping + " %";
+        // O pico já vem acumulado do firmware (desde o arme) — aqui é leitura direta, sem janela.
+        ClippingPeakText = s.ClippingPeakPercent + " %";
 
         // Medidor do brake chopper. Existe porque o resistor quase nunca esquenta
         // (a frenagem dura milissegundos) e "frio" passa a impressão de "quebrado".
@@ -114,6 +118,7 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         MotorTempLevel = TempLevel(s.MotorTempC);
         McuTempLevel = TempLevel(s.McuTempC);
         ClippingLevel = ClipLevel(clipping);
+        ClippingPeakLevel = ClipLevel(s.ClippingPeakPercent);
 
         // Aviso de variante 24V/56V errada (flag do firmware). Mostra a tensão lida p/ ser acionável.
         VoltageWarning = s.Flags.HasFlag(BaseFlags.VoltageImplausible)

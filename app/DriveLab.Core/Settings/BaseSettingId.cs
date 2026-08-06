@@ -36,6 +36,10 @@ public enum BaseSettingId : byte
     Linearity = 24,
     CoggingEnable = 25,
     SlewRate = 26,
+    /// <summary>OBSOLETO (2026-08-06) — tirado da UI: declarar a tensão da fonte era pedir o que a base
+    /// já mede, e o firmware sempre ignorou o valor. O ID fica RESERVADO, nunca reciclado: bases em campo
+    /// têm esse byte no blob salvo na NVM, e reaproveitar o número faria uma base antiga ler o valor
+    /// errado no lugar do novo setting.</summary>
     BusNominalV = 27,
     FfbCurve0 = 28,
     FfbCurve1 = 29,

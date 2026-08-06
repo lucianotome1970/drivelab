@@ -30,6 +30,14 @@ public sealed class BaseState
     /// <summary>Clipping em 0..100% (derivado de <see cref="Clipping"/>).</summary>
     public int ClippingPercent => (int)System.Math.Round(Clipping / 255.0 * 100);
 
+    /// <summary>Maior clipping visto desde o arme do motor (0-255). O nível ao vivo dura 500 ms e some
+    /// antes de quem está pilotando conseguir olhar; este sobrevive à sessão inteira, e é o número com
+    /// que se decide subir ou baixar o ganho depois de sair do jogo.</summary>
+    public byte ClippingPeak { get; set; }
+
+    /// <summary>Pico de clipping da sessão em 0..100% (derivado de <see cref="ClippingPeak"/>).</summary>
+    public int ClippingPeakPercent => (int)System.Math.Round(ClippingPeak / 255.0 * 100);
+
     /// <summary>Energia total dissipada no resistor de freio desde o boot, em millijoules.</summary>
     public uint BrakeEnergyMilliJ { get; set; }
 
@@ -65,6 +73,7 @@ public sealed class BaseState
         BinaryPrimitives.WriteUInt32LittleEndian(span[20..24], BrakeEnergyMilliJ);
         BinaryPrimitives.WriteUInt32LittleEndian(span[24..28], BrakeActivations);
         BinaryPrimitives.WriteUInt16LittleEndian(span[28..30], BrakePeakDeciW);
+        span[30] = ClippingPeak;
         return buffer;
     }
 
@@ -85,5 +94,6 @@ public sealed class BaseState
         BrakeEnergyMilliJ = BinaryPrimitives.ReadUInt32LittleEndian(src[20..24]),
         BrakeActivations = BinaryPrimitives.ReadUInt32LittleEndian(src[24..28]),
         BrakePeakDeciW = BinaryPrimitives.ReadUInt16LittleEndian(src[28..30]),
+        ClippingPeak = src[30],
     };
 }

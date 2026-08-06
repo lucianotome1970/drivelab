@@ -15,7 +15,8 @@ float ffb_model_compute_torque(float posTurns, float velTurnsPerSec);  // roda o
 
 // Clipping do FFB: fração do tempo (janela de 500 ms) em que a força pedida saturou, em 0-255.
 // Só é medido com o motor armado — o laço chama o reset enquanto ele estiver desarmado.
-uint8_t ffb_model_get_clipping(void);
+uint8_t ffb_model_get_clipping(void);       // nível ao vivo (janela atual)
+uint8_t ffb_model_get_clipping_peak(void);  // maior nível desde o arme (é o que se lê depois de pilotar)
 void    ffb_model_reset_clipping(void);
 
 // --- roteamento HID (ffb_hid.cpp, contexto USB) ---

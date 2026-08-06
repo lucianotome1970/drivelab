@@ -52,7 +52,13 @@ public static class CompositionRoot
         new("Hardware", new[]
         {
             BaseSettingId.BoardVariant,  // variante da placa (24V/56V) → divisor do VBUS (hardware)
-            BaseSettingId.BusNominalV,   // tensão de operação/fonte → limiares (independente da variante)
+            // BusNominalV REMOVIDO da UI (2026-08-06). Pedir a tensão da fonte era declarar o que já
+            // medimos: o firmware ignora o valor (`(void)bus_nominal_v` em odrive_bridge.cpp) e deriva
+            // rampa/trip do vbus REAL no arme (autoscale_bus_limits). Pior, o campo convidava a confiar
+            // nele: quem declarasse 24V com 36V entrando veria um número que parece configurar proteção
+            // e não configura. A variante da placa continua porque não é derivável da leitura — é ela
+            // que define o divisor do ADC, sem o qual a leitura não significa nada.
+            BaseSettingId.TorqueConstant,  // Kt [Nm/A] → destrava o torque estimado (Kt·Iq) no monitor
             BaseSettingId.EncoderDirection,
             BaseSettingId.EncoderCpr,
             BaseSettingId.EncoderType,
