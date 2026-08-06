@@ -122,6 +122,17 @@ decide how much force you can hold before the supply gives up.
    it. On the common ODESC boards you can tell which you have by looking: the `QC PASS`
    sticker reads `24V` or `56V`, and the status LED is purple on the 24 V board and green
    on the 56 V one. Do not judge by the capacitors — both variants use the same ones.
+
+   <table>
+   <tr>
+   <td width="50%"><img src="screenshots/odesc-v42-24v.png" width="100%" alt="ODESC v4.2 24 V — QC PASS 24V sticker, purple LED"></td>
+   <td width="50%"><img src="screenshots/odesc-v42-56v.png" width="100%" alt="ODESC v4.2 56 V — QC PASS 56V sticker, green LED"></td>
+   </tr>
+   <tr>
+   <td><b>8–24 V</b> — sticker <code>24V</code>, purple LED</td>
+   <td><b>8–56 V</b> — sticker <code>56V</code>, green LED</td>
+   </tr>
+   </table>
 2. **Aim for 500-600 W** for a single wheel base. This is comfortable, not tight.
 3. Use a supply with a real, steady output. A laptop-style brick is not suitable —
    it cannot deliver the short, hard current spikes a wheel base demands.
@@ -914,6 +925,17 @@ decidem quanta força você consegue segurar antes da fonte desistir.
    destrói ela. Nas ODESC, que são as mais comuns, dá pra saber qual você tem olhando: o
    adesivo `QC PASS` diz `24V` ou `56V`, e o LED de status é roxo na placa de 24 V e
    verde na de 56 V. Não julgue pelos capacitores — as duas variantes usam os mesmos.
+
+   <table>
+   <tr>
+   <td width="50%"><img src="screenshots/odesc-v42-24v.png" width="100%" alt="ODESC v4.2 24 V — adesivo QC PASS 24V, LED roxo"></td>
+   <td width="50%"><img src="screenshots/odesc-v42-56v.png" width="100%" alt="ODESC v4.2 56 V — adesivo QC PASS 56V, LED verde"></td>
+   </tr>
+   <tr>
+   <td><b>8–24 V</b> — adesivo <code>24V</code>, LED roxo</td>
+   <td><b>8–56 V</b> — adesivo <code>56V</code>, LED verde</td>
+   </tr>
+   </table>
 2. **Mire em 500-600 W** para uma base de volante. Isso é confortável, não apertado.
 3. Use uma fonte de saída firme e estável. Fonte tipo tijolo de notebook não serve —
    ela não entrega os picos curtos e fortes de corrente que uma base exige.
