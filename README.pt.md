@@ -96,6 +96,24 @@ Ligação: motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>
 </tr>
 </table>
 
+<details>
+<summary><b>Qual variante de ODESC eu tenho?</b> — o adesivo e o LED dizem</summary>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2 24 V — adesivo QC PASS 24V, LED roxo"></td>
+<td width="50%"><img src="docs/screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2 56 V — adesivo QC PASS 56V, LED verde"></td>
+</tr>
+<tr>
+<td><b>8–24 V</b> — adesivo <code>QC PASS 24V</code>, LED de status <b>roxo</b></td>
+<td><b>8–56 V</b> — adesivo <code>QC PASS 56V</code>, LED de status <b>verde</b></td>
+</tr>
+</table>
+
+Os capacitores são iguais nas duas (63 V), então não dizem nada. Dar mais tensão do que a placa de 24 V aceita destrói ela.
+
+</details>
+
 > ℹ️ O firmware está hoje **fixado no layout da ODrive v3.6** e **validado numa MKS ODRIVE-S V3.6-S6V**. Outras placas F405 classe ODrive compartilham o MCU e o USB, mas uma placa com **pinagem diferente (ex.: ODESC v4.2)** pode exigir remapear os pinos em `firmware-base/lib/base_motor/odrive_v36_pins.h`.
 
 ---

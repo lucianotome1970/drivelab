@@ -96,6 +96,24 @@ Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake re
 </tr>
 </table>
 
+<details>
+<summary><b>Which ODESC variant do I have?</b> — the sticker and the LED tell you</summary>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2 24 V — QC PASS 24V sticker, purple LED"></td>
+<td width="50%"><img src="docs/screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2 56 V — QC PASS 56V sticker, green LED"></td>
+</tr>
+<tr>
+<td><b>8–24 V</b> — <code>QC PASS 24V</code> sticker, <b>purple</b> status LED</td>
+<td><b>8–56 V</b> — <code>QC PASS 56V</code> sticker, <b>green</b> status LED</td>
+</tr>
+</table>
+
+The capacitors are the same on both (63 V), so they tell you nothing. Feeding a 24 V board more than it takes destroys it.
+
+</details>
+
 > ℹ️ The firmware is currently **pinned to the ODrive v3.6 layout** and **validated on an MKS ODRIVE-S V3.6-S6V**. Other F405 ODrive-class boards share the MCU and USB, but a board with a **different pinout (e.g. ODESC v4.2)** may need a pin remap in `firmware-base/lib/base_motor/odrive_v36_pins.h`.
 
 ---
