@@ -71,4 +71,39 @@ public class BaseStateTests
         var parsed = BaseState.Parse(state.ToBytes());
         Assert.Equal((ushort)65535, parsed.BusVoltageMv);
     }
+
+    [Fact]
+    public void RoundTrip_PreservaOsCamposDoBrakeChopper()
+    {
+        var original = new BaseState
+        {
+            BrakeEnergyMilliJ = 1_234_567u,
+            BrakeActivations  = 4_242u,
+            BrakePeakDeciW    = 2_880,
+        };
+
+        var voltou = BaseState.Parse(original.ToBytes());
+
+        Assert.Equal(1_234_567u, voltou.BrakeEnergyMilliJ);
+        Assert.Equal(4_242u, voltou.BrakeActivations);
+        Assert.Equal((ushort)2_880, voltou.BrakePeakDeciW);
+    }
+
+    [Fact]
+    public void RoundTrip_SuportaOsValoresMaximosDoBrakeChopper()
+    {
+        var original = new BaseState
+        {
+            BrakeEnergyMilliJ = uint.MaxValue,
+            BrakeActivations  = uint.MaxValue,
+            BrakePeakDeciW    = ushort.MaxValue,
+        };
+
+        var voltou = BaseState.Parse(original.ToBytes());
+
+        Assert.Equal(uint.MaxValue, voltou.BrakeEnergyMilliJ);
+        Assert.Equal(uint.MaxValue, voltou.BrakeActivations);
+        Assert.Equal(ushort.MaxValue, voltou.BrakePeakDeciW);
+    }
+
 }

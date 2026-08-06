@@ -30,6 +30,22 @@ public sealed class BaseState
     /// <summary>Clipping em 0..100% (derivado de <see cref="Clipping"/>).</summary>
     public int ClippingPercent => (int)System.Math.Round(Clipping / 255.0 * 100);
 
+    /// <summary>Energia total dissipada no resistor de freio desde o boot, em millijoules.</summary>
+    public uint BrakeEnergyMilliJ { get; set; }
+
+    /// <summary>Quantas vezes o chopper acionou desde o boot (eventos de frenagem, não ciclos de PWM).</summary>
+    public uint BrakeActivations { get; set; }
+
+    /// <summary>Maior potência instantânea vista no resistor desde o boot, em décimos de watt.</summary>
+    public ushort BrakePeakDeciW { get; set; }
+
+    /// <summary>Energia dissipada em joules (derivada de <see cref="BrakeEnergyMilliJ"/>).</summary>
+    public double BrakeEnergyJoules => BrakeEnergyMilliJ / 1000.0;
+
+    /// <summary>Pico de potência em watts (derivado de <see cref="BrakePeakDeciW"/>).</summary>
+    public double BrakePeakWatts => BrakePeakDeciW / 10.0;
+
+
     public byte[] ToBytes()
     {
         var buffer = new byte[ReportConstants.ReportSize];
@@ -46,6 +62,9 @@ public sealed class BaseState
         span[17] = (byte)MotorTempC;
         span[18] = (byte)McuTempC;
         span[19] = Clipping;
+        BinaryPrimitives.WriteUInt32LittleEndian(span[20..24], BrakeEnergyMilliJ);
+        BinaryPrimitives.WriteUInt32LittleEndian(span[24..28], BrakeActivations);
+        BinaryPrimitives.WriteUInt16LittleEndian(span[28..30], BrakePeakDeciW);
         return buffer;
     }
 
@@ -63,5 +82,8 @@ public sealed class BaseState
         MotorTempC = (sbyte)src[17],
         McuTempC = (sbyte)src[18],
         Clipping = src[19],
+        BrakeEnergyMilliJ = BinaryPrimitives.ReadUInt32LittleEndian(src[20..24]),
+        BrakeActivations = BinaryPrimitives.ReadUInt32LittleEndian(src[24..28]),
+        BrakePeakDeciW = BinaryPrimitives.ReadUInt16LittleEndian(src[28..30]),
     };
 }
