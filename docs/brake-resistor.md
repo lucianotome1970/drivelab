@@ -36,14 +36,14 @@ that energy as heat and clamps the bus voltage. It is an *electrical brake*.
 
 Two values are common, and they suit **different goals**:
 
-| | **2Ω** (ODrive spec — ships with the ODESC) | **12Ω** (DD-wheel / FFBeast community) |
+| | **2Ω** (the ODrive spec) | **12Ω** |
 |---|---|---|
 | Dump capacity | **High** — matches the brake-FET current rating | Lower, **but plenty for a steering wheel** |
 | Peak current `V/R` (→ EMI / di/dt) | **High** → more switching noise | **~6× lower** → much less noise |
 | Best for | High-power / **robotics** (ODrive's origin) | A **DD sim wheel** |
 
-**For a DD sim wheel, 12Ω is the community standard** — people running *working* FFBeast
-setups use it — and there are two solid reasons:
+**For a DD sim wheel, 12Ω is the better fit**, for two reasons that come straight from the
+physics:
 
 1. **A wheel's regen is small.** A steering wheel has **low inertia** (it's not a vehicle);
    even a hard counter-steer is a few tens of watts, well within 12Ω's capacity. You don't
@@ -55,9 +55,9 @@ setups use it — and there are two solid reasons:
    **12Ω** resistor pulls **~1–5 A** → the noise is far smaller → the problem largely
    **disappears at the source**.
 
-**2Ω also works** (it's the ODrive spec and what the ODESC ships), especially with clean
-wiring (short, twisted resistor leads). But for a DD wheel, **12Ω is likely the better
-choice** — adequate dump *and* much gentler on EMI.
+**2Ω also works** — it is the ODrive spec, and it is what our own bench runs — especially
+with clean wiring (short, twisted resistor leads). But for a DD wheel **12Ω is the safer
+choice**: enough dump capacity *and* far gentler on EMI.
 
 Peak dump (chopper fully on):
 
@@ -129,14 +129,14 @@ essa energia em calor e segura a tensão. É um *freio elétrico*.
 
 Dois valores são comuns, e servem a **objetivos diferentes**:
 
-| | **2Ω** (spec ODrive — vem com a ODESC) | **12Ω** (comunidade DD / FFBeast) |
+| | **2Ω** (a spec do ODrive) | **12Ω** |
 |---|---|---|
 | Capacidade de dump | **Alta** — casa com o limite de corrente do FET de freio | Menor, **mas de sobra pra um volante** |
 | Corrente de pico `V/R` (→ EMI / di/dt) | **Alta** → mais ruído de chaveamento | **~6× menor** → muito menos ruído |
 | Melhor pra | Alta potência / **robótica** (origem do ODrive) | Um **volante DD** |
 
-**Pra um volante DD, o 12Ω é o padrão da comunidade** — quem tem setup FFBeast *funcionando*
-usa ele — e por dois motivos sólidos:
+**Pra um volante DD, o 12Ω é a escolha que faz mais sentido**, por dois motivos que saem
+direto da física:
 
 1. **O regen de um volante é pequeno.** Um volante tem **inércia baixa** (não é um veículo);
    mesmo um contra-esterço forte são umas dezenas de watts, bem dentro da capacidade do 12Ω.
@@ -147,7 +147,7 @@ usa ele — e por dois motivos sólidos:
    resistor de ~2Ω, e só resolveu trançando os cabos do resistor*. Um **12Ω** puxa **~1–5 A** → o
    ruído é muito menor → o problema **some na origem**.
 
-**2Ω também funciona** (é a spec do ODrive e o que a ODESC manda), principalmente com fiação
+**2Ω também funciona** — é a spec do ODrive e é o que roda na nossa bancada —, principalmente com fiação
 limpa (cabos curtos e trançados). Mas pra um volante DD, **o 12Ω provavelmente é a melhor
 escolha** — dump suficiente *e* muito mais gentil com a EMI.
 
@@ -172,7 +172,7 @@ Pico de dissipação (chopper 100% ligado):
 ### Watts: 50W ou 100W?
 
 O **W é folga térmica, não a potência de pico.** Frenagem é em **pulsos curtos**, então a média
-é baixa e **50W é o padrão da comunidade/ODESC** e funciona. Um de **100W** só roda mais frio /
+é baixa e **50W dá conta**. Um de **100W** só roda mais frio /
 tem mais margem — bom ter, não obrigatório.
 
 ### Duas coisas que importam
