@@ -16,139 +16,122 @@ Custom firmware for ODrive v3.6-class boards (validated on the MKS ODRIVE-S V3.6
 </p>
 
 <p align="center">
-  <a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-portugu%C3%AAs">🇧🇷 Português</a> &nbsp;·&nbsp; <a href="#-download--baixar">⬇️ Download</a> &nbsp;·&nbsp; <a href="https://discord.gg/Xp2pGm5wj">💬 Discord</a>
+  <a href="README.pt.md">🇧🇷 Leia em português</a> &nbsp;·&nbsp; <a href="#-download">⬇️ Download</a> &nbsp;·&nbsp; <a href="https://discord.gg/Xp2pGm5wj">💬 Discord</a>
 </p>
 
 ---
 
-## ⬇️ Download / Baixar
+## ⬇️ Download
 
-**🇬🇧 [Download the latest DriveLab Studio for Windows](https://github.com/lucianotome1970/drivelab/releases/latest)** — a self-contained `.exe`, no .NET install needed. Early **pre-release** for testing. It isn't code-signed, so Windows SmartScreen will warn: **More info → Run anyway**. To explore without hardware, run `DriveLab.Studio.exe --simulator`.
+**[Download the latest DriveLab Studio for Windows](https://github.com/lucianotome1970/drivelab/releases/latest)** — a self-contained `.exe`, no .NET install needed.
 
-**🇧🇷 [Baixar o DriveLab Studio mais recente para Windows](https://github.com/lucianotome1970/drivelab/releases/latest)** — um `.exe` self-contained, sem instalar .NET. **Pre-release** inicial para testes. Não é assinado, então o SmartScreen do Windows vai avisar: **Mais informações → Executar assim mesmo**. Para explorar sem hardware, rode `DriveLab.Studio.exe --simulator`.
+Early **pre-release** for testing. It isn't code-signed, so Windows SmartScreen will warn: **More info → Run anyway**. To explore without hardware, run `DriveLab.Studio.exe --simulator`.
 
-> All builds live on the [releases page](https://github.com/lucianotome1970/drivelab/releases). · *Todas as versões ficam na [página de releases](https://github.com/lucianotome1970/drivelab/releases).*
+All builds live on the [releases page](https://github.com/lucianotome1970/drivelab/releases).
 
-> 🛠️ **Building & selling DDs?** The **[Maker's guide](docs/guia-criador.md)** shows how to configure your hardware and ship a Windows installer with the config bundled. · *🛠️ **Monta e vende DDs?** O **[Guia do criador](docs/guia-criador.md)** mostra como configurar seu hardware e gerar um instalador Windows já com a config embutida.*
+> 🛠️ **Building & selling DDs?** The **[Maker's guide](docs/guia-criador.md)** shows how to configure your hardware and ship a Windows installer with the config bundled.
 
 ---
 
 ## 📸 Screenshots
 
-<p align="center"><img src="docs/screenshots/home.png" width="860" alt="Home / Painel inicial"></p>
+<p align="center"><img src="docs/screenshots/home.png" width="860" alt="Home"></p>
 
 **Home** — overview dashboard: the Wheel, Base, Pedals and Handbrake cards with live values (wheel angle, base force, live pedal bars) plus steering-rotation presets and the **Center** button.
-<br/>🇧🇷 *Painel inicial: cartões do Volante, Base, Pedais e Freio de mão com valores ao vivo (ângulo do volante, força da base, barras dos pedais) + presets de rotação e o botão **Center**.*
 
-<p align="center"><img src="docs/screenshots/wheelbase-basic.png" width="860" alt="Wheel Base — Basic / Base do Volante — Básico"></p>
+<p align="center"><img src="docs/screenshots/wheelbase-basic.png" width="860" alt="Wheel Base — Basic"></p>
 
 **Wheel Base → Basic** — everyday force-feedback tuning: total force, soft-stop force/range, wheel spring and damper, each with a slider and quick presets.
-<br/>🇧🇷 *Base do Volante → Básico: ajuste de FFB do dia a dia — força total, força/range do batente, mola e damper do volante, cada um com slider e presets rápidos.*
 
-<p align="center"><img src="docs/screenshots/wheelbase-hardware.png" width="860" alt="Wheel Base — Hardware & telemetry / Hardware e telemetria"></p>
+<p align="center"><img src="docs/screenshots/wheelbase-hardware.png" width="860" alt="Wheel Base — Hardware & telemetry"></p>
 
 **Wheel Base → Hardware** — the read-only **telemetry monitor** (bus voltage, motor current, FET/motor/MCU temperatures) sits above the hardware setup: encoder direction/CPR, **encoder type** (quadrature E6B2 or magnetic SPI AS5047), current-loop P/I gains and calibration current.
-<br/>🇧🇷 *Base do Volante → Hardware: o **monitor de telemetria** (tensão do barramento, corrente do motor, temperaturas FET/motor/MCU) fica acima da configuração de hardware — direção/CPR do encoder, **tipo de encoder** (quadratura E6B2 ou SPI magnético AS5047), ganhos P/I da malha de corrente e corrente de calibração.*
 
-<p align="center"><img src="docs/screenshots/pedals.png" width="860" alt="Pedals / Pedais"></p>
+<p align="center"><img src="docs/screenshots/pedals.png" width="860" alt="Pedals"></p>
 
 **Pedals** — per-pedal output curves (Linear / S-Curve / Fast / Slow) with a draggable curve editor, invert, smoothing and sensor type (pot / hall / load cell); the brake adds a load-cell target in % or kg. Live input bars on the right.
-<br/>🇧🇷 *Pedais: curvas de saída por pedal (Linear / S-Curve / Fast / Slow) com editor de curva arrastável, inverter, suavização e tipo de sensor (pot / hall / load cell); o freio adiciona alvo de load cell em % ou kg. Barras de entrada ao vivo à direita.*
 
-<p align="center"><img src="docs/screenshots/wheel.png" width="860" alt="Wheel / Volante"></p>
+<p align="center"><img src="docs/screenshots/wheel.png" width="860" alt="Wheel"></p>
 
 **Wheel** — customize the rim button **LED colors** and configure the paddles: number of paddles, per-paddle function (shift / clutch / free / button), combined vs independent clutch, digital vs progressive engagement, and bite point.
-<br/>🇧🇷 *Volante: personalize as **cores dos LEDs** dos botões do aro e configure as pás — número de pás, função por pá (marcha / embreagem / livre / botão), embreagem combinada vs independente, acionamento digital vs progressivo, e bite point.*
 
 ---
 
-## ⚙️ The motor / O motor
+## ⚙️ The motor
 
 The direct-drive actuator is a **cheap hoverboard hub motor**. Buy a spare 6.5" hoverboard wheel, strip the tire, and mount the bare hub to your rig — the machined face is where the wheel adapter bolts on.
-
-🇧🇷 *O atuador direct-drive é um **hub motor de hoverboard barato**. Compre uma roda de hoverboard 6,5", tire o pneu e monte o hub nu na sua estrutura — a face usinada é onde o adaptador do volante parafusa.*
 
 <table>
 <tr>
 <td width="50%" valign="top">
 <img src="docs/screenshots/motor-hoverboard-wheel.jpg" width="100%" alt="Hoverboard wheel" /><br/>
-<b>As bought</b> — a 6.5" hoverboard wheel (3 phase wires + hall sensor). · <em>Como vem — roda de hoverboard 6,5" (3 fios de fase + sensor hall).</em>
+<b>As bought</b> — a 6.5" hoverboard wheel (3 phase wires + hall sensor).
 </td>
 <td width="50%" valign="top">
 <img src="docs/screenshots/motor-hub-bare.webp" width="100%" alt="Bare hub motor" /><br/>
-<b>Tire removed</b> — the bare hub motor: mounting face + axle, ready for the build. · <em>Sem o pneu — o hub motor nu: face de fixação + eixo, pronto pra montar.</em>
+<b>Tire removed</b> — the bare hub motor: mounting face + axle, ready for the build.
 </td>
 </tr>
 </table>
 
+New to hoverboard motors? The **[Hoverboard base FAQ](docs/faq-hoverboard.md)** covers which motor to buy, how to open and prepare it, and the 25 problems people hit most often.
+
 ---
 
-## 🔌 Base board / Placa base
+## 🔌 Base board
 
 The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class controller** — the firmware is the same for all of them. Two proven, interchangeable options (both **F405, 8–56 V, native USB**):
-
-🇧🇷 *A base (o estágio do motor FFB) roda em qualquer **controladora F405 classe-ODrive** — o firmware é o mesmo. Duas opções comprovadas e intercambiáveis (ambas **F405, 8–56 V, USB nativo**):*
 
 <table>
 <tr>
 <td width="50%" valign="top">
 <img src="docs/screenshots/board-odesc-v42.png" width="100%" alt="ODESC v4.2 wiring" /><br/>
 <b>ODESC v4.2</b> — 24 V or 56 V variant · ~70 A / 120 A peak · ships with a brake resistor.<br/>
-Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.<br/>
-<em>🇧🇷 Variante 24 V ou 56 V · ~70 A / 120 A de pico · já vem com brake resistor. Ligação: motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>, brake resistor → <code>AUX</code>.</em>
+Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.
 </td>
 <td width="50%" valign="top">
 <img src="docs/screenshots/board-mks-xdrive-s.png" width="100%" alt="MKS XDrive-S" /><br/>
-<b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A peak · same F405 MCU, so a drop-in alternative · ships with heatsinks + brake resistor.<br/>
-<em>🇧🇷 12–56 V · 60 A / 120 A de pico · mesmo MCU F405, então é uma alternativa drop-in · já vem com dissipadores + brake resistor.</em>
+<b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A peak · same F405 MCU, so a drop-in alternative · ships with heatsinks + brake resistor.
 </td>
 </tr>
 </table>
 
-> ℹ️ The firmware is currently **pinned to the ODrive v3.6 layout** and **validated on an MKS ODRIVE-S V3.6-S6V**. Other F405 ODrive-class boards share the MCU and USB, but a board with a **different pinout (e.g. ODESC v4.2)** may need a pin remap in `firmware-base/lib/base_motor/odrive_v36_pins.h`. · *🇧🇷 O firmware está **pinado para o layout ODrive v3.6** e **validado numa MKS ODRIVE-S V3.6-S6V**. Outras placas F405 classe-ODrive compartilham o MCU e o USB, mas uma placa com **pinout diferente (ex.: ODESC v4.2)** pode exigir remapear os pinos em `odrive_v36_pins.h`.*
+> ℹ️ The firmware is currently **pinned to the ODrive v3.6 layout** and **validated on an MKS ODRIVE-S V3.6-S6V**. Other F405 ODrive-class boards share the MCU and USB, but a board with a **different pinout (e.g. ODESC v4.2)** may need a pin remap in `firmware-base/lib/base_motor/odrive_v36_pins.h`.
 
 ---
 
-## 🎛️ Firmware modules / Módulos de firmware
+## 🎛️ Firmware modules
 
 DriveLab is split into independent firmwares — one per device, each with its own README. The Studio app connects to each over USB HID and auto-detects it by VID/PID.
 
-🇧🇷 *O DriveLab é dividido em firmwares independentes — um por dispositivo, cada um com seu README. O app Studio conecta a cada um via USB HID e os autodetecta por VID/PID.*
-
-- **[Wheelbase / Base »](firmware-base/README.md)** — ODrive v3.6-class (MKS ODRIVE-S V3.6-S6V) · STM32F405 · the FFB motor stage (SimpleFOC). *Runs the motor under FOC; FFB pipe validated with ACC/AMS2/EVO. Game-effects (M6) on the bench.*
-  <br/>🇧🇷 *Estágio do motor FFB (ODrive v3.6-class / STM32F405). Roda o motor em FOC; pipe de FFB validado com ACC/AMS2/EVO. Efeitos de jogo (M6) na bancada.*
-- **[Pedals / Pedaleira »](firmware-pedal/README.md)** — RP2040 · 3 axes · load cell (HX711) · **P0** protocol. **✅ Validated on hardware.**
-  <br/>🇧🇷 *RP2040, 3 eixos, load cell (HX711), protocolo **P0**. **✅ Validado em hardware.***
-- **[Handbrake / Freio de mão »](firmware-handbrake/README.md)** — RP2040 · 1 axis + button · **P0** protocol. **✅ Validated on hardware** (physical sensor still to test).
-  <br/>🇧🇷 *RP2040, 1 eixo + botão, protocolo **P0**. **✅ Validado em hardware** (falta testar com sensor físico).*
-- **[Rim / Volante »](firmware-wheel/README.md)** — RP2040 · gamepad (buttons + paddles) · WS2812 LEDs · **P0**. *Written, awaiting bench validation.*
-  <br/>🇧🇷 *RP2040, gamepad (botões + pás), LEDs WS2812, **P0**. Escrito, aguardando validação na bancada.*
+- **[Wheelbase »](firmware-base/README.md)** — ODrive v3.6-class (MKS ODRIVE-S V3.6-S6V) · STM32F405 · the FFB motor stage (SimpleFOC). *Runs the motor under FOC; FFB pipe validated with ACC/AMS2/EVO. Game-effects (M6) on the bench.*
+- **[Pedals »](firmware-pedal/README.md)** — RP2040 · 3 axes · load cell (HX711) · **P0** protocol. **✅ Validated on hardware.**
+- **[Handbrake »](firmware-handbrake/README.md)** — RP2040 · 1 axis + button · **P0** protocol. **✅ Validated on hardware** (physical sensor still to test).
+- **[Rim »](firmware-wheel/README.md)** — RP2040 · gamepad (buttons + paddles) · WS2812 LEDs · **P0**. *Written, awaiting bench validation.*
 
 The desktop app that connects to all of them: **[DriveLab Studio (app) »](app/README.md)** — .NET 8 / Avalonia.
-<br/>🇧🇷 *O app desktop que conecta a todos eles: **[DriveLab Studio (app) »](app/README.md)** — .NET 8 / Avalonia.*
 
 Want to run the app against **your own board**? The full USB-HID contract is documented in **[docs/PROTOCOL.md »](docs/PROTOCOL.md)** — implement it and the Studio drives your hardware, no app changes.
-<br/>🇧🇷 *Quer rodar o app na **sua própria placa**? O contrato USB-HID completo está em **[docs/PROTOCOL.md »](docs/PROTOCOL.md)** — implemente-o e o Studio controla seu hardware, sem mexer no app.*
 
-### 📚 Guides / Guias
+### 📚 Guides
 
-Start here · *Comece por aqui:*
+Start here:
 
-- **[How it works / Como funciona](docs/how-it-works.md)** — study guide: how a DD wheel works, grounded in DriveLab (motor · encoder · FOC · FFB · safety). *Guia de estudo: como um volante DD funciona, aterrado no DriveLab.*
+- **[How it works](docs/how-it-works.md)** — study guide: how a DD wheel works, grounded in DriveLab (motor · encoder · FOC · FFB · safety).
 
-Hardware & build guides · *Guias de hardware e montagem:*
+Hardware & build guides:
 
-- **[Hoverboard base FAQ / FAQ da base hoverboard](docs/faq-hoverboard.md)** — the most common build problems and what to do, sorted by symptom. Firmware-agnostic. *Os problemas de montagem mais comuns e o que fazer, organizados por sintoma. Serve para qualquer firmware.*
-- **[Encoder guide / Guia de encoders](docs/encoders.md)** — which position sensor to buy (E6B2 · MT6701 · AS5047P). *Qual sensor de posição comprar.*
-- **[Brake resistor / Resistor de frenagem](docs/brake-resistor.md)** — why 2Ω, and the Ω vs W ratings. *Por que 2Ω, e os ratings Ω vs W.*
-- **[Soft-power & contactor / Soft-power e contator](docs/soft-power-contator.md)** — safe power-off, contactor wiring, soft-power button. *Desligar com segurança, fiação do contator, botão soft-power.*
-- **[Torque / Cálculo de torque](docs/calculo-torque.md)** — sizing the motor's Nm. *Dimensionar o torque do motor.*
-- **[Maker's guide / Guia do criador](docs/guia-criador.md)** — configure hardware & ship a Windows installer. *Configurar hardware e gerar instalador Windows.*
-- **[USB-HID protocol / Protocolo USB-HID](docs/PROTOCOL.md)** — the full contract to drive your own board. *O contrato completo para sua própria placa.*
+- **[Hoverboard base FAQ](docs/faq-hoverboard.md)** — the most common build problems and what to do, sorted by symptom. Firmware-agnostic.
+- **[Encoder guide](docs/encoders.md)** — which position sensor to buy (E6B2 · MT6701 · AS5047P).
+- **[Brake resistor](docs/brake-resistor.md)** — why 2Ω, and the Ω vs W ratings.
+- **[Soft-power & contactor](docs/soft-power-contator.md)** — safe power-off, contactor wiring, soft-power button.
+- **[Torque](docs/calculo-torque.md)** — sizing the motor's Nm.
+- **[Maker's guide](docs/guia-criador.md)** — configure hardware & ship a Windows installer.
+- **[USB-HID protocol](docs/PROTOCOL.md)** — the full contract to drive your own board.
 
 ---
 
-## 🧠 Why the RP2040? / Por que o RP2040?
+## 🧠 Why the RP2040?
 
 The pedals, handbrake and rim all run on a **Waveshare RP2040-Zero**. The device side needs to be a **custom USB HID device** — a gamepad **plus** a vendor channel (report ids `0x14/0x15/0x16/0x20`) that the app uses to read/write settings and stream telemetry. That drove the choice:
 
@@ -156,22 +139,13 @@ The pedals, handbrake and rim all run on a **Waveshare RP2040-Zero**. The device
 - **Full control of the HID report descriptor** — provided by **Adafruit_TinyUSB**, which runs on the RP2040. That's what lets us define the custom vendor reports, not just a stock gamepad.
 - Plenty of **GPIO** (axes, buttons, encoders, WS2812 LEDs), **USB-C**, dual core, and it's **cheap** (~US$2–5).
 
-🇧🇷 *Os pedais, o freio de mão e o aro rodam numa **Waveshare RP2040-Zero**. O lado do dispositivo precisa ser um **dispositivo USB HID customizado** — um gamepad **mais** um canal vendor (report ids `0x14/0x15/0x16/0x20`) que o app usa para ler/gravar settings e receber telemetria. Foi isso que definiu a escolha:*
-- *🇧🇷 **USB nativo** no MCU (não uma ponte USB-serial) — necessário para enumerar como um HID de verdade.*
-- *🇧🇷 **Controle total do descriptor HID** — dado pelo **Adafruit_TinyUSB**, que roda no RP2040. É o que permite definir os reports vendor customizados, não só um gamepad padrão.*
-- *🇧🇷 Muito **GPIO** (eixos, botões, encoders, LEDs WS2812), **USB-C**, dual core, e é **barato** (~US$2–5).*
-
 **Can I use an Arduino instead?** Only boards with **native USB**: the **Arduino Nano RP2040 Connect** runs practically as-is (it's an RP2040); **SAMD21** boards (Zero, MKR, Nano 33 IoT) need a light port (TinyUSB supports SAMD); an **ATmega32U4** (Leonardo/Micro/Pro Micro) can do HID but through a different USB stack with tight flash/RAM (the vendor settings channel would need porting). Classic **Uno / Nano / Mega** (ATmega328/2560) **won't work** — no native USB, their CH340/FTDI chip is serial-only.
 
-🇧🇷 *__Dá pra usar um Arduino?__ Só placas com **USB nativo**: o **Arduino Nano RP2040 Connect** roda quase sem mudança (é um RP2040); placas **SAMD21** (Zero, MKR, Nano 33 IoT) precisam de um porte leve (o TinyUSB suporta SAMD); um **ATmega32U4** (Leonardo/Micro/Pro Micro) faz HID mas por outra pilha USB, com flash/RAM apertados (o canal vendor de settings precisaria ser portado). Os clássicos **Uno / Nano / Mega** (ATmega328/2560) **não funcionam** — sem USB nativo, o chip CH340/FTDI deles é só serial.*
-
-> The base/wheelbase firmware is the exception — it targets the **STM32F405 (ODESC)** for the FFB motor, not an RP2040. · *O firmware da base é a exceção — mira o **STM32F405 (ODESC)** para o motor FFB, não um RP2040.*
+> The wheelbase firmware is the exception — it targets the **STM32F405** for the FFB motor, not an RP2040.
 
 ---
 
-## 🇬🇧 English
-
-### What is DriveLab?
+## What is DriveLab?
 
 DriveLab turns cheap, widely-available parts — an **ODrive v3.6-class** motor controller (validated on an **MKS ODRIVE-S V3.6-S6V**) and a **hoverboard hub motor** — into a real **Direct-Drive force-feedback steering wheel** for sim racing (Assetto Corsa Competizione, iRacing, rFactor 2, Automobilista 2, and any DirectInput title).
 
@@ -182,7 +156,7 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 
 > ⚠️ **Status: in active development.** The app is functional (with a hardware simulator, no board required). The firmware **runs the motor under FOC** and the **FFB pipe is validated with real games (ACC 400 Hz, AMS2, EVO)**; full on-track FFB tuning is waiting on the magnetic encoder. See the [Roadmap](#roadmap).
 
-### Features
+## Features
 
 **App (DriveLab Studio)**
 - Clean, modern UI with **Wheel Base**, **Pedals**, **Handbrake**, and **Wheel** (rim/LEDs) modules.
@@ -200,31 +174,31 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 - Multi-stage safety: brake-resistor chopper, current/torque limits, soft-stop, over-voltage cutoff, plus **opt-in off-state contactor and soft-power button** (host-tested groundwork).
 - Companion firmware for **pedals** and **handbrake** modules (RP2040 + HX711 load cell).
 
-### Hardware — wheelbase / base (bill of materials)
+## Hardware — wheelbase (bill of materials)
 
 This is the **base** (the direct-drive wheelbase). Each other module is an independent USB device with its **own** bill of materials — see the per-module table below.
 
 | Part | Notes |
 |------|-------|
-| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board--placa-base). Comes in **24 V** (35 V caps → keep the bus ≤ ~24 V) and **56 V** (63 V caps → up to 56 V). Match the PSU to your board. Running a **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. Other F405 boards (ODESC, MKS XDrive) may need a pin remap. |
+| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board). Comes in **24 V** (35 V caps → keep the bus ≤ ~24 V) and **56 V** (63 V caps → up to 56 V). Match the PSU to your board. Running a **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. Other F405 boards (ODESC, MKS XDrive) may need a pin remap. |
 | **Hoverboard hub motor** | The direct-drive actuator. |
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
-| **PSU** | Match your ODESC variant: **≤24 V** for the 24 V board, **up to 56 V** for the 56 V board. Example: 24 V / 30 A (720 W). |
+| **PSU** | Match your board variant: **≤24 V** for the 24 V board, **up to 56 V** for the 56 V board. Example: 24 V / 30 A (720 W). |
 | ST-Link V2 | To flash the STM32 (or DFU). |
 
-### Hardware — per module
+## Hardware — per module
 
 Each device is independent (its own board + USB). Full parts list + wiring/pinout in each module's README:
 
 | Module | Core hardware | Full BOM |
 |--------|---------------|----------|
-| **Wheelbase / base** | ODESC F405 + hub motor + encoder + brake resistor + PSU (table above) | this page |
+| **Wheelbase** | F405 board + hub motor + encoder + brake resistor + PSU (table above) | this page |
 | **Pedals** | RP2040-Zero + 3 sensors (pot / Hall / load-cell+HX711) | **[firmware-pedal »](firmware-pedal/README.md#bill-of-materials-pedals)** |
 | **Handbrake** | RP2040-Zero + 1 sensor (pot / Hall / load-cell+HX711) | **[firmware-handbrake »](firmware-handbrake/README.md#bill-of-materials-handbrake)** |
 | **Wheel (rim)** | RP2040-Zero + 2× MCP23017 + 5 encoders + SK6812 LEDs | **[firmware-wheel »](firmware-wheel/README.md)** |
 
-### How force feedback works
+## How force feedback works
 
 The game does **not** send telemetry — it sends the **already-computed force**:
 
@@ -239,19 +213,19 @@ Motor torque  →  you feel it
 
 Condition effects (spring/damper) are computed on the device from the **encoder** position/velocity; your Studio settings (gain, damper, filters) shape the result before it reaches the motor.
 
-### Repository layout
+## Repository layout
 
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, tests
-firmware-base/       Wheelbase firmware — ODrive v3.6-class / STM32F405, the FFB motor (PlatformIO)  [MIT]
-firmware-pedal/      Pedals firmware — RP2040 + HX711                                        [MIT]
-firmware-handbrake/  Handbrake firmware — RP2040 + HX711                                     [MIT]
-firmware-wheel/      Rim firmware — RP2040 (Waveshare Zero): gamepad + WS2812 LEDs (PlatformIO)  [MIT]
+firmware-base/       Wheelbase firmware — ODrive v3.6-class / STM32F405, the FFB motor  [MIT]
+firmware-pedal/      Pedals firmware — RP2040 + HX711                                   [MIT]
+firmware-handbrake/  Handbrake firmware — RP2040 + HX711                                [MIT]
+firmware-wheel/      Rim firmware — RP2040 (Waveshare Zero): gamepad + WS2812 LEDs      [MIT]
 tools/HidDump/       HID protocol debug tool
-docs/                Design specs & implementation plans
+docs/                Guides, design specs & implementation plans
 ```
 
-### Getting started
+## Getting started
 
 **Run the app (with the simulator — no hardware needed):**
 
@@ -277,156 +251,26 @@ dotnet run --project DriveLab.Studio -- --simulator
 
 **Flash the firmware** (needs [PlatformIO](https://platformio.org)): open `firmware-base/` and start at milestone **M0** (serial only, no motor) — see `firmware-base/README.md`.
 
-### Roadmap
+## Roadmap
 
-`M0` ✅ → `M0.5` ✅ USB FFB → `M1`–`M2` motor + encoder + closed loop ✅ → `M2.5` telemetry ✅ → `M3` app↔firmware ✅ → `M4` settings ✅ → `M5` FFB force → motor ✅ *(firmware; bench-tested)* → `M6` game effects 🔧 *(firmware done; on-track validation waiting on the magnetic encoder)* → `M7` sim validation ⏳. The brake-resistor chopper, off-state contactor and soft-power are implemented as **opt-in groundwork**. Details in `docs/` — start with **[how-it-works.md](docs/how-it-works.md)**.
+`M0` ✅ → `M0.5` ✅ USB FFB → `M1`–`M2` motor + encoder + closed loop ✅ → `M2.5` telemetry ✅ → `M3` app↔firmware ✅ → `M4` settings ✅ → `M5` FFB force → motor ✅ *(firmware; bench-tested)* → `M6` game effects 🔧 *(firmware done; on-track validation waiting on the magnetic encoder)* → `M7` sim validation ⏳.
 
-### ⚠️ Safety
+The brake-resistor chopper, off-state contactor and soft-power are implemented as **opt-in groundwork**. Details in `docs/` — start with **[how-it-works.md](docs/how-it-works.md)**.
 
-- **Match the supply to your ODESC variant:** the **24 V board** must stay at ~24 V (35 V caps); the **56 V board** takes up to 56 V (63 V caps). **Never exceed your board's rating.** A 56 V board run on a 24 V supply has comfortable headroom.
+## ⚠️ Safety
+
+- **Match the supply to your board variant:** the **24 V board** must stay at ~24 V (35 V caps); the **56 V board** takes up to 56 V (63 V caps). **Never exceed your board's rating.** A 56 V board run on a 24 V supply has comfortable headroom.
 - The **2 Ω brake resistor is mandatory** before any closed-loop torque; regen braking pushes energy back onto the bus and will destroy the capacitors without it.
 - `M0`/`M0.5` run **with no motor connected**. Bring current up gradually. A direct-drive wheel has enough torque to hurt your wrist — keep an e-stop (the plug) within reach.
 
-### License
+## License
 
-- **Everything — app, libraries, tools, and all firmware** (base + pedal/handbrake/wheel): [MIT](https://opensource.org/licenses/MIT). *(The base was originally going LGPL for a shim FFB lib; M0.5 v2 replaced it with the MIT Adafruit TinyUSB + an OpenFFBoard-derived descriptor, so the whole project is MIT.)*
+**Everything — app, libraries, tools, and all firmware** (base + pedal/handbrake/wheel): [MIT](https://opensource.org/licenses/MIT).
 
 Every source file carries a header stating its license.
 
-### Community & contributing
+## Community & contributing
 
 Questions, build logs, help getting your board running — **join the Discord**: **https://discord.gg/Xp2pGm5wj**
 
 Issues and pull requests are welcome. New source files should include the standard DriveLab header.
-
----
-
-## 🇧🇷 Português
-
-### O que é o DriveLab?
-
-O DriveLab transforma peças baratas e fáceis de achar — uma controladora **ODrive v3.6-class** (validada numa **MKS ODRIVE-S V3.6-S6V**) e um **motor de roda de hoverboard** — num verdadeiro **volante Direct-Drive com force feedback** para simuladores (Assetto Corsa Competizione, iRacing, rFactor 2, Automobilista 2 e qualquer título DirectInput).
-
-É uma alternativa totalmente aberta a soluções fechadas como o FFBeast, com duas metades:
-
-- **DriveLab Studio** — um app desktop (.NET 8 / Avalonia) para configurar e monitorar o volante. Roda no Windows, e no macOS/Linux para desenvolvimento.
-- **DriveLab Firmware** — firmware para a placa ODrive v3.6-class que se apresenta como um volante DirectInput de force feedback padrão e aciona o motor com [SimpleFOC](https://simplefoc.com).
-
-> ⚠️ **Status: em desenvolvimento ativo.** O app já funciona (com um simulador de hardware, sem placa). O firmware **roda o motor em FOC** e o **pipe de FFB está validado com jogos reais (ACC 400 Hz, AMS2, EVO)**; o ajuste fino de FFB em pista depende do encoder magnético. Veja o [Roadmap](#roadmap-1).
-
-### Recursos
-
-**App (DriveLab Studio)**
-- Interface limpa e moderna com os módulos **Base do Volante**, **Pedais**, **Freio de mão** e **Volante** (aro/LEDs).
-- **Perfis nomeados por módulo** — salvar, aplicar, renomear e excluir perfis (ex.: "GT3", "Chuva") na base, pedais, freio de mão e volante; selecionar um perfil grava no controlador, e o *Salvar* só habilita quando a config atual difere do perfil carregado.
-- **LEDs do volante** — cores por botão + brilho global; o aro **guarda as cores na flash** (acende sozinho após religar) e o app **lê as cores de volta** da placa ao conectar.
-- **Ajustes** ao vivo em abas (Básico / Avançado / **Feel** / Hardware) — força total, damper, mola, soft-stop, **ganhos de FFB por efeito** (mola/damper/atrito/inércia), limites de torque e potência, config do encoder, malha de corrente, etc. Carrega ao conectar, salva ao alterar.
-- **Monitor de telemetria** na aba Hardware: tensão do barramento + temperaturas FET/motor/MCU + corrente do motor, com limiares ok/alerta/crítico.
-- **Três tipos de encoder** — **quadratura** incremental (Omron E6B2, o sensor atual da bancada) ou **magnético** absoluto (MT6701 padrão planejado · AS5047P planejado). O absoluto mantém o zero mesmo desligando. *(Os drivers magnéticos chegam no Stage 1.)*
-- **Modo simulador** — um volante virtual com física real, para desenvolver e testar toda a UI sem hardware nenhum.
-- Bilíngue (Português / Inglês), detectado automaticamente pelo sistema.
-
-**Firmware**
-- Se apresenta como **volante FFB DirectInput** — os jogos mandam force feedback pra ele igualzinho a qualquer volante comercial, sem plugin.
-- Controle **SimpleFOC** (orientado a campo) do motor.
-- Segurança em múltiplos estágios: chopper do brake resistor, limites de corrente/torque, soft-stop, corte por sobretensão, mais **contator off-state e botão soft-power (opt-in)** — groundwork testado no host.
-- Firmwares companheiros para os módulos de **pedais** e **freio de mão** (RP2040 + célula de carga HX711).
-
-### Hardware — base do volante (lista de materiais)
-
-Esta é a **base** (o wheelbase direct-drive). Cada outro módulo é um dispositivo USB independente com a **sua própria** lista de materiais — veja a tabela por módulo abaixo.
-
-| Peça | Observações |
-|------|-------------|
-| **Placa ODrive v3.6-class** (STM32F405) — validada: **MKS ODRIVE-S V3.6-S6V** | Qualquer placa F405 classe-ODrive — ver [Placa base](#-base-board--placa-base). Vem em **24 V** (caps 35 V → manter ~24 V) e **56 V** (caps 63 V → até 56 V). Case a fonte com a sua placa. Usar uma **placa 56 V numa fonte mais baixa (ex.: 24 V) dá folga extra** contra picos de regen. Outras placas F405 (ODESC, MKS XDrive) podem exigir remapear pinos. |
-| **Motor de roda de hoverboard** | O atuador direct-drive. |
-| **Encoder** | Omron E6B2-CWZ6C incremental **ou** magnético absoluto AS5047P/MT6701 — sua escolha. |
-| **Brake resistor 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia de frenagem regenerativa para não destruir os capacitores. |
-| **Fonte** | Casar com a sua variante de ODESC: **≤24 V** na placa 24 V, **até 56 V** na placa 56 V. Ex.: 24 V / 30 A (720 W). |
-| ST-Link V2 | Para gravar o STM32 (ou DFU). |
-
-### Hardware — por módulo
-
-Cada dispositivo é independente (placa + USB próprios). Lista completa de peças + fiação/pinagem no README de cada módulo:
-
-| Módulo | Hardware principal | BOM completa |
-|--------|--------------------|--------------|
-| **Base do volante** | ODESC F405 + motor + encoder + brake resistor + fonte (tabela acima) | esta página |
-| **Pedais** | RP2040-Zero + 3 sensores (pot / Hall / célula+HX711) | **[firmware-pedal »](firmware-pedal/README.md#lista-de-materiais-pedais)** |
-| **Freio de mão** | RP2040-Zero + 1 sensor (pot / Hall / célula+HX711) | **[firmware-handbrake »](firmware-handbrake/README.md#lista-de-materiais-freio-de-mão)** |
-| **Volante (aro)** | RP2040-Zero + 2× MCP23017 + 5 encoders + LEDs SK6812 | **[firmware-wheel »](firmware-wheel/README.md)** |
-
-### Como o force feedback funciona
-
-O jogo **não** manda telemetria — ele manda a **força já calculada**:
-
-```
-Física do jogo (ACC/iRacing)  →  um valor de torque pro volante  (~360–400 Hz)
-        ↓  DirectInput / HID PID  (Windows)
-        ↓  USB
-Firmware (parser HID PID do TinyUSB → FfbEngine.step)  →  torque
-        ↓  SimpleFOC
-Torque no motor  →  você sente
-```
-
-Os efeitos de condição (mola/damper) são calculados no dispositivo a partir da posição/velocidade do **encoder**; seus ajustes no Studio (ganho, damper, filtros) moldam o resultado antes de chegar ao motor.
-
-### Estrutura do repositório
-
-```
-app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, testes
-firmware-base/       Firmware da base — ODrive v3.6-class / STM32F405, o motor FFB (PlatformIO)  [MIT]
-firmware-pedal/      Firmware dos pedais — RP2040 + HX711                                [MIT]
-firmware-handbrake/  Firmware do freio de mão — RP2040 + HX711                           [MIT]
-firmware-wheel/      Firmware do aro — RP2040 (Waveshare Zero): gamepad + LEDs WS2812 (PlatformIO)  [MIT]
-tools/HidDump/       Ferramenta de debug do protocolo HID
-docs/                Specs de design & planos de implementação
-```
-
-### Primeiros passos
-
-**Rodar o app (com o simulador — sem hardware):**
-
-```bash
-# precisa do .NET 8 SDK
-cd app
-dotnet run --project DriveLab.Studio -- --simulator
-```
-
-**Build & testes:**
-
-```bash
-./scripts/build.sh    # ou scripts/build.ps1 no Windows
-./scripts/test.sh     # ~470 testes do app + host tests do firmware
-```
-
-**Gerar o executável Windows** (self-contained, single-file `.exe`, sem precisar de .NET na máquina alvo):
-
-```bash
-./scripts/publish-win.sh   # ou scripts/publish-win.ps1 no Windows
-# saída: dist/win-x64/DriveLab.Studio.exe
-```
-
-**Gravar o firmware** (precisa do [PlatformIO](https://platformio.org)): abra `firmware-base/` e comece pelo marco **M0** (só serial, sem motor) — veja `firmware-base/README.md`.
-
-### Roadmap
-
-`M0` ✅ → `M0.5` ✅ USB FFB → `M1`–`M2` motor + encoder + malha fechada ✅ → `M2.5` telemetria ✅ → `M3` app↔firmware ✅ → `M4` settings ✅ → `M5` força FFB → motor ✅ *(firmware; testado na bancada)* → `M6` efeitos de jogo 🔧 *(firmware pronto; validação em pista depende do encoder magnético)* → `M7` validação no sim ⏳. O chopper do brake resistor, o contator off-state e o soft-power estão implementados como **groundwork opt-in**. Detalhes em `docs/` — comece por **[how-it-works.md](docs/how-it-works.md)**.
-
-### ⚠️ Segurança
-
-- **Case a fonte com a sua variante de ODESC:** a **placa 24 V** fica em ~24 V (caps 35 V); a **placa 56 V** aceita até 56 V (caps 63 V). **Nunca ultrapasse o limite da SUA placa.** Uma placa 56 V numa fonte de 24 V tem folga confortável.
-- O **brake resistor de 2 Ω é obrigatório** antes de qualquer torque em malha fechada; a frenagem regenerativa devolve energia ao barramento e, sem ele, destrói os capacitores.
-- `M0`/`M0.5` rodam **sem motor conectado**. Suba a corrente aos poucos. Um volante direct-drive tem torque pra machucar o pulso — mantenha um e-stop (a tomada) ao alcance.
-
-### Licença
-
-- **Tudo — app, bibliotecas, ferramentas e todo o firmware** (base + pedal/freio/aro): [MIT](https://opensource.org/licenses/MIT). *(A base ia ser LGPL por um lib de shim FFB; o M0.5 v2 trocou pelo Adafruit TinyUSB (MIT) + descritor derivado do OpenFFBoard, então o projeto todo é MIT.)*
-
-Todo arquivo-fonte traz um cabeçalho declarando sua licença.
-
-### Comunidade & contribuição
-
-Dúvidas, logs de montagem, ajuda pra pôr sua placa pra rodar — **entre no Discord**: **https://discord.gg/Xp2pGm5wj**
-
-Issues e pull requests são bem-vindos. Arquivos novos devem incluir o cabeçalho padrão do DriveLab.
