@@ -80,39 +80,30 @@ New to hoverboard motors? The **[Hoverboard base FAQ](docs/faq-hoverboard.md)** 
 
 ## 🔌 Base board
 
-The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class controller** — the firmware is the same for all of them. Two proven, interchangeable options (both **F405 with native USB**):
+The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class controller** — the firmware is the same for all of them. Four proven options:
 
 <table>
 <tr>
-<td width="50%" valign="top">
-<img src="docs/screenshots/board-odesc-v42.jpg" width="100%" alt="ODESC v4.2 wiring" /><br/>
-<b>ODESC v4.2</b> — <b>8–24 V</b> or <b>8–56 V</b> variant · ~70 A / 120 A peak.<br/>
-Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.
-</td>
-<td width="50%" valign="top">
-<img src="docs/screenshots/board-mks-xdrive-s.jpg" width="100%" alt="MKS XDrive-S" /><br/>
-<b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A peak · same F405 MCU, so a drop-in alternative · ships with heatsinks.
-</td>
+<td width="50%"><img src="docs/screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2, 24 V variant"></td>
+<td width="50%"><img src="docs/screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2, 56 V variant"></td>
+</tr>
+<tr>
+<td><b>ODESC v4.2 — 8–24 V</b><br/>~70 A / 120 A peak.<br/><code>QC PASS 24V</code> sticker · <b>purple</b> status LED.</td>
+<td><b>ODESC v4.2 — 8–56 V</b><br/>~70 A / 120 A peak.<br/><code>QC PASS 56V</code> sticker · <b>green</b> status LED.</td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/board-mks-xdrive-s.jpg" width="100%" alt="MKS XDrive-S"></td>
+<td><img src="docs/screenshots/board-mks-xdrive-mini.jpg" width="100%" alt="MKS XDrive Mini V1.0"></td>
+</tr>
+<tr>
+<td><b>MKS XDrive-S</b> — 12–56 V<br/>60 A / 120 A peak · ships with heatsinks.</td>
+<td><b>MKS XDrive Mini V1.0</b> — 12–56 V<br/>Same F405 MCU in a smaller board.</td>
 </tr>
 </table>
 
-<details>
-<summary><b>Which ODESC variant do I have?</b> — the sticker and the LED tell you</summary>
+**Wiring is the same on all four:** motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.
 
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2 24 V — QC PASS 24V sticker, purple LED"></td>
-<td width="50%"><img src="docs/screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2 56 V — QC PASS 56V sticker, green LED"></td>
-</tr>
-<tr>
-<td><b>8–24 V</b> — <code>QC PASS 24V</code> sticker, <b>purple</b> status LED</td>
-<td><b>8–56 V</b> — <code>QC PASS 56V</code> sticker, <b>green</b> status LED</td>
-</tr>
-</table>
-
-The capacitors are the same on both (63 V), so they tell you nothing. Feeding a 24 V board more than it takes destroys it.
-
-</details>
+The two ODESC variants look identical apart from the sticker and the LED colour — the capacitors are 63 V on both, so they tell you nothing. Feeding the 24 V one more than it takes destroys it.
 
 > ℹ️ The firmware is currently **pinned to the ODrive v3.6 layout** and **validated on an MKS ODRIVE-S V3.6-S6V**. Other F405 ODrive-class boards share the MCU and USB, but a board with a **different pinout (e.g. ODESC v4.2)** may need a pin remap in `firmware-base/lib/base_motor/odrive_v36_pins.h`.
 

@@ -80,39 +80,30 @@ Primeira vez com motor de hoverboard? O **[FAQ da base hoverboard](docs/faq-hove
 
 ## 🔌 Placa base
 
-A base (o estágio do motor de FFB) roda em qualquer **controladora STM32F405 classe ODrive** — o firmware é o mesmo para todas. Duas opções comprovadas e intercambiáveis (as duas **F405 com USB nativo**):
+A base (o estágio do motor de FFB) roda em qualquer **controladora STM32F405 classe ODrive** — o firmware é o mesmo para todas. Quatro opções comprovadas:
 
 <table>
 <tr>
-<td width="50%" valign="top">
-<img src="docs/screenshots/board-odesc-v42.jpg" width="100%" alt="Ligação da ODESC v4.2" /><br/>
-<b>ODESC v4.2</b> — variante <b>8–24 V</b> ou <b>8–56 V</b> · ~70 A / 120 A de pico.<br/>
-Ligação: motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>, resistor de freio → <code>AUX</code>.
-</td>
-<td width="50%" valign="top">
-<img src="docs/screenshots/board-mks-xdrive-s.jpg" width="100%" alt="MKS XDrive-S" /><br/>
-<b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A de pico · mesmo MCU F405, então é alternativa drop-in · já vem com dissipadores.
-</td>
+<td width="50%"><img src="docs/screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2, variante de 24 V"></td>
+<td width="50%"><img src="docs/screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2, variante de 56 V"></td>
+</tr>
+<tr>
+<td><b>ODESC v4.2 — 8–24 V</b><br/>~70 A / 120 A de pico.<br/>Adesivo <code>QC PASS 24V</code> · LED de status <b>roxo</b>.</td>
+<td><b>ODESC v4.2 — 8–56 V</b><br/>~70 A / 120 A de pico.<br/>Adesivo <code>QC PASS 56V</code> · LED de status <b>verde</b>.</td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/board-mks-xdrive-s.jpg" width="100%" alt="MKS XDrive-S"></td>
+<td><img src="docs/screenshots/board-mks-xdrive-mini.jpg" width="100%" alt="MKS XDrive Mini V1.0"></td>
+</tr>
+<tr>
+<td><b>MKS XDrive-S</b> — 12–56 V<br/>60 A / 120 A de pico · já vem com dissipadores.</td>
+<td><b>MKS XDrive Mini V1.0</b> — 12–56 V<br/>Mesmo MCU F405, numa placa menor.</td>
 </tr>
 </table>
 
-<details>
-<summary><b>Qual variante de ODESC eu tenho?</b> — o adesivo e o LED dizem</summary>
+**A ligação é a mesma nas quatro:** motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>, resistor de freio → <code>AUX</code>.
 
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2 24 V — adesivo QC PASS 24V, LED roxo"></td>
-<td width="50%"><img src="docs/screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2 56 V — adesivo QC PASS 56V, LED verde"></td>
-</tr>
-<tr>
-<td><b>8–24 V</b> — adesivo <code>QC PASS 24V</code>, LED de status <b>roxo</b></td>
-<td><b>8–56 V</b> — adesivo <code>QC PASS 56V</code>, LED de status <b>verde</b></td>
-</tr>
-</table>
-
-Os capacitores são iguais nas duas (63 V), então não dizem nada. Dar mais tensão do que a placa de 24 V aceita destrói ela.
-
-</details>
+As duas variantes da ODESC são idênticas fora o adesivo e a cor do LED — os capacitores são de 63 V nas duas, então não dizem nada. Dar na de 24 V mais tensão do que ela aceita destrói a placa.
 
 > ℹ️ O firmware está hoje **fixado no layout da ODrive v3.6** e **validado numa MKS ODRIVE-S V3.6-S6V**. Outras placas F405 classe ODrive compartilham o MCU e o USB, mas uma placa com **pinagem diferente (ex.: ODESC v4.2)** pode exigir remapear os pinos em `firmware-base/lib/base_motor/odrive_v36_pins.h`.
 
