@@ -10,31 +10,41 @@ base plugada). Ordem sugerida — firmware é do Claude (grava por ST-Link, lê 
 > **Nota pra sessão do Claude no Windows:** esta sessão não tem a memória da máquina do dev (a memória é por
 > caminho de projeto). Este arquivo (no git) é a fonte. Ao abrir, ler este bloco + a seção "App" abaixo.
 
-### ✅ JÁ VALIDADO na bancada (2026-08-05)
-- **Zero desarme mesmo em ZIGZAG** (reversão rápida = pior caso). Valida o fix da **subtensão** (churn/"tec")
-  e o auto-arme espaçado. **Provavelmente valida também o brake re-enable** (regen sendo drenada) — falta só
-  confirmar que o resistor conduz (teste 3 abaixo).
+### ✅ FECHADO na bancada em 2026-08-05 (dia longo — tudo commitado e no GitHub)
+Hardware novo em uso: **fonte 27 V / 30 A** (a de 19,5 V afundava a 7,47 V sob torque = a raiz do "tec")
+e **resistor de brake de 100 W** (o de 50 W torrou — ver abaixo).
+
+1. ✅ **"Tec" RESOLVIDO** — era `dc_bus_undervoltage_trip_level` em 14,79 V. Fix: **8 V** (salvo na NVM).
+2. ✅ **SAVE persistente** — settings sobrevivem ao power-cycle **e** a cal do motor fica intacta
+   (FFB_NVM setor 1 × setores 10/11). Fecha o antigo item 1.
+3. ✅ **Chopper funcionando** (`68f9ab3`) — com resistor o pico de `vbus` cai de **33,5 → 27,5 V**;
+   média de só **3,3 W** no resistor. Fecha o antigo item 3.
+4. ✅ **Escala de torque 5 → 10 Nm** — o sistema usava ~18% do que o conjunto entrega.
+5. ✅ **4 SIMULADORES**: ACC, AC EVO, AMS2 e F1 2016 — **zero desarme**, `error=0` (cumulativo).
+   *F1 2016 fica leve em baixa velocidade: é DESIGN do jogo (força ∝ auto-alinhamento), não defeito.*
+6. ✅ **App** (`fd1a641`) — atalho de centralizar recuperado (tinha sumido numa regressão de git) +
+   botão "Salvar no controlador" no **dashboard** (o das abas não alcança o DOR/centro).
+
+> ⚠️ **Um resistor de 50 W QUEIMOU** ao trocar a fonte: a rampa do chopper vinha da NVM calibrada para
+> 19,5 V e o vbus da fonte nova já nascia acima do `ramp_end` → duty 95% contínuo ≈ 273 W. Corrigido
+> por três proteções que **nem o ODrive nem o Odrive-Wheel têm** (`68f9ab3`): limites derivados da
+> **fonte medida**, chopper **mudo** enquanto não medir, e **watchdog térmico** (60 W médios).
 
 ### Pendente
-1. 🔑 **SAVE persistente** (commit `3ad7599`) — o passo-chave, destrava o modelo "base = fonte de verdade".
-   Passos: (a) app conectado, **mudar um setting** (ex.: Total Strength); (b) **Salvar** — a força deve cair
-   ~1 s e o motor re-armar (grava com o motor IDLE, ver `ffb_task.cpp`); (c) **reiniciar a placa** (power-cycle);
-   (d) reconectar o app → o valor **persistiu**? E a **cal do motor sobreviveu** (arma normal, roda no ACC)?
-   Persistiu na **FFB_NVM setor 1**, separada da cal do motor (setores 10/11) — as duas devem sobreviver.
-2. **Feel das ligações P0** (`e8757d5..10fe395`) — linearity / static-damping / endstop-damping / slew / curva /
-   recon. Validar que o FFB que já funcionava **não regrediu**.
-3. **Brake conduz?** (fecha o `f104503`) — **sem SWD**, pela CDC serial (ASCII do ODrive, endpoints read-only):
-   ```
-   r brake_resistor_armed     -> espera 1  (armado no boot)
-   r brake_resistor_current   -> durante ZIGZAG contínuo: espera > 0  (está sendo alimentado)
-   r vbus_voltage             -> no pico do zigzag: capado (~20,6 V c/ brake vs ~23,9 V sem)
-   ```
-   `armed=1` + `vbus` capado = evidência estável; `current>0` é transiente (pollar repetido no zigzag). Se
-   `current` ficar SEMPRE 0, o "sem desarme" veio só do trip a 55 V, não do brake.
-4. Só depois: **teste de força** (subir o cap 5→8 Nm em `ffb_model.cpp`, game a 50% como válvula; calor é o
-   limite — ligar o corte por sobretemp antes). Ver memória `drivelab-features-roadmap`.
+1. **Feel das ligações P0** — validar que o FFB não regrediu. Para MAIS DETALHE (zebra/pista):
+   linearidade **100→75-80%** (amplifica forças pequenas), damper e damping estático **para ~0**,
+   e ligar **anti-oscilação** se o DD tremer. Os filtros que matam detalhe já estão em 0.
+2. **Perfil por jogo** — F1 2016 quer o oposto (mola/damping estático altos p/ compensar a baixa
+   velocidade). Candidato a feature: piso de força ("minimum force").
+3. **Serial USB único** — hoje é a string fixa `"0001"`; em produção duas placas colidem no mesmo PC.
+   Tentamos derivar do UID do STM32 (`0x1FFF7A10`, como a Moza) e **quebrou a enumeração**
+   (`VID_0000&PID_0002`, falha de descritor) → revertido. Refazer com calma e testar isolado.
+4. **Sobretemp do motor (P2)** — sem sensor não há corte térmico, e o limite prático dos 10 Nm é calor.
+5. **Cap de torque derivado do motor** (`torque_constant × current_lim`) em vez de constante compilada —
+   pré-requisito pra distribuir o firmware. Conversa com a Fase 2 (1 binário pra família ODrive).
 
-O **lado do app** (device = fonte de verdade) está **concluído** (ver seção "App" abaixo) — não precisa bancada.
+> **Hot-reconnect: ARQUIVADO.** A premissa era falsa — o usuário ligou a **Moza** no mesmo PC e o ACC
+> **também não a re-detecta** depois de reiniciada. É limitação do jogo, não defeito nosso.
 
 ## Estado atual (2026-08-05) — GRANDE VITÓRIA
 - ✅ **O volante DD roda no ACC com FFB** — validado: **2 voltas completas, 100% de força, sem travar.**
@@ -65,18 +75,18 @@ O **lado do app** (device = fonte de verdade) está **concluído** (ver seção 
 - **Untracked que NÃO vão pro git** (podem apagar): `app.zip` (~370 MB), `hardware-profile.json.bak` (sobra do
   JSON removido), `firmware-*/build/`, `firmware-*/vendor/build` (regeneráveis por `make`).
 
-## Diagnóstico da força — RESPONDIDO em 2026-08-04 (era outra coisa)
-A pergunta era: perder força numa curva é **teto de 5 Nm** ou **bug**? Resposta pela CDC ao vivo no ACC:
-**nenhum dos dois** — é **sobretensão de REGENERAÇÃO**. Na reversão rápida (chicane T1 de Monza, ponto
-único, repetível) o motor freia o volante e regenera; sem destino pra essa energia
-(`enable_brake_resistor=0`) o bus sobe e estoura `dc_bus_overvoltage_trip_level` → `do_fast_checks()`
-(main.cpp:311, ~8 kHz) desarma tudo (`motor.error=0x1000000 SYSTEM_LEVEL`) → o auto-arme reergue em
-~200 ms → o usuário sente o FFB "sumir". **Não era o teto:** no desarme o `Iq` era ~5 A de 25 (≈2,7 Nm
-de 13,75). Cap `kFullScaleTorqueNm=5.0` segue intocado.
-- **Subir o trip NÃO resolve** (testado): 24,79 → **30 V** e o bus estourou os 30 assim mesmo. Revertido.
-  Perseguir com trip maior só castiga a fonte de 19,5 V, que passa a ver >30 V.
-- **Medir com log de 5 Hz ENGANA** (o transiente é rápido demais: CSV mostrou pico de 22,4 V numa volta
-  em que o bus passou de 30 V). A testemunha confiável é o **`error` global** (`r error`) depois da volta.
+## Diagnóstico da força — RESPONDIDO (2026-08-04) e RESOLVIDO (2026-08-05)
+A pergunta era: perder força numa curva é **teto de 5 Nm** ou **bug**? **Nenhum dos dois.**
+**Não era o teto:** no desarme o `Iq` era ~5–7 A de 25 (≈2,7–4 Nm de 13,75). Cap
+`kFullScaleTorqueNm=5.0` segue intocado. Ver a causa raiz na seção do "tec", abaixo.
+
+> ⚠️ **Hipótese SUPERADA (mantida só como histórico):** por horas trabalhamos com "é **sobretensão** de
+> regeneração". Estava errado. Ela nasceu de duas medições ruins: (a) polling por CDC a **5 Hz** é cego a
+> transientes — mostrou pico de 22,4 V numa volta em que o trip disparou; (b) um **mapeamento de bits de
+> `ODrive::Error` escrito de memória**, que trocava UNDER por OVER. Instrumentando o trip no firmware,
+> provou-se que a sobretensão **nunca disparou** (pico real 23,9 V < trip 24,79 V).
+> **Lições:** medir na escala do fenômeno, e ler o enum em `autogen/interfaces.hpp`, nunca de memória.
+> Subir o trip de sobretensão (24,79 → 30 V) foi testado e **não resolveu** — era o limite errado.
 ### 🏁 O "tec" — CAUSA RAIZ ACHADA E CORRIGIDA (2026-08-04, noite)
 O que o usuário sente como **"tec"** (solavanco, "parece que pulou um ímã" — **não** é perda de FFB) era
 o motor em **churn arma/desarma a cada ~7 ms (~140 Hz)**, medido por **SWD a 200 Hz**.
@@ -88,8 +98,20 @@ corrente cai → o bus volta → re-arma → afunda de novo. **FIX: 8,0 V** (val
 - ⚠️ **`save_configuration` falha em silêncio** se o auto-arme re-armar antes: bloquear com
   `mww <&g_arm_gate> 0` por SWD, mandar `w axis0.requested_state 1`, então `ss`. Sem isso o valor fica
   só em RAM e volta no próximo boot (aconteceu, e só apareceu na gravação seguinte).
-- **Chopper:** ligá-lo derruba o pico de `vbus` de 23,9 → **20,6 V** (dissipa mesmo), mas ainda deixa
-  desarmes residuais e **não persistiu na NVM** — segue **desligado** por padrão, como validado.
+- **Chopper (atualizado 2026-08-05):** está **LIGADO** no `firmware-base` (`f104503`) e **estável** —
+  arma no boot (`brake_resistor_armed=1`) e **não trava mais** o motor. Derruba o pico de `vbus` de
+  23,9 → **20,9 V**. Na noite de 04/08 ele ainda deixava desarmes residuais; o que faltava eram as duas
+  peças do commit `046c421` (`clear_errors` re-armando o brake + auto-arme com retry espaçado).
+  *(A frase anterior desta linha — "segue desligado por padrão" — ficou obsoleta.)*
+
+### ✅ FECHAMENTO (2026-08-05): zig-zag limpo
+Com o `main` atual gravado: **zig-zag = ZERO desarmes** (em 04/08 dava 31 em segundos), voltas normais
+idem, `error=0`, motor armado o tempo todo. **Nenhuma peça sozinha resolvia** — foi a combinação de
+(1) trip de subtensão **8 V**, (2) **chopper ligado** + trip de sobretensão 55 V, (3) `clear_errors`
+delegando a `odrv.clear_errors()`, (4) auto-arme com **backoff 50→250 ms** sem desistir em 15 tentativas.
+Sem (3)+(4) o chopper travava o motor; sem (1) sobrava o churn.
+⚠️ Ao gravar firmware novo, **conferir a config**: o `firmware-base` escreve `enable_brake_resistor=1` e
+`dc_bus_overvoltage_trip_level=55 V` no boot, o que **difere** do que estava na NVM antes.
 
 ### Ferramenta nova: SWD SEM HALT (ideia do usuário) — 200 Hz
 A regra "não usar SWD com o motor armado" valia só para **halt**. Ler RAM pelo DAP com o core rodando
