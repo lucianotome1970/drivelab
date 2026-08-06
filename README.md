@@ -80,13 +80,13 @@ New to hoverboard motors? The **[Hoverboard base FAQ](docs/faq-hoverboard.md)** 
 
 ## 🔌 Base board
 
-The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class controller** — the firmware is the same for all of them. Two proven, interchangeable options (both **F405, 8–56 V, native USB**):
+The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class controller** — the firmware is the same for all of them. Two proven, interchangeable options (both **F405 with native USB**):
 
 <table>
 <tr>
 <td width="50%" valign="top">
 <img src="docs/screenshots/board-odesc-v42.png" width="100%" alt="ODESC v4.2 wiring" /><br/>
-<b>ODESC v4.2</b> — 24 V or 56 V variant · ~70 A / 120 A peak.<br/>
+<b>ODESC v4.2</b> — <b>8–24 V</b> or <b>8–56 V</b> variant · ~70 A / 120 A peak.<br/>
 Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.
 </td>
 <td width="50%" valign="top">
@@ -180,11 +180,11 @@ This is the **base** (the direct-drive wheelbase). Each other module is an indep
 
 | Part | Notes |
 |------|-------|
-| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board). **MKS boards take 12–56 V**, so the supply is your choice within that range. **ODESC boards ship as a 24 V or a 56 V variant** — check which one you have and stay inside it. Either way, a lower supply leaves extra headroom against regen voltage spikes. Boards other than the ODrive v3.6 layout may need a pin remap. |
+| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board). **MKS boards take 12–56 V**, so the supply is your choice within that range. **ODESC boards ship in two variants, 8–24 V and 8–56 V** — check which one you have and stay inside it. Either way, a lower supply leaves extra headroom against regen voltage spikes. Boards other than the ODrive v3.6 layout may need a pin remap. |
 | **Hoverboard hub motor** | The direct-drive actuator. |
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
-| **PSU** | Stay inside what your board accepts: **12–56 V** on an MKS board; on an ODESC, **≤24 V** or **up to 56 V** depending on the variant. Example: 24 V / 30 A (720 W). |
+| **PSU** | Stay inside what your board accepts: **12–56 V** on an MKS board; on an ODESC, **8–24 V** or **8–56 V** depending on the variant. Example: 24 V / 30 A (720 W). |
 | ST-Link V2 | To flash the STM32 (or DFU). |
 
 ## Hardware — per module
@@ -259,7 +259,7 @@ The brake-resistor chopper, off-state contactor and soft-power are implemented a
 
 ## ⚠️ Safety
 
-- **Know what your board accepts before you plug in a supply.** **MKS boards take 12–56 V.** **ODESC boards come as a 24 V or a 56 V variant** — the 24 V one has 35 V capacitors and must stay near 24 V; the 56 V one has 63 V capacitors. **Never exceed your board's rating**, and remember regen spikes push the bus above the supply voltage, so a lower supply is the safer choice.
+- **Know what your board accepts before you plug in a supply.** **MKS boards take 12–56 V.** **ODESC boards come in two variants, 8–24 V and 8–56 V** — the 8–24 V one has 35 V capacitors, the 8–56 V one has 63 V capacitors. **Never exceed your board's rating**, and remember regen spikes push the bus above the supply voltage, so a lower supply is the safer choice.
 - The **2 Ω brake resistor is mandatory** before any closed-loop torque; regen braking pushes energy back onto the bus and will destroy the capacitors without it.
 - `M0`/`M0.5` run **with no motor connected**. Bring current up gradually. A direct-drive wheel has enough torque to hurt your wrist — keep an e-stop (the plug) within reach.
 

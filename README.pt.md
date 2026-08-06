@@ -80,13 +80,13 @@ Primeira vez com motor de hoverboard? O **[FAQ da base hoverboard](docs/faq-hove
 
 ## 🔌 Placa base
 
-A base (o estágio do motor de FFB) roda em qualquer **controladora STM32F405 classe ODrive** — o firmware é o mesmo para todas. Duas opções comprovadas e intercambiáveis (as duas **F405, 8–56 V, USB nativo**):
+A base (o estágio do motor de FFB) roda em qualquer **controladora STM32F405 classe ODrive** — o firmware é o mesmo para todas. Duas opções comprovadas e intercambiáveis (as duas **F405 com USB nativo**):
 
 <table>
 <tr>
 <td width="50%" valign="top">
 <img src="docs/screenshots/board-odesc-v42.png" width="100%" alt="Ligação da ODESC v4.2" /><br/>
-<b>ODESC v4.2</b> — variante 24 V ou 56 V · ~70 A / 120 A de pico.<br/>
+<b>ODESC v4.2</b> — variante <b>8–24 V</b> ou <b>8–56 V</b> · ~70 A / 120 A de pico.<br/>
 Ligação: motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>, resistor de freio → <code>AUX</code>.
 </td>
 <td width="50%" valign="top">
@@ -180,11 +180,11 @@ Esta é a **base** (o wheelbase direct-drive). Cada outro módulo é um disposit
 
 | Peça | Observações |
 |------|-------------|
-| **Placa classe ODrive v3.6** (STM32F405) — validada: **MKS ODRIVE-S V3.6-S6V** | Qualquer placa F405 classe ODrive — veja [Placa base](#-placa-base). **As placas MKS aceitam de 12 a 56 V**, então a fonte é escolha sua dentro dessa faixa. **As ODESC vêm como variante de 24 V ou de 56 V** — confira qual é a sua e fique dentro dela. Em qualquer caso, uma fonte mais baixa dá folga extra contra os picos de tensão da frenagem regenerativa. Placas fora do layout ODrive v3.6 podem exigir remapear pinos. |
+| **Placa classe ODrive v3.6** (STM32F405) — validada: **MKS ODRIVE-S V3.6-S6V** | Qualquer placa F405 classe ODrive — veja [Placa base](#-placa-base). **As placas MKS aceitam de 12 a 56 V**, então a fonte é escolha sua dentro dessa faixa. **As ODESC vêm em duas variantes, 8–24 V e 8–56 V** — confira qual é a sua e fique dentro dela. Em qualquer caso, uma fonte mais baixa dá folga extra contra os picos de tensão da frenagem regenerativa. Placas fora do layout ODrive v3.6 podem exigir remapear pinos. |
 | **Motor de roda de hoverboard** | O atuador direct-drive. |
 | **Encoder** | Omron E6B2-CWZ6C incremental **ou** magnético absoluto AS5047P/MT6701 — sua escolha. |
 | **Resistor de freio 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia da frenagem regenerativa para ela não destruir os capacitores. |
-| **Fonte** | Fique dentro do que a sua placa aceita: **12 a 56 V** numa placa MKS; numa ODESC, **≤24 V** ou **até 56 V**, conforme a variante. Exemplo: 24 V / 30 A (720 W). |
+| **Fonte** | Fique dentro do que a sua placa aceita: **12 a 56 V** numa placa MKS; numa ODESC, **8–24 V** ou **8–56 V**, conforme a variante. Exemplo: 24 V / 30 A (720 W). |
 | ST-Link V2 | Para gravar o STM32 (ou por DFU). |
 
 ## Hardware — por módulo
@@ -259,7 +259,7 @@ O chopper do resistor de freio, o contator off-state e o soft-power estão imple
 
 ## ⚠️ Segurança
 
-- **Saiba o que a sua placa aceita antes de ligar uma fonte.** **As placas MKS aceitam de 12 a 56 V.** **As ODESC vêm como variante de 24 V ou de 56 V** — a de 24 V tem capacitores de 35 V e precisa ficar perto de 24 V; a de 56 V tem capacitores de 63 V. **Nunca ultrapasse o limite da SUA placa**, e lembre que os picos da frenagem regenerativa jogam o barramento acima da tensão da fonte, então uma fonte mais baixa é a escolha mais segura.
+- **Saiba o que a sua placa aceita antes de ligar uma fonte.** **As placas MKS aceitam de 12 a 56 V.** **As ODESC vêm em duas variantes, 8–24 V e 8–56 V** — a de 8–24 V tem capacitores de 35 V, a de 8–56 V tem capacitores de 63 V. **Nunca ultrapasse o limite da SUA placa**, e lembre que os picos da frenagem regenerativa jogam o barramento acima da tensão da fonte, então uma fonte mais baixa é a escolha mais segura.
 - O **resistor de freio de 2 Ω é obrigatório** antes de qualquer torque em malha fechada; a frenagem regenerativa devolve energia ao barramento e, sem ele, destrói os capacitores.
 - `M0` e `M0.5` rodam **sem motor conectado**. Suba a corrente aos poucos. Um volante direct-drive tem torque de sobra pra machucar o seu pulso — mantenha uma parada de emergência (a tomada) ao alcance.
 
