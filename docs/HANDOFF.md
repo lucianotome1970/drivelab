@@ -3,12 +3,100 @@
 > Nota pra retomar o trabalho em **qualquer máquina** (esp. Windows). O contexto detalhado está na
 > memória do Claude Code (`~/.claude/projects/<projeto>/memory/`) — mas o essencial está aqui, no git.
 
-## ⏭️ ONDE CONTINUAR (Windows, na bancada) — atualizado 2026-08-05
-Tudo abaixo já está **commitado e no `main`** (é só `git pull`). O que falta é **validar na bancada** (Windows,
-base plugada). Ordem sugerida — firmware é do Claude (grava por ST-Link, lê por CDC), uma mudança por vez.
+## 🚨 PRIMEIRA COISA A FAZER NO WINDOWS (2026-08-06) — o histórico foi REESCRITO
 
-> **Nota pra sessão do Claude no Windows:** esta sessão não tem a memória da máquina do dev (a memória é por
-> caminho de projeto). Este arquivo (no git) é a fonte. Ao abrir, ler este bloco + a seção "App" abaixo.
+Hoje o histórico do `main` foi reescrito (38 commits ganharam SHA novo) e **10 branches foram
+apagadas do GitHub**. O clone do Windows tem o histórico ANTIGO. Um `git pull` vai tentar mesclar
+duas histórias diferentes e fazer uma bagunça.
+
+**Não dê `git pull`.** Faça:
+
+```bash
+git fetch origin
+git reset --hard origin/main
+git remote prune origin
+```
+
+Se tiver trabalho local não commitado no Windows, salve antes (`git stash` ou cópia dos arquivos) —
+o `reset --hard` descarta.
+
+O que sobrou no GitHub é **só a branch `main`**. As `feat/*` e a `trabalho-2026-08-03` foram
+removidas porque o conteúdo delas já tinha sido portado pra `main` (conferido feature a feature).
+
+## ⏭️ ONDE CONTINUAR (Windows, na bancada) — atualizado 2026-08-06
+
+### 1. Validar a telemetria do brake chopper (PRONTA, falta bancada)
+
+Firmware compilado em `firmware-base/build/drivelab-base.bin`. O app já mostra o grupo
+**"Resistor de freio"** na aba Hardware (modo avançado) com acionamentos, energia dissipada e pico.
+
+**Por que existe:** o resistor quase nunca esquenta (a frenagem dura milissegundos, medimos 3,3 W de
+média), e "frio" passa a impressão de "quebrado". Os contadores são a evidência de que ele
+trabalhou. E **zero acionamentos depois de uma sessão inteira é diagnóstico**: resistor desligado ou
+rampa mal dimensionada.
+
+Passos, nesta ordem:
+
+1. **Gravar** — pelo Studio (DFU) ou ST-Link. Se a placa não entrar em DFU, o jumper tem que ser
+   **RETIRADO**, não colocado.
+2. **Confirmar que o FFB não regrediu** — armar e dirigir. Força igual, sem desarme, sem trepidação
+   nova. **Se algo mudou, reverter:** a única mudança que toca no laço de controle é `7278736`, e ela
+   só podia acrescentar leitura.
+3. **Zig-zag forte** com o resistor conectado → acionamentos sobem, energia cresce.
+4. **Base ligada e parada por um minuto** → os três números **não se movem**. Se subirem com o
+   volante parado, o chopper está conduzindo em repouso — que é exatamente o erro de config que
+   torrou o resistor de 50 W.
+5. **Anotar os números reais** da sessão. Viram referência pro próximo que montar.
+
+Plano completo (não versionado, é local do Mac): `docs/superpowers/plans/2026-08-06-brake-chopper-telemetry.md`
+
+### 2. Camada de encoder plugável (desenho aprovado, plano não escrito)
+
+**Restrição inegociável:** o caminho **ABZ incremental atual NÃO se toca** — é a única baseline
+validada (as 2 voltas no ACC foram com ele). O tipo 0 do catálogo é o comportamento de hoje, byte
+por byte.
+
+Desenho aprovado: um **catálogo de descritores** (`id`, interface, bits do quadro, CPR, absoluto,
+decodificador), selecionado pelo setting **`encoder_type` (BID 18)** — que **já existe no protocolo
+e no app, mas o firmware ignora**. O usuário escolhe o SENSOR e o firmware aplica CPR e modo, o que
+mata o erro mais recorrente do fórum (CPR errado, 68 tópicos).
+
+Catálogo: 0 = incremental genérico · 1 = MT6701 ABZ · 2 = MT6701 SSI · 3 = MT6835 SPI ·
+4 = AS5047P SPI.
+
+Ordem: (1) catálogo + tipo 0 sem mudar comportamento, com teste que FIXA a config atual;
+(2) tipo 1 quando o MT6701 chegar; (3) SSI/SPI quando o hardware chegar.
+
+**Já pronto:** `firmware-base/inc/magnetic_decode.h` — decodificação do MT6701 (quadro SSI de 24
+bits: 14 ângulo + 4 status + 6 CRC) e `angle_delta_wrapped`. 15 testes de host passando.
+⚠️ O **CRC-6 não foi validado contra o chip** (o datasheet não dá vetor de teste e o driver de
+referência público não implementa CRC) — por isso `crc_ok` é informativo. No bring-up, **usar o
+ângulo mesmo com `crc_ok=0`** e conferir contra a realidade.
+
+### 3. Encoders a caminho
+
+- **MT6701** (~2026-08-08) — R$ 13, absoluto de 1 volta, 14 bits. **Tem saída ABZ com índice Z**:
+  liga no conector ABZ que já existe, no caminho já validado, **sem escrever código**, e traz o
+  índice — que é a raiz documentada do offset não-repetível. É o ganho rápido.
+- **MT6835** (~2026-08-13) — 21 bits, AMR, SPI. É o caminho definitivo pro modo absoluto.
+
+**Mecânica já resolvida** (hardware do usuário, não está no repo): encoder no EIXO (parado), pino de
+8 mm prensado e colado, fios passando por dentro do eixo; ímã na metade do quick release **presa ao
+motor** (trocar o aro não desloca o zero); tudo em **PETG**; encaixe em posição única.
+
+**Nota de pesquisa:** nenhum port ODrive da comunidade implementou MT6701 ou MT6835 — quem quis
+magnético usou AS5047P, que o ODrive já suporta nativamente (`MODE_SPI_ABS_AMS`). O AS5047P só vem
+da China (~20 dias), então não serve de rede de segurança. Fazer o MT6701 é trabalho pioneiro, e é
+proposital: é o único absoluto de R$ 13, o que cabe no público do projeto.
+
+### 4. Testes agora rodam firmware + app
+
+`./scripts/test.sh` passou a rodar **os testes de host do firmware** (`firmware-base/test/run.sh`,
+25 testes, C puro) antes dos testes do app. O harness tinha morrido junto com o `firmware-old` — o
+README afirmava que rodava os dois e não rodava.
+
+⚠️ Rodar a solução .NET inteira acusa **uma falha falsa** em `DriveLab.Studio.Tests` (o gerenciador
+de idiomas é estático e vaza entre projetos). Rodar esse projeto isolado pra confirmar.
 
 ### ✅ FECHADO na bancada em 2026-08-05 (dia longo — tudo commitado e no GitHub)
 Hardware novo em uso: **fonte 27 V / 30 A** (a de 19,5 V afundava a 7,47 V sob torque = a raiz do "tec")
@@ -76,8 +164,10 @@ e **resistor de brake de 100 W** (o de 50 W torrou — ver abaixo).
 - **Untracked que NÃO vão pro git** (podem apagar): `app.zip` (~370 MB), `hardware-profile.json.bak` (sobra do
   JSON removido), `firmware-*/build/`, `firmware-*/vendor/build` (regeneráveis por `make`).
 
-### ⚙️ EQUALIZAR após `git pull` (Windows) — pastas-fantasma
-O `git pull` do rename move os arquivos **rastreados** de `firmware-wheel-dd`→`firmware-base`, mas **não apaga**
+### ⚙️ EQUALIZAR após sincronizar (Windows) — pastas-fantasma
+> Vale igual depois do `git reset --hard origin/main` do topo deste arquivo.
+
+O sincronismo move os arquivos **rastreados** de `firmware-wheel-dd`→`firmware-base`, mas **não apaga**
 os **untracked** que sobram (build/, `autogen/` que é gitignored, vendor build) → ficam **pastas-fantasma**
 `firmware-wheel-dd/` e `firmware-old/` com lixo. Elas têm **zero arquivo rastreado** — deletar é seguro.
 No shell (MSYS2/bash):
