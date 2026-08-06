@@ -76,6 +76,17 @@ e **resistor de brake de 100 W** (o de 50 W torrou — ver abaixo).
 - **Untracked que NÃO vão pro git** (podem apagar): `app.zip` (~370 MB), `hardware-profile.json.bak` (sobra do
   JSON removido), `firmware-*/build/`, `firmware-*/vendor/build` (regeneráveis por `make`).
 
+### ⚙️ EQUALIZAR após `git pull` (Windows) — pastas-fantasma
+O `git pull` do rename move os arquivos **rastreados** de `firmware-wheel-dd`→`firmware-base`, mas **não apaga**
+os **untracked** que sobram (build/, `autogen/` que é gitignored, vendor build) → ficam **pastas-fantasma**
+`firmware-wheel-dd/` e `firmware-old/` com lixo. Elas têm **zero arquivo rastreado** — deletar é seguro.
+No shell (MSYS2/bash):
+```
+git ls-files firmware-wheel-dd firmware-old   # deve imprimir NADA (confirma que é só casca)
+rm -rf firmware-wheel-dd firmware-old         # remove as pastas-fantasma
+```
+(PowerShell: `Remove-Item -Recurse -Force firmware-wheel-dd, firmware-old`.) O firmware ATIVO é `firmware-base/`.
+
 ## Diagnóstico da força — RESPONDIDO (2026-08-04) e RESOLVIDO (2026-08-05)
 A pergunta era: perder força numa curva é **teto de 5 Nm** ou **bug**? **Nenhum dos dois.**
 **Não era o teto:** no desarme o `Iq` era ~5–7 A de 25 (≈2,7–4 Nm de 13,75). Cap
