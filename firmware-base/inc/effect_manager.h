@@ -336,7 +336,7 @@ public:
     const FxEffect& slot(int i) const { return m_slots[i]; } // p/ testes
 
     // Fator de direção do eixo X (axisMagnitudes[0]) do bloco, decodificando o campo
-    // Direction do Set Effect — CASADO com o Odrive-Wheel (HidFFB.cpp: polar sin/-cos, ou
+    // Direction do Set Effect — convenção polar do HID PID (sin/-cos, ou
     // por-eixo linear, + o fallback de 1-eixo com cos(phaseX): +1 a 0°, -1 a 180°). É o que
     // dá o SENTIDO correto à força constante do jogo (sem isso, força fixa/errada → runaway).
     float axisDirFactor(int block1based) const {

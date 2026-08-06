@@ -194,7 +194,7 @@ has already validated on this exact silicon/board family, and leaves headroom un
   levels instead of NVIC alone, and with "fast loop" meaning "talk to the TMC4671 fast
   enough," not "run Clarke/Park ourselves." Not directly reusable for our bare-metal,
   software-FOC case beyond confirming the general pattern.
-- **ODESC-class ODrive-clone force-feedback ports** (e.g. `eagabriel/Odrive-Wheel` — OpenFFBoard
+- **ODESC-class ODrive-clone force-feedback ports** (community ports combining OpenFFBoard
   firmware + ODrive firmware ported to the MKS XDrive Mini, a board in the same family as
   ours): these projects graft OpenFFBoard's USB-HID-FFB front end onto ODrive's own current
   loop rather than reimplementing FOC — i.e. **the pragmatic community answer to "fast motor
@@ -313,8 +313,7 @@ A0/HID + housekeeping all sharing the same iteration).
 - DeepWiki, "Main Loop and FreeRTOS Tasks" (odriverobotics/ODrive, current main branch) —
   https://deepwiki.com/odriverobotics/ODrive/4.1-main-loop-and-freertos-tasks
 - DeepWiki, Ultrawipf/OpenFFBoard overview — https://deepwiki.com/Ultrawipf/OpenFFBoard
-- `eagabriel/Odrive-Wheel` (OpenFFBoard + ODrive port to MKS XDrive Mini) —
-  https://github.com/eagabriel/Odrive-Wheel
+- Community OpenFFBoard + ODrive ports to MKS XDrive-class boards
 - TinyUSB architecture (ISR deferred to `.task()`) — https://docs.tinyusb.org/en/latest/
 - Our own firmware: `firmware-base/src/m5/main.cpp:145-146` (encoder quadrature ISRs),
   `:153-215` (DIR-gated current read, `genCurrentRead`/`adc2Config`), `:1243-1663` (`loop()`

@@ -110,13 +110,13 @@ extern "C" void odrive_bridge_apply_hw_profile(int board_variant, int bus_nomina
 // + offset do encoder + arma no fim. Brake desligado. Roda 1x na placa nova pra testar o DRV limpo.
 extern "C" void odrive_bridge_newboard_bringup(void) {
     // MOTOR — geometria + R/L do NOSSO hoverboard (medidos na placa antiga: 0,20Ω/0,35mH; batem com o
-    // config hoverboard do Odrive-Wheel 0,174Ω/0,349mH). PRÉ-CALIBRADO → is_calibrated_ SEM medir R/L.
+    // config hoverboard de referência 0,174Ω/0,349mH). PRÉ-CALIBRADO → is_calibrated_ SEM medir R/L.
     // ⚠️ CHAVE: pular a medição de indutância é o que EVITA o DRV_FAULT (L baixa → ΔI=V·Δt/L explode →
     // OCP do DRV8301). Confirmado pelo core do ODrive (measure_phase_inductance). NÃO por
     // startup_motor_calibration=true (foi o meu erro anterior — rodava a medição perigosa).
     axes[0].motor_.config_.motor_type               = Motor::MOTOR_TYPE_HIGH_CURRENT;
     axes[0].motor_.config_.pole_pairs               = 15;
-    axes[0].motor_.config_.torque_constant          = 0.55f;      // hoverboard (Odrive-Wheel)
+    axes[0].motor_.config_.torque_constant          = 0.55f;      // hoverboard
     axes[0].motor_.config_.phase_resistance         = 0.20f;      // medido na placa antiga
     axes[0].motor_.config_.phase_inductance         = 0.00035f;   // medido na placa antiga (L baixa)
     axes[0].motor_.config_.pre_calibrated           = true;       // aplica is_calibrated_ no apply_config
@@ -139,14 +139,14 @@ extern "C" void odrive_bridge_newboard_bringup(void) {
     axes[0].config_.startup_closed_loop_control          = true;  // auto-arma no fim
     // Sim racing: sem clamp de velocidade cortando torque (girar na mão sem OVERSPEED)
     axes[0].controller_.config_.enable_vel_limit         = false;
-    // BRAKE RESISTOR (chopper) — REPLICA o config funcional do Odrive-Wheel/ODESC: dissipa a regen que
+    // BRAKE RESISTOR (chopper) — config funcional para placas classe ODESC: dissipa a regen que
     // estourava dc_bus_overvoltage_trip_level (a queda de FFB na chicane). Antes ficava DESLIGADO (contorno
     // do não-arme); agora o clear_errors (delegado a odrv.clear_errors, fix 046c421) RE-ARMA o brake no
     // auto-arme → satisfaz enable&&armed → o motor arma junto. Setado no boot (não depende de NVM stale).
     // ⚠️ Valores por-PLACA (56V aqui) → vira board profile na Fase 2. brake_resistance idealmente é setting
-    // da aba Hardware (feat/brake-resistance); aqui fixo em 2.0 = nosso resistor físico (Odrive-Wheel usa 12Ω).
+    // da aba Hardware (feat/brake-resistance); aqui fixo em 2.0 = nosso resistor físico (há montagens com 12Ω).
     odrv.config_.brake_resistance                = 2.0f;   // nosso resistor físico de 2Ω
-    odrv.config_.dc_bus_undervoltage_trip_level  = 8.0f;   // "prevents brown-outs" (Odrive-Wheel); garante no boot
+    odrv.config_.dc_bus_undervoltage_trip_level  = 8.0f;   // evita brown-out; garante no boot
 
     // Chopper MUDO aqui. Ligá-lo depende de MEDIR a fonte, e neste ponto do boot o ADC ainda não leu:
     // `vbus_voltage` vale o inicializador 12.0f de low_level.cpp ("arbitrary non-zero initial value to
@@ -165,7 +165,7 @@ extern "C" void odrive_bridge_newboard_bringup(void) {
 // Ao trocar por uma fonte de 24 V, o vbus EM REPOUSO já estava acima do ramp_end → duty saturado em
 // 0,95 CONTÍNUO → 24²/2 × 0,95 ≈ 273 W. Config que não bate com o hardware não pode queimar hardware.
 //
-// Regra (segue o Odrive-Wheel, "trip = fonte + 4 V"), com a rampa SEMPRE acima do repouso:
+// Regra "trip = fonte + 4 V", com a rampa SEMPRE acima do repouso:
 //   ramp_start = V+2 · ramp_end = V+4 · trip = V+6 (clampado ao teto da placa)
 // Em repouso (sem carga) vbus == tensão da fonte. Vale para qualquer fonte de 12 a 48 V.
 // VALIDADO na bancada: com a fonte medida em 27,1 V, rampa em 29,2 V e o chopper mudo parado; na

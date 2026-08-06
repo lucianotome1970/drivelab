@@ -1,6 +1,6 @@
-# DriveLab — Roadmap de Features (gap vs OpenFFBoard / Odrive-Wheel)
+# DriveLab — Roadmap de Features
 
-> Comparação do NOSSO firmware (`firmware-base`) com **OpenFFBoard** e **Odrive-Wheel** (mesma base
+> Comparação do NOSSO firmware (`firmware-base`) com outros firmwares de FFB da comunidade (mesma base
 > ODrive v0.5.6). Objetivo: o que eles têm e nós **ainda não** — priorizado.
 > Legenda: **[LIGAR]** = código já existe, só conectar · **[NOVO]** = implementar · Esforço S/M/L ·
 > 🔧 = precisa de bancada · 💻 = off-bench (app/host/doc).
@@ -34,7 +34,7 @@ knobs, persistir, e adicionar segurança/telemetria fina.**
 
 | Feature | Nosso status | Por quê importa | Esforço |
 |---|---|---|---|
-| **Persistência (SAVE na flash)** | `CMD_SAVE` é **no-op**; settings voltam ao default a cada boot | o usuário reconfigura tudo todo boot; Odrive-Wheel tem EEPROM completa | **L 🔧** |
+| **Persistência (SAVE na flash)** | `CMD_SAVE` é **no-op**; settings voltam ao default a cada boot | o usuário reconfigura tudo todo boot; outros firmwares persistem em EEPROM | **L 🔧** |
 | **DOR real no eixo** | eixo do joystick usa **±1.5 volta hardcoded**, não o `motion_range` | a escala de direção fica errada em todos os jogos | M 🔧 |
 | **Force-disable real** | comando existe mas **não zera o torque** (só o flag da telemetria) | segurança: "desligar força" no app não desliga de verdade | S 🔧 |
 | **Idle-spring (centra só com FFB off)** | temos spring always-on opt-in, não idle-only | feel: auto-centra no menu sem lutar com o jogo | S 🔧 |
@@ -57,7 +57,7 @@ knobs, persistir, e adicionar segurança/telemetria fina.**
 
 | Feature | Fonte | Esforço |
 |---|---|---|
-| **Stream de telemetria a 1kHz** (vel, Iq, torque, vbus, ibus, ibrake) p/ overlays | Odrive-Wheel rc12 | M 🔧 |
+| **Stream de telemetria a 1kHz** (vel, Iq, torque, vbus, ibus, ibrake) p/ overlays | comunidade | M 🔧 |
 | **Medidor de clipping** (satura em ±força) | ambos | S 🔧 |
 | **Stats por efeito** (qual efeito, força atual/máx) | ambos | M 💻/🔧 |
 | **Taxa de update HID** (hidrate) | ambos | S 🔧 |
@@ -109,10 +109,10 @@ profile" do modelo FFBeast — o mesmo mecanismo do "1 binário pra família ODr
 | **Anticogging** (mapa na flash) | ODrive nativo | L 🔧 |
 | **Auto-tune do PI de corrente/velocidade** | ambos | L 🔧 |
 | **Filtro de torque notch/peak** (mata ressonância mecânica) | OpenFFBoard | M 🔧 |
-| **Testes de performance host** (Bode, FFT, coastdown, inércia) | Odrive-Wheel rc12 | L 💻 |
-| **Presets de motor (JSON import/export)** | Odrive-Wheel | M 💻 |
+| **Testes de performance host** (Bode, FFT, coastdown, inércia) | comunidade | L 💻 |
+| **Presets de motor (JSON import/export)** | comunidade | M 💻 |
 | **Botão "Zero Wheel" via GPIO** | ambos | S 🔧 |
-| **PiP overlay** (bus/wheel/spectrum por HID) | Odrive-Wheel | L 💻 |
+| **PiP overlay** (bus/wheel/spectrum por HID) | comunidade | L 💻 |
 | **Field weakening / SVPWM / PWM freq** | OpenFFBoard(TMC) | — (ODrive já faz SVPWM) |
 
 ---

@@ -21,7 +21,7 @@ estava. Isso desloca o offset medido de boot pra boot:
 parecida). Fundamentalmente sempre foi não-determinístico sem index — só não tínhamos batido nos
 boots ruins ainda. (E o meu **g_arm_gate piorou**: re-armava a MESMA cal ruim em vez de descartar.)
 
-## O FIX (o que AS DUAS referências fazem: MKS-fábrica e odrive-wheel)
+## O FIX (o que as referências fazem: firmware MKS de fábrica e outros ports de FFB)
 
 **Usar o canal Z (index) do encoder.** O E6B2-**CWZ** TEM index (o "Z" no nome). Com o Z ligado:
 1. `encoder.use_index=1` + `startup_encoder_index_search=true` → o motor gira brevemente no boot
@@ -29,7 +29,7 @@ boots ruins ainda. (E o meu **g_arm_gate piorou**: re-armava a MESMA cal ruim em
 2. Aí `pre_calibrated=true` **COLA** (o check_pre_calibrated deixa de rebaixar) → o offset medido
    1x fica fixo relativo ao Z → **alinhamento IDÊNTICO a cada boot** → sem runaway/notchy.
 
-O odrive-wheel tem um passo dedicado "Configure Z (index pulse)" e um "warning for incremental
+Outros ports têm um passo dedicado "Configure Z (index pulse)" e um "warning for incremental
 encoder without Z" — ou seja, sem Z eles AVISAM que é problema. Ambas as refs convergem pro Z.
 
 ## Config recomendada (hoverboard 15pp, E6B2, DRV8301) — das referências

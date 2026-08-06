@@ -8,7 +8,7 @@
 // Os eventos do ODrive (osMessagePut: 1=conecta, 2=desconecta, 3=CDC TX done) ficam iguais.
 //
 // Escrito a partir das APIs (TinyUSB=MIT, interface do ODrive=MIT), entendendo cada peça —
-// não é cópia do glue GPL do Odrive-Wheel. O detalhe crítico do MKS (NOVBUSSENS, porque a
+// não é cópia de glue GPL de terceiros. O detalhe crítico do MKS (NOVBUSSENS, porque a
 // VBUS não está ligada no PA9) está incorporado.
 // Autor: Luciano Tomé <lucianotome1970@gmail.com> — Licença MIT
 #include <stdint.h>

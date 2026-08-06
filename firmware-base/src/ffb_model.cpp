@@ -109,7 +109,7 @@ extern "C" void ffb_model_apply_tuning(const FfbTuning* t) {
 // Escala on-wire da força PID (±32767) → escala do engine (±255).
 static constexpr float kPidForceToF255 = 255.0f / 32767.0f;
 
-// Sinal GLOBAL da força do jogo no NOSSO frame. -1 CASA com o odrive-wheel
+// Sinal GLOBAL da força do jogo no NOSSO frame. -1 é o sinal validado em bancada
 // (result_torque = -forceVector × angle_ratio): a força do jogo é NEGADA relativa ao
 // nosso eixo, senão o auto-alinhamento do ACC vira runaway ao soltar e os solavancos
 // empurram pro lado errado (incoerência). Ajustável no Stage 4 pelo app.
@@ -180,7 +180,7 @@ extern "C" void ffb_model_handle_out(const uint8_t* buf, uint16_t len) {
     FfbOut o = ffb_parse_out(buf, len);
     if (o.type == FFB_SET_CONSTANT_FORCE) {         // força constante do jogo → reconstrutor (suave)
         // SENTIDO: aplica o campo Direction do Set Effect (axisMagnitudes[0]) — sem isso a
-        // força fica com sinal fixo/errado (incoerente + runaway ao soltar). CASADO c/ odrive-wheel.
+        // força fica com sinal fixo/errado (incoerente + runaway ao soltar). Validado em bancada.
         const float dir = s_effects.axisDirFactor(o.effectBlock);
         const float directed = (float)o.constantForce * dir * kGameForceSign;
         // FIX de escala: ±32767 (on-wire PID) → ±255 (escala do engine).

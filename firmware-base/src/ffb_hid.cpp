@@ -123,7 +123,7 @@ extern "C" uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
     // get_report → retorno 0 = STALL no EP0 → o Windows HALTA a pipe do device → para de pollar o
     // endpoint IN → o eixo do joystick CONGELA (e fica congelado mesmo após sair do jogo). O ACC dispara
     // GET_REPORT (Block Load/Pool/State) ao ligar a FFB; qualquer consulta não tratada caía aqui.
-    // Fallback: preenche com zeros e retorna comprimento não-nulo (espelha o Odrive-Wheel, mesma placa).
+    // Fallback: preenche com zeros e retorna comprimento não-nulo — NUNCA 0, senão o EP0 dá STALL.
     uint16_t n = reqlen ? reqlen : 1;
     if (n > 64) n = 64;                 // limite do buffer do EP (CFG_TUD_HID_EP_BUFSIZE)
     memset(buffer, 0, n);

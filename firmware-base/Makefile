@@ -1,11 +1,12 @@
 # =============================================================================
-# Odrive-Wheel — ODrive v0.5.6 + OpenFFBoard FFB stack para MKS XDrive Mini
-# Espelha Tupfile.lua de ODrive-fw-v0.5.6 + adiciona FFB (HidFFB +
-# EffectsCalculator). CDC USB aceita ASCII (enable_ascii_protocol_on_usb
-# default true) + parser OpenFFBoard.
+# DriveLab firmware-base — wheelbase direct-drive
+# Constroi a FOC do ODrive v0.5.6 (vendorizada, MIT) + TinyUSB + a NOSSA camada
+# de FFB (ponte, parser HID PID, efeitos, persistencia). Espelha o Tupfile.lua
+# do ODrive para a lista de fontes e flags do F405.
+# Autor: Luciano Tome <lucianotome1970@gmail.com> — Licenca MIT
 # =============================================================================
 
-TARGET    = odrive-wheel
+TARGET    = drivelab-base
 BUILD_DIR = build
 
 # --- Toolchain ---------------------------------------------------------------
@@ -335,7 +336,7 @@ flash-dfu: $(BUILD_DIR)/$(TARGET).bin
 # Apaga tanto BUILD_DIR (objetos do src/ nosso) quanto os objetos espelhados
 # fora do BUILD_DIR — necessário porque OBJECTS usa addprefix $(BUILD_DIR)/
 # em SOURCES com paths "../ODrive-fw-v0.5.6/...", o que coloca os .o do ODrive
-# em "Odrive-Wheel/ODrive-fw-v0.5.6/..." (fora do BUILD_DIR). Sem este 2º rm,
+# fora do BUILD_DIR. Sem este 2º rm,
 # uma mudança em motor.hpp NÃO recompila motor.cpp em build incremental.
 clean:
 	rm -rf $(BUILD_DIR)

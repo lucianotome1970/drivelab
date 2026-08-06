@@ -27,7 +27,7 @@ e **resistor de brake de 100 W** (o de 50 W torrou — ver abaixo).
 
 > ⚠️ **Um resistor de 50 W QUEIMOU** ao trocar a fonte: a rampa do chopper vinha da NVM calibrada para
 > 19,5 V e o vbus da fonte nova já nascia acima do `ramp_end` → duty 95% contínuo ≈ 273 W. Corrigido
-> por três proteções que **nem o ODrive nem o Odrive-Wheel têm** (`68f9ab3`): limites derivados da
+> por três proteções que **o ODrive de origem não tem** (`68f9ab3`): limites derivados da
 > **fonte medida**, chopper **mudo** enquanto não medir, e **watchdog térmico** (60 W médios).
 
 ### Pendente
@@ -104,7 +104,7 @@ O que o usuário sente como **"tec"** (solavanco, "parece que pulou um ímã" �
 o motor em **churn arma/desarma a cada ~7 ms (~140 Hz)**, medido por **SWD a 200 Hz**.
 **Raiz: `config.dc_bus_undervoltage_trip_level` estava em 14,79 V.** Sob corrente alta (curva lenta de
 1ª/2ª = torque alto) o bus **afunda** até lá → `disarm_with_error(DC_BUS_UNDER_VOLTAGE)` → sem torque a
-corrente cai → o bus volta → re-arma → afunda de novo. **FIX: 8,0 V** (valor do Odrive-Wheel,
+corrente cai → o bus volta → re-arma → afunda de novo. **FIX: 8,0 V** (valor de referência,
 "prevents brown-outs") — **já SALVO na NVM**. Resultado: 110 s de pista com **ZERO desarmes**
 (antes: dezenas por segundo). O `vbus` mínimo de 14,79 V no log era a pista, e estava lá o dia todo.
 - ⚠️ **`save_configuration` falha em silêncio** se o auto-arme re-armar antes: bloquear com

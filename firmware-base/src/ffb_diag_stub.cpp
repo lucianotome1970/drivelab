@@ -1,5 +1,5 @@
 // firmware-base — stubs MIT de TODAS as funcoes ffb_* que o ascii_protocol patchado usa.
-// Diag/params FFB do Odrive-Wheel que nao usamos — retornam 0/no-op. Stage 4 = os nossos.
+// Diag/params FFB do protocolo ASCII que nao usamos — retornam 0/no-op. Os nossos sao outros.
 #include <stdint.h>
 extern "C" {
 uint32_t ffb_diag_hidout_total(void) { return 0; }
