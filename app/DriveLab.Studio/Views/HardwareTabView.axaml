@@ -1,7 +1,7 @@
 <!-- ============================================================================
      DriveLab
-     HardwareTabView.axaml — Aba de hardware: monitor no topo (fixo) e, abaixo, os settings + o export do
-     perfil de hardware NO MESMO scroll (o export rola junto com os parâmetros). Só o criador vê esta aba.
+     HardwareTabView.axaml — Aba de hardware: monitor, settings e o rodapé no MESMO scroll — a página inteira
+     rola junto. Só o criador vê esta aba.
      Autor: Luciano Tomé — Licença MIT
 ============================================================================ -->
 <UserControl xmlns="https://github.com/avaloniaui"
@@ -11,12 +11,13 @@
              xmlns:av="using:Avalonia.Data.Converters"
              x:Class="DriveLab.Studio.Views.HardwareTabView"
              x:DataType="vm:HardwareTabViewModel">
-    <DockPanel>
-        <views:HardwareMonitorView DockPanel.Dock="Top" Margin="0,0,0,16" DataContext="{Binding Monitor}" />
-
-        <!-- Os settings de hardware + o export (como Footer) ficam no MESMO ScrollViewer: o export rola junto. -->
-        <views:SettingsGroupView>
-            <views:SettingsGroupView.Footer>
+    <!-- Tudo (monitor + campos + rodapé) num ScrollViewer só: a página rola inteira. O monitor
+         já ocupava metade da altura útil quando ficava fixo no topo. -->
+    <views:SettingsGroupView>
+        <views:SettingsGroupView.Header>
+            <views:HardwareMonitorView Margin="0,0,0,16" DataContext="{Binding Monitor}" />
+        </views:SettingsGroupView.Header>
+        <views:SettingsGroupView.Footer>
               <StackPanel Spacing="0">
                 <!-- Compensação de cogging: calibrar (roda na bancada) + status da tabela na flash. Só o criador. -->
                 <Expander Header="Compensação de cogging" IsExpanded="False"
@@ -34,7 +35,6 @@
                     </StackPanel>
                 </Expander>
               </StackPanel>
-            </views:SettingsGroupView.Footer>
-        </views:SettingsGroupView>
-    </DockPanel>
+        </views:SettingsGroupView.Footer>
+    </views:SettingsGroupView>
 </UserControl>

@@ -75,6 +75,8 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
+            <!-- Cabeçalho opcional (ex.: monitor de telemetria) — rola junto com os campos. -->
+            <ContentControl Content="{Binding $parent[views:SettingsGroupView].Header}" Margin="4,4,20,0" />
             <Grid ColumnDefinitions="*,28,*" Margin="4,4,20,4">
                 <ItemsControl Grid.Column="0" ItemsSource="{Binding LeftColumn}" ItemTemplate="{StaticResource FieldBlock}" />
                 <ItemsControl Grid.Column="2" ItemsSource="{Binding RightColumn}" ItemTemplate="{StaticResource FieldBlock}" />
