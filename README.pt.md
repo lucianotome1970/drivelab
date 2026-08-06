@@ -101,7 +101,18 @@ A base (o estágio do motor de FFB) roda em qualquer **controladora STM32F405 cl
 </tr>
 </table>
 
-**A ligação é a mesma nas quatro:** motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>, resistor de freio → <code>AUX</code>.
+**A ligação é a mesma nas quatro** — potência nos bornes de parafuso, sinal nos conectores JST da borda de baixo:
+
+| Ligação | Onde |
+|---|---|
+| Fases do motor | bornes <code>A</code> / <code>B</code> / <code>C</code> |
+| Fonte de alimentação | bornes <code>DC +/−</code> |
+| Resistor de freio | <code>AUX +/−</code> |
+| **Encoder incremental** (A/B/Z, ex.: Omron E6B2) | conector <code>ABZ</code> — `5V · A · B · Z · GND` |
+| **Encoder magnético** (SPI, ex.: MT6835 / AS5047P) | conector <code>SPI</code> — `3,3V · GND · SCK · MISO · MOSI · CS` |
+| Debug e gravação | conector <code>SWD</code> — `3,3V · SWDIO · SWCLK · GND · RST` |
+
+Os dois conectores de encoder existem em todas essas placas, então a escolha do sensor não é escolha de placa. O firmware hoje aciona o caminho **incremental A/B/Z**; o suporte a **magnético por SPI** está em andamento — veja o [encoders.md](docs/encoders.md) para escolher qual sensor comprar e por quê.
 
 As duas variantes da ODESC são idênticas fora o adesivo e a cor do LED — os capacitores são de 63 V nas duas, então não dizem nada. Dar na de 24 V mais tensão do que ela aceita destrói a placa.
 

@@ -101,7 +101,18 @@ The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class control
 </tr>
 </table>
 
-**Wiring is the same on all four:** motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.
+**Wiring is the same on all four** — power on the screw terminals, signal on the JST headers along the bottom edge:
+
+| Connection | Where |
+|---|---|
+| Motor phases | <code>A</code> / <code>B</code> / <code>C</code> screw terminals |
+| Power supply | <code>DC +/−</code> screw terminals |
+| Brake resistor | <code>AUX +/−</code> |
+| **Incremental encoder** (A/B/Z, e.g. Omron E6B2) | <code>ABZ</code> header — `5V · A · B · Z · GND` |
+| **Magnetic encoder** (SPI, e.g. MT6835 / AS5047P) | <code>SPI</code> header — `3.3V · GND · SCK · MISO · MOSI · CS` |
+| Debug / flashing | <code>SWD</code> header — `3.3V · SWDIO · SWCLK · GND · RST` |
+
+Both encoder headers are present on every one of these boards, so the sensor choice is not a board choice. The firmware currently drives the **incremental A/B/Z** path; **SPI magnetic** support is in progress — see [encoders.md](docs/encoders.md) for which sensor to buy and why.
 
 The two ODESC variants look identical apart from the sticker and the LED colour — the capacitors are 63 V on both, so they tell you nothing. Feeding the 24 V one more than it takes destroys it.
 
