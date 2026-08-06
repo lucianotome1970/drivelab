@@ -85,12 +85,12 @@ The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class control
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/screenshots/board-odesc-v42.png" width="100%" alt="ODESC v4.2 wiring" /><br/>
+<img src="docs/screenshots/board-odesc-v42.jpg" width="100%" alt="ODESC v4.2 wiring" /><br/>
 <b>ODESC v4.2</b> — <b>8–24 V</b> or <b>8–56 V</b> variant · ~70 A / 120 A peak.<br/>
 Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake resistor → <code>AUX</code>.
 </td>
 <td width="50%" valign="top">
-<img src="docs/screenshots/board-mks-xdrive-s.png" width="100%" alt="MKS XDrive-S" /><br/>
+<img src="docs/screenshots/board-mks-xdrive-s.jpg" width="100%" alt="MKS XDrive-S" /><br/>
 <b>MKS XDrive-S</b> — 12–56 V · 60 A / 120 A peak · same F405 MCU, so a drop-in alternative · ships with heatsinks.
 </td>
 </tr>

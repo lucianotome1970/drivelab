@@ -125,8 +125,8 @@ decide how much force you can hold before the supply gives up.
 
    <table>
    <tr>
-   <td width="50%"><img src="screenshots/odesc-v42-24v.png" width="100%" alt="ODESC v4.2 24 V — QC PASS 24V sticker, purple LED"></td>
-   <td width="50%"><img src="screenshots/odesc-v42-56v.png" width="100%" alt="ODESC v4.2 56 V — QC PASS 56V sticker, green LED"></td>
+   <td width="50%"><img src="screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2 24 V — QC PASS 24V sticker, purple LED"></td>
+   <td width="50%"><img src="screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2 56 V — QC PASS 56V sticker, green LED"></td>
    </tr>
    <tr>
    <td><b>8–24 V</b> — sticker <code>24V</code>, purple LED</td>
@@ -928,8 +928,8 @@ decidem quanta força você consegue segurar antes da fonte desistir.
 
    <table>
    <tr>
-   <td width="50%"><img src="screenshots/odesc-v42-24v.png" width="100%" alt="ODESC v4.2 24 V — adesivo QC PASS 24V, LED roxo"></td>
-   <td width="50%"><img src="screenshots/odesc-v42-56v.png" width="100%" alt="ODESC v4.2 56 V — adesivo QC PASS 56V, LED verde"></td>
+   <td width="50%"><img src="screenshots/odesc-v42-24v.jpg" width="100%" alt="ODESC v4.2 24 V — adesivo QC PASS 24V, LED roxo"></td>
+   <td width="50%"><img src="screenshots/odesc-v42-56v.jpg" width="100%" alt="ODESC v4.2 56 V — adesivo QC PASS 56V, LED verde"></td>
    </tr>
    <tr>
    <td><b>8–24 V</b> — adesivo <code>24V</code>, LED roxo</td>
