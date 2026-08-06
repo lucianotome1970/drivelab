@@ -10,7 +10,7 @@
 // arrays de valores (int em `ival`, float em `fval`, indexados por BaseSettingId) num blob com
 // magic+versão+CRC (valida contra flash apagada/corrompida). A leitura/escrita de fato na flash
 // (região FFB_NVM, setores 1/2) mora em settings_flash.cpp; este header é puro. Espelha o padrão
-// provado do cogging_store.h do firmware-old.
+// provado do cogging_store.h do firmware SimpleFOC antigo (removido do repo; ver histórico git).
 #pragma once
 #include <cstdint>
 #include <cstddef>

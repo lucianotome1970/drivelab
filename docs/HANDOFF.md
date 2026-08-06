@@ -68,7 +68,8 @@ e **resistor de brake de 100 W** (o de 50 W torrou — ver abaixo).
 - **Firmware ATIVO = `firmware-base/`** (ODrive-base, MIT; 522 arquivos rastreados, incl. `vendor/odrive-fw`;
   só `autogen/` e `build/` são gitignored — regenerar autogen no clone, ver seção Windows). **É AQUI que
   trabalhamos daqui pra frente.**
-- **`firmware-old/`** = o SimpleFOC antigo (ODESC/STM32duino), **arquivado** — não mexemos mais.
+- **`firmware-old/`** (SimpleFOC antigo, ODESC/STM32duino) foi **REMOVIDO** (2026-08-06) — o `firmware-base`
+  novo já está validado na bancada. Recuperável do histórico git (existe em qualquer commit até `d38f210`).
 - **RENAME concluído no main (2026-08-05):** `firmware-wheel-dd`→`firmware-base` (ODrive vira o ativo) e o
   SimpleFOC antigo `firmware-base`→`firmware-old`. Antes o rename só existia nas branches de feature; agora o
   `main` bate com elas. Memória: `drivelab-firmware-rename`.
