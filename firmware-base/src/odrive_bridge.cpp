@@ -2,6 +2,7 @@
 // class Axis do ODrive). API extern "C" plana pro nosso ffb_task. Autor: Luciano Tomé — MIT.
 #include "odrive_bridge.h"
 #include "odrive_main.h"
+#include "low_level.h"   // safety_critical_arm_brake_resistor (armar sem janela — ver autoscale)
 
 extern "C" float odrive_bridge_get_pos_turns(void) {
     int32_t cnt = axes[0].encoder_.shadow_count_;      // int32 acumulado (não wrappa) — ESTADO VALIDADO
@@ -144,10 +145,53 @@ extern "C" void odrive_bridge_newboard_bringup(void) {
     // auto-arme → satisfaz enable&&armed → o motor arma junto. Setado no boot (não depende de NVM stale).
     // ⚠️ Valores por-PLACA (56V aqui) → vira board profile na Fase 2. brake_resistance idealmente é setting
     // da aba Hardware (feat/brake-resistance); aqui fixo em 2.0 = nosso resistor físico (Odrive-Wheel usa 12Ω).
-    odrv.config_.enable_brake_resistor           = true;   // LIGADO (arma via clear_errors → dissipa regen)
     odrv.config_.brake_resistance                = 2.0f;   // nosso resistor físico de 2Ω
-    odrv.config_.dc_bus_overvoltage_trip_level   = 55.0f;  // teto seguro placa 56V (era ~24,79 na NVM → tripava)
     odrv.config_.dc_bus_undervoltage_trip_level  = 8.0f;   // "prevents brown-outs" (Odrive-Wheel); garante no boot
+
+    // Chopper MUDO aqui. Ligá-lo depende de MEDIR a fonte, e neste ponto do boot o ADC ainda não leu:
+    // `vbus_voltage` vale o inicializador 12.0f de low_level.cpp ("arbitrary non-zero initial value to
+    // avoid division by zero if ADC reading is late"). Confiar nele aqui dimensiona para uma fonte de
+    // 12 V IMAGINÁRIA (chegamos a gerar rampa 14/16 com a fonte real em 24 V). Fail-safe: desligado até
+    // odrive_bridge_autoscale_bus_limits() rodar com leitura de verdade.
+    odrv.config_.enable_brake_resistor          = false;
+    odrv.config_.enable_dc_bus_overvoltage_ramp = false;
+}
+
+// Deriva os limites de bus da tensão REAL medida e só então libera o chopper.
+// Chamada do ffb_task com o motor JÁ ARMADO (ver ffb_task.cpp) — nunca no boot.
+//
+// POR QUE existe: em 2026-08-05 torramos um resistor de 50 W. O firmware ligava o chopper com valor
+// fixo, mas a RAMPA vinha da NVM calibrada para a fonte antiga de 19,5 V (start 20,29 / end 22,79).
+// Ao trocar por uma fonte de 24 V, o vbus EM REPOUSO já estava acima do ramp_end → duty saturado em
+// 0,95 CONTÍNUO → 24²/2 × 0,95 ≈ 273 W. Config que não bate com o hardware não pode queimar hardware.
+//
+// Regra (segue o Odrive-Wheel, "trip = fonte + 4 V"), com a rampa SEMPRE acima do repouso:
+//   ramp_start = V+2 · ramp_end = V+4 · trip = V+6 (clampado ao teto da placa)
+// Em repouso (sem carga) vbus == tensão da fonte. Vale para qualquer fonte de 12 a 48 V.
+// VALIDADO na bancada: com a fonte medida em 27,1 V, rampa em 29,2 V e o chopper mudo parado; na
+// pista o pico de vbus caiu de 33,5 V (sem resistor) para 27,5 V, com 3,3 W médios no resistor.
+// Retorna 1 se dimensionou (fonte presente), 0 se ficou mudo.
+extern "C" int odrive_bridge_autoscale_bus_limits(void) {
+    const float vsup = vbus_voltage;
+    if (!(vsup >= 10.0f)) {              // USB sozinho dá ~2,6 V → sem fonte, segue mudo
+        odrv.config_.enable_brake_resistor          = false;
+        odrv.config_.enable_dc_bus_overvoltage_ramp = false;
+        return 0;
+    }
+    float trip = vsup + 6.0f;
+    if (trip > 55.0f) trip = 55.0f;      // teto da placa 56V (caps ~63V)
+    odrv.config_.dc_bus_overvoltage_ramp_start  = vsup + 2.0f;
+    odrv.config_.dc_bus_overvoltage_ramp_end    = vsup + 4.0f;
+    odrv.config_.dc_bus_overvoltage_trip_level  = trip;
+    odrv.config_.dc_bus_undervoltage_trip_level = 8.0f;   // fixo: anti brown-out
+    odrv.config_.enable_dc_bus_overvoltage_ramp = true;
+    // ⚠️ ARMAR JUNTO, sem janela: apply_pwm_timings() roda a 8 kHz e derruba o motor com
+    // BRAKE_RESISTOR_DISARMED se vir (enable && !armed) — nem que seja por um ciclo. Foi o que
+    // aconteceu ao ligar isto no meio da calibração: o motor desarmava e a cal de offset abortava
+    // ("gira um pouco pra um lado e para" → UNKNOWN_PHASE_ESTIMATE).
+    safety_critical_arm_brake_resistor();
+    odrv.config_.enable_brake_resistor          = true;
+    return 1;
 }
 
 // Afrouxa a calibração p/ vencer o cogging do hoverboard (raiz do CPR_MISMATCH intermitente):

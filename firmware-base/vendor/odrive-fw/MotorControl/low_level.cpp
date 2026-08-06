@@ -32,6 +32,14 @@ const uint32_t stack_size_analog_thread = 1024;  // Bytes
 // Arbitrary non-zero inital value to avoid division by zero if ADC reading is late
 float vbus_voltage = 12.0f;
 float ibus_ = 0.0f; // exposed for monitoring only
+// --- PATCH DriveLab: watchdog térmico do brake resistor (ver update_brake_current) ---
+// Limite de potência MÉDIA no resistor. O da bancada é de 100 W (o de 50 W TORROU em 2026-08-05 com
+// o chopper saturado a ~273 W). 60 W deixa 40 % de margem e ainda é muito acima de qualquer regen
+// real de volante, que dura milissegundos (medido: 3,3 W de média no pior caso, zig-zag).
+// ⚠️ AJUSTAR se trocar o resistor por um de potência menor.
+constexpr float kBrakeMaxAvgPowerW = 60.0f;
+float    g_brake_power_avg_w = 0.0f;   // média móvel (tau ~1 s) — legível por SWD
+uint32_t g_brake_overpower_trip = 0;   // 1 = watchdog cortou o chopper
 bool brake_resistor_armed = false;
 bool brake_resistor_saturated = false;
 float brake_resistor_current = 0.0f;
@@ -366,8 +374,33 @@ void update_brake_current() {
         // brake_resistance != 0 further up.
         brake_current = brake_duty * vbus_voltage / odrv.config_.brake_resistance;
         Ibus_sum += brake_duty * vbus_voltage / odrv.config_.brake_resistance;
+
+        // --- PATCH DriveLab: WATCHDOG TÉRMICO DO CHOPPER -------------------------
+        // O ODrive deixa o chopper conduzir a 95% INDEFINIDAMENTE. Em 2026-08-05 isso TORROU um
+        // resistor de 50 W: trocamos a fonte de 19,5 V por uma de 24 V, mas a rampa continuava
+        // calibrada para a antiga (start 20,29 / end 22,79 V). Com a fonte nova em REPOUSO o vbus já
+        // estava acima do ramp_end → duty saturado em 0,95 contínuo → 24²/2 × 0,95 ≈ 273 W.
+        //
+        // A regeneração real de um volante dura MILISSEGUNDOS (medimos 3,3 W de média no zig-zag).
+        // Qualquer condução SUSTENTADA é, por definição, erro de config ou falha — cortar é seguro.
+        // Integramos a potência com um passa-baixa (tau ~1 s, escala térmica de um resistor de fio).
+        //
+        // Desligamos via enable_brake_resistor=false, e NÃO safety_critical_disarm_brake_resistor(),
+        // que derrubaria os motores junto (low_level.cpp:109): o duty vai a zero no próximo ciclo e o
+        // FFB continua funcionando, só sem dissipação.
+        {
+            const float p_inst = brake_duty * vbus_voltage * vbus_voltage
+                               / odrv.config_.brake_resistance;      // W instantâneos
+            g_brake_power_avg_w += (p_inst - g_brake_power_avg_w) * (1.0f / 8000.0f);  // tau ~1 s @ 8 kHz
+            if (g_brake_power_avg_w > kBrakeMaxAvgPowerW) {
+                odrv.config_.enable_brake_resistor = false;   // corta o chopper, motor segue armado
+                g_brake_overpower_trip = 1;                   // flag p/ diagnóstico (SWD)
+            }
+        }
+        // --- fim do watchdog -----------------------------------------------------
     } else {
         brake_duty = 0;
+        g_brake_power_avg_w -= g_brake_power_avg_w * (1.0f / 8000.0f);   // esfria com o chopper off
     }
 
     brake_resistor_current = brake_current;

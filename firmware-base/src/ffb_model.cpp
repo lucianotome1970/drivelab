@@ -47,13 +47,19 @@ static float    s_prevTorque     = 0.0f;    // P0 slew: torque do tick anterior 
 // --- Setters do canal A0 (app DriveLab Studio) ---
 extern "C" void ffb_model_set_telemetry_force(float f255) { s_telemetryForce = f255; }
 
-// Aplica os settings do app no config do FFB. Defaults do schema reproduzem o config VALIDADO:
-// total 100% × maxlimit 80% × 5Nm = 4Nm (maxTorque validado); teto duro 5Nm; damper 10%×0.3=0.03.
+// Aplica os settings do app no config do FFB.
+// ESCALA DE FUNDO 10 Nm (2026-08-05, era 5): medido na bancada, o sistema usava só ~18% do que o
+// conjunto entrega — pico real de 2,46 Nm com Iq 4,5 A dos 25 A disponíveis. A conta fecha com folga:
+// 10 Nm / 0,55 Nm/A = 18,2 A (current_lim 25 A) e 18,2²×0,2Ω = 66 W no motor parado (fonte 27 V/30 A).
+// O usuário REGULA A FORÇA PELO APP — isto é só o teto da escala: total 100% × maxlimit 80% × 10 Nm
+// = 8 Nm de trabalho, teto duro 10 Nm.
+// ⚠️ Sem sensor de temperatura no motor (MotorTempC = -128) não há corte térmico: o limite prático é
+// o calor, controlado pelo usuário (motor já validado por ele em outros firmwares).
 extern "C" void ffb_model_set_config(float total_pct, float maxlimit_pct, int direction,
                                      float spring_pct, float damper_pct, int motion_range_deg,
                                      int gspring, int gdamper, int gfriction, int ginertia,
                                      int linearity_pct) {
-    const float kFullScaleTorqueNm = 5.0f;
+    const float kFullScaleTorqueNm = 10.0f;
     s_fc.maxTorqueNm   = (total_pct * 0.01f) * (maxlimit_pct * 0.01f) * kFullScaleTorqueNm;
     s_fc.torqueLimitNm = kFullScaleTorqueNm;                        // teto duro fixo (segurança)
     s_fc.direction     = (direction < 0) ? -1.0f : 1.0f;           // flip extra do usuário (base já é kGameForceSign)

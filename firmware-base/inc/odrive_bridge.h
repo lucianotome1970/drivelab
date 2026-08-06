@@ -34,6 +34,10 @@ void     odrive_bridge_skip_motor_cal(void);      // pula motor cal no boot (sem
 void     odrive_bridge_disable_brake_resistor(void); // desliga a exigência do brake resistor pro arme (bancada)
 void     odrive_bridge_newboard_bringup(void);       // calibra do zero o nosso motor na placa nova (pp=15, cpr=4000)
 void     odrive_bridge_apply_hw_profile(int board_variant, int bus_nominal_v, int supply_amps); // perfil Placa+Fonte → trips/divider/dc_max
+// Deriva rampa/trips do vbus MEDIDO e libera o chopper. Chamar do ffb_task com o motor JÁ ARMADO
+// (nunca no boot: lá vbus_voltage ainda é o inicializador 12.0f, e mexer nisso durante a calibração
+// a aborta). 1 = fonte presente e dimensionado · 0 = sem fonte, chopper segue mudo.
+int      odrive_bridge_autoscale_bus_limits(void);
 #ifdef __cplusplus
 }
 #endif

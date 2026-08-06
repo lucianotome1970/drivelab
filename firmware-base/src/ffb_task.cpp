@@ -28,6 +28,10 @@ volatile int32_t g_cfg_dbg[4] = {0};
 // Divisor 19:1 do MKS ODRIVE-S (ODrive genuíno usa 11:1).
 volatile float g_vbus_voltage_scale = 3.3f * 19.0f / 4096.0f;
 
+// 1 = os limites de bus já foram dimensionados pela fonte MEDIDA (chopper liberado);
+// 0 = ainda não (sem fonte no boot → chopper mudo). Legível por SWD para diagnóstico.
+volatile int32_t g_bus_autoscaled = 0;
+
 static void ffb_thread(void*) {
     uint32_t tick = osKernelSysTick();   // base absoluta p/ osDelayUntil (1kHz sem drift)
     uint32_t n = 0;
@@ -60,6 +64,21 @@ static void ffb_thread(void*) {
                 a0_commit_save();                        // erase+program (bloqueia, mas motor OFF = ok)
                 g_arm_gate = 1;                          // re-permite o arme
             }
+        }
+
+        // Dimensiona os limites de bus pela fonte MEDIDA e só então libera o chopper.
+        // Roda UMA vez, e SÓ COM O MOTOR JÁ ARMADO (estado 8). Duas armadilhas motivaram isso, ambas
+        // pagas na bancada em 2026-08-05:
+        //  1) cedo demais: no boot o ADC ainda não leu e `vbus_voltage` vale o inicializador 12.0f de
+        //     low_level.cpp → dimensionava p/ uma fonte imaginária de 12 V (rampa 14/16 com a fonte
+        //     real em 24 V);
+        //  2) no meio da CALIBRAÇÃO: ao ligar enable_brake_resistor, o apply_pwm_timings (8 kHz) vê
+        //     (enable && !armed) e derruba o motor com BRAKE_RESISTOR_DISARMED → a cal de offset
+        //     aborta ("gira um pouco pra um lado e para" → UNKNOWN_PHASE_ESTIMATE).
+        // Com o motor armado, a cal já terminou e o vbus é leitura real e estável. (O arme do
+        // resistor em si é feito sem janela dentro da função — ver odrive_bridge.cpp.)
+        if (!g_bus_autoscaled && g_axis_dbg[1] == 8) {
+            g_bus_autoscaled = odrive_bridge_autoscale_bus_limits();
         }
 
         // Auto-arme com retry ESPAÇADO + timeout de segurança.
