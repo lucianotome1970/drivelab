@@ -10,7 +10,7 @@ Custom firmware for ODrive v3.6-class boards (validated on the MKS ODRIVE-S V3.6
 <p align="center">
   <a href="https://discord.gg/Xp2pGm5wj"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <img src="https://img.shields.io/badge/app-.NET%208%20%C2%B7%20Avalonia-512BD4" alt="App stack">
-  <img src="https://img.shields.io/badge/firmware-STM32F405%20%C2%B7%20SimpleFOC-00979D" alt="Firmware stack">
+  <img src="https://img.shields.io/badge/firmware-STM32F405%20%C2%B7%20ODrive%20FOC-00979D" alt="Firmware stack">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
   <img src="https://img.shields.io/badge/status-in%20development-orange" alt="Status">
 </p>
@@ -104,7 +104,7 @@ Wiring: motor → <code>A/B/C</code>, supply → <code>DC +/−</code>, brake re
 
 DriveLab is split into independent firmwares — one per device, each with its own README. The Studio app connects to each over USB HID and auto-detects it by VID/PID.
 
-- **[Wheelbase »](firmware-base/README.md)** — ODrive v3.6-class (MKS ODRIVE-S V3.6-S6V) · STM32F405 · the FFB motor stage (SimpleFOC). *Runs the motor under FOC; FFB pipe validated with ACC/AMS2/EVO. Game-effects (M6) on the bench.*
+- **[Wheelbase »](firmware-base/README.md)** — ODrive v3.6-class (MKS ODRIVE-S V3.6-S6V) · STM32F405 · the FFB motor stage. *Runs the motor under FOC; FFB pipe validated with ACC/AMS2/EVO. Game-effects (M6) on the bench.*
 - **[Pedals »](firmware-pedal/README.md)** — RP2040 · 3 axes · load cell (HX711) · **P0** protocol. **✅ Validated on hardware.**
 - **[Handbrake »](firmware-handbrake/README.md)** — RP2040 · 1 axis + button · **P0** protocol. **✅ Validated on hardware** (physical sensor still to test).
 - **[Rim »](firmware-wheel/README.md)** — RP2040 · gamepad (buttons + paddles) · WS2812 LEDs · **P0**. *Written, awaiting bench validation.*
@@ -152,7 +152,7 @@ DriveLab turns cheap, widely-available parts — an **ODrive v3.6-class** motor 
 It is a fully open alternative to closed solutions like FFBeast, with two halves:
 
 - **DriveLab Studio** — a desktop app (.NET 8 / Avalonia) to configure and monitor the wheel. Runs on Windows, and on macOS/Linux for development.
-- **DriveLab Firmware** — firmware for the ODrive v3.6-class board that enumerates as a standard DirectInput force-feedback wheel and drives the motor with [SimpleFOC](https://simplefoc.com).
+- **DriveLab Firmware** — firmware for the ODrive v3.6-class board that enumerates as a standard DirectInput force-feedback wheel and drives the motor with field-oriented control built on the [ODrive](https://odriverobotics.com) firmware (vendored, MIT).
 
 > ⚠️ **Status: in active development.** The app is functional (with a hardware simulator, no board required). The firmware **runs the motor under FOC** and the **FFB pipe is validated with real games (ACC 400 Hz, AMS2, EVO)**; full on-track FFB tuning is waiting on the magnetic encoder. See the [Roadmap](#roadmap).
 
@@ -170,7 +170,7 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 
 **Firmware**
 - Enumerates as a **DirectInput FFB wheel** — games send force feedback to it exactly like they would to any commercial wheel, no plugin needed.
-- **SimpleFOC** field-oriented control of the hub motor.
+- **Field-oriented control** of the hub motor, built on the ODrive firmware.
 - Multi-stage safety: brake-resistor chopper, current/torque limits, soft-stop, over-voltage cutoff, plus **opt-in off-state contactor and soft-power button** (host-tested groundwork).
 - Companion firmware for **pedals** and **handbrake** modules (RP2040 + HX711 load cell).
 
@@ -207,7 +207,7 @@ Game physics (ACC/iRacing)  →  one torque value for the wheel  (~360–400 Hz)
         ↓  DirectInput / HID PID  (Windows)
         ↓  USB
 Firmware (TinyUSB HID PID parser → FfbEngine.step)  →  torque
-        ↓  SimpleFOC
+        ↓  FOC (ODrive)
 Motor torque  →  you feel it
 ```
 

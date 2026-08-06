@@ -1,51 +1,44 @@
-# firmware-base — Wheelbase Direct-Drive
+# firmware-base — Direct-Drive wheelbase
 
-Firmware da **base direct-drive** (o estágio do motor de FFB). Roda em placas
-**STM32F405 classe ODrive v3.6** — validado numa **MKS ODRIVE-S V3.6-S6V**.
+Firmware for the **direct-drive base** — the FFB motor stage. Runs on **STM32F405 ODrive v3.6-class** boards, validated on an **MKS ODRIVE-S V3.6-S6V**.
 
-O jogo enxerga a base como um volante DirectInput com force feedback: nenhum plugin,
-nenhum driver extra.
+<p align="center"><a href="README.pt.md">🇧🇷 Leia em português</a></p>
 
-## Arquitetura
+---
 
-Em vez de escrever uma FOC do zero, o firmware monta duas fundações prontas e maduras, e
-a camada de FFB é nossa:
+The game sees the base as a DirectInput wheel with force feedback: no plugin, no extra driver.
 
-| Camada | Origem | Licença |
+## Architecture
+
+Rather than writing field-oriented control from scratch, this firmware builds on two proven foundations and keeps the force-feedback layer as ours:
+
+| Layer | Source | License |
 |---|---|---|
-| FOC, controle do motor, calibração | **ODrive v0.5.6**, vendorizado em `vendor/odrive-fw` | MIT |
-| Pilha USB | **TinyUSB**, vendorizado em `vendor/tinyusb` | MIT / Apache |
-| Ponte com o ODrive, task de FFB, descritores USB, persistência | **nosso** (`src/`, `inc/`) | MIT |
-| Efeitos de FFB (mola, damper, atrito, inércia) | **nosso** (`engine.step`) | MIT |
-| Configuração e telemetria | **nosso** app DriveLab Studio | MIT |
+| FOC, motor control, calibration | **ODrive v0.5.6**, vendored in `vendor/odrive-fw` | MIT |
+| USB stack | **TinyUSB**, vendored in `vendor/tinyusb` | MIT / Apache |
+| ODrive bridge, FFB task, USB descriptors, persistence | **ours** (`src/`, `inc/`) | MIT |
+| FFB effects (spring, damper, friction, inertia) | **ours** (`engine.step`) | MIT |
+| Configuration and telemetry | **our** DriveLab Studio app | MIT |
 
-Nada de GPL entra no binário — o projeto inteiro é MIT, e cada arquivo-fonte traz o
-cabeçalho declarando isso.
+No GPL code enters the binary — the whole project is MIT, and every source file carries a header saying so.
 
-## Estado (2026-08-06)
+## Status (2026-08-06)
 
-**Funcionando e validado em bancada:**
+**Working and validated on the bench:**
 
-- Motor rodando em FOC, armando de forma repetível.
-- Force feedback validado em jogo: **duas voltas completas no Assetto Corsa Competizione**,
-  mais AMS2 e EVO.
-- Persistência dos ajustes na flash da própria placa (`CMD_SAVE`) — a base é a fonte da
-  verdade, não o app.
-- Telemetria ao vivo: tensão do barramento, corrente do motor, temperatura do MCU.
-- Proteções: chopper do resistor de freio, corte por sobrecorrente na ISR, verificação de
-  sobretemperatura antes de armar, batente por software, trips de sub e sobretensão.
+- Motor running under FOC, arming repeatably.
+- Force feedback validated in-game: **two full laps in Assetto Corsa Competizione**, plus AMS2 and EVO.
+- Settings persisted to the board's own flash (`CMD_SAVE`) — the base is the source of truth, not the app.
+- Live telemetry: bus voltage, motor current, MCU temperature.
+- Protections: brake-resistor chopper, over-current cutoff in the ISR, over-temperature check before arming, soft stop, under- and over-voltage trips.
 
-**Pendente:** o ajuste fino do FFB em pista depende do encoder magnético — o encoder
-incremental atual não guarda o centro entre um boot e outro, o que limita o quanto dá pra
-avançar na calibração. Veja [`../docs/encoders.md`](../docs/encoders.md).
+**Pending:** fine FFB tuning on track is waiting on the magnetic encoder. The current incremental encoder does not keep the centre between power cycles, which limits how far the calibration can go. See [`../docs/encoders.md`](../docs/encoders.md).
 
 ## Build
 
-Precisa do **ARM GCC** (`arm-none-eabi-`) e do Python com `pyyaml`, `jinja2` e
-`jsonschema` — o ODrive gera código na hora do build.
+Needs **ARM GCC** (`arm-none-eabi-`) and Python with `pyyaml`, `jinja2` and `jsonschema` — ODrive generates code at build time.
 
-O toolchain do PlatformIO serve e é o que usamos, pra o build sair idêntico no Mac e no
-Windows:
+The PlatformIO toolchain works and is what we use, so the build comes out identical on macOS and Windows:
 
 ```bash
 export PATH="$HOME/.platformio/packages/toolchain-gccarmnoneeabi/bin:$PATH"
@@ -53,30 +46,24 @@ cd firmware-base
 make -j8
 ```
 
-Saída em `build/`: `drivelab-base.elf`, `.bin` e `.hex`.
+Output lands in `build/`: `drivelab-base.elf`, `.bin` and `.hex`.
 
-## Gravar
+## Flashing
 
-**Por DFU (pelo USB, sem gravador):** é o caminho normal, e o DriveLab Studio faz isso
-sozinho. Se a placa não entrar em DFU, veja o
-[FAQ](../docs/faq-hoverboard.md#não-consigo-gravar-o-firmware) — em muitas placas o modo
-manual é obrigatório, e em algumas o jumper precisa ser **retirado**, não colocado.
+**Over DFU (USB, no programmer):** this is the normal path, and DriveLab Studio does it for you. If the board will not enter DFU, see the [FAQ](../docs/faq-hoverboard.md#cant-flash-the-firmware) — on many boards the manual method is mandatory, and on some the jumper has to be **removed**, not fitted.
 
-**Por ST-Link (SWD):**
+**Over ST-Link (SWD):**
 
 ```bash
 openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
         -c "program build/drivelab-base.elf verify reset exit"
 ```
 
-> ⚠️ Com o motor **armado**, não pare o núcleo pelo SWD — isso derruba o motor no meio do
-> controle. Para acompanhar o firmware rodando, use a serial USB (CDC).
+> ⚠️ Do not halt the core over SWD while the motor is **armed** — that drops the motor mid-control. To watch the firmware run, use the USB serial (CDC) instead.
 
-## Segurança
+## Safety
 
-Leia [`../docs/faq-hoverboard.md#segurança`](../docs/faq-hoverboard.md#segurança) antes de
-energizar um motor. Os dois pontos que mais custam caro:
+Read [`../docs/faq-hoverboard.md#safety`](../docs/faq-hoverboard.md#safety) before powering a motor. The two that cost the most:
 
-- **Case a tensão da fonte com a variante da placa** (24 V ou 56 V). Passar disso destrói
-  a placa sem aviso.
-- **Resistor de freio é obrigatório** antes de qualquer torque em malha fechada.
+- **Match the supply voltage to your board variant** (24 V or 56 V). Going over destroys the board without warning.
+- **A brake resistor is mandatory** before any closed-loop torque.

@@ -10,7 +10,7 @@ Firmware próprio para placas classe ODrive v3.6 (validado numa MKS ODRIVE-S V3.
 <p align="center">
   <a href="https://discord.gg/Xp2pGm5wj"><img src="https://img.shields.io/badge/Discord-entre%20no%20servidor-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <img src="https://img.shields.io/badge/app-.NET%208%20%C2%B7%20Avalonia-512BD4" alt="Stack do app">
-  <img src="https://img.shields.io/badge/firmware-STM32F405%20%C2%B7%20SimpleFOC-00979D" alt="Stack do firmware">
+  <img src="https://img.shields.io/badge/firmware-STM32F405%20%C2%B7%20ODrive%20FOC-00979D" alt="Stack do firmware">
   <img src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue" alt="Licença">
   <img src="https://img.shields.io/badge/status-em%20desenvolvimento-orange" alt="Status">
 </p>
@@ -104,12 +104,12 @@ Ligação: motor → <code>A/B/C</code>, alimentação → <code>DC +/−</code>
 
 O DriveLab é dividido em firmwares independentes — um por dispositivo, cada um com seu próprio README. O app Studio conecta em cada um por USB HID e detecta automaticamente pelo VID/PID.
 
-- **[Base »](firmware-base/README.md)** — classe ODrive v3.6 (MKS ODRIVE-S V3.6-S6V) · STM32F405 · o estágio do motor de FFB (SimpleFOC). *Roda o motor em FOC; caminho do FFB validado com ACC/AMS2/EVO. Efeitos de jogo (M6) na bancada.*
-- **[Pedais »](firmware-pedal/README.md)** — RP2040 · 3 eixos · célula de carga (HX711) · protocolo **P0**. **✅ Validado em hardware.**
-- **[Freio de mão »](firmware-handbrake/README.md)** — RP2040 · 1 eixo + botão · protocolo **P0**. **✅ Validado em hardware** (falta testar com o sensor físico).
-- **[Aro »](firmware-wheel/README.md)** — RP2040 · gamepad (botões + pás) · LEDs WS2812 · **P0**. *Escrito, aguardando validação na bancada.*
+- **[Base »](firmware-base/README.pt.md)** — classe ODrive v3.6 (MKS ODRIVE-S V3.6-S6V) · STM32F405 · o estágio do motor de FFB. *Roda o motor em FOC; caminho do FFB validado com ACC/AMS2/EVO. Efeitos de jogo (M6) na bancada.*
+- **[Pedais »](firmware-pedal/README.pt.md)** — RP2040 · 3 eixos · célula de carga (HX711) · protocolo **P0**. **✅ Validado em hardware.**
+- **[Freio de mão »](firmware-handbrake/README.pt.md)** — RP2040 · 1 eixo + botão · protocolo **P0**. **✅ Validado em hardware** (falta testar com o sensor físico).
+- **[Aro »](firmware-wheel/README.pt.md)** — RP2040 · gamepad (botões + pás) · LEDs WS2812 · **P0**. *Escrito, aguardando validação na bancada.*
 
-O app desktop que conversa com todos eles: **[DriveLab Studio (app) »](app/README.md)** — .NET 8 / Avalonia.
+O app desktop que conversa com todos eles: **[DriveLab Studio (app) »](app/README.pt.md)** — .NET 8 / Avalonia.
 
 Quer rodar o app na **sua própria placa**? O contrato USB-HID completo está documentado em **[docs/PROTOCOL.md »](docs/PROTOCOL.md)** — implemente ele e o Studio controla o seu hardware, sem mexer no app.
 
@@ -152,7 +152,7 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **c
 É uma alternativa totalmente aberta a soluções fechadas como o FFBeast, com duas metades:
 
 - **DriveLab Studio** — um app desktop (.NET 8 / Avalonia) para configurar e monitorar o volante. Roda no Windows, e no macOS/Linux para desenvolvimento.
-- **DriveLab Firmware** — firmware para a placa classe ODrive v3.6 que se apresenta como um volante DirectInput de force feedback padrão e aciona o motor com [SimpleFOC](https://simplefoc.com).
+- **DriveLab Firmware** — firmware para a placa classe ODrive v3.6 que se apresenta como um volante DirectInput de force feedback padrão e aciona o motor com controle orientado a campo construído sobre o firmware do [ODrive](https://odriverobotics.com) (vendorizado, MIT).
 
 > ⚠️ **Status: em desenvolvimento ativo.** O app já funciona (com um simulador de hardware, sem precisar de placa). O firmware **roda o motor em FOC** e o **caminho do FFB está validado com jogos reais (ACC 400 Hz, AMS2, EVO)**; o ajuste fino de FFB em pista depende do encoder magnético. Veja o [Roadmap](#roadmap).
 
@@ -170,7 +170,7 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **c
 
 **Firmware**
 - Se apresenta como **volante FFB DirectInput** — os jogos mandam force feedback pra ele igualzinho a qualquer volante comercial, sem plugin.
-- Controle **SimpleFOC** (orientado a campo) do motor.
+- **Controle orientado a campo** do motor, construído sobre o firmware do ODrive.
 - Segurança em múltiplos estágios: chopper do resistor de freio, limites de corrente e torque, batente, corte por sobretensão, mais **contator off-state e botão soft-power (opt-in)** — base testada no host.
 - Firmwares companheiros para os módulos de **pedais** e **freio de mão** (RP2040 + célula de carga HX711).
 
@@ -196,7 +196,7 @@ Cada dispositivo é independente (placa e USB próprios). Lista completa de peç
 | **Base do volante** | Placa F405 + motor + encoder + resistor de freio + fonte (tabela acima) | esta página |
 | **Pedais** | RP2040-Zero + 3 sensores (pot / Hall / célula+HX711) | **[firmware-pedal »](firmware-pedal/README.md#lista-de-materiais-pedais)** |
 | **Freio de mão** | RP2040-Zero + 1 sensor (pot / Hall / célula+HX711) | **[firmware-handbrake »](firmware-handbrake/README.md#lista-de-materiais-freio-de-mão)** |
-| **Volante (aro)** | RP2040-Zero + 2× MCP23017 + 5 encoders + LEDs SK6812 | **[firmware-wheel »](firmware-wheel/README.md)** |
+| **Volante (aro)** | RP2040-Zero + 2× MCP23017 + 5 encoders + LEDs SK6812 | **[firmware-wheel »](firmware-wheel/README.pt.md)** |
 
 ## Como o force feedback funciona
 
@@ -207,7 +207,7 @@ Física do jogo (ACC/iRacing)  →  um valor de torque pro volante  (~360–400 
         ↓  DirectInput / HID PID  (Windows)
         ↓  USB
 Firmware (parser HID PID do TinyUSB → FfbEngine.step)  →  torque
-        ↓  SimpleFOC
+        ↓  FOC (ODrive)
 Torque no motor  →  você sente
 ```
 
