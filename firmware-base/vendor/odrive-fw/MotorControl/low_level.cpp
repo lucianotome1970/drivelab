@@ -15,6 +15,7 @@
 #include <utils.hpp>
 
 #include "odrive_main.h"
+#include "brake_meter.h"   // DriveLab: medidor do chopper (lógica nossa, host-testada)
 
 /* Private defines -----------------------------------------------------------*/
 
@@ -40,6 +41,11 @@ float ibus_ = 0.0f; // exposed for monitoring only
 constexpr float kBrakeMaxAvgPowerW = 60.0f;
 float    g_brake_power_avg_w = 0.0f;   // média móvel (tau ~1 s) — legível por SWD
 uint32_t g_brake_overpower_trip = 0;   // 1 = watchdog cortou o chopper
+
+// Medidor do chopper (SÓ LEITURA — não altera duty, rampa nem o watchdog).
+// Publicado no report 0x21 para o app mostrar que o resistor trabalhou, já que
+// ele quase nunca esquenta. Zera no boot. Lógica em inc/brake_meter.h.
+BrakeMeter g_brake_meter = {0u, 0u, 0u, 0.0f, 0u};
 bool brake_resistor_armed = false;
 bool brake_resistor_saturated = false;
 float brake_resistor_current = 0.0f;
@@ -402,6 +408,14 @@ void update_brake_current() {
         brake_duty = 0;
         g_brake_power_avg_w -= g_brake_power_avg_w * (1.0f / 8000.0f);   // esfria com o chopper off
     }
+
+    // DriveLab: contadores do chopper para o app (SÓ LEITURA — não altera duty nem
+    // acionamento). Fica FORA do if/else de propósito: aqui o brake_duty já está
+    // resolvido nos dois caminhos, então o medidor enxerga também o estado DESLIGADO.
+    // Dentro do ramo habilitado ele nunca veria o duty voltar a zero quando o chopper
+    // é desabilitado, e contaria um único acionamento para sempre.
+    brake_meter_update(&g_brake_meter, brake_duty, vbus_voltage,
+                       odrv.config_.brake_resistance, 1.0f / 8000.0f);
 
     brake_resistor_current = brake_current;
     ibus_ += odrv.ibus_report_filter_k_ * (Ibus_sum - ibus_);
