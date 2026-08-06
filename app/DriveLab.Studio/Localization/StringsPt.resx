@@ -192,6 +192,11 @@
   <data name="Monitor_MotorTemp" xml:space="preserve"><value>Temperatura do motor</value></data>
   <data name="Monitor_McuTemp" xml:space="preserve"><value>Temperatura do MCU</value></data>
   <data name="Monitor_Clipping" xml:space="preserve"><value>Clipping do FFB</value></data>
+  <data name="Monitor_BrakeTitle" xml:space="preserve"><value>Resistor de freio</value></data>
+  <data name="Monitor_BrakeActivations" xml:space="preserve"><value>Acionamentos</value></data>
+  <data name="Monitor_BrakeEnergy" xml:space="preserve"><value>Energia dissipada</value></data>
+  <data name="Monitor_BrakePeak" xml:space="preserve"><value>Pico de potência</value></data>
+  <data name="Monitor_BrakeHint" xml:space="preserve"><value>Resistor frio é normal — a frenagem dura milissegundos. Estes números mostram que ele trabalhou.</value></data>
   <data name="Monitor_DegC" xml:space="preserve"><value>°C</value></data>
   <data name="Monitor_NoSensor" xml:space="preserve"><value>—</value></data>
 

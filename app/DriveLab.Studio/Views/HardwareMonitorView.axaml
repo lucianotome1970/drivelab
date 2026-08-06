@@ -56,6 +56,32 @@
                            Foreground="{Binding ClippingLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
             </Grid>
 
+            <!-- Medidor do brake chopper. O resistor quase nunca esquenta (a frenagem dura
+                 milissegundos), então "frio" passa a impressão de "quebrado". Estes números
+                 são a evidência de que ele trabalhou — e zero acionamentos após uma sessão
+                 inteira é diagnóstico: resistor desligado ou rampa mal dimensionada. -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="{loc:Translate Monitor_BrakeTitle}" Classes="h2" />
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate Monitor_BrakeActivations}"
+                               Foreground="{DynamicResource DlText}" Margin="0,6" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding BrakeActivationsText}"
+                               Foreground="{DynamicResource DlMuted}" Margin="0,6" />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Translate Monitor_BrakeEnergy}"
+                               Foreground="{DynamicResource DlText}" Margin="0,6" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BrakeEnergyText}"
+                               Foreground="{DynamicResource DlMuted}" Margin="0,6" />
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate Monitor_BrakePeak}"
+                               Foreground="{DynamicResource DlText}" Margin="0,6" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding BrakePeakText}"
+                               Foreground="{DynamicResource DlMuted}" Margin="0,6" />
+                </Grid>
+                <TextBlock Text="{loc:Translate Monitor_BrakeHint}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlMuted}" FontSize="12" />
+            </StackPanel>
+
             <!-- Aviso (não fatal): tensão lida não bate com a variante 24V/56V selecionada. -->
             <Border IsVisible="{Binding VoltageWarning, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}"
                     Background="#33FF9800" CornerRadius="6" Padding="10,8">

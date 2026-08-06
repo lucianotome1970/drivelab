@@ -24,6 +24,9 @@ public partial class HardwareMonitorViewModel : ViewModelBase
     [ObservableProperty] private string _estimatedTorqueText = "—";
     [ObservableProperty] private string _fetTempText = "—";
     [ObservableProperty] private string _motorTempText = "—";
+    [ObservableProperty] private string _brakeActivationsText = "—";
+    [ObservableProperty] private string _brakeEnergyText = "—";
+    [ObservableProperty] private string _brakePeakText = "—";
     [ObservableProperty] private string _mcuTempText = "—";
     [ObservableProperty] private string _clippingText = "—";
     [ObservableProperty] private TelemetryLevel _busVoltageLevel = TelemetryLevel.Ok;
@@ -65,6 +68,14 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         MotorTempText = TempText(s.MotorTempC);
         McuTempText = TempText(s.McuTempC);
         ClippingText = s.ClippingPercent + " %";
+
+        // Medidor do brake chopper. Existe porque o resistor quase nunca esquenta
+        // (a frenagem dura milissegundos) e "frio" passa a impressão de "quebrado".
+        BrakeActivationsText = s.BrakeActivations.ToString(CultureInfo.InvariantCulture);
+        BrakeEnergyText = s.BrakeEnergyJoules >= 1000
+            ? (s.BrakeEnergyJoules / 1000.0).ToString("0.00", CultureInfo.InvariantCulture) + " kJ"
+            : s.BrakeEnergyJoules.ToString("0.0", CultureInfo.InvariantCulture) + " J";
+        BrakePeakText = s.BrakePeakWatts.ToString("0", CultureInfo.InvariantCulture) + " W";
         BusVoltageLevel = VoltageLevel(s.BusVoltageMv);
         FetTempLevel = TempLevel(s.FetTempC);
         MotorTempLevel = TempLevel(s.MotorTempC);
