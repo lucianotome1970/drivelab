@@ -135,7 +135,7 @@ ODriveIntf::MotorIntf::Error FieldOrientedController::get_alpha_beta_output(
         float Ierr_d = Id_setpoint - Id;
         float Ierr_q = Iq_setpoint - Iq;
 
-        // PI error dead-band — Odrive-Wheel local mod.
+        // PI error dead-band — mod local do DriveLab.
         //
         // Kills idle vibration caused by the PI chasing measurement noise
         // (ADC LSB ~10 mA + encoder quantization cross-coupling) when the

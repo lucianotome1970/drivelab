@@ -184,7 +184,7 @@ static bool to_string(const T& value, char * buffer, size_t length, int) {
     snprintf(buffer, length, format_traits_t<T>::fmtp, value);
     return true;
 }
-// Phase 4.x — Odrive-Wheel patch: newlib-nano (que estamos linkando via
+// Phase 4.x — patch DriveLab: newlib-nano (que estamos linkando via
 // -specs=nano.specs) não suporta '%llu' / '%lld'. snprintf devolve literalmente
 // "lu" / "ld" no buffer. Sintoma: 'r serial_number' retorna "lu" em vez do
 // número de 12 dígitos. Especialização manual evita o printf 64-bit.

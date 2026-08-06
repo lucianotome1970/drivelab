@@ -901,7 +901,7 @@ interfaces:
             c_setter: set_current_control_deadband
             unit: A
             doc: |
-              Odrive-Wheel local mod. Dead-band on the PI error of the current
+              DriveLab local mod. Dead-band on the PI error of the current
               controller (Id and Iq). When the absolute error between commanded
               and measured current is below this threshold, the proportional
               term is forced to 0 and the integrator freezes. Kills idle
