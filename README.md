@@ -180,11 +180,11 @@ This is the **base** (the direct-drive wheelbase). Each other module is an indep
 
 | Part | Notes |
 |------|-------|
-| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board). Comes in **24 V** (35 V caps → keep the bus ≤ ~24 V) and **56 V** (63 V caps → up to 56 V). Match the PSU to your board. Running a **56 V board on a lower supply (e.g. 24 V) leaves extra headroom** against regen voltage spikes. Other F405 boards (ODESC, MKS XDrive) may need a pin remap. |
+| **ODrive v3.6-class board** (STM32F405) — validated: **MKS ODRIVE-S V3.6-S6V** | Any F405 ODrive-class board — see [Base board](#-base-board). **MKS boards take 12–56 V**, so the supply is your choice within that range. **ODESC boards ship as a 24 V or a 56 V variant** — check which one you have and stay inside it. Either way, a lower supply leaves extra headroom against regen voltage spikes. Boards other than the ODrive v3.6 layout may need a pin remap. |
 | **Hoverboard hub motor** | The direct-drive actuator. |
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
-| **PSU** | Match your board variant: **≤24 V** for the 24 V board, **up to 56 V** for the 56 V board. Example: 24 V / 30 A (720 W). |
+| **PSU** | Stay inside what your board accepts: **12–56 V** on an MKS board; on an ODESC, **≤24 V** or **up to 56 V** depending on the variant. Example: 24 V / 30 A (720 W). |
 | ST-Link V2 | To flash the STM32 (or DFU). |
 
 ## Hardware — per module
@@ -259,7 +259,7 @@ The brake-resistor chopper, off-state contactor and soft-power are implemented a
 
 ## ⚠️ Safety
 
-- **Match the supply to your board variant:** the **24 V board** must stay at ~24 V (35 V caps); the **56 V board** takes up to 56 V (63 V caps). **Never exceed your board's rating.** A 56 V board run on a 24 V supply has comfortable headroom.
+- **Know what your board accepts before you plug in a supply.** **MKS boards take 12–56 V.** **ODESC boards come as a 24 V or a 56 V variant** — the 24 V one has 35 V capacitors and must stay near 24 V; the 56 V one has 63 V capacitors. **Never exceed your board's rating**, and remember regen spikes push the bus above the supply voltage, so a lower supply is the safer choice.
 - The **2 Ω brake resistor is mandatory** before any closed-loop torque; regen braking pushes energy back onto the bus and will destroy the capacitors without it.
 - `M0`/`M0.5` run **with no motor connected**. Bring current up gradually. A direct-drive wheel has enough torque to hurt your wrist — keep an e-stop (the plug) within reach.
 
