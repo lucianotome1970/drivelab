@@ -16,6 +16,10 @@
 #include "ffb_model.h"
 #include "settings_store.h"   // (de)serialização pura do blob de settings (magic+versão+CRC)
 #include "settings_flash.h"   // I/O de flash da região FFB_NVM (setor 1 @0x08004000)
+#include "brake_meter.h"      // contadores do brake chopper (energia, acionamentos, pico)
+
+// Medidor do chopper, alimentado no laço de 8 kHz (low_level.cpp). Só leitura aqui.
+extern "C" BrakeMeter g_brake_meter;
 
 // Report IDs do canal A0 (ver a0_hid_descriptor.h; definidos localmente p/ não re-incluir o array).
 #define A0_RID_STATE    0x21   // IN  DeviceState (telemetria/ângulo)
@@ -78,6 +82,7 @@ static bool    s_save_requested = false;  // CMD_SAVE pediu persistir → o ffb_
 static inline uint16_t rd_u16(const uint8_t* p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
 static inline void put_i16(uint8_t* p, int16_t v)  { p[0] = (uint8_t)(v & 0xFF); p[1] = (uint8_t)((v >> 8) & 0xFF); }
 static inline void put_u16(uint8_t* p, uint16_t v) { p[0] = (uint8_t)(v & 0xFF); p[1] = (uint8_t)((v >> 8) & 0xFF); }
+static inline void put_u32(uint8_t* p, uint32_t v) { p[0] = (uint8_t)(v); p[1] = (uint8_t)(v >> 8); p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24); }
 static inline int16_t clip_i16(float v) { return v > 32767.0f ? 32767 : (v < -32767.0f ? -32767 : (int16_t)v); }
 
 // Aplica os settings que afetam o FFB no ffb_model (os demais ficam guardados p/ read-back).
@@ -209,6 +214,12 @@ static void a0_build_state(uint8_t* p) {
     p[17] = (uint8_t)(int8_t)(-128);                       // MotorTempC (sem sensor)
     p[18] = 0;                                             // McuTempC (TODO)
     p[19] = 0;                                             // Clipping (TODO)
+
+    // Medidor do brake chopper (bytes 20-29) — layout casado com BaseState.cs.
+    // Bytes que antes iam zerados: nenhum pacote novo, nenhuma taxa nova.
+    put_u32(&p[20], g_brake_meter.energy_mj);              // BrakeEnergyMilliJ
+    put_u32(&p[24], g_brake_meter.activations);            // BrakeActivations
+    put_u16(&p[28], g_brake_meter.peak_dw);                // BrakePeakDeciW
 }
 
 // ---------------------------------------------------------------------------
