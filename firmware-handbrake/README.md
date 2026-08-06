@@ -3,7 +3,7 @@
 <p align="center"><b>Handbrake firmware — Waveshare RP2040-Zero (RP2040, USB-C)</b><br/>
 Firmware do freio de mão DriveLab — placa Waveshare RP2040-Zero (RP2040, USB-C).</p>
 
-<p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a></p>
+<p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-portugu%C3%AAs">🇧🇷 Português</a></p>
 
 ---
 

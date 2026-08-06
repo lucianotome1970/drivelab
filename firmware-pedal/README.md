@@ -2,7 +2,7 @@
 
 Firmware for the **DriveLab pedal set** — **Waveshare RP2040-Zero** board (RP2040, USB-C), the device side of the **P0** contract.
 
-<p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a></p>
+<p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-portugu%C3%AAs">🇧🇷 Português</a></p>
 
 ---
 

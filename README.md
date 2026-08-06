@@ -16,7 +16,7 @@ Custom firmware for ODrive v3.6-class boards (validated on the MKS ODRIVE-S V3.6
 </p>
 
 <p align="center">
-  <a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a> &nbsp;·&nbsp; <a href="#-download--baixar">⬇️ Download</a> &nbsp;·&nbsp; <a href="https://discord.gg/Xp2pGm5wj">💬 Discord</a>
+  <a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-portugu%C3%AAs">🇧🇷 Português</a> &nbsp;·&nbsp; <a href="#-download--baixar">⬇️ Download</a> &nbsp;·&nbsp; <a href="https://discord.gg/Xp2pGm5wj">💬 Discord</a>
 </p>
 
 ---

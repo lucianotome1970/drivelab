@@ -3,7 +3,7 @@
 Firmware do **rim DriveLab** (o aro com botões, pás e LEDs) — placa **Waveshare RP2040-Zero**,
 dispositivo USB HID **próprio** (PID `0x1209:0x0004`), enumera como **"DriveLab Wheel"**.
 
-<p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-português">🇧🇷 Português</a></p>
+<p align="center"><a href="#-english">🇬🇧 English</a> &nbsp;·&nbsp; <a href="#-portugu%C3%AAs">🇧🇷 Português</a></p>
 
 ---
 
