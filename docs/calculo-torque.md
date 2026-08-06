@@ -29,7 +29,7 @@ Kt [Nm/A] ≈ 9.55 / KV        (theoretical, SI)
 
 ### 2. Get Kt — two ways, neither needs a scale
 
-#### Method A — SimpleFOC / ODrive calibration (recommended, most accurate)
+#### Method A — ODrive calibration (recommended, most accurate)
 
 During motor calibration (`initFOC()` / ODrive `motor.config`), the firmware **estimates the motor's `torque_constant` electrically** and reports it. **That number is your Kt** — use it directly. It's measured on your exact motor, so it already accounts for its real magnets and winding.
 
@@ -124,7 +124,7 @@ Kt [Nm/A] ≈ 9,55 / KV        (teórico, SI)
 
 ### 2. Descobrir o Kt — dois jeitos, nenhum precisa de balança
 
-#### Método A — Calibração do SimpleFOC / ODrive (recomendado, mais preciso)
+#### Método A — Calibração do ODrive (recomendado, mais preciso)
 
 Durante a calibração do motor (`initFOC()` / `motor.config` da ODrive), o firmware **estima o `torque_constant` eletricamente** e reporta. **Esse número é o seu Kt** — use direto. É medido no seu motor exato, então já considera os ímãs e o enrolamento reais dele.
 

@@ -1,5 +1,11 @@
 # Research: phase-current sense reading garbage/zero (ADC2 injected, TIM1 TRGO)
 
+> ⚠️ **Snapshot de pesquisa.** Escrito quando a FOC do DriveLab era caseira, construída sobre
+> SimpleFOC. O projeto migrou depois para a **FOC do ODrive** (vendorizada, MIT). As menções a
+> SimpleFOC aqui descrevem o que existia na época: o raciocínio e as medições continuam válidos,
+> a implementação não é mais essa.
+
+
 Bench symptom recap: DRV8301 G40, 500µΩ shunts (~0.0403 A/count), ADC2 injected on
 TIM1_TRGO=Update. JDR1/JDR2 intermittently read near-zero (or mid-scale garbage like
 ~1180) for several consecutive PWM periods → decoded as ~-80A/phase → false overcurrent.

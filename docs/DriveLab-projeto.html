@@ -87,7 +87,7 @@
     <p class="sub">Firmware open-source para transformar a placa <b>ODESC v4.2</b> + motor de hoverboard num <b>volante Direct Drive com Force Feedback</b>, com app Windows de configuração.</p>
     <div class="chips">
       <span class="chip">🔲 Placa única (só ODESC)</span>
-      <span class="chip">⚙️ Base SimpleFOC</span>
+      <span class="chip">⚙️ Base ODrive FOC</span>
       <span class="chip">🎯 MVP: só volante FFB</span>
       <span class="chip">🧲 Encoder óptico Omron E6B2 (10k CPR)</span>
       <span class="chip">🪟 App Windows (config)</span>
@@ -121,13 +121,13 @@
 │  Posição: encoder óptico ABZ Omron E6B2 (10kCPR)│
 │  → ângulo absoluto + velocidade + centro        │
 ├─────────────────────────────────────────────────┤
-│  FOC (SimpleFOC): BLDCMotor + DRV8301           │
+│  FOC (ODrive): motor + DRV8301                  │
 │  + current sensing  →  gera torque no motor     │
 ├─────────────────────────────────────────────────┤
 │  Config em flash (save/load)  ·  Segurança      │
 └─────────────────────────────────────────────────┘</pre>
     </div>
-    <p class="muted">A camada FOC e a leitura de encoder vêm de bibliotecas maduras (SimpleFOC). Nosso trabalho autoral concentra-se no motor de efeitos FFB, no descriptor USB HID PID, no protocolo de configuração e no app Windows.</p>
+    <p class="muted">A camada FOC e a leitura de encoder vêm do firmware do ODrive, vendorizado (MIT). Nosso trabalho autoral concentra-se no motor de efeitos FFB, no descriptor USB HID PID, no protocolo de configuração e no app Windows.</p>
   </section>
 
   <section>
@@ -239,7 +239,7 @@
     <table>
       <tr><th>Marco</th><th>Entrega verificável</th></tr>
       <tr><td><b>B0</b></td><td>Toolchain PlatformIO + placa enumera USB / pisca LED</td></tr>
-      <tr><td><b>B1</b></td><td>Motor gira em malha aberta com SimpleFOC na ODESC</td></tr>
+      <tr><td><b>B1</b></td><td>Motor gira em malha aberta na placa F405</td></tr>
       <tr><td><b>B2</b></td><td>Encoder E6B2 lendo + torque em malha fechada + brake resistor + limites de segurança</td></tr>
       <tr><td><b>B3</b></td><td>Interface vendor HID com o <b>mesmo contrato A0</b> → app real conecta (troca <code>Simulator</code>→<code>Hid</code>), telemetria e controle direto reais</td></tr>
       <tr><td><b>B4</b></td><td>Motor de efeitos FFB (constant, spring, damper, periodic) + batente + range de giro</td></tr>
@@ -264,7 +264,7 @@
     <ul>
       <li><a href="https://ffbeast.github.io/docs/en/wheel.html">FFBeast Wheel</a> — referência de produto comercial (placa única na ODESC)</li>
       <li><a href="https://github.com/Ultrawipf/OpenFFBoard">OpenFFBoard</a> — pilha USB HID FFB open-source</li>
-      <li><a href="https://docs.simplefoc.com/">SimpleFOC</a> — base de FOC (roda na ODESC v4.2)</li>
+      <li><a href="https://github.com/odriverobotics/ODrive">ODrive</a> — base de FOC (vendorizada, MIT)</li>
       <li><a href="https://github.com/foxxy05/ODESC-4.2-Documentation">ODESC 4.2 Documentation</a> — hardware/pinout</li>
       <li><a href="https://diygamecontrollers.win/diy-direct-drive-steering-wheel/">DIY Direct Drive Wheel</a> — guia de montagem</li>
     </ul>

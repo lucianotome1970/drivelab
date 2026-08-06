@@ -86,7 +86,7 @@ continuous N·m, KV, diameter).
 ### 4. Seeing position: the encoder (senses)
 
 FOC *must* know the rotor angle to energise the right coils. DriveLab supports three sensors that
-all feed the same code (via SimpleFOC's `Sensor` interface):
+all feed the same code behind one sensor interface:
 
 | Sensor | Type | Keeps center after power-off? | Status |
 |---|---|---|---|
@@ -108,7 +108,8 @@ Full trade-offs: **[encoders.md](encoders.md)**.
 - **FOC (Field-Oriented Control)** is the brain's algorithm. Each control tick it: reads the
   currents, reads the angle, transforms to a rotor-aligned frame (**Clarke → Park**), runs a **PI**
   loop to hold the desired torque current (Iq) and zero the wasteful current (Id), then transforms
-  back and generates the phase PWM (**inverse Park → SVPWM**). We use **SimpleFOC** for this.
+  back and generates the phase PWM (**inverse Park → SVPWM**). This layer comes from the **ODrive**
+  firmware, which we vendor (MIT) — we did not reimplement it.
 
 ### 6. Sensing: current, voltage, temperature
 
@@ -204,7 +205,7 @@ electrical angle · FFB clipping/limit in the pipeline.
 - **Deeper docs**: [encoders.md](encoders.md) · [brake-resistor.md](brake-resistor.md) ·
   [soft-power-contator.md](soft-power-contator.md) · [PROTOCOL.md](PROTOCOL.md) ·
   [guia-criador.md](guia-criador.md).
-- **Where the code lives**: the FFB/motor firmware is under `firmware-base/` (SimpleFOC + the FOC
+- **Where the code lives**: the FFB/motor firmware is under `firmware-base/` (the vendored ODrive FOC + the
   state machine); the pure, host-testable "brain" (torque pipeline, brake control, safety guards)
   lives in `firmware-base/lib/brain/` and `lib/base_motor/`; the desktop app is under `app/`.
 
@@ -278,7 +279,7 @@ fase. Nosso rotor tem 30 ímãs alternados → **15 pares de polos**. Sem caixa 
 ### 4. Enxergar a posição: o encoder (sentidos)
 
 O FOC *precisa* saber o ângulo do rotor pra energizar as bobinas certas. O DriveLab aceita três
-sensores que alimentam o mesmo código (pela interface `Sensor` do SimpleFOC):
+sensores que alimentam o mesmo código atrás de uma única interface de sensor:
 
 | Sensor | Tipo | Guarda o centro ao desligar? | Status |
 |---|---|---|---|
@@ -300,7 +301,8 @@ importam muito**. Trade-offs completos: **[encoders.md](encoders.md)**.
 - **FOC (Controle Orientado ao Campo)** é o algoritmo do cérebro. A cada tick ele: lê as correntes,
   lê o ângulo, transforma pro referencial alinhado ao rotor (**Clarke → Park**), roda um **PI** pra
   manter a corrente de torque (Iq) e zerar a corrente inútil (Id), e transforma de volta gerando o
-  PWM das fases (**Park inversa → SVPWM**). Usamos o **SimpleFOC** pra isso.
+  PWM das fases (**Park inversa → SVPWM**). Essa camada vem do firmware do **ODrive**, que
+  vendorizamos (MIT) — não reimplementamos.
 
 ### 6. Medir: corrente, tensão, temperatura
 
@@ -398,7 +400,7 @@ conduzir · ângulo elétrico errado · clipping/limite no pipeline de FFB.
 - **Docs mais fundos**: [encoders.md](encoders.md) · [brake-resistor.md](brake-resistor.md) ·
   [soft-power-contator.md](soft-power-contator.md) · [PROTOCOL.md](PROTOCOL.md) ·
   [guia-criador.md](guia-criador.md).
-- **Onde mora o código**: o firmware de FFB/motor está em `firmware-base/` (SimpleFOC + a máquina de
+- **Onde mora o código**: o firmware de FFB/motor está em `firmware-base/` (a FOC do ODrive vendorizada + a máquina de
   estados FOC); o "cérebro" puro e testável no host (pipeline de torque, controle do freio, guardas de
   segurança) mora em `firmware-base/lib/brain/` e `lib/base_motor/`; o app desktop está em `app/`.
 

@@ -78,7 +78,7 @@ Cada número desta página sai de um bloco de teste em `firmware-base/test/test_
 ## O que falta (precisa de bancada)
 
 - Validar o M0.5 na ODESC (enumerar FFB no Windows) — ou numa **Black Pill F411** (~US$5) antes.
-- Implementar o HAL sobre **SimpleFOC / ADC / NTC / PWM** (`IEncoder`/`IMotor`/`ICurrentSense`/`IPowerSense`/`IBrakeResistor`).
+- Implementar o HAL sobre **a FOC do ODrive / ADC / NTC / PWM** (`IEncoder`/`IMotor`/`ICurrentSense`/`IPowerSense`/`IBrakeResistor`).
 - **Calibrar o cogging** por-motor (a única parte do cogging que precisa girar o motor).
 - **Afinar os números contra a sensação** via o loop de **log de diagnóstico + feedback** (desenhado em [base-ffb-brain.md](base-ffb-brain.md)).
 

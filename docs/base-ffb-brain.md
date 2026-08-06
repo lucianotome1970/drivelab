@@ -34,12 +34,12 @@ O `FfbController` só conhece as **interfaces** de `hal.h` — nunca o hardware.
 
 | Alvo | HAL = | Onde |
 |------|-------|------|
-| **Firmware** (ODESC F405) | SimpleFOC (BLDCMotor) + ADC dos shunts + encoder ABZ/SPI | `pio run` |
+| **Firmware** (F405 classe ODrive) | FOC do ODrive (vendorizada) + ADC dos shunts + encoder ABZ/SPI | `make` |
 | **Teste de host** (PC) | mocks (valores em variáveis) | `test/run.sh` |
 
 ### As interfaces (o "seam")
 
-- `IEncoder` — `positionRad()`, `velocityRadPerSec()` (firmware: encoder via SimpleFOC).
+- `IEncoder` — `positionRad()`, `velocityRadPerSec()` (no firmware, lido pela camada do ODrive).
 - `ICurrentSense` — `readPhaseCurrents(ia, ib, ic)` (firmware: shunts + ADC) — usado na proteção.
 - `IMotor` — `setTorque(nm)`, `disable()` (firmware: BLDCMotor em modo torque).
 - `IPowerSense` — `busVoltage()`, `mosfetTempC()`, `motorTempC()` (firmware: ADC + NTC) — M2.
@@ -61,7 +61,7 @@ Básico:
 O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `computeTorque` → `slewLimit` → comanda o motor): se `!enabled` ou desarmado → motor desligado; sobrecorrente → **desarme latched** (`tripped`, só volta com `rearm()`); slew-rate opcional entre passos.
 
 **Proteção de potência (M2)** — camada separada, em `pi_controller.h` + `ffb_power.h`:
-- `PiController` — PI genérico com **anti-windup** (integrador clampado ao range de saída); ganhos = `CurrentP`/`CurrentI`. *(A malha FOC de corrente em si roda no SimpleFOC; este é o componente/tuning testável.)*
+- `PiController` — PI genérico com **anti-windup** (integrador clampado ao range de saída); ganhos = `CurrentP`/`CurrentI`. *(A malha FOC de corrente em si roda no a FOC do ODrive; este é o componente/tuning testável.)*
 - `BrakeController` — **brake resistor** com **histerese** (liga acima de `onVoltage`, só desliga abaixo de `offVoltage`) e **duty proporcional** até `fullVoltage`. Dissipa a regeneração antes de estourar a tensão.
 - `overVoltage()` / `overTemp()` + `PowerGuard.step()` — comanda o brake e sinaliza **falha latched** por sobretensão/sobretemperatura (o laço então desliga a força). Sistema 24V → nunca deixar a tensão disparar.
 
@@ -69,7 +69,7 @@ O `FfbController.step()` junta tudo (lê encoder pos+vel + corrente → `compute
 - **Inter-travamentos** — só arma com tensão na faixa `[busMinV, busMaxV]`, temperatura ≤ `tempMaxC` e sem falha da proteção.
 - **Alinhamento** — energiza open-loop com torque baixo (`alignTorqueNm`) por `alignSeconds` para alinhar o rotor antes de liberar a força.
 - **Rampa** — ao entrar em Running, a força sobe de 0→1 em `rampSeconds` (`rampGain()`), sem solavanco.
-- **Falha com prioridade** — `guardFaulted` derruba para Fault em qualquer estado; sai só com `clearFault()` e **re-arma** se a causa persistir. O ângulo/FOC em si é do SimpleFOC; o sequenciador só decide *se/quanto* liberar.
+- **Falha com prioridade** — `guardFaulted` derruba para Fault em qualquer estado; sai só com `clearFault()` e **re-arma** se a causa persistir. O ângulo/FOC em si é do a FOC do ODrive; o sequenciador só decide *se/quanto* liberar.
 
 **Reconstrução de força (rumo ao topo)** — em `force_reconstruct.h`, `ForceReconstructor`: o jogo manda força discreta a 60–360 Hz; o laço roda a 10–40 kHz. Segurar o último valor (ZOH) gera "degraus" (a sensação granulada). O reconstrutor **espalha cada atualização** ao longo dos ticks (rampa linear, janela `steps`) + **LPF opcional** → saída contínua ("silky"). É um dos algoritmos que separam DD bom de DD top — e é **mensurável no host**: o teste mostra o maior salto por tick caindo de ~100 (ZOH) para 12,5 (janela de 8). No firmware: `setTarget()` quando chega um FFB report; `tick()` a cada passo do laço, alimentando `computeTorque`.
 
@@ -118,14 +118,14 @@ Nenhuma dependência de PlatformIO/toolchain ARM — é só um `c++ -std=c++17`.
 
 ### Encaixe no roadmap / segurança
 
-Ao escrever **M1 (motor open-loop)** e **M5 (força FFB → SimpleFOC)**, a lógica entra no `ffb_math.h`/`ffb_controller.h` e ganha teste de host **na hora** — não retrofit. A proteção (teto de torque, soft-stop, corte de sobrecorrente latched) é testada aqui antes de qualquer motor girar. Casado com uma **Black Pill F411** (~US$5) para o de-risk de USB, cobre-se quase tudo antes de encostar na ODESC.
+Ao escrever **M1 (motor open-loop)** e **M5 (força FFB → motor)**, a lógica entra no `ffb_math.h`/`ffb_controller.h` e ganha teste de host **na hora** — não retrofit. A proteção (teto de torque, soft-stop, corte de sobrecorrente latched) é testada aqui antes de qualquer motor girar. Casado com uma **Black Pill F411** (~US$5) para o de-risk de USB, cobre-se quase tudo antes de encostar na ODESC.
 
 ### O que isto NÃO cobre
 
 - **Enumeração USB** (M0.5) — precisa do periférico USB real (placa).
 - **Timing / ISR / frequência da malha FOC** — precisa de hardware ou sim cycle-accurate.
-- **Comportamento do SimpleFOC/driver** em si — mockamos as entradas, não o silício.
+- **Comportamento da FOC/driver** em si — mockamos as entradas, não o silício.
 
 ## 🇬🇧 English (summary)
 
-Same idea: a **portable brain** (`lib/brain/`) with pure force→torque math (`ffb_math.h`), a hardware **seam** (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`) and an orchestrator (`ffb_controller.h`) that only knows the interfaces. It compiles into the **firmware** (HAL = SimpleFOC/ADC/encoder) and into a **host test** (HAL = mocks) — run with `test/run.sh`, no board or emulator needed. Safety (hard torque cap, soft-stop, latched over-current trip) is unit-tested on the PC. It does **not** cover USB enumeration, real-time timing, or the SimpleFOC silicon — those still need a real STM32F4 (a cheap Black Pill F411 de-risks USB before the ODESC).
+Same idea: a **portable brain** (`lib/brain/`) with pure force→torque math (`ffb_math.h`), a hardware **seam** (`hal.h`: `IEncoder`/`ICurrentSense`/`IMotor`) and an orchestrator (`ffb_controller.h`) that only knows the interfaces. It compiles into the **firmware** (HAL = the ODrive FOC/ADC/encoder) and into a **host test** (HAL = mocks) — run with `test/run.sh`, no board or emulator needed. Safety (hard torque cap, soft-stop, latched over-current trip) is unit-tested on the PC. It does **not** cover USB enumeration, real-time timing, or the the FOC silicon — those still need a real STM32F4 (a cheap Black Pill F411 de-risks USB before the ODESC).

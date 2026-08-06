@@ -1,5 +1,11 @@
 # Research: moving the FOC current loop out of `loop()` into a fast ISR
 
+> ⚠️ **Snapshot de pesquisa.** Escrito quando a FOC do DriveLab era caseira, construída sobre
+> SimpleFOC. O projeto migrou depois para a **FOC do ODrive** (vendorizada, MIT). As menções a
+> SimpleFOC aqui descrevem o que existia na época: o raciocínio e as medições continuam válidos,
+> a implementação não é mais essa.
+
+
 Companion to `current-sense-research.md` (ADC sampling architecture — DIR-gated JDR read,
 fixed) and `calibration-currentloop-research.md` (PI gain math). This report is about the
 **timing architecture**: how to run our current loop at a real fixed rate instead of

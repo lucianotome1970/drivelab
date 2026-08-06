@@ -1,5 +1,11 @@
 # Research: encoder electrical-zero calibration & current-loop tuning (why the drag-current sweep overheats or oscillates)
 
+> ⚠️ **Snapshot de pesquisa.** Escrito quando a FOC do DriveLab era caseira, construída sobre
+> SimpleFOC. O projeto migrou depois para a **FOC do ODrive** (vendorizada, MIT). As menções a
+> SimpleFOC aqui descrevem o que existia na época: o raciocínio e as medições continuam válidos,
+> a implementação não é mais essa.
+
+
 Companion to `current-sense-research.md` (that one is about the ADC sampling *architecture*;
 this one is about *how hard/how* to drive the rotor during offset calibration, and how to
 size the current-loop PI gains). Same board class (MKS ODRIVE-S v3.6 = genuine ODrive

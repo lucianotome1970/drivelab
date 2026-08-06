@@ -1,5 +1,11 @@
 # Análise profunda do OpenFFBoard Firmware → conhecimento para o DriveLab
 
+> ⚠️ **Snapshot de pesquisa.** Escrito quando a FOC do DriveLab era caseira, construída sobre
+> SimpleFOC. O projeto migrou depois para a **FOC do ODrive** (vendorizada, MIT). As menções a
+> SimpleFOC aqui descrevem o que existia na época: o raciocínio e as medições continuam válidos,
+> a implementação não é mais essa.
+
+
 **Data:** 2026-07-13
 **Fonte:** `github.com/Ultrawipf/OpenFFBoard` (branch `master`) — código-fonte lido diretamente (raw), não paráfrase.
 **Objetivo:** extrair o máximo de conhecimento reutilizável para o firmware do DriveLab (Trilho B: SimpleFOC na ODESC v4.2 / STM32F405, **placa única**).

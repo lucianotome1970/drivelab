@@ -6,7 +6,7 @@
 // ============================================================================
 //
 // Núcleo do "cérebro" FFB — funções PURAS, independentes de plataforma (sem Arduino,
-// sem STM32, sem SimpleFOC). Compilam tanto no firmware quanto num alvo de teste no PC
+// sem STM32, sem dependencia de driver de motor). Compilam tanto no firmware quanto num alvo de teste no PC
 // (ver firmware-base/test/). É aqui que mora a correção matemática força→torque, testável
 // sem placa nenhuma. As bordas de hardware ficam em hal.h; a orquestração em ffb_controller.h.
 #pragma once
