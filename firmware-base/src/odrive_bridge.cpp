@@ -47,27 +47,26 @@ extern "C" float odrive_bridge_get_elec_power(void) { return axes[0].controller_
 extern "C" float odrive_bridge_get_vbus(void) { return vbus_voltage; }
 extern "C" float odrive_bridge_get_input_torque(void) { return axes[0].controller_.input_torque_; }
 
-// Temperatura do MCU (STM32F405), do sensor INTERNO — a unica temperatura real desta placa: o clone
-// MKS nao tras os termistores de FET/motor que o ODrive genuino tem (por isso aqueles vao -128 = sem
-// sensor). Nao mede o motor, mas denuncia gabinete abafado/dissipacao ruim, que e o que o usuario
-// consegue agir. O canal 16 e amostrado com 480 ciclos na sequencia do ADC1 (ver low_level.cpp).
+// 🔴 TEMPERATURA DO MCU — DESATIVADA EM 2026-08-06. NÃO RELIGAR do jeito anterior.
 //
-// Conversao do datasheet do F405 (tabela "Temperature sensor characteristics"):
-//   V25 = 0,76 V @ 25 C, Avg_Slope = 2,5 mV/C  →  T = (Vsense - V25)/slope + 25
-// Estes valores sao TIPICOS e nao vem calibrados de fabrica no F4 (o erro de offset chega a +-45 C
-// no pior caso do datasheet). Ou seja: serve para VARIACAO ("subiu 15 C depois de meia hora"), nao
-// como termometro absoluto — motivo pelo qual isto NAO alimenta nenhuma protecao, so a tela.
+// A implementação anterior lia o sensor interno do STM32 colocando-o no lugar do canal 7 da
+// sequência regular do ADC1, com ADC_SAMPLETIME_480CYCLES (contra 15 dos demais). Justifiquei a
+// troca com "ninguém lê o índice 7 do buffer" — verdade, e irrelevante. O que mudou foi o TEMPO DE
+// CONVERSÃO, que derruba a varredura do ADC1 de ~48 kHz para ~23 kHz. E é no mesmo ADC1 que o vbus
+// é amostrado pelo canal INJETADO, dentro da ISR de controle de 8 kHz. Num periférico
+// compartilhado, "o dado não é lido" não é a mesma coisa que "não tem efeito".
 //
-// Filtro EMA: 1 LSB de 12 bits (0,806 mV) ja vale 0,32 C, entao o valor cru pisca. tau ~1 s no
-// ritmo de chamada da telemetria (~50 Hz) deixa o numero legivel sem esconder tendencia.
+// O que isso causou, medido por SWD na bancada:
+//   Iq = 18,05 A com o volante PARADO e torque comandado ZERO (valor travado, sem oscilar)
+//   → ~98 W de puro calor no motor, zero torque → motor esquentando parado
+//   → SPINOUT_DETECTED → motor desarma → "perdeu o FFB"
+// Com este mesmo código removido: 0,2 A parado, e o motor ESFRIA até sob teste forçado.
+//
+// Se for religar um dia: NÃO tocar no timing da sequência regular do ADC1. Caminhos possíveis a
+// investigar — um ADC separado (mas o sensor de temp só existe no ADC1), ou amostrar sob demanda
+// com o motor desarmado. Antes de qualquer coisa, medir Iq com o volante parado.
 extern "C" float odrive_bridge_get_mcu_temp_c(void) {
-    static float s_filtered = 0.0f;
-    const float rel = get_adc_relative_voltage_ch(ADC_CHANNEL_MCU_TEMP);
-    if (rel < 0.0f) return -128.0f;                       // canal invalido = sem sensor
-    const float t = ((rel * adc_ref_voltage) - 0.76f) / 0.0025f + 25.0f;
-    if (s_filtered == 0.0f) s_filtered = t;               // primeira amostra: sem rampa desde zero
-    s_filtered += (t - s_filtered) * 0.02f;               // EMA ~1 s a 50 Hz
-    return s_filtered;
+    return -128.0f;   // -128 = "sem sensor" no protocolo A0 → o app mostra "—", não "0 °C"
 }
 
 // SEGURANÇA: desabilita todo o auto-arme/calibração de boot. A calibração de offset do encoder

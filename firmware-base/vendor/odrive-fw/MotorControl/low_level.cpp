@@ -231,18 +231,9 @@ void start_general_purpose_adc() {
     }
 
     // Set up sampling sequence (channel 0 ... channel 15)
+    sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
     for (uint32_t channel = 0; channel < ADC_CHANNEL_COUNT; ++channel) {
-        // Mod local do DriveLab: neste slot entra o sensor de temperatura interno do MCU no lugar do
-        // canal 7 (ver o porque em low_level.h). 480 CICLOS, contra os 15 dos demais: o sensor tem
-        // impedancia alta e o datasheet exige >=10us de amostragem — 15 ciclos a 21MHz sao 0,7us e
-        // leriam lixo. O HAL liga o bit TSVREFE sozinho ao reconhecer ADC_CHANNEL_TEMPSENSOR.
-        // Custo: a varredura completa cai de ~48kHz p/ ~23kHz, irrelevante aqui — este ADC so
-        // alimenta termistores (tau 0,1s) e GPIOs analogicos. A corrente de fase (ADC2/ADC3) e o
-        // vbus (canal INJETADO, que tem prioridade sobre o regular) nao passam por esta sequencia,
-        // entao o laco de controle de 8kHz nao sente nada.
-        const bool is_mcu_temp = (channel == ADC_CHANNEL_MCU_TEMP);
-        sConfig.Channel = is_mcu_temp ? ADC_CHANNEL_TEMPSENSOR : (channel << ADC_CR1_AWDCH_Pos);
-        sConfig.SamplingTime = is_mcu_temp ? ADC_SAMPLETIME_480CYCLES : ADC_SAMPLETIME_15CYCLES;
+        sConfig.Channel = channel << ADC_CR1_AWDCH_Pos;
         sConfig.Rank = channel + 1; // rank numbering starts at 1
         if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
             odrv.misconfigured_ = true; // TODO: this is a bit of an abuse of this flag
