@@ -326,6 +326,24 @@ public class SettingFieldViewModelTests
         Assert.Equal(2500, cpr.DisplayValue);   // a pessoa ve o numero do datasheet
     }
 
+    // Regressao: as opcoes recriadas precisam nascer com a selecao correta. Sem isso, clicar na
+    // tecnologia que JA e o valor atual nao fazia nada — nao havia mudanca de valor para disparar
+    // a sincronizacao, e a chip ficava sem marcar.
+    [Fact]
+    public void RefreshOptions_Marca_A_Opcao_Ja_Selecionada()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var tech = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderInterface));
+        tech.IsLoaded = true;
+
+        tech.RefreshOptions(EncoderCatalog.Mt6835);   // ABZ e SPI; valor cai em ABZ (0)
+
+        var abz = tech.Options.Single(o => o.Value == (int)EncoderTech.Abz);
+        Assert.True(abz.IsSelected);
+    }
+
+
 
 
 }

@@ -96,6 +96,12 @@ public partial class SettingFieldViewModel : ViewModelBase
         if (!techs.Any(t => (int)t == (int)System.Math.Round(Value)))
             Value = (int)techs[0];
 
+        // As opções são objetos NOVOS: sem isto, nenhuma nasce marcada como selecionada e a
+        // sincronização só aconteceria na próxima mudança de valor. O sintoma era clicar na
+        // tecnologia que já estava ativa e nada acontecer — porque não havia mudança para
+        // disparar a sincronização.
+        UpdateOptionSelection();
+
         OnPropertyChanged(nameof(Options));
         OnPropertyChanged(nameof(HasOptions));
         OnPropertyChanged(nameof(IsDropdown));
