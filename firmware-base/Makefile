@@ -110,6 +110,7 @@ CPP_SOURCES_LOCAL = \
   src/ffb_effects.cpp \
   src/ffb_report.cpp \
   src/odrive_bridge.cpp \
+  src/blackbox.cpp \
   src/usb_tinyusb_glue.cpp \
   src/ffb_diag_stub.cpp \
   src/settings_flash.cpp

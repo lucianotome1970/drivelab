@@ -9,6 +9,7 @@
 #include <cmsis_os.h>
 #include "odrive_bridge.h"
 #include "ffb_model.h"
+#include "blackbox.h"          // caixa-preta: causa do ultimo reset (lida no boot)
 #include "brake_meter.h"          // zerar o medidor do chopper no arme (ver autoscale, abaixo)
 extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
 
@@ -33,6 +34,23 @@ volatile float g_vbus_voltage_scale = 3.3f * 19.0f / 4096.0f;
 // 1 = os limites de bus já foram dimensionados pela fonte MEDIDA (chopper liberado);
 // 0 = ainda não (sem fonte no boot → chopper mudo). Legível por SWD para diagnóstico.
 volatile int32_t g_bus_autoscaled = 0;
+
+// LATCH DA PRIMEIRA FALHA — só leitura por SWD, não age no motor.
+//
+// Por que existe: em 2026-08-06, depois de 3 voltas limpas, o FFB caiu com
+// axis_err=CONTROLLER_FAILED. O "porquê" mora em controller_.error_ — e quando fomos ler, já
+// estava ZERADO: o auto-arme roda clear_errors() 68 ms depois e apaga tudo. Ficamos com "o
+// controlador falhou" e três candidatos possíveis (SPINOUT_DETECTED, INVALID_ESTIMATE, OVERSPEED)
+// sem meio de distinguir. Aqui guardamos o estado ANTES do clear, e só a PRIMEIRA vez: as falhas
+// seguintes costumam ser eco da primeira, e sobrescrever perderia justamente a original.
+//
+// As duas potências importam tanto quanto o código de erro: se no instante da falha a mecânica
+// estiver bem negativa e a elétrica positiva, foi a detecção de spinout do ODrive — que num volante
+// FFB dispara em condição NORMAL de uso (segurar o volante contra a força é exatamente "frear
+// consumindo corrente"), e aí o conserto é afrouxar/desligar o detector, não caçar bug.
+volatile int32_t g_fail_dbg[8] = {0};
+// [0]ocorrências [1]controller_err [2]axis_err [3]motor_err [4]enc_err
+// [5]mech_power*1000 (W) [6]elec_power*1000 (W) [7]vbus*1000 (V)
 
 static void ffb_thread(void*) {
     uint32_t tick = osKernelSysTick();   // base absoluta p/ osDelayUntil (1kHz sem drift)
@@ -122,6 +140,17 @@ static void ffb_thread(void*) {
                     s_armed_ticks = 0;
                     // (int32_t) na diferença = seguro no wrap do contador de 1 kHz
                     if ((int32_t)(n - s_next_try) >= 0 && s_arm_attempts < 300) {
+                        // ANTES do clear: fotografa a falha, senão ela se perde (ver g_fail_dbg).
+                        if (g_fail_dbg[0] == 0) {
+                            g_fail_dbg[1] = (int32_t)odrive_bridge_controller_error();
+                            g_fail_dbg[2] = g_axis_dbg[2];   // axis_err
+                            g_fail_dbg[3] = g_axis_dbg[3];   // motor_err
+                            g_fail_dbg[4] = g_axis_dbg[4];   // enc_err
+                            g_fail_dbg[5] = (int32_t)(odrive_bridge_get_mech_power() * 1000.0f);
+                            g_fail_dbg[6] = (int32_t)(odrive_bridge_get_elec_power() * 1000.0f);
+                            g_fail_dbg[7] = (int32_t)(odrive_bridge_get_vbus() * 1000.0f);
+                        }
+                        g_fail_dbg[0]++;
                         odrive_bridge_clear_errors();      // limpa erros + RE-ARMA o brake resistor
                         odrive_bridge_request_closed_loop();
                         s_arm_attempts++;
@@ -151,6 +180,11 @@ static void ffb_thread(void*) {
 }
 
 extern "C" void ffb_init_storage_early(void) {
+    // Caixa-preta: lê a causa do último reset do RCC->CSR e LIMPA as flags. Tem de rodar antes de
+    // qualquer coisa limpá-las, e este é o primeiro hook nosso no boot. Só leitura de registrador —
+    // não toca motor, PWM nem config. Ver inc/blackbox.h.
+    blackbox_init();
+
     // SEM APITO + arme confiável: pula a medição do motor no boot (usa o R/L já guardado,
     // motor.pre_calibrated=TRUE). Roda ANTES do eixo iniciar (main.cpp:544 < :604). Mantém a
     // cal de offset do encoder (movimento) + o auto-arme nativo (startup_closed_loop na NVM).

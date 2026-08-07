@@ -14,6 +14,9 @@ int      odrive_bridge_axis_state(void);   // AXIS_STATE_* (8 = CLOSED_LOOP)
 uint32_t odrive_bridge_axis_error(void);   // AxisError bitfield
 uint32_t odrive_bridge_motor_error(void);  // MotorError bitfield
 uint32_t odrive_bridge_encoder_error(void);// EncoderError bitfield
+uint32_t odrive_bridge_controller_error(void); // ControllerError — o PORQUÊ do axis CONTROLLER_FAILED
+float    odrive_bridge_get_mech_power(void);   // potência mecânica filtrada (W) — entrada do spinout
+float    odrive_bridge_get_elec_power(void);   // potência elétrica filtrada (W) — entrada do spinout
 float    odrive_bridge_get_vbus(void);      // tensão do bus (V)
 float    odrive_bridge_get_input_torque(void); // torque comandado atual (Nm)
 float    odrive_bridge_get_mcu_temp_c(void);  // temperatura do STM32 (sensor interno); -128 = sem leitura

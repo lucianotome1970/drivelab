@@ -189,6 +189,24 @@ SECTIONS
     __bss_end__ = _ebss;
   } >RAM
 
+  /* DriveLab: .noinit — sobrevive ao reset.
+   * Fica FORA do intervalo _sbss.._ebss, que e o unico que o startup zera (LoopFillZerobss). Por
+   * isso o conteudo persiste atraves de um reset que nao corte a energia — e o que permite a
+   * caixa-preta (inc/blackbox.h) contar o que causou um hard fault DEPOIS de a placa reiniciar.
+   * NOLOAD: nao entra no .bin (nada a carregar, so reservar endereco).
+   * Ficaria melhor na CCMRAM, mas ela ja esta cheia (o ODrive a ocupa inteira).
+   * ⚠️ Quem declarar variavel aqui tem de tratar lixo na primeira execucao: apos queda de energia o
+   * conteudo e aleatorio. Por isso a caixa-preta valida um magic antes de acreditar nos campos. */
+  .noinit (NOLOAD) :
+  {
+    . = ALIGN(4);
+    _snoinit = .;
+    *(.noinit)
+    *(.noinit*)
+    . = ALIGN(4);
+    _enoinit = .;
+  } >RAM
+
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack :
   {

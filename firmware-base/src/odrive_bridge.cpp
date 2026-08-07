@@ -27,6 +27,23 @@ extern "C" int      odrive_bridge_axis_state(void)  { return (int)axes[0].curren
 extern "C" uint32_t odrive_bridge_axis_error(void)  { return (uint32_t)axes[0].error_; }
 extern "C" uint32_t odrive_bridge_motor_error(void) { return (uint32_t)axes[0].motor_.error_; }
 extern "C" uint32_t odrive_bridge_encoder_error(void) { return (uint32_t)axes[0].encoder_.error_; }
+// --- Diagnóstico da falha do CONTROLADOR -----------------------------------------------------
+// Quando o motor desarma com axis_err=CONTROLLER_FAILED, o "porquê" está aqui — e SÓ aqui. O
+// bitfield do axis diz apenas "o controlador falhou"; qual falha foi (SPINOUT_DETECTED,
+// INVALID_ESTIMATE, OVERSPEED...) fica neste campo. Capturado em 2026-08-06 na bancada: perdemos
+// justamente este dado porque o auto-arme chamou clear_errors() 68 ms depois e apagou tudo.
+extern "C" uint32_t odrive_bridge_controller_error(void) {
+    return (uint32_t)axes[0].controller_.error_;
+}
+
+// As duas potências filtradas que alimentam a detecção de spinout do ODrive. Guardá-las no instante
+// da falha é o que confirma (ou descarta) a hipótese do spinout sem precisar adivinhar: se no
+// momento do desarme a mecânica estiver abaixo do limiar negativo e a elétrica acima do positivo,
+// foi spinout — que num volante FFB é condição NORMAL (segurar o volante contra a força freia o
+// movimento consumindo corrente), não anomalia.
+extern "C" float odrive_bridge_get_mech_power(void) { return axes[0].controller_.mechanical_power_; }
+extern "C" float odrive_bridge_get_elec_power(void) { return axes[0].controller_.electrical_power_; }
+
 extern "C" float odrive_bridge_get_vbus(void) { return vbus_voltage; }
 extern "C" float odrive_bridge_get_input_torque(void) { return axes[0].controller_.input_torque_; }
 

@@ -39,6 +39,7 @@
 
 /* USER CODE BEGIN 0 */
 #include <Drivers/STM32/stm32_system.h>
+#include "blackbox.h"   // mod DriveLab: registra o hard fault antes de travar (ver get_regs)
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -82,6 +83,14 @@ __attribute__((used))
 void get_regs(void** stack_ptr) {
   TIM1->BDTR &= ~(TIM_BDTR_AOE_Msk | TIM_BDTR_MOE_Msk); // disable M0 PWM
   TIM8->BDTR &= ~(TIM_BDTR_AOE_Msk | TIM_BDTR_MOE_Msk); // disable M1 PWM
+
+  // Mod local do DriveLab: registra o fault na caixa-preta ANTES do while(1) abaixo. Sem isto o
+  // fault só existe para quem estiver com o depurador plugado no instante exato — e na bancada
+  // ninguém está. Grava em .ccmram, que sobrevive a reset por software/pino (não a queda de
+  // energia). Ver inc/blackbox.h.
+  blackbox_record_fault((uint32_t)stack_ptr[6],   // PC
+                        (uint32_t)stack_ptr[5],   // LR
+                        SCB->CFSR);
 
   void* volatile r0 __attribute__((unused)) = stack_ptr[0];
   void* volatile r1 __attribute__((unused)) = stack_ptr[1];
