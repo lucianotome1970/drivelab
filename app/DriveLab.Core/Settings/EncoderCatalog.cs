@@ -53,7 +53,12 @@ public static class EncoderCatalog
 
     /// <summary>Resolução de fábrica em CONTAGENS por volta (já com o ×4 do ABZ aplicado).
     /// Zero significa "não há valor de fábrica — a pessoa digita".</summary>
-    /// <remarks>⚠️ Os valores de ABZ dos três magnéticos são PROGRAMÁVEIS no chip. Estes são os
+    /// <remarks>⚠️ <b>Limitação conhecida:</b> o campo `encoder_cpr` do protocolo é <b>u16</b> (máx
+    /// 65535), então a resolução do MT6835 em SPI (2.097.152, 21 bits) <b>não é transportável hoje</b>.
+    /// Usar o MT6835 em ABZ funciona; o modo SPI depende de o campo virar 32 bits, o que é mudança de
+    /// protocolo e de firmware — está na parte 2 do trabalho de encoder.
+    ///
+    /// ⚠️ Os valores de ABZ dos três magnéticos são PROGRAMÁVEIS no chip. Estes são os
     /// de fábrica; se alguém reprogramar o sensor, precisa corrigir o campo na mão. Confirmar cada
     /// um no datasheet quando a peça chegar — valor errado aqui reproduz exatamente o problema que
     /// este catálogo existe para eliminar.</remarks>
@@ -63,7 +68,7 @@ public static class EncoderCatalog
         (Mt6701,  EncoderTech.Abz) => 4096,    // 1024 PPR × 4 (programável)
         (Mt6701,  EncoderTech.Ssi) => 16384,   // 14 bits, sem multiplicação
         (Mt6835,  EncoderTech.Abz) => 16384,   // 4096 PPR × 4 (programável)
-        (Mt6835,  EncoderTech.Spi) => 2097152, // 21 bits
+        (Mt6835,  EncoderTech.Spi) => 2097152, // 21 bits — ⚠️ NÃO CABE no campo atual (u16, máx 65535)
         (As5047p, EncoderTech.Abz) => 4000,    // 1000 PPR × 4 (programável)
         (As5047p, EncoderTech.Spi) => 16384,   // 14 bits
         _ => 0,                                // genérico: digitado

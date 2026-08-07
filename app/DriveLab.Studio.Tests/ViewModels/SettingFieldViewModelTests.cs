@@ -151,7 +151,9 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
+        // Campo NEUTRO de propósito: o EncoderCpr tem conversão de pulsos↔contagens em ABZ, então
+        // ele testaria a conversão junto e não a formatação.
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.PolePairs));
 
         Assert.True(vm.IsInteger);
         vm.IsLoaded = true;   // simula "já lido da base" (sem load o campo exibe "—")
@@ -170,16 +172,18 @@ public class SettingFieldViewModelTests
     }
 
     [Fact]
-    public void EncoderType_Is_Enum_With_Two_Options()
+    public void EncoderType_Lista_Os_Sensores_Do_Catalogo()
     {
         var transport = new FakeTransport();
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderType));
 
+        // As opções vêm do catálogo: acrescentar um sensor lá aparece aqui sozinho.
         Assert.True(vm.HasOptions);
-        Assert.Equal(2, vm.Options.Count);
-        Assert.Equal(0, vm.Options[0].Value);
-        Assert.Equal(1, vm.Options[1].Value);
+        Assert.Equal(EncoderCatalog.Models.Count, vm.Options.Count);
+        // Passou de 2 opções, então a tela vira dropdown em vez de fileira de chips.
+        Assert.True(vm.IsDropdown);
+        Assert.Equal(EncoderCatalog.Generico, vm.Options[0].Value);
         Assert.All(vm.Options, o => Assert.False(string.IsNullOrWhiteSpace(o.Label)));
     }
 
@@ -245,5 +249,83 @@ public class SettingFieldViewModelTests
         vm.SelectedOption = vm.Options[0];
         Assert.Equal(0, vm.Value);
     }
+
+    [Fact]
+    public void Tecnologia_Mostra_Apenas_O_Que_O_Sensor_Oferece()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var tech = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderInterface));
+
+        // MT6835: ABZ e SPI, nunca SSI.
+        tech.RefreshOptions(EncoderCatalog.Mt6835);
+        Assert.Equal(2, tech.Options.Count);
+        Assert.Contains(tech.Options, o => o.Value == (int)EncoderTech.Abz);
+        Assert.Contains(tech.Options, o => o.Value == (int)EncoderTech.Spi);
+        Assert.DoesNotContain(tech.Options, o => o.Value == (int)EncoderTech.Ssi);
+
+        // E6B2: so ABZ.
+        tech.RefreshOptions(EncoderCatalog.E6b2);
+        Assert.Single(tech.Options);
+    }
+
+    [Fact]
+    public void Trocar_De_Sensor_Corrige_Uma_Tecnologia_Invalida()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var tech = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderInterface));
+
+        tech.RefreshOptions(EncoderCatalog.Mt6701);
+        tech.Value = (int)EncoderTech.Ssi;         // valido no MT6701
+
+        tech.RefreshOptions(EncoderCatalog.E6b2);  // E6B2 nao tem SSI
+        Assert.Equal((int)EncoderTech.Abz, tech.Value);   // cai para o denominador comum
+    }
+
+    // O ×4 do ABZ e o erro numero 1 do forum: 68 topicos de gente digitando 600 onde a placa
+    // precisa de 2400. A conta passa a ser do app; a pessoa digita o que esta impresso no encoder.
+    [Fact]
+    public void Abz_Pede_Ppr_E_Multiplica_Por_Quatro()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
+
+        cpr.ApplyEncoderTech(EncoderTech.Abz);
+        cpr.DisplayValue = 600;                 // o numero impresso no encoder
+
+        Assert.Equal(2400, cpr.Value);          // o que vai para a placa
+        Assert.Contains("PPR", cpr.DisplayLabel);
+    }
+
+    [Fact]
+    public void Spi_Usa_O_Valor_Direto_Sem_Conta()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
+
+        cpr.ApplyEncoderTech(EncoderTech.Spi);
+        cpr.DisplayValue = 16384;
+
+        Assert.Equal(16384, cpr.Value);
+        Assert.DoesNotContain("PPR", cpr.DisplayLabel);
+    }
+
+    [Fact]
+    public void Ppr_Mostrado_E_O_Cpr_Dividido_Por_Quatro()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
+
+        cpr.ApplyEncoderTech(EncoderTech.Abz);
+        cpr.Value = 10000;                      // veio da placa (E6B2)
+
+        Assert.Equal(2500, cpr.DisplayValue);   // a pessoa ve o numero do datasheet
+    }
+
+
 
 }

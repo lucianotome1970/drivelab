@@ -26,11 +26,11 @@
 
                 <!-- Mín · slider · Máx -->
                 <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !HasOptions}">
-                    <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding Min, StringFormat={}{0:0}}" Margin="0,0,10,0" />
-                    <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}"
+                    <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding DisplayMin, StringFormat={}{0:0}}" Margin="0,0,10,0" />
+                    <Slider Grid.Column="1" Minimum="{Binding DisplayMin}" Maximum="{Binding DisplayMax}" Value="{Binding DisplayValue}"
                             IsEnabled="{Binding IsConnected}" IsSnapToTickEnabled="{Binding IsInteger}"
                             TickFrequency="1" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Classes="endLabel" Text="{Binding Max, StringFormat={}{0:0}}" Margin="10,0,0,0" />
+                    <TextBlock Grid.Column="2" Classes="endLabel" Text="{Binding DisplayMax, StringFormat={}{0:0}}" Margin="10,0,0,0" />
                 </Grid>
 
                 <!-- Chips de opção (enum) -->

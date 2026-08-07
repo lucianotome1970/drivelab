@@ -194,6 +194,11 @@
   <data name="Monitor_Clipping" xml:space="preserve"><value>Clipping do FFB</value></data>
   <data name="Monitor_ClippingPeak" xml:space="preserve"><value>Pico de clipping (sessão)</value></data>
   <data name="Monitor_BrakeTitle" xml:space="preserve"><value>Resistor de freio</value></data>
+  <data name="Setting_EncoderTech_Abz" xml:space="preserve"><value>ABZ (quadratura)</value></data>
+  <data name="Setting_EncoderRes_Ppr" xml:space="preserve"><value>Pulsos por volta (PPR) — o número impresso no encoder</value></data>
+  <data name="Setting_EncoderRes_Counts" xml:space="preserve"><value>Contagens por volta</value></data>
+  <data name="Setting_EncoderTech_Ssi" xml:space="preserve"><value>SSI</value></data>
+  <data name="Setting_EncoderTech_Spi" xml:space="preserve"><value>SPI</value></data>
   <data name="Monitor_BrakeActivations" xml:space="preserve"><value>Acionamentos</value></data>
   <data name="Monitor_BrakeEnergy" xml:space="preserve"><value>Energia dissipada</value></data>
   <data name="Monitor_BrakePeak" xml:space="preserve"><value>Pico de potência</value></data>

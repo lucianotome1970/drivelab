@@ -60,8 +60,9 @@ public static class CompositionRoot
             // que define o divisor do ADC, sem o qual a leitura não significa nada.
             BaseSettingId.TorqueConstant,  // Kt [Nm/A] → destrava o torque estimado (Kt·Iq) no monitor
             BaseSettingId.EncoderDirection,
-            BaseSettingId.EncoderCpr,
-            BaseSettingId.EncoderType,
+            BaseSettingId.EncoderType,       // MODELO do sensor (o que a pessoa comprou)
+            BaseSettingId.EncoderInterface,  // TECNOLOGIA (como ela ligou) — opções dependem do modelo
+            BaseSettingId.EncoderCpr,        // resolução: PPR em ABZ (×4 feito pelo app), contagens no resto
             BaseSettingId.PolePairs,
             BaseSettingId.CurrentP,
             BaseSettingId.CurrentI,

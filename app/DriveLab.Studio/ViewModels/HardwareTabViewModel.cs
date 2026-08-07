@@ -47,9 +47,57 @@ public sealed partial class HardwareTabViewModel : SettingsGroupViewModel
             Monitor.TorqueConstant = _ktField.Value;
             _ktField.PropertyChanged += OnKtFieldChanged;
         }
+
+        // Encadeia os três campos do encoder: MODELO manda na TECNOLOGIA (só aparecem as que aquele
+        // sensor oferece), e a tecnologia manda na RESOLUÇÃO (rótulo e conversão: PPR em ABZ,
+        // contagens no resto). Sem esse encadeamento a tela deixaria escolher combinação inexistente.
+        _modelField = Fields.FirstOrDefault(f => f.SettingId == BaseSettingId.EncoderType);
+        _techField  = Fields.FirstOrDefault(f => f.SettingId == BaseSettingId.EncoderInterface);
+        _cprField   = Fields.FirstOrDefault(f => f.SettingId == BaseSettingId.EncoderCpr);
+
+        if (_modelField is not null && _techField is not null)
+        {
+            _techField.RefreshOptions((int)_modelField.Value);
+            _modelField.PropertyChanged += OnEncoderModelChanged;
+        }
+        if (_techField is not null)
+        {
+            ApplyTech();
+            _techField.PropertyChanged += OnEncoderTechChanged;
+        }
     }
 
     private readonly SettingFieldViewModel? _ktField;
+    private readonly SettingFieldViewModel? _modelField;
+    private readonly SettingFieldViewModel? _techField;
+    private readonly SettingFieldViewModel? _cprField;
+
+    private void OnEncoderModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SettingFieldViewModel.Value)) return;
+        if (_modelField is null || _techField is null) return;
+        _techField.RefreshOptions((int)_modelField.Value);
+        ApplyTech();
+    }
+
+    private void OnEncoderTechChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingFieldViewModel.Value)) ApplyTech();
+    }
+
+    /// <summary>Aplica a tecnologia ao campo de resolução e, se o catálogo souber o valor de fábrica
+    /// daquele par sensor+tecnologia, já preenche — é o que faz o CPR sair certo sem ninguém calcular.</summary>
+    private void ApplyTech()
+    {
+        if (_techField is null || _cprField is null) return;
+
+        var tech = (EncoderTech)(int)System.Math.Round(_techField.Value);
+        _cprField.ApplyEncoderTech(tech);
+
+        var model = _modelField is null ? EncoderCatalog.Generico : (int)System.Math.Round(_modelField.Value);
+        var padrao = EncoderCatalog.DefaultResolution(model, tech);
+        if (padrao > 0) _cprField.Value = padrao;
+    }
 
     private void OnKtFieldChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

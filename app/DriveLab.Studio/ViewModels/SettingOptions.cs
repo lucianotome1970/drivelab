@@ -5,6 +5,7 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System.Linq;
 using DriveLab.Core.Settings;
 
 namespace DriveLab.Studio.ViewModels;
@@ -18,11 +19,17 @@ public static class SettingOptions
 
     private static readonly Dictionary<BaseSettingId, IReadOnlyList<EnumOptionSpec>> Map = new()
     {
-        [BaseSettingId.EncoderType] = new[]
-        {
-            new EnumOptionSpec(0, "Setting_EncoderType_Quadrature"),
-            new EnumOptionSpec(1, "Setting_EncoderType_MagneticSPI"),
-        },
+        // O MODELO do sensor vem do catálogo — assim acrescentar um sensor novo é acrescentar
+        // uma linha lá, e a tela se ajusta sozinha (com mais de 2 itens ela vira dropdown).
+        // O nome vai como "chave" de tradução de propósito: L.Get devolve a própria chave quando
+        // não acha, e nome de sensor é nome de produto — não se traduz.
+        [BaseSettingId.EncoderType] = EncoderCatalog.Models
+            .Select(m => new EnumOptionSpec(m.Id, m.Name))
+            .ToArray(),
+
+        // A TECNOLOGIA nasce vazia: as opções dependem do modelo escolhido e são preenchidas
+        // em tempo de execução por SettingFieldViewModel.RefreshOptions(modelo).
+        [BaseSettingId.EncoderInterface] = Array.Empty<EnumOptionSpec>(),
         [BaseSettingId.BoardVariant] = new[]
         {
             new EnumOptionSpec(0, "Setting_BoardVariant_24V"),
