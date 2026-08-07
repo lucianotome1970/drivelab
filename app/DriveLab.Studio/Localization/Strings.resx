@@ -197,6 +197,7 @@
   <data name="Monitor_BrakeTitle" xml:space="preserve"><value>Brake resistor</value></data>
   <data name="Setting_EncoderTech_Abz" xml:space="preserve"><value>ABZ (quadrature)</value></data>
   <data name="Setting_EncoderRes_Ppr" xml:space="preserve"><value>Pulses per revolution (PPR) — the number printed on the encoder</value></data>
+  <data name="Setting_EncoderRes_UnitPulses" xml:space="preserve"><value>pulses</value></data>
   <data name="Setting_EncoderRes_Counts" xml:space="preserve"><value>Counts per revolution</value></data>
   <data name="Setting_EncoderTech_Ssi" xml:space="preserve"><value>SSI</value></data>
   <data name="Setting_EncoderTech_Spi" xml:space="preserve"><value>SPI</value></data>

@@ -5,6 +5,7 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System.Linq;
 using DriveLab.Core.Settings;
 using Xunit;
 
@@ -53,4 +54,19 @@ public class EncoderCatalogTests
         // No genérico a pessoa digita — o catálogo não pode chutar por ela.
         Assert.Equal(0, EncoderCatalog.DefaultResolution(EncoderCatalog.Generico, EncoderTech.Abz));
     }
+
+    // Regressao: o limite do campo precisa comportar TODO o catalogo. Com max=2 e 5 sensores,
+    // escolher MT6835 ou AS5047P era limitado para 2 em silencio — a tela mostrava um sensor e a
+    // placa recebia outro.
+    [Fact]
+    public void O_Campo_Comporta_Todos_Os_Sensores_Do_Catalogo()
+    {
+        var d = BaseSettingsSchema.Get(BaseSettingId.EncoderType);
+        var maiorId = EncoderCatalog.Models.Max(m => m.Id);
+
+        Assert.True(d.Max >= maiorId,
+            $"O campo aceita ate {d.Max}, mas o catalogo tem sensor com id {maiorId}.");
+        Assert.Equal(maiorId, d.Clamp(maiorId));
+    }
+
 }

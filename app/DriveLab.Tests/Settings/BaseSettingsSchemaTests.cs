@@ -5,6 +5,7 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System.Linq;
 using DriveLab.Core.Settings;
 
 namespace DriveLab.Tests.Settings;
@@ -63,7 +64,9 @@ public class BaseSettingsSchemaTests
         var d = BaseSettingsSchema.Get(BaseSettingId.EncoderType);
         Assert.Equal(SettingType.UInt8, d.Type);
         Assert.Equal(0, d.Min);
-        Assert.Equal(2, d.Max);          // 0=E6B2/ABI · 1=MT6701 · 2=AS5047P
+        // O limite acompanha o CATÁLOGO, não um número fixo: acrescentar um sensor lá não pode
+        // deixar o campo sem conseguir representá-lo.
+        Assert.Equal(EncoderCatalog.Models.Max(m => m.Id), d.Max);
         Assert.Equal(0, d.Default);
         Assert.Equal(SettingTab.Hardware, d.Tab);
     }
