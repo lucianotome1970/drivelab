@@ -1,138 +1,194 @@
-# DriveLab — Handoff (Mac → Windows)
+# DriveLab — Handoff
 
-> Nota pra retomar o trabalho em **qualquer máquina** (esp. Windows). O contexto detalhado está na
-> memória do Claude Code (`~/.claude/projects/<projeto>/memory/`) — mas o essencial está aqui, no git.
+> Nota pra retomar o trabalho em **qualquer máquina**. O contexto detalhado está na memória do
+> Claude Code (`~/.claude/projects/<projeto>/memory/`) — mas o essencial está aqui, no git.
 
-## 🚨 PRIMEIRA COISA A FAZER NO WINDOWS (2026-08-06) — o histórico foi REESCRITO
+## 📍 ESTADO ATUAL (2026-08-06, fim da sessão do Windows)
 
-Hoje o histórico do `main` foi reescrito (38 commits ganharam SHA novo) e **10 branches foram
-apagadas do GitHub**. O clone do Windows tem o histórico ANTIGO. Um `git pull` vai tentar mesclar
-duas histórias diferentes e fazer uma bagunça.
+**A base está funcionando e validada na bancada.** Firmware `d36aee1` gravado, 4 voltas na pista
+sem nada esquentar, zero desarmes, corrente de repouso em 0,25 A (ruído puro).
 
-**Não dê `git pull`.** Faça:
+| | |
+|---|---|
+| Firmware na base | `d36aee1` (= o do `main`) |
+| App | compila em Release, **213 testes passando** |
+| Motor | frio após 4 voltas |
+| `Iq` com volante parado | 0,25 A oscilando (0,018 W) |
+| Falhas no latch | **nenhuma** |
 
-```bash
-git fetch origin
-git reset --hard origin/main
-git remote prune origin
+O ambiente do Windows está pronto: PlatformIO + GCC ARM 10.3.1 + MSYS2/make + openocd + driver
+ST-Link (WinUSB). `git clone` + `make` funciona — só lembrar que o `autogen/` do ODrive é
+gitignored e precisa ser gerado.
+
+## 🔴 A LIÇÃO DA SESSÃO — timing de periférico compartilhado
+
+**O que quebrou:** o commit `a6f5e35` trocou o canal 7 da sequência regular do ADC1 pelo sensor de
+temperatura interno do STM32, com `ADC_SAMPLETIME_480CYCLES` contra 15 dos demais canais. A
+justificativa foi *"ninguém lê o índice 7 do buffer"* — verdade, e irrelevante. O que mudou foi o
+**tempo de conversão**, que derruba a varredura do ADC1 de ~48 kHz para ~23 kHz. E é no mesmo ADC1
+que o `vbus` é amostrado pelo canal **injetado**, dentro da ISR de controle de 8 kHz.
+
+**Num periférico compartilhado, "o dado não é lido" não é o mesmo que "não tem efeito".**
+
+**O que isso causou (medido por SWD):**
+
+```
+Iq = 18,05 A com o volante PARADO e torque comandado ZERO   (valor TRAVADO, sem oscilar)
+  → ~98 W de puro calor no motor, zero torque  →  motor esquentando parado
+  → mech_power −111 W (freando) COM elec_power +51 W (consumindo) ao mesmo tempo
+  → controller_err 0x80 SPINOUT_DETECTED → CONTROLLER_FAILED → motor desarma → "perdeu o FFB"
 ```
 
-Se tiver trabalho local não commitado no Windows, salve antes (`git stash` ou cópia dos arquivos) —
-o `reset --hard` descarta.
+**Critério de diagnóstico** — o valor não denuncia, o contexto sim. 18 A aparece nos dois casos:
 
-O que sobrou no GitHub é **só a branch `main`**. As `feat/*` e a `trabalho-2026-08-03` foram
-removidas porque o conteúdo delas já tinha sido portado pra `main` (conferido feature a feature).
+| | patológico | normal |
+|---|---|---|
+| quando | volante **parado** | só **sob força** |
+| comportamento | valor **travado** | **oscila** e volta a ~0 ao soltar |
 
-## ⏭️ ONDE CONTINUAR (Windows, na bancada) — atualizado 2026-08-06
+**Teste de campo, sem instrumento nenhum:** encostar a mão no motor depois que ele armar. Motor
+esquentando parado = corrente sem torque. Cinco segundos e você sabe se aquele boot está bom.
 
-### 1. Validar a telemetria do brake chopper (PRONTA, falta bancada)
+### ⚠️ Erro de método que custou a sessão (não repetir)
 
-Firmware compilado em `firmware-base/build/drivelab-base.bin`. O app já mostra o grupo
-**"Resistor de freio"** na aba Hardware (modo avançado) com acionamentos, energia dissipada e pico.
+Bissetei `bd7fffe` contra `a6f5e35` e chamei o segundo de "baseline validado" — **mas a mudança do
+ADC estava nele**. Comparei a mudança contra ela mesma e apresentei o resultado como conclusão.
+Todo firmware testado no dia estava contaminado; o único limpo era o `e0dd3ec` do dia anterior.
 
-**Por que existe:** o resistor quase nunca esquenta (a frenagem dura milissegundos, medimos 3,3 W de
-média), e "frio" passa a impressão de "quebrado". Os contadores são a evidência de que ele
-trabalhou. E **zero acionamentos depois de uma sessão inteira é diagnóstico**: resistor desligado ou
-rampa mal dimensionada.
+**Ao bissetar, verificar que o baseline REALMENTE precede a suspeita:**
 
-Passos, nesta ordem:
+```bash
+git show <baseline> --stat -- <arquivo-suspeito>
+```
 
-1. **Gravar** — pelo Studio (DFU) ou ST-Link. Se a placa não entrar em DFU, o jumper tem que ser
-   **RETIRADO**, não colocado.
-2. **Confirmar que o FFB não regrediu** — armar e dirigir. Força igual, sem desarme, sem trepidação
-   nova. **Se algo mudou, reverter:** a única mudança que toca no laço de controle é `7278736`, e ela
-   só podia acrescentar leitura.
-3. **Zig-zag forte** com o resistor conectado → acionamentos sobem, energia cresce.
-4. **Base ligada e parada por um minuto** → os três números **não se movem**. Se subirem com o
-   volante parado, o chopper está conduzindo em repouso — que é exatamente o erro de config que
-   torrou o resistor de 50 W.
-5. **Anotar os números reais** da sessão. Viram referência pro próximo que montar.
+O usuário apontou três vezes que "era a alteração" e que "o firmware de ontem estava bom", com o
+histórico de que **o motor nunca esquentara no projeto inteiro**. Histórico de comportamento é
+evidência, não impressão a ser explicada. "O diff não explica" é um limite do entendimento, não uma
+afirmação sobre a realidade.
 
-Plano completo (não versionado, é local do Mac): `docs/superpowers/plans/2026-08-06-brake-chopper-telemetry.md`
+## 🧰 Ferramentas de diagnóstico novas (usar ANTES de teorizar)
 
-### 2. Camada de encoder plugável (desenho aprovado, plano não escrito)
+Foram elas que capturaram os 18 A e o `SPINOUT_DETECTED`. Sem elas, teria sido mais um dia de
+adivinhação.
 
-**Restrição inegociável:** o caminho **ABZ incremental atual NÃO se toca** — é a única baseline
-validada (as 2 voltas no ACC foram com ele). O tipo 0 do catálogo é o comportamento de hoje, byte
-por byte.
+### Latch da primeira falha — `g_fail_dbg` (`src/ffb_task.cpp`)
 
-Desenho aprovado: um **catálogo de descritores** (`id`, interface, bits do quadro, CPR, absoluto,
-decodificador), selecionado pelo setting **`encoder_type` (BID 18)** — que **já existe no protocolo
-e no app, mas o firmware ignora**. O usuário escolhe o SENSOR e o firmware aplica CPR e modo, o que
-mata o erro mais recorrente do fórum (CPR errado, 68 tópicos).
+Fotografa o estado **antes** do `clear_errors()` apagá-lo. Guarda só a primeira ocorrência (as
+seguintes costumam ser eco). Sobrevive enquanto a placa estiver ligada, então **dá pra dirigir sem
+ST-Link e plugar só depois**.
 
-Catálogo: 0 = incremental genérico · 1 = MT6701 ABZ · 2 = MT6701 SSI · 3 = MT6835 SPI ·
-4 = AS5047P SPI.
+```
+[0] ocorrências   [1] controller_err   [2] axis   [3] motor   [4] enc
+[5] mech_power mW [6] elec_power mW    [7] vbus mV
+```
 
-Ordem: (1) catálogo + tipo 0 sem mudar comportamento, com teste que FIXA a config atual;
-(2) tipo 1 quando o MT6701 chegar; (3) SSI/SPI quando o hardware chegar.
+`controller_err = 0x80` é `SPINOUT_DETECTED`. Os campos 5 e 6 confirmam: mecânica < −50 W **e**
+elétrica > +50 W = spinout. **Nunca afrouxar o spinout sem antes checar `Iq` com o volante parado** —
+ele é o alarme de incêndio, não o incêndio.
 
-**Já pronto:** `firmware-base/inc/magnetic_decode.h` — decodificação do MT6701 (quadro SSI de 24
-bits: 14 ângulo + 4 status + 6 CRC) e `angle_delta_wrapped`. 15 testes de host passando.
-⚠️ O **CRC-6 não foi validado contra o chip** (o datasheet não dá vetor de teste e o driver de
-referência público não implementa CRC) — por isso `crc_ok` é informativo. No bring-up, **usar o
-ângulo mesmo com `crc_ok=0`** e conferir contra a realidade.
+### Caixa-preta de reset — `blackbox.h/.cpp`
 
-### 3. Encoders a caminho
+Lê `RCC->CSR` no boot e limpa as flags: diz se o último reset foi power-on, brown-out, pino,
+software ou watchdog. Mais o último hard fault (PC/LR/CFSR) em `.noinit` (seção nova no linker,
+fora de `_sbss.._ebss`).
 
-- **MT6701** (~2026-08-08) — R$ 13, absoluto de 1 volta, 14 bits. **Tem saída ABZ com índice Z**:
-  liga no conector ABZ que já existe, no caminho já validado, **sem escrever código**, e traz o
-  índice — que é a raiz documentada do offset não-repetível. É o ganho rápido.
-- **MT6835** (~2026-08-13) — 21 bits, AMR, SPI. É o caminho definitivo pro modo absoluto.
+⚠️ **Descoberta importante:** hard fault **NÃO reinicia** esta placa — o handler do ODrive trava num
+`while(1)` e não há IWDG/WWDG armado. Fault = base **CONGELA**. Logo, se a placa **reiniciou**, a
+causa está na alimentação.
 
-**Mecânica já resolvida** (hardware do usuário, não está no repo): encoder no EIXO (parado), pino de
-8 mm prensado e colado, fios passando por dentro do eixo; ímã na metade do quick release **presa ao
-motor** (trocar o aro não desloca o zero); tudo em **PETG**; encaixe em posição única.
+🔧 **PENDENTE:** o `reset_causa` reporta `4` (software) mesmo após power-cycle real, quando deveria
+reportar `1` (power-on). Acertou o reset por SWD da gravação, mas não foi provado num ciclo de
+alimentação. **Não confiar nele para diagnosticar reinício até revisar a decodificação.**
 
-**Nota de pesquisa:** nenhum port ODrive da comunidade implementou MT6701 ou MT6835 — quem quis
-magnético usou AS5047P, que o ODrive já suporta nativamente (`MODE_SPI_ABS_AMS`). O AS5047P só vem
-da China (~20 dias), então não serve de rede de segurança. Fazer o MT6701 é trabalho pioneiro, e é
-proposital: é o único absoluto de R$ 13, o que cabe no público do projeto.
+## ⏭️ ONDE CONTINUAR
 
-### 4. Testes agora rodam firmware + app
+### 1. Corrigir a decodificação da caixa-preta (pequeno, sem bancada)
 
-`./scripts/test.sh` passou a rodar **os testes de host do firmware** (`firmware-base/test/run.sh`,
-25 testes, C puro) antes dos testes do app. O harness tinha morrido junto com o `firmware-old` — o
-README afirmava que rodava os dois e não rodava.
+Ver acima. Provavelmente a ordem de prioridade das flags, ou o `SFTRSTF` sendo retido. Lembrar que
+`BORRSTF` acende **também** num power-on normal — o que distingue brown-out real é `BOR` **sem**
+`POR`.
 
-⚠️ Rodar a solução .NET inteira acusa **uma falha falsa** em `DriveLab.Studio.Tests` (o gerenciador
-de idiomas é estático e vaza entre projetos). Rodar esse projeto isolado pra confirmar.
+### 2. Monitor de corrente: pico em vez de média (só app)
 
-### ✅ FECHADO na bancada em 2026-08-05 (dia longo — tudo commitado e no GitHub)
-Hardware novo em uso: **fonte 27 V / 30 A** (a de 19,5 V afundava a 7,47 V sob torque = a raiz do "tec")
-e **resistor de brake de 100 W** (o de 50 W torrou — ver abaixo).
+O monitor mostra a **média** de 500 ms, o que estabilizou a tensão mas destruiu a leitura de
+corrente: FFB é bidirecional e a média se cancela em ~zero. Corrente de FFB interessa pelo **pico**,
+como já é feito com o clipping.
 
-1. ✅ **"Tec" RESOLVIDO** — era `dc_bus_undervoltage_trip_level` em 14,79 V. Fix: **8 V** (salvo na NVM).
-2. ✅ **SAVE persistente** — settings sobrevivem ao power-cycle **e** a cal do motor fica intacta
-   (FFB_NVM setor 1 × setores 10/11). Fecha o antigo item 1.
-3. ✅ **Chopper funcionando** (`68f9ab3`) — com resistor o pico de `vbus` cai de **33,5 → 27,5 V**;
-   média de só **3,3 W** no resistor. Fecha o antigo item 3.
-4. ✅ **Escala de torque 5 → 10 Nm** — o sistema usava ~18% do que o conjunto entrega.
-5. ✅ **4 SIMULADORES**: ACC, AC EVO, AMS2 e F1 2016 — **zero desarme**, `error=0` (cumulativo).
-   *F1 2016 fica leve em baixa velocidade: é DESIGN do jogo (força ∝ auto-alinhamento), não defeito.*
-6. ✅ **App** (`fd1a641`) — atalho de centralizar recuperado (tinha sumido numa regressão de git) +
-   botão "Salvar no controlador" no **dashboard** (o das abas não alcança o DOR/centro).
+### 3. Medir o Kt de verdade (bancada, sem gravar firmware)
 
-> ⚠️ **Um resistor de 50 W QUEIMOU** ao trocar a fonte: a rampa do chopper vinha da NVM calibrada para
-> 19,5 V e o vbus da fonte nova já nascia acima do `ramp_end` → duty 95% contínuo ≈ 273 W. Corrigido
-> por três proteções que **o ODrive de origem não tem** (`68f9ab3`): limites derivados da
-> **fonte medida**, chopper **mudo** enquanto não medir, e **watchdog térmico** (60 W médios).
+O `0,55 Nm/A` **nunca foi medido** — é catálogo genérico de hoverboard (`Kt = 8,27/KV` com KV≈15).
+O Odrive-Wheel usa o mesmo valor pela mesma razão, então ninguém mediu. Enquanto for digitado, o
+torque estimado herda o chute.
 
-### Pendente
-1. **Feel das ligações P0** — validar que o FFB não regrediu. Para MAIS DETALHE (zebra/pista):
-   linearidade **100→75-80%** (amplifica forças pequenas), damper e damping estático **para ~0**,
-   e ligar **anti-oscilação** se o DD tremer. Os filtros que matam detalhe já estão em 0.
-2. **Perfil por jogo** — F1 2016 quer o oposto (mola/damping estático altos p/ compensar a baixa
-   velocidade). Candidato a feature: piso de força ("minimum force").
-3. **Serial USB único** — hoje é a string fixa `"0001"`; em produção duas placas colidem no mesmo PC.
-   Tentamos derivar do UID do STM32 (`0x1FFF7A10`, como a Moza) e **quebrou a enumeração**
-   (`VID_0000&PID_0002`, falha de descritor) → revertido. Refazer com calma e testar isolado.
-4. **Sobretemp do motor (P2)** — sem sensor não há corte térmico, e o limite prático dos 10 Nm é calor.
-5. **Cap de torque derivado do motor** (`torque_constant × current_lim`) em vez de constante compilada —
-   pré-requisito pra distribuir o firmware. Conversa com a Fase 2 (1 binário pra família ODrive).
+**Método já preparado, sem risco e sem gravar firmware:** com o motor armado e torque zero, o
+controlador aplica a tensão que cancela a back-EMF para manter `Iq = 0`. Basta **girar o volante à
+mão** e ler:
 
-> **Hot-reconnect: ARQUIVADO.** A premissa era falsa — o usuário ligou a **Moza** no mesmo PC e o ACC
-> **também não a re-detecta** depois de reiniciada. É limitação do jogo, não defeito nosso.
+```
+λ = (Vq − R·Iq) / ω_elétrico        Kt = 1,5 · pole_pairs · λ
+```
+
+Endereços (reextrair do ELF a cada build — eles andam!): `motors+364` = `v_current_control_integral_q_`
+(Vq), `motors+356` = `Iq`, `motors+48` = `R`, `motors+32` = `pole_pairs`, `encoders+184` = vel (counts/s),
+`encoders+80` = cpr. Script de coleta em `scratchpad/kt.cfg`. Fazer **regressão** com velocidades
+variadas, não ponto único.
+
+### 4. `apply_hw_profile` desfaz o autoscale — BUG REAL de segurança
+
+`odrive_bridge_apply_hw_profile()` **sobrescreve** `dc_bus_overvoltage_trip_level` para 55 V toda vez
+que o app manda settings — inclusive depois do `autoscale_bus_limits()` ter dimensionado 33 V pela
+fonte medida. Ou seja: **mexer em qualquer setting da aba Hardware com a base ligada desfaz a
+proteção**. Explica por que aquela aba já derrubou a placa antes.
+
+### 5. Calibração de offset: parar de recalibrar a cada boot
+
+O `newboard_bringup()` refaz a calibração toda vez que a base liga → **todo boot é um sorteio**
+(encoder incremental sem index Z não persiste offset, e o cogging do hoverboard trava o lock-in num
+detente aleatório).
+
+**O Odrive-Wheel evita isso por construção:** calibra **uma vez**, salva com `pre_calibrated=true` e
+desliga `startup_*_calibration`. Da tabela deles (`docs/GETTING_STARTED.md`):
+
+| campo | Odrive-Wheel | nosso |
+|---|---|---|
+| `startup_motor_calibration` | **false** | recalibra |
+| `startup_encoder_offset_calibration` | **false** | **recalibra a cada boot** |
+| `pre_calibrated` | **true** (após bring-up manual) | false |
+| `use_index` | **true se o Z estiver fiado** | não usa |
+| `calibration_current` | **5 A** | 30 A no app |
+| anticogging | mapa de 3600 pontos | não temos |
+
+⚠️ Sem index Z o ODrive **força** `pre_calibrated=false` (`encoder.cpp check_pre_calibrated`), então
+persistir o offset exige o Z. A decisão de 2026-08-03 descartou o Z para manter drop-in FFBeast —
+**vale reabrir**, agora que sabemos o custo real da loteria por boot.
+
+### 6. Outros
+
+- **Perfil por jogo** — F1 2016 é leve em baixa velocidade por design (força vem do
+  auto-alinhamento ∝ velocidade); paliativo é static damping / mola só nele
+- **Roadmap de feel (P0)** — muita coisa já codada no `ffb_math.h`, só ligar
+- **Serial USB fixo** — identidade DirectInput estável
+- **Sobretemp do motor** — infra 90% pronta, falta o NTC no `AUX_TEMP` (PA5) e a lógica de desarme
+- **App**: mostrar "não suportado nesta versão" em vez de `0 °C` quando o firmware não preenche o
+  campo (o `BaseState` já traz a versão do firmware)
+
+## 🔧 Protocolo de bancada (aprendido na dor, 2026-08-06)
+
+1. **UMA gravação por vez, com power-cycle entre elas.** Encadear reflashes por SWD trava o
+   DRV8301 e custa muito mais tempo do que economiza — vale mesmo quando a mudança é inofensiva
+2. **Power-cycle completo = fonte off + ST-Link FORA DA USB**, ~10 s. Só desligar a fonte pode não
+   bastar
+3. **Depois de gravar, medir `Iq` com o volante parado ANTES de dirigir.** ~0,2 A oscilando = bom;
+   valor alto travado = desligar
+4. **Ler o latch ANTES de teorizar** — `controller_err` + as duas potências fecham o diagnóstico em
+   segundos
+5. **`mrw` (sem halt) para ler com o motor armado.** Halt derruba motor armado
+6. **Reextrair endereços do ELF a cada build** — eles andam (`g_brake_meter` andou 4 bytes e me
+   fez ler tudo deslocado)
+
+---
+
+# 📚 Histórico anterior (sessões do Mac, ainda válido)
 
 ## Estado atual (2026-08-05) — GRANDE VITÓRIA
 - ✅ **O volante DD roda no ACC com FFB** — validado: **2 voltas completas, 100% de força, sem travar.**
