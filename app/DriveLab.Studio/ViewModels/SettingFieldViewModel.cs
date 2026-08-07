@@ -6,6 +6,7 @@
 // ============================================================================
 
 using System.Globalization;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Settings;
@@ -66,6 +67,21 @@ public partial class SettingFieldViewModel : ViewModelBase
     /// <summary>Chips de opção (enum) rotulados, ex.: tipo de encoder; vazio quando o campo não é enum.</summary>
     public IReadOnlyList<EnumOptionViewModel> Options { get; }
     public bool HasOptions => Options.Count > 0;
+
+    /// <summary>Enum "catálogo" (muitas opções, ex.: tipo de encoder, que cresce a cada sensor novo
+    /// suportado) → vira ComboBox/dropdown. Poucas opções (2, ex.: 24V/56V) ficam como chips lado a
+    /// lado. O limiar é o que mantém a tela legível: fileira de chips não escala.</summary>
+    public bool IsDropdown => Options.Count > 2;
+
+    /// <summary>Enum curto renderizado como chips (é enum, mas não é dropdown).</summary>
+    public bool HasChipOptions => HasOptions && !IsDropdown;
+
+    /// <summary>Item selecionado do dropdown — mapeia de/para <see cref="Value"/> (SelectedItem do ComboBox).</summary>
+    public EnumOptionViewModel? SelectedOption
+    {
+        get => Options.FirstOrDefault(o => o.Value == (int)System.Math.Round(Value));
+        set { if (value is not null) Value = value.Value; }
+    }
 
     public SettingFieldViewModel(BaseSession session, SettingDescriptor descriptor)
     {

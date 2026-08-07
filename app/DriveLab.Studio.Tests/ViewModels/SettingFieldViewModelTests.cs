@@ -216,4 +216,34 @@ public class SettingFieldViewModelTests
         Assert.False(vm.IsConnected);
         Assert.False(vm.Options[0].SelectCommand.CanExecute(null));
     }
+
+    // Esta lógica JÁ SE PERDEU uma vez (o dropdown sumiu num merge e o tipo de encoder virou dois
+    // botões). O teste existe para não se perder de novo: quando o catálogo de encoders crescer
+    // além de duas opções, o campo tem que virar dropdown sozinho.
+    [Fact]
+    public void Enum_Curto_Vira_Chips_E_Nao_Dropdown()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.BoardVariant));
+
+        Assert.Equal(2, vm.Options.Count);
+        Assert.True(vm.HasChipOptions);
+        Assert.False(vm.IsDropdown);
+    }
+
+    [Fact]
+    public void SelectedOption_Mapeia_De_E_Para_O_Value()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.BoardVariant));
+
+        vm.Value = 1;
+        Assert.Equal(1, vm.SelectedOption?.Value);
+
+        vm.SelectedOption = vm.Options[0];
+        Assert.Equal(0, vm.Value);
+    }
+
 }

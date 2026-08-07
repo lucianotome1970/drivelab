@@ -34,7 +34,19 @@
                 </Grid>
 
                 <!-- Chips de opção (enum) -->
-                <ItemsControl ItemsSource="{Binding Options}" IsVisible="{Binding HasOptions}">
+                <!-- Enum "catálogo" (muitas opções, ex.: tipo de encoder) → dropdown, que escala sem virar
+                     uma fileira de chips ilegível. Enum curto (2 opções) continua em chips, abaixo. -->
+                <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}"
+                          IsVisible="{Binding IsDropdown}" IsEnabled="{Binding IsConnected}"
+                          HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EnumOptionViewModel">
+                            <TextBlock Text="{Binding Label}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <ItemsControl ItemsSource="{Binding Options}" IsVisible="{Binding HasChipOptions}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Rows="1" />
