@@ -17,9 +17,13 @@
 #include "settings_store.h"   // (de)serialização pura do blob de settings (magic+versão+CRC)
 #include "settings_flash.h"   // I/O de flash da região FFB_NVM (setor 1 @0x08004000)
 #include "brake_meter.h"      // contadores do brake chopper (energia, acionamentos, pico)
+#include "peak_tracker.h"     // picos de corrente do monitor
 
 // Medidor do chopper, alimentado no laço de 8 kHz (low_level.cpp). Só leitura aqui.
 extern "C" BrakeMeter g_brake_meter;
+// Medidores alimentados no ffb_task de 1 kHz (só leitura).
+extern "C" PeakTracker g_current_peak_ma;
+extern "C" uint8_t     g_clip_peak;
 
 // Report IDs do canal A0 (ver a0_hid_descriptor.h; definidos localmente p/ não re-incluir o array).
 #define A0_RID_STATE    0x21   // IN  DeviceState (telemetria/ângulo)
@@ -229,6 +233,11 @@ static void a0_build_state(uint8_t* p) {
     put_u32(&p[20], g_brake_meter.energy_mj);              // BrakeEnergyMilliJ
     put_u32(&p[24], g_brake_meter.activations);            // BrakeActivations
     put_u16(&p[28], g_brake_meter.peak_dw);                // BrakePeakDeciW
+
+    // Medidores do monitor (bytes 30-34) — layout casado com BaseState.cs.
+    p[30] = g_clip_peak;                                   // ClippingPeak (o app ja lia; o fw nao escrevia)
+    put_i16(&p[31], g_current_peak_ma.pos);                // CurrentPeakPosMa
+    put_i16(&p[33], g_current_peak_ma.neg);                // CurrentPeakNegMa
 }
 
 // ---------------------------------------------------------------------------

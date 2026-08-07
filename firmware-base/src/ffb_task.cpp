@@ -9,6 +9,7 @@
 #include <cmsis_os.h>
 #include "odrive_bridge.h"
 #include "ffb_model.h"
+#include "peak_tracker.h"   // picos de corrente (só leitura)
 #include "blackbox.h"          // caixa-preta: causa do ultimo reset (lida no boot)
 #include "brake_meter.h"          // zerar o medidor do chopper no arme (ver autoscale, abaixo)
 extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
@@ -52,6 +53,12 @@ volatile int32_t g_fail_dbg[8] = {0};
 // [0]ocorrências [1]controller_err [2]axis_err [3]motor_err [4]enc_err
 // [5]mech_power*1000 (W) [6]elec_power*1000 (W) [7]vbus*1000 (V)
 
+// Medidores do monitor (SÓ LEITURA — não entram em nenhuma decisão de controle).
+// Ficam aqui, no laço de 1 kHz, e NÃO na ISR de 8 kHz: a lição de 2026-08-06 é que
+// mexer perto do ADC/laço de corrente quebra a FOC. Aqui só se lê valor já pronto.
+PeakTracker g_current_peak_ma = {0, 0};   // picos + e − da corrente, em mA, desde o boot
+uint8_t     g_clip_peak       = 0;        // pico de clipping da sessão (0-255)
+
 static void ffb_thread(void*) {
     uint32_t tick = osKernelSysTick();   // base absoluta p/ osDelayUntil (1kHz sem drift)
     uint32_t n = 0;
@@ -66,6 +73,12 @@ static void ffb_thread(void*) {
         g_axis_dbg[4] = (int32_t)odrive_bridge_encoder_error();
         g_axis_dbg[5] = (int32_t)(odrive_bridge_get_pos_turns() * 1000.0f);
         g_axis_dbg[6] = (int32_t)(odrive_bridge_get_vel_estimate() * 1000.0f);
+
+        // Medidores do monitor (só leitura, a 1 kHz — pega transiente que a telemetria
+        // de 50 Hz perderia entre amostras).
+        peak_tracker_update(&g_current_peak_ma,
+                            (int32_t)(odrive_bridge_get_iq_measured() * 1000.0f));
+        { const uint8_t c = ffb_model_get_clipping(); if (c > g_clip_peak) g_clip_peak = c; }
         g_cfg_dbg[0] = odrive_bridge_startup_flags();
         g_cfg_dbg[1] = odrive_bridge_precal_flags();
         g_cfg_dbg[2] = odrive_bridge_motor_R_uohm();
