@@ -35,6 +35,14 @@ public sealed class BaseState
     /// que se decide subir ou baixar o ganho depois de sair do jogo.</summary>
     public byte ClippingPeak { get; set; }
 
+    /// <summary>Maior corrente positiva vista desde o boot, em mA. Junto com
+    /// <see cref="CurrentPeakNegMa"/> revela ASSIMETRIA: um lado muito maior que o outro aponta
+    /// referência de posição deslocada (o sintoma "força só de um lado").</summary>
+    public short CurrentPeakPosMa { get; set; }
+
+    /// <summary>Menor corrente negativa vista desde o boot, em mA (valor negativo).</summary>
+    public short CurrentPeakNegMa { get; set; }
+
     /// <summary>Pico de clipping da sessão em 0..100% (derivado de <see cref="ClippingPeak"/>).</summary>
     public int ClippingPeakPercent => (int)System.Math.Round(ClippingPeak / 255.0 * 100);
 
@@ -74,6 +82,8 @@ public sealed class BaseState
         BinaryPrimitives.WriteUInt32LittleEndian(span[24..28], BrakeActivations);
         BinaryPrimitives.WriteUInt16LittleEndian(span[28..30], BrakePeakDeciW);
         span[30] = ClippingPeak;
+        BinaryPrimitives.WriteInt16LittleEndian(span[31..33], CurrentPeakPosMa);
+        BinaryPrimitives.WriteInt16LittleEndian(span[33..35], CurrentPeakNegMa);
         return buffer;
     }
 
@@ -95,5 +105,7 @@ public sealed class BaseState
         BrakeActivations = BinaryPrimitives.ReadUInt32LittleEndian(src[24..28]),
         BrakePeakDeciW = BinaryPrimitives.ReadUInt16LittleEndian(src[28..30]),
         ClippingPeak = src[30],
+        CurrentPeakPosMa = BinaryPrimitives.ReadInt16LittleEndian(src[31..33]),
+        CurrentPeakNegMa = BinaryPrimitives.ReadInt16LittleEndian(src[33..35]),
     };
 }

@@ -96,7 +96,12 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         _accBusMv = 0; _accCurrentMa = 0; _accCount = 0; _peakClipping = 0;
 
         BusVoltageText = (avgBusMv / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " V";
-        MotorCurrentText = (avgCurMa / 1000.0).ToString("0.00", CultureInfo.InvariantCulture) + " A";
+        // Corrente por PICO (+ e −), não por média. O FFB é bidirecional: a média se cancela perto
+        // de zero e não informa nada. Os dois sentidos separados também revelam ASSIMETRIA — um lado
+        // muito maior que o outro aponta referência de posição deslocada.
+        MotorCurrentText =
+            "+" + (s.CurrentPeakPosMa / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) +
+            " / " + (s.CurrentPeakNegMa / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " A";
         _lastMotorCurrentMa = (short)avgCurMa;
         UpdateEstimatedTorque();
         FetTempText = TempText(s.FetTempC);

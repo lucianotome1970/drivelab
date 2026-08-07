@@ -106,4 +106,37 @@ public class BaseStateTests
         Assert.Equal(ushort.MaxValue, voltou.BrakePeakDeciW);
     }
 
+    [Fact]
+    public void RoundTrip_PreservaOsPicosDeCorrente()
+    {
+        var original = new BaseState
+        {
+            CurrentPeakPosMa = 12_500,
+            CurrentPeakNegMa = -9_800,
+            ClippingPeak = 200,
+        };
+
+        var voltou = BaseState.Parse(original.ToBytes());
+
+        Assert.Equal((short)12_500, voltou.CurrentPeakPosMa);
+        Assert.Equal((short)-9_800, voltou.CurrentPeakNegMa);
+        Assert.Equal((byte)200, voltou.ClippingPeak);
+    }
+
+    [Fact]
+    public void RoundTrip_SuportaOsLimitesDosPicosDeCorrente()
+    {
+        var original = new BaseState
+        {
+            CurrentPeakPosMa = short.MaxValue,
+            CurrentPeakNegMa = short.MinValue,
+        };
+
+        var voltou = BaseState.Parse(original.ToBytes());
+
+        Assert.Equal(short.MaxValue, voltou.CurrentPeakPosMa);
+        Assert.Equal(short.MinValue, voltou.CurrentPeakNegMa);
+    }
+
+
 }

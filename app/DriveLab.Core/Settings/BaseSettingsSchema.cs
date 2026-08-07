@@ -47,7 +47,7 @@ public static class BaseSettingsSchema
         new(BaseSettingId.FfbCurve3, "ffb_curve_3", "Curva de força — 75%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 75),
         new(BaseSettingId.FfbCurve4, "ffb_curve_4", "Curva de força — 100%", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 100),
         new(BaseSettingId.BoardVariant, "board_variant", "Variante da placa", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 1),
-        new(BaseSettingId.TorqueConstant, "torque_constant", "Constante de torque (Kt)", SettingType.Float, 0, 2, "Nm/A", SettingTab.Hardware, 0.55),
+        new(BaseSettingId.TorqueConstant, "torque_constant", "Constante de torque (Kt) — 0 = não medido", SettingType.Float, 0, 2, "Nm/A", SettingTab.Hardware, 0),
         new(BaseSettingId.ThermalContinuousPct, "thermal_continuous_pct", "Torque contínuo (% do pico)", SettingType.UInt8, 30, 100, "%", SettingTab.Hardware, 100),
         new(BaseSettingId.ThermalPeakSeconds, "thermal_peak_seconds", "Duração do pico", SettingType.UInt8, 0, 60, "s", SettingTab.Hardware, 0),
         new(BaseSettingId.FetTempLimitC, "fet_temp_limit_c", "Corte de temp. dos FETs", SettingType.UInt8, 50, 110, "°C", SettingTab.Hardware, 85),

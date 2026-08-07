@@ -26,9 +26,12 @@ public class HardwareMonitorViewModelTests
     public void Formats_Voltage_Current_And_Temps()
     {
         var (vm, t) = Make();
-        t.Emit(new BaseState { BusVoltageMv = 24000, MotorCurrentMa = 1500, FetTempC = 42, MotorTempC = 55, McuTempC = 45 });
+        t.Emit(new BaseState { BusVoltageMv = 24000, CurrentPeakPosMa = 1500, CurrentPeakNegMa = -900,
+                               FetTempC = 42, MotorTempC = 55, McuTempC = 45 });
         Assert.Equal("24.0 V", vm.BusVoltageText);
-        Assert.Equal("1.50 A", vm.MotorCurrentText);
+        // Corrente é mostrada por PICO (+ e −), não por média: o FFB é bidirecional e a média
+        // se cancela perto de zero. Os dois sentidos separados revelam assimetria.
+        Assert.Equal("+1.5 / -0.9 A", vm.MotorCurrentText);
         Assert.Equal("42 °C", vm.FetTempText);
     }
 
