@@ -31,7 +31,7 @@ public static class BaseSettingsSchema
             "Inverte o sentido da força. Se o volante puxa para o lado errado ao sair de curva, é aqui."),
         new(BaseSettingId.EncoderDirection, "encoder_direction", "Direção do encoder", SettingType.Int8, -1, 1, "", SettingTab.Hardware, 1,
             "Inverte o sentido de contagem do encoder. Se o volante gira para um lado e a tela mostra o outro, é isto."),
-        new(BaseSettingId.EncoderCpr, "encoder_cpr", "CPR do encoder", SettingType.UInt16, 100, 16384, "contagens", SettingTab.Hardware, 4000,
+        new(BaseSettingId.EncoderCpr, "encoder_cpr", "CPR do encoder", SettingType.UInt32, 100, 2097152, "contagens", SettingTab.Hardware, 4000,
             "Digite o número impresso no encoder, sem fazer conta. Nos incrementais ele vem no código do modelo, antes do P/R (em E6B2-CWZ6C 1000P/R, é 1000); nos magnéticos já vem preenchido ao escolher o modelo. Em ABZ o app multiplica por 4 sozinho. Errar aqui faz a amplitude de giro e os batentes ficarem no lugar errado."),
         new(BaseSettingId.PolePairs, "pole_pairs", "Pares de polos", SettingType.UInt8, 1, 50, "", SettingTab.Hardware, 15,
             "Quantos pares de ímã existem dentro do motor. A maioria dos motores de hoverboard tem 15. Errar faz o motor esquentar entregando pouca força, porque a corrente entra na bobina errada."),

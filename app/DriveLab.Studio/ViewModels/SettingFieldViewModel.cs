@@ -58,10 +58,23 @@ public partial class SettingFieldViewModel : ViewModelBase
     public double Min => _descriptor.Min;
     public double Max => _descriptor.Max;
 
-    /// <summary>Limites no espaço EXIBIDO. Iguais a Min/Max em todo campo, exceto a resolução em
-    /// ABZ, onde a tela fala em pulsos e a placa em contagens.</summary>
+    /// <summary>Limites no espaço EXIBIDO. Iguais a Min/Max em todo campo, exceto a resolução, que
+    /// além de converter pulsos↔contagens em ABZ, encolhe a faixa do slider para o que é alcançável
+    /// na tecnologia escolhida.
+    ///
+    /// O campo PRECISA aceitar até 2.097.152 (MT6835 em SPI, 21 bits), senão o valor seria limitado
+    /// em silêncio. Mas um slider de 0 a 2 milhões é inarrastável: em ABZ nenhum encoder passa de
+    /// 4096 pulsos, então é essa a faixa que a tela mostra.</summary>
     public double DisplayMin => IsQuadrature ? Min / 4.0 : Min;
-    public double DisplayMax => IsQuadrature ? Max / 4.0 : Max;
+
+    public double DisplayMax
+    {
+        get
+        {
+            if (_descriptor.Id != BaseSettingId.EncoderCpr) return Max;
+            return _tech == EncoderTech.Abz ? 4096 : Max;
+        }
+    }
 
     /// <summary>Texto de ajuda do campo, mostrado no "?" ao lado do rótulo.</summary>
     public string HelpText => _descriptor.Help;

@@ -69,4 +69,17 @@ public class EncoderCatalogTests
         Assert.Equal(maiorId, d.Clamp(maiorId));
     }
 
+    // O MT6835 em SPI tem 2.097.152 contagens (21 bits). Com o campo em u16 (max 65535) ele nao
+    // cabia: a tela deixava escolher e a placa recebia um numero truncado.
+    [Fact]
+    public void Resolucao_Comporta_Os_21_Bits_Do_Mt6835()
+    {
+        var d = BaseSettingsSchema.Get(BaseSettingId.EncoderCpr);
+        var mt6835Spi = EncoderCatalog.DefaultResolution(EncoderCatalog.Mt6835, EncoderTech.Spi);
+
+        Assert.True(d.Max >= mt6835Spi, $"O campo aceita ate {d.Max}, mas o MT6835 em SPI tem {mt6835Spi}.");
+        Assert.Equal(mt6835Spi, d.Clamp(mt6835Spi));
+    }
+
+
 }

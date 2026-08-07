@@ -38,6 +38,9 @@ public readonly struct SettingValue
             case SettingType.Int16:
                 BinaryPrimitives.WriteInt16LittleEndian(dst, (short)Math.Round(AsDouble, MidpointRounding.AwayFromZero));
                 return 2;
+            case SettingType.UInt32:
+                BinaryPrimitives.WriteUInt32LittleEndian(dst, (uint)Math.Round(AsDouble, MidpointRounding.AwayFromZero));
+                return 4;
             case SettingType.Float:
                 BinaryPrimitives.WriteSingleLittleEndian(dst, (float)AsDouble);
                 return 4;
@@ -52,6 +55,7 @@ public readonly struct SettingValue
         SettingType.Int8 => new SettingValue(type, (sbyte)src[0]),
         SettingType.UInt16 => new SettingValue(type, BinaryPrimitives.ReadUInt16LittleEndian(src)),
         SettingType.Int16 => new SettingValue(type, BinaryPrimitives.ReadInt16LittleEndian(src)),
+        SettingType.UInt32 => new SettingValue(type, BinaryPrimitives.ReadUInt32LittleEndian(src)),
         SettingType.Float => new SettingValue(type, BinaryPrimitives.ReadSingleLittleEndian(src)),
         _ => throw new ArgumentOutOfRangeException(nameof(type)),
     };

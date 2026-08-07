@@ -35,7 +35,7 @@ extern "C" uint8_t     g_clip_peak;
 #define A0_PAYLOAD      63     // ReportConstants.ReportSize
 
 // SettingType (DriveLab.Core.Settings.SettingType)
-enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_FLOAT = 4 };
+enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_FLOAT = 4, T_U32 = 5 };
 
 // BaseCommand (DriveLab.Core.Settings.BaseCommand)
 enum { CMD_REBOOT = 1, CMD_SAVE = 2, CMD_RESET_CENTER = 3, CMD_DFU = 4, CMD_CALIBRATE = 5,
@@ -48,7 +48,7 @@ static const uint8_t s_type[A0_NUM_SETTINGS] = {
     /*0 motion_range*/T_U16, /*1 soft_stop_range*/T_U8, /*2 soft_stop_strength*/T_U8,
     /*3 total_strength*/T_U8, /*4 spring_strength*/T_U8, /*5 damper_strength*/T_U8,
     /*6 static_damping*/T_U8, /*7 max_torque_limit*/T_U8, /*8 force_direction*/T_I8,
-    /*9 encoder_direction*/T_I8, /*10 encoder_cpr*/T_U16, /*11 pole_pairs*/T_U8,
+    /*9 encoder_direction*/T_I8, /*10 encoder_cpr*/T_U32, /*11 pole_pairs*/T_U8,
     /*12 current_p*/T_FLOAT, /*13 current_i*/T_FLOAT, /*14 calibration_current*/T_U8,
     /*15 position_smoothing*/T_U8, /*16 power_limit*/T_U8, /*17 braking_limit*/T_U8,
     /*18 encoder_type*/T_U8, /*19 reconstruction_steps*/T_U8, /*20 reconstruction_lpf*/T_U8,
@@ -157,6 +157,10 @@ extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len) {
                 case T_I8:  s_ival[id] = (int8_t)buf[4]; break;
                 case T_U16: if (len >= 6) s_ival[id] = rd_u16(&buf[4]); break;
                 case T_I16: if (len >= 6) s_ival[id] = (int16_t)rd_u16(&buf[4]); break;
+                case T_U32: if (len >= 8) s_ival[id] = (int32_t)((uint32_t)buf[4]
+                                                       | ((uint32_t)buf[5] << 8)
+                                                       | ((uint32_t)buf[6] << 16)
+                                                       | ((uint32_t)buf[7] << 24)); break;
                 case T_FLOAT: if (len >= 8) memcpy(&s_fval[id], &buf[4], 4); break;
                 default: break;
             }
@@ -255,6 +259,7 @@ extern "C" int a0_service(uint32_t nowMs) {
         uint8_t p[A0_PAYLOAD]; memset(p, 0, sizeof(p));
         p[0] = id; p[1] = 0; p[2] = s_type[id];
         if (s_type[id] == T_FLOAT)      memcpy(&p[3], &s_fval[id], 4);
+        else if (s_type[id] == T_U32)   put_u32(&p[3], (uint32_t)s_ival[id]);
         else if (s_type[id] == T_U16 || s_type[id] == T_I16) put_i16(&p[3], (int16_t)s_ival[id]);
         else                            p[3] = (uint8_t)(s_ival[id] & 0xFF);
         if (tud_hid_report(A0_RID_SETVALUE, p, A0_PAYLOAD)) { s_pending_read = 0xFF; return 1; }
