@@ -58,4 +58,9 @@ public enum BaseSettingId : byte
     InertiaGain = 42,
     SoftPowerEnable = 43,
     PowerButtonEnable = 44,
+
+    /// <summary>Como o encoder está ligado: 0=ABZ, 1=SSI, 2=SPI. O MODELO do sensor vem em
+    /// <see cref="EncoderType"/>; este campo diz por qual interface ele foi ligado. São duas
+    /// perguntas diferentes: o modelo é o que a pessoa comprou, a tecnologia é como ela fiou.</summary>
+    EncoderInterface = 45,
 }

@@ -41,7 +41,7 @@ enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_FLOAT = 4 };
 enum { CMD_REBOOT = 1, CMD_SAVE = 2, CMD_RESET_CENTER = 3, CMD_DFU = 4, CMD_CALIBRATE = 5,
        CMD_SET_FORCE_ENABLED = 6, CMD_CAL_COGGING = 7, CMD_BRAKE_BENCH = 8, CMD_BRAKE_AUTO = 9 };
 
-#define A0_NUM_SETTINGS 45
+#define A0_NUM_SETTINGS 46
 
 // Tipo de cada FieldId (BaseSettingsSchema). Índice = BaseSettingId.
 static const uint8_t s_type[A0_NUM_SETTINGS] = {
@@ -58,6 +58,7 @@ static const uint8_t s_type[A0_NUM_SETTINGS] = {
     /*34 torque_constant*/T_FLOAT, /*35 thermal_continuous*/T_U8, /*36 thermal_peak_s*/T_U8,
     /*37 fet_temp_limit*/T_U8, /*38 motor_temp_limit*/T_U8, /*39..42 gains*/T_U8, T_U8, T_U8, T_U8,
     /*43 soft_power*/T_U8, /*44 power_button*/T_U8,
+    /*45 encoder_interface*/T_U8,   // ARMAZENAMENTO apenas — nada aplica este valor ainda
 };
 
 // Valor de cada campo: inteiro em s_ival (u8/i8/u16/i16) OU float em s_fval (T_FLOAT).
