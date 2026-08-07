@@ -21,7 +21,11 @@ public sealed record SettingDescriptor(
     /// Preencher SÓ onde a explicação acrescenta: campo que pode queimar hardware, que usa
     /// vocabulário que o iniciante não tem, ou cujo efeito não é óbvio pelo nome. Ícone que
     /// promete ajuda e entrega "este é o valor do parâmetro" é pior que ícone nenhum.</summary>
-    string Help = "")
+    string Help = "",
+    /// <summary>Renderiza como campo numérico em vez de slider. Para valor EXATO, que se digita:
+    /// resolução do encoder, constante de torque. Arrastar um slider até 1000 num range de milhares
+    /// é sorte, não ajuste.</summary>
+    bool Numeric = false)
 {
     public double Clamp(double value) => Math.Clamp(value, Min, Max);
 }

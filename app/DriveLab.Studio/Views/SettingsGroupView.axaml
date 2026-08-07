@@ -35,7 +35,7 @@
                 </Grid>
 
                 <!-- Mín · slider · Máx -->
-                <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !HasOptions}">
+                <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding ShowSlider}">
                     <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding DisplayMin, StringFormat={}{0:0}}" Margin="0,0,10,0" />
                     <Slider Grid.Column="1" Minimum="{Binding DisplayMin}" Maximum="{Binding DisplayMax}" Value="{Binding DisplayValue}"
                             IsEnabled="{Binding IsConnected}" IsSnapToTickEnabled="{Binding IsInteger}"
@@ -44,6 +44,15 @@
                 </Grid>
 
                 <!-- Chips de opção (enum) -->
+                <!-- Campo numérico: valor exato, digitado. Slider não serve para resolução de
+                     encoder nem para Kt — acertar 1000 arrastando é sorte. -->
+                <NumericUpDown IsVisible="{Binding IsNumericInput}" Value="{Binding DisplayValue}"
+                               Minimum="{Binding DisplayMin}" Maximum="{Binding DisplayMax}"
+                               IsEnabled="{Binding IsConnected}"
+                               FormatString="{Binding NumericFormat}" Increment="{Binding NumericStep}"
+                               HorizontalAlignment="Stretch"
+                               Margin="0,8,0,0" />
+
                 <!-- Enum "catálogo" (muitas opções, ex.: tipo de encoder) → dropdown, que escala sem virar
                      uma fileira de chips ilegível. Enum curto (2 opções) continua em chips, abaixo. -->
                 <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}"

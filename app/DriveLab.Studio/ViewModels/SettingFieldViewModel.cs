@@ -77,6 +77,17 @@ public partial class SettingFieldViewModel : ViewModelBase
     }
 
     /// <summary>Texto de ajuda do campo, mostrado no "?" ao lado do rótulo.</summary>
+    /// <summary>Campo numérico em vez de slider — valor exato, digitado.</summary>
+    public bool IsNumericInput => _descriptor.Numeric;
+
+    /// <summary>Formato e passo do campo numérico acompanham o tipo: inteiro anda de 1 em 1 sem
+    /// casas; decimal (o Kt, de 0 a 2) anda de 0,01 com duas casas — passo de 1 ali seria inútil.</summary>
+    public string NumericFormat => IsInteger ? "0" : "0.00";
+    public double NumericStep   => IsInteger ? 1 : 0.01;
+
+    /// <summary>Slider só quando não é enum e não é numérico.</summary>
+    public bool ShowSlider => !HasOptions && !IsNumericInput;
+
     public string HelpText => _descriptor.Help;
 
     /// <summary>Só há ícone onde há texto: ícone que promete ajuda e entrega genérico é pior
