@@ -63,6 +63,13 @@ public partial class SettingFieldViewModel : ViewModelBase
     public double DisplayMin => IsQuadrature ? Min / 4.0 : Min;
     public double DisplayMax => IsQuadrature ? Max / 4.0 : Max;
 
+    /// <summary>Texto de ajuda do campo, mostrado no "?" ao lado do rótulo.</summary>
+    public string HelpText => _descriptor.Help;
+
+    /// <summary>Só há ícone onde há texto: ícone que promete ajuda e entrega genérico é pior
+    /// que ícone nenhum.</summary>
+    public bool HasHelp => !string.IsNullOrWhiteSpace(_descriptor.Help);
+
     public string Unit => _descriptor.Unit;
     public bool IsInteger => _descriptor.Type != SettingType.Float;
     public string ValueText => !IsLoaded ? "—" : (IsInteger ? DisplayValue.ToString("0") : DisplayValue.ToString("0.##"));

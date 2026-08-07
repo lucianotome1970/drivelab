@@ -15,7 +15,17 @@
             <StackPanel Spacing="7" Margin="0,10">
                 <!-- Label + caixa de valor -->
                 <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{Binding DisplayName}" />
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="fieldLabel" Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                        <!-- "?" só aparece onde há texto de ajuda. -->
+                        <Border IsVisible="{Binding HasHelp}" ToolTip.Tip="{Binding HelpText}"
+                                Width="18" Height="18" CornerRadius="9" VerticalAlignment="Center"
+                                Background="{DynamicResource DlMuted}" Opacity="0.35">
+                            <TextBlock Text="?" FontSize="12" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource DlText}" />
+                        </Border>
+                    </StackPanel>
                     <Border Grid.Column="1" Classes="valueBox">
                         <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
                             <TextBlock Text="{Binding ValueText}" />
