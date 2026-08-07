@@ -117,7 +117,7 @@ como já é feito com o clipping.
 ### 3. Medir o Kt de verdade (bancada, sem gravar firmware)
 
 O `0,55 Nm/A` **nunca foi medido** — é catálogo genérico de hoverboard (`Kt = 8,27/KV` com KV≈15).
-O Odrive-Wheel usa o mesmo valor pela mesma razão, então ninguém mediu. Enquanto for digitado, o
+Outros ports usam o mesmo valor pela mesma razão, então ninguém mediu. Enquanto for digitado, o
 torque estimado herda o chute.
 
 **Método já preparado, sem risco e sem gravar firmware:** com o motor armado e torque zero, o
@@ -146,10 +146,10 @@ O `newboard_bringup()` refaz a calibração toda vez que a base liga → **todo 
 (encoder incremental sem index Z não persiste offset, e o cogging do hoverboard trava o lock-in num
 detente aleatório).
 
-**O Odrive-Wheel evita isso por construção:** calibra **uma vez**, salva com `pre_calibrated=true` e
-desliga `startup_*_calibration`. Da tabela deles (`docs/GETTING_STARTED.md`):
+**A prática consolidada evita isso por construção:** calibrar **uma vez**, salvar com
+`pre_calibrated=true` e desligar `startup_*_calibration`. Comparação:
 
-| campo | Odrive-Wheel | nosso |
+| campo | prática consolidada | nosso |
 |---|---|---|
 | `startup_motor_calibration` | **false** | recalibra |
 | `startup_encoder_offset_calibration` | **false** | **recalibra a cada boot** |
@@ -310,6 +310,14 @@ default do schema); (6) classes mortas deletadas. **App build 0 erros; suite 464
 - **Fase 3 (exploratória):** multi-arquitetura (só ESP32-**S3**; clássico não tem USB).
 
 ## Regras permanentes (NÃO esquecer)
+
+- **NUNCA citar o nome de outros ports/projetos de terceiros** (o do `eagabriel`, o do FFBeast) em
+  documento, comentário de código, mensagem de commit ou nome de build. Pedido do autor, já a
+  terceira vez que reaparece. Quando precisar registrar de onde veio um valor ou uma decisão,
+  escrever o **motivo técnico** sem nomear: "prática consolidada", "config funcional para placas
+  classe ODESC", "valor de referência". O que importa é *qual* valor e *por quê*, não de quem veio.
+  Citar o **ODrive** (o projeto de origem, MIT, vendorizado) continua correto e necessário.
+
 - **Firmware SÓ na bancada**, uma mudança por vez, validando que não regrediu. App/docs off-bench.
 - **Sem `Co-Authored-By: Claude`** nos commits (comunidade DIY).
 - Todo arquivo de código novo começa com cabeçalho (descrição + `Autor: Luciano Tomé
