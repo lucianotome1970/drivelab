@@ -48,7 +48,7 @@
                      encoder nem para Kt — acertar 1000 arrastando é sorte. -->
                 <NumericUpDown IsVisible="{Binding IsNumericInput}" Value="{Binding DisplayValue}"
                                Minimum="{Binding DisplayMin}" Maximum="{Binding DisplayMax}"
-                               IsEnabled="{Binding IsConnected}"
+                               IsEnabled="{Binding IsValueEditable}"
                                FormatString="{Binding NumericFormat}" Increment="{Binding NumericStep}"
                                HorizontalAlignment="Stretch"
                                Margin="0,8,0,0" />

@@ -91,10 +91,9 @@ public sealed partial class HardwareTabViewModel : SettingsGroupViewModel
     {
         if (_techField is null || _cprField is null) return;
 
-        var tech = (EncoderTech)(int)System.Math.Round(_techField.Value);
-        _cprField.ApplyEncoderTech(tech);
-
+        var tech  = (EncoderTech)(int)System.Math.Round(_techField.Value);
         var model = _modelField is null ? EncoderCatalog.Generico : (int)System.Math.Round(_modelField.Value);
+        _cprField.ApplyEncoderTech(tech, model);
         var padrao = EncoderCatalog.DefaultResolution(model, tech);
         if (padrao > 0) _cprField.Value = padrao;
     }

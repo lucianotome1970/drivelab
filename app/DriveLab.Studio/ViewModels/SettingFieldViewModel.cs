@@ -72,9 +72,21 @@ public partial class SettingFieldViewModel : ViewModelBase
         get
         {
             if (_descriptor.Id != BaseSettingId.EncoderCpr) return Max;
-            return _tech == EncoderTech.Abz ? 4096 : Max;
+
+            // Teto do SENSOR, não do campo: deixar digitar 16393 num MT6701 de 14 bits é oferecer
+            // um número que aquele silício não produz.
+            var teto = EncoderCatalog.MaxResolution(_encoderModel, _tech);
+            var limite = teto > 0 ? teto : Max;
+            return IsQuadrature ? limite / 4.0 : limite;
         }
     }
+
+    /// <summary>A resolução vem do silício e não se digita (SSI/SPI num sensor conhecido).</summary>
+    public bool IsValueLocked =>
+        _descriptor.Id == BaseSettingId.EncoderCpr &&
+        EncoderCatalog.IsResolutionFixed(_encoderModel, _tech);
+
+    public bool IsValueEditable => IsConnected && !IsValueLocked;
 
     /// <summary>Texto de ajuda do campo, mostrado no "?" ao lado do rótulo.</summary>
     /// <summary>Campo numérico em vez de slider — valor exato, digitado.</summary>
@@ -141,13 +153,15 @@ public partial class SettingFieldViewModel : ViewModelBase
     }
 
     private EncoderTech _tech = EncoderTech.Abz;
+    private int _encoderModel = EncoderCatalog.Generico;
 
     /// <summary>Em ABZ o valor guardado na placa é CONTAGENS, mas a pessoa digita PULSOS — que é o
     /// número impresso no encoder. A multiplicação por 4 acontece aqui, e é o que elimina o erro
     /// mais recorrente do fórum: gente digitando 600 onde a placa precisa de 2400.</summary>
-    public void ApplyEncoderTech(EncoderTech tech)
+    public void ApplyEncoderTech(EncoderTech tech, int modelId)
     {
         _tech = tech;
+        _encoderModel = modelId;
         OnPropertyChanged(nameof(DisplayValue));
         OnPropertyChanged(nameof(DisplayLabel));
         OnPropertyChanged(nameof(DisplayName));

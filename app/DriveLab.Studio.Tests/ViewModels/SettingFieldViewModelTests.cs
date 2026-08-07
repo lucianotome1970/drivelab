@@ -292,7 +292,7 @@ public class SettingFieldViewModelTests
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
 
-        cpr.ApplyEncoderTech(EncoderTech.Abz);
+        cpr.ApplyEncoderTech(EncoderTech.Abz, EncoderCatalog.Generico);
         cpr.DisplayValue = 600;                 // o numero impresso no encoder
 
         Assert.Equal(2400, cpr.Value);          // o que vai para a placa
@@ -306,7 +306,7 @@ public class SettingFieldViewModelTests
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
 
-        cpr.ApplyEncoderTech(EncoderTech.Spi);
+        cpr.ApplyEncoderTech(EncoderTech.Spi, EncoderCatalog.Generico);
         cpr.DisplayValue = 16384;
 
         Assert.Equal(16384, cpr.Value);
@@ -320,7 +320,7 @@ public class SettingFieldViewModelTests
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
 
-        cpr.ApplyEncoderTech(EncoderTech.Abz);
+        cpr.ApplyEncoderTech(EncoderTech.Abz, EncoderCatalog.Generico);
         cpr.Value = 10000;                      // veio da placa (E6B2)
 
         Assert.Equal(2500, cpr.DisplayValue);   // a pessoa ve o numero do datasheet
@@ -342,6 +342,37 @@ public class SettingFieldViewModelTests
         var abz = tech.Options.Single(o => o.Value == (int)EncoderTech.Abz);
         Assert.True(abz.IsSelected);
     }
+
+    // Um MT6701 em SSI tem 14 bits: exatamente 16384. Nao existe 16393 nesse sensor, entao a tela
+    // nao pode deixar digitar — o numero e do silicio, nao uma preferencia.
+    [Fact]
+    public void Resolucao_De_Sensor_Conhecido_Em_Ssi_Nao_Se_Digita()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
+
+        cpr.ApplyEncoderTech(EncoderTech.Ssi, EncoderCatalog.Mt6701);
+
+        Assert.True(cpr.IsValueLocked);
+        Assert.Equal(16384, cpr.DisplayMax);
+    }
+
+    // Em ABZ a resolucao dos magneticos e PROGRAMAVEL no chip, entao continua editavel — quem
+    // reprogramou o sensor precisa poder corrigir.
+    [Fact]
+    public void Resolucao_Em_Abz_Continua_Editavel_Mas_Limitada_Ao_Sensor()
+    {
+        var transport = new FakeTransport();
+        var session = new BaseSession(transport, new ImmediateUiDispatcher());
+        var cpr = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.EncoderCpr));
+
+        cpr.ApplyEncoderTech(EncoderTech.Abz, EncoderCatalog.Mt6835);
+
+        Assert.False(cpr.IsValueLocked);
+        Assert.Equal(4096, cpr.DisplayMax);   // 16384 contagens / 4 = 4096 pulsos
+    }
+
 
 
 

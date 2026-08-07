@@ -51,6 +51,19 @@ public static class EncoderCatalog
     public static IReadOnlyList<EncoderTech> TechnologiesFor(int modelId) =>
         Techs.TryGetValue(modelId, out var t) ? t : new[] { EncoderTech.Abz };
 
+    /// <summary>A resolução é imposta pelo silício e NÃO se digita?
+    ///
+    /// Em SSI/SPI sim: um MT6701 tem 14 bits, exatamente 16384 — não existe 16393 nesse sensor.
+    /// Em ABZ não: a resolução é PROGRAMÁVEL nos magnéticos, então quem reprogramou o chip precisa
+    /// poder corrigir. No genérico também não, porque aí quem sabe o número é a pessoa.</summary>
+    public static bool IsResolutionFixed(int modelId, EncoderTech tech) =>
+        modelId != Generico && tech != EncoderTech.Abz && DefaultResolution(modelId, tech) > 0;
+
+    /// <summary>Teto de resolução do sensor. Zero = sem teto conhecido (genérico) — aí vale o
+    /// limite do campo.</summary>
+    public static int MaxResolution(int modelId, EncoderTech tech) =>
+        DefaultResolution(modelId, tech);
+
     /// <summary>Resolução de fábrica em CONTAGENS por volta (já com o ×4 do ABZ aplicado).
     /// Zero significa "não há valor de fábrica — a pessoa digita".</summary>
     /// <remarks>⚠️ <b>Limitação conhecida:</b> o campo `encoder_cpr` do protocolo é <b>u16</b> (máx
