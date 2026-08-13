@@ -40,10 +40,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-; Driver do modo DFU: necessario para atualizar o firmware da base pela USB. Marcado por padrao,
-; mas OPCIONAL — quem nao quiser mexer em driver desmarca e a atualizacao continua possivel por
-; ST-Link ou pelo Zadig depois (ver docs/firmware-update-windows.md).
-Name: "dfudriver"; Description: "Instalar o driver de atualizacao de firmware (USB/DFU)"; GroupDescription: "Atualizacao de firmware:"
 
 [Files]
 ; Todo o app publicado — inclui o hardware-profile.json que o criador colocou na PublishDir (fica ao lado
@@ -56,18 +52,19 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 ; ---------------------------------------------------------------------------------------------
-; DRIVER DO MODO DFU (0483:DF11) — instalado ANTES de abrir o app.
+; O DRIVER DO MODO DFU NAO E INSTALADO AQUI — e uma etapa manual, com o Zadig.
 ;
-; POR QUE PRECISA: o bootloader do STM32 e gravado na ROM da ST e nao declara WCID, entao o Windows
-; nao escolhe driver sozinho. Sem isto, na hora de atualizar o firmware a placa entra em DFU e
-; aparece com ERRO CODIGO 28 ("nenhum driver"), e a atualizacao para ali. Diagnosticado na bancada
-; em 2026-08-10, quando todo o resto ja funcionava.
+; POR QUE PRECISA DE DRIVER: o bootloader do STM32 e gravado na ROM da ST e nao declara WCID, entao
+; o Windows nao escolhe driver sozinho. Sem ele a placa entra em DFU e aparece com ERRO CODIGO 28
+; ("nenhum driver"), e a atualizacao para ali. Diagnosticado na bancada em 2026-08-10.
 ;
-; POR QUE NA INSTALACAO E NAO NA HORA DE ATUALIZAR: o wdi-simple registra o driver mesmo com o
-; dispositivo AUSENTE. Pre-registrando aqui, a primeira atualizacao ja funciona e o usuario nunca
-; ve erro nenhum — que e a experiencia das bases comerciais.
+; POR QUE NAO AUTOMATIZAMOS: a automacao exigia o 'wdi-simple.exe', e o libwdi NAO o distribui —
+; a release publica so o Zadig. O binario que existia aqui foi compilado a mao uma vez e nunca
+; entrou no repositorio; como a linha era protegida por Check: FileExists, ela simplesmente NUNCA
+; RODOU e nunca reclamou. Um passo que finge existir e pior que um passo assumidamente manual.
 ;
-; runascurrentuser: o instalador ja roda elevado; instalar driver exige isso.
-Filename: "{app}\wdi-simple.exe";   Parameters: "--vid 0x0483 --pid 0xDF11 --type 0 --name ""STM32 BOOTLOADER (DriveLab)"" --silent";   StatusMsg: "Instalando o driver de atualizacao de firmware...";   Flags: runhidden waituntilterminated runascurrentuser; Tasks: dfudriver; Check: FileExists(ExpandConstant('{app}\wdi-simple.exe'))
-
+; Retomar a automacao significa compilar o libwdi dentro do build. Enquanto isso nao se justificar,
+; o caminho e o Zadig, documentado em docs/firmware-update-windows.md.
+;
+; O 'dfu-util', que e quem de fato grava, VAI no pacote (ver build-installer.ps1, etapa 4b).
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent

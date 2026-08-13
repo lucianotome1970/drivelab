@@ -174,8 +174,7 @@ public sealed class BaseUpdater : IDeviceUpdater
             throw new FileNotFoundException("Arquivo de firmware não encontrado.", filePath);
 
         var dfuUtilPath = ResolveDfuUtilPath()
-            ?? throw new InvalidOperationException(
-                "dfu-util não encontrado. Instale-o (ex.: 'brew install dfu-util' no macOS) e garanta que está no PATH.");
+            ?? throw new InvalidOperationException(DfuUtilNotFoundMessage());
 
         var psi = new ProcessStartInfo(dfuUtilPath)
         {
@@ -267,6 +266,30 @@ public sealed class BaseUpdater : IDeviceUpdater
         }
 
         progress?.Report(1.0);
+    }
+
+    /// <summary>
+    /// Mensagem de "não achei o dfu-util", com a instrução DO SISTEMA em que o app está rodando.
+    ///
+    /// <para>Ela dizia <c>brew install</c> em qualquer plataforma — inclusive no Windows, onde
+    /// <c>brew</c> não existe. Quem lê isso está tentando dar vida à placa pela primeira vez, e a
+    /// única saída que a tela oferecia era um comando que não roda ali.</para>
+    /// </summary>
+    public static string DfuUtilNotFoundMessage()
+    {
+        const string comum = "O dfu-util é a ferramenta que grava o firmware pela USB.";
+
+        if (OperatingSystem.IsWindows())
+            return comum + " Ele acompanha o instalador do DriveLab — se você instalou pelo setup e " +
+                   "mesmo assim vê esta mensagem, o arquivo dfu-util.exe não está na pasta do app. " +
+                   "Reinstale pelo setup, ou baixe em https://dfu-util.sourceforge.net/ e ponha o " +
+                   "dfu-util.exe ao lado do DriveLab.Studio.exe.";
+
+        if (OperatingSystem.IsMacOS())
+            return comum + " Instale com:  brew install dfu-util";
+
+        return comum + " Instale pelo gerenciador de pacotes da sua distribuição " +
+               "(ex.: sudo apt install dfu-util) e confirme que ele está no PATH.";
     }
 
     /// <summary>

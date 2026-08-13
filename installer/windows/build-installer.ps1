@@ -184,6 +184,91 @@ if (Test-Path $profPath) {
 Remove-Item (Join-Path $pubDir "advanced.flag") -ErrorAction SilentlyContinue
 
 # ---------------------------------------------------------------------------
+# 4b) dfu-util — a ferramenta que GRAVA o firmware pela USB.
+#
+# POR QUE ISTO EXISTE: sem o dfu-util ao lado do .exe, a atualizacao para com
+# "dfu-util nao encontrado" no exato momento em que a pessoa esta dando vida a placa
+# pela primeira vez. A documentacao ja prometia que o instalador o trazia; o build
+# nao o trazia, e ninguem percebia porque nada falhava aqui.
+#
+# FALHA ALTO de proposito. Silencio nesta etapa e o que produziu o problema: um
+# instalador sem a ferramenta parece pronto e so quebra na mao de quem monta.
+#
+# LICENCA: dfu-util e GPL-2.0-or-later. Nos o INVOCAMOS como processo separado
+# (agregacao, nao obra derivada), o que e legitimo — mas distribuir o binario exige
+# acompanhar o texto da licenca e a origem da fonte. Por isso o COPYING e o NOTICE
+# abaixo, e por isso a release anexa o tarball de fontes.
+# ---------------------------------------------------------------------------
+$DfuVersion = "0.11"
+$DfuUrl     = "https://dfu-util.sourceforge.net/releases/dfu-util-$DfuVersion-binaries.tar.xz"
+$DfuSha256  = "6450de30a7dcd8d8c1273f43f0b153f054fd24d85f7f38296b1ad8edbd2ddb25"
+
+Info "==> Obtendo o dfu-util $DfuVersion (grava o firmware pela USB)..."
+$dfuDest = Join-Path $pubDir "dfu-util.exe"
+$tmp     = Join-Path $here ".dfu-tmp"
+if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+New-Item -ItemType Directory -Path $tmp | Out-Null
+$tarball = Join-Path $tmp "dfu-util-binaries.tar.xz"
+
+try {
+    Dim "    baixando $DfuUrl ..."
+    Invoke-WebRequest -Uri $DfuUrl -OutFile $tarball -UseBasicParsing -UserAgent "Mozilla/5.0"
+} catch {
+    Die @("Nao foi possivel baixar o dfu-util: $($_.Exception.Message)",
+          "O instalador SEM o dfu-util nao consegue gravar firmware — por isso paramos aqui.",
+          "Se a maquina esta atras de proxy:  `$env:HTTPS_PROXY = 'http://proxy:porta'",
+          "Ou baixe a mao de $DfuUrl e extraia win64/dfu-util-static.exe como '$dfuDest'.")
+}
+
+# Conferir o hash NAO e paranoia: este binario vai assinado dentro do nosso instalador e roda na
+# maquina de quem comprou. Baixar sem verificar seria distribuir o que um espelho decidir servir.
+$got = (Get-FileHash -Path $tarball -Algorithm SHA256).Hash.ToLower()
+if ($got -ne $DfuSha256) {
+    Die @("O dfu-util baixado NAO confere com o hash esperado.",
+          "  esperado: $DfuSha256",
+          "  obtido:   $got",
+          "Nao empacotamos um binario que nao sabemos o que e. Se o upstream publicou uma versao",
+          "nova de proposito, confira a origem e atualize `$DfuSha256 neste script.")
+}
+Dim "    hash conferido (SHA-256)."
+
+# A versao -static nao depende da DLL do libusb: um arquivo so, nada para dar errado na instalacao.
+& tar -xJf $tarball -C $tmp 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Die @("Falha ao extrair o tarball do dfu-util (tar retornou $LASTEXITCODE).",
+          "O 'tar' do Windows precisa suportar .xz — ele existe a partir do Windows 10 1803.",
+          "Extraia a mao e ponha win64/dfu-util-static.exe como '$dfuDest'.")
+}
+$srcExe = Join-Path $tmp "dfu-util-$DfuVersion-binaries\win64\dfu-util-static.exe"
+if (-not (Test-Path $srcExe)) {
+    Die @("O tarball do dfu-util nao tinha 'win64/dfu-util-static.exe' onde esperavamos.",
+          "Procurado em: $srcExe",
+          "O layout do upstream mudou — confira e ajuste este script.")
+}
+Copy-Item $srcExe $dfuDest -Force
+
+# Licenca + procedencia, ao lado do binario.
+$licDir = Join-Path $pubDir "licencas"
+New-Item -ItemType Directory -Path $licDir -Force | Out-Null
+$copying = Join-Path $tmp "dfu-util-$DfuVersion-binaries\COPYING"
+if (Test-Path $copying) { Copy-Item $copying (Join-Path $licDir "dfu-util-COPYING.txt") -Force }
+@"
+dfu-util $DfuVersion
+Licenca: GNU General Public License v2.0 ou posterior (texto em dfu-util-COPYING.txt)
+Origem:  $DfuUrl
+Projeto: https://dfu-util.sourceforge.net/
+Fonte correspondente: https://dfu-util.sourceforge.net/releases/dfu-util-$DfuVersion.tar.gz
+                      (tambem anexada as releases do DriveLab)
+
+O DriveLab Studio e licenciado sob MIT e NAO e obra derivada do dfu-util: ele o
+executa como programa separado, sem ligacao de codigo. O binario acompanha o
+instalador sem modificacao alguma.
+"@ | Set-Content -Path (Join-Path $licDir "dfu-util-NOTICE.txt") -Encoding UTF8
+
+Remove-Item $tmp -Recurse -Force
+Ok "==> dfu-util $DfuVersion empacotado (com licenca e procedencia)."
+
+# ---------------------------------------------------------------------------
 # 5) Compila o instalador.
 # ---------------------------------------------------------------------------
 Info "==> Compilando o instalador..."

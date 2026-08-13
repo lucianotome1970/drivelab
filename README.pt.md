@@ -205,7 +205,7 @@ Esta é a **base** (o wheelbase direct-drive). Cada outro módulo é um disposit
 | **Encoder** | Omron E6B2-CWZ6C incremental **ou** magnético absoluto AS5047P/MT6701 — sua escolha. |
 | **Resistor de freio 2 Ω / 100 W** | **Obrigatório** antes da malha fechada — dissipa a energia da frenagem regenerativa para ela não destruir os capacitores. |
 | **Fonte** | Fique dentro do que a sua placa aceita: **12 a 56 V** numa placa MKS; numa ODESC, **8–24 V** ou **8–56 V**, conforme a variante. Exemplo: 24 V / 30 A (720 W). |
-| ST-Link V2 | Para gravar o STM32 (ou por DFU). |
+| ST-Link V2 — **opcional** | **Não é preciso ter um para montar um volante.** O STM32F405 traz um bootloader gravado em ROM de fábrica, e o firmware entra pelo mesmo cabo USB de dados — inclusive na primeira gravação, numa placa de fábrica (põe em DFU à mão e o DriveLab Studio grava). O ST-Link é ferramenta de bancada: ele lê a placa ao vivo enquanto ela roda, que foi como os números deste projeto foram medidos. Compre se pretende depurar firmware, não para montar. |
 
 ## Hardware — por módulo
 

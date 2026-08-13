@@ -142,4 +142,26 @@ public class BaseUpdaterTests
         Assert.False(found);
         Assert.True(sw.ElapsedMilliseconds < 400, $"Expected < 400ms, took {sw.ElapsedMilliseconds}ms");
     }
+    [Fact]
+    public void A_Mensagem_De_Dfu_Util_Ausente_Fala_DESTE_Sistema()
+    {
+        // Ela dizia "brew install" em qualquer plataforma, inclusive no Windows, onde brew nao
+        // existe. Quem le isso esta tentando dar vida a placa pela primeira vez, e a unica saida
+        // oferecida era um comando que nao roda ali.
+        var msg = BaseUpdater.DfuUtilNotFoundMessage();
+
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.DoesNotContain("brew", msg, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("dfu-util.exe", msg);
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            Assert.Contains("brew install dfu-util", msg);
+        }
+        else
+        {
+            Assert.DoesNotContain("brew", msg, StringComparison.OrdinalIgnoreCase);
+        }
+    }
 }

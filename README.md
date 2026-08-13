@@ -205,7 +205,7 @@ This is the **base** (the direct-drive wheelbase). Each other module is an indep
 | **Encoder** | Incremental Omron E6B2-CWZ6C **or** absolute magnetic AS5047P/MT6701 — your choice. |
 | **Brake resistor 2 Ω / 100 W** | **Mandatory** before closed loop — dissipates regen energy so it doesn't destroy the caps. |
 | **PSU** | Stay inside what your board accepts: **12–56 V** on an MKS board; on an ODESC, **8–24 V** or **8–56 V** depending on the variant. Example: 24 V / 30 A (720 W). |
-| ST-Link V2 | To flash the STM32 (or DFU). |
+| ST-Link V2 — **optional** | **You do not need one to build a wheel.** The STM32F405 has a bootloader burned into ROM at the factory, and firmware goes in over the same USB data cable — including the very first flash on a factory board (put it in DFU by hand, then DriveLab Studio writes it). An ST-Link is a bench tool: it reads the board live while it runs, which is how the numbers in this project were measured. Get one if you plan to debug firmware, not to assemble. |
 
 ## Hardware — per module
 

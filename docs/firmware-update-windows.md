@@ -2,31 +2,47 @@
 
 > **PT abaixo · English below**
 
-A base pode ser atualizada **pela mesma USB de dados**, sem ST-Link e sem abrir a caixa. O app manda
-o comando, a placa reinicia no bootloader da ST e o app grava o firmware novo.
+A base é gravada **pela mesma USB de dados**, sem ST-Link e sem abrir a caixa. Vale para os dois
+casos: atualizar uma base que já roda o DriveLab, e **gravar uma placa de fábrica pela primeira vez**.
 
 Isso depende de **duas peças do lado do Windows** que não vêm com o sistema: o utilitário
-`dfu-util` e um driver para o dispositivo em modo DFU. O instalador do DriveLab já traz o
-`dfu-util`; o driver é uma etapa única, feita uma vez por computador.
+`dfu-util`, que acompanha o instalador do DriveLab, e um driver para o dispositivo em modo DFU, que
+é uma etapa única feita uma vez por computador.
 
 ---
 
 ## 🇧🇷 Português
 
-### Como funciona
+### Placa que já roda o DriveLab
 
 1. no app, aba **Atualização**, escolha o arquivo `.bin` do firmware
 2. clique em **Enviar**
 3. a placa **desarma o motor**, reinicia e aparece no Windows como **STM32 BOOTLOADER**
 4. o app grava e a placa volta sozinha para o firmware novo
 
+### Placa NOVA, de fábrica
+
+Aqui o passo 2 acima não tem como funcionar: o comando "entre em modo de atualização" é enviado ao
+nosso firmware, que ainda não está lá. Então o modo de atualização é acionado **na própria placa**.
+
+1. **desligue de verdade** — tire a energia, conte até cinco. Não é reset: o que vem a seguir só
+   vale no instante em que a placa acorda
+2. force o modo de atualização: segure o botão `SW1`/`BOOT0`, **ou** mexa no jumper de BOOT — em
+   muitas dessas placas ele precisa ser **removido**, e não colocado. Anote como estava antes
+3. **ligue** nesse estado. A placa aparece no Windows como **STM32 BOOTLOADER**
+4. no app, aba **Atualização**, escolha o `.bin` e clique em **Enviar**. O comando inicial cai no
+   vazio, o app encontra a placa já em modo de atualização e grava
+5. **solte o botão / devolva o jumper antes de religar.** Placa esquecida em modo de atualização
+   nunca roda o firmware — e isso é idêntico a uma gravação que falhou
+
+> Se o app não encontrar a placa, ele mostra as instruções e um botão **Continuar**: refaça o
+> power-cycle e clique nele.
+
 ### O driver
 
-**Se você instalou pelo instalador do DriveLab, já está feito** — ele registra o driver do modo DFU
-durante a instalação (marque a opção "Instalar o driver de atualização de firmware"). A primeira
-atualização já funciona, sem passo nenhum.
-
-O resto desta seção é para quem **compila do código** ou desmarcou a opção.
+**Esta é uma etapa manual, feita uma vez por computador.** O instalador **não** registra o driver —
+automatizar isso exigia um utilitário que o projeto do driver não distribui, e a versão anterior
+deste documento prometia uma automação que na prática nunca rodava.
 
 Sem o driver, o Windows enumera a placa em DFU mas marca com **erro código 28** ("nenhum driver
 instalado") — o app vê o dispositivo e não consegue falar com ele.
@@ -63,8 +79,10 @@ pacman -S mingw-w64-x86_64-dfu-util
 # https://dfu-util.sourceforge.net/
 ```
 
-O `dfu-util` é software livre sob **GPLv2**, distribuído junto como executável separado. O código
-e a licença estão em <https://dfu-util.sourceforge.net/>.
+O `dfu-util` é software livre sob **GPLv2 ou posterior**, e vai no pacote **sem modificação
+nenhuma**, como executável separado que o Studio apenas invoca — o DriveLab não é obra derivada
+dele. A licença e a procedência ficam na pasta `licencas`, ao lado do app, e a fonte correspondente
+acompanha as releases do DriveLab. Projeto: <https://dfu-util.sourceforge.net/>.
 
 ### Quando algo não funciona
 
@@ -83,20 +101,36 @@ por **ST-Link**.
 
 ## 🇬🇧 English
 
-### How it works
+### A board already running DriveLab
 
 1. in the app, **Update** tab, pick the firmware `.bin`
 2. click **Send**
 3. the board **disarms the motor**, reboots and shows up in Windows as **STM32 BOOTLOADER**
 4. the app flashes it and the board returns to the new firmware on its own
 
+### A NEW board, straight from the factory
+
+Step 2 above cannot work here: the "enter update mode" command is sent to our firmware, which isn't
+on the board yet. So update mode is triggered **on the board itself**.
+
+1. **power it off for real** — pull the power, count to five. Not a reset: what follows only works
+   at the instant the board wakes up
+2. force update mode: hold the `SW1`/`BOOT0` button, **or** change the BOOT jumper — on many of
+   these boards it has to be **removed**, not fitted. Note how it was set first
+3. **power up** in that state. The board appears in Windows as **STM32 BOOTLOADER**
+4. in the app, **Update** tab, pick the `.bin` and click **Send**. The initial command goes nowhere,
+   the app finds the board already in update mode, and flashes it
+5. **release the button / put the jumper back before the next power-up.** A board left in update
+   mode will never run your firmware — and that looks exactly like a failed flash
+
+> If the app doesn't find the board, it shows the instructions and a **Continue** button: redo the
+> power cycle and click it.
+
 ### The driver
 
-**If you used the DriveLab installer, this is already done** — it registers the DFU driver during
-installation (keep the "Install the firmware update driver" option checked). The first update just
-works.
-
-The rest of this section is for people who **build from source** or unchecked that option.
+**This is a manual step, done once per computer.** The installer does **not** register the driver —
+automating it required a utility the driver project doesn't distribute, and an earlier version of
+this document promised an automation that in practice never ran.
 
 Without the driver Windows enumerates the board in DFU but flags **error code 28** ("no driver
 installed") — the app sees the device and cannot talk to it.
@@ -125,8 +159,10 @@ If you build from source and don't use the installer, install it yourself (`pacm
 mingw-w64-x86_64-dfu-util` on MSYS2, or the official binary from
 <https://dfu-util.sourceforge.net/>).
 
-`dfu-util` is free software under **GPLv2**, shipped as a separate executable. Source and license at
-<https://dfu-util.sourceforge.net/>.
+`dfu-util` is free software under **GPLv2 or later**, and ships **entirely unmodified**, as a
+separate executable that Studio merely invokes — DriveLab is not a derivative work of it. Its
+license and provenance live in the `licencas` folder next to the app, and the corresponding source
+is attached to DriveLab releases. Project: <https://dfu-util.sourceforge.net/>.
 
 ### Troubleshooting
 
