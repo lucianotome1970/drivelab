@@ -388,7 +388,11 @@ static float a0_centered_turns(void) { return wheel_center_pos_turns(); }
 // ---------------------------------------------------------------------------
 static void a0_build_state(uint8_t* p) {
     memset(p, 0, A0_PAYLOAD);
-    p[0] = 0; p[1] = 0; p[2] = 4; p[3] = 0;                 // Firmware 0.4.0 (dev)
+    // VERSAO DO FIRMWARE — [tipo, major, minor, patch]. Casa com a versao da RELEASE e com o
+    // <Version> do Studio: os tres eram numeros diferentes (app 0.1.5, firmware 0.4.0, release
+    // 0.2.3) e nenhum respondia a unica pergunta que o usuario faz — "preciso atualizar?".
+    // Ao cortar uma release nova, subir os TRES juntos.
+    p[0] = 0; p[1] = 0; p[2] = 2; p[3] = 3;                 // 0.2.3
 
     uint8_t flags = 0;
     const bool armed = motor_link_motor_is_armed();

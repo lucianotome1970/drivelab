@@ -26,3 +26,6 @@ installer/windows/dotnet-install.ps1
 # Copias de trabalho do firmware antigo (build .pio, etc.) ficam locais
 firmware-*/.pio/
 release-artifacts/
+
+# .git do repositorio antigo, guardado localmente — NUNCA rastrear
+.git-legado-local/

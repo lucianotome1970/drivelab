@@ -20,6 +20,25 @@
     <Grid ColumnDefinitions="64,*">
         <!-- Sidebar -->
         <Border Grid.Column="0" Background="{DynamicResource DlCard}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,1,0">
+            <!-- DockPanel para a VERSÃO ficar ancorada embaixo: ela precisa estar sempre visível, e
+                 no fim da lista de navegação ela subiria/desceria conforme os ícones. -->
+            <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,10" Spacing="1" HorizontalAlignment="Center"
+                        ToolTip.Tip="{Binding VersionTooltip}">
+                <TextBlock Text="{Binding AppVersionShort}" FontSize="10" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource DlMuted}" />
+                <TextBlock Text="{Binding BaseVersionShort}" FontSize="10" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource DlMuted}"
+                           Classes.desatualizado="{Binding VersionMismatch}">
+                    <TextBlock.Styles>
+                        <!-- Divergir e o UNICO estado que pede acao: so ele ganha cor. -->
+                        <Style Selector="TextBlock.desatualizado">
+                            <Setter Property="Foreground" Value="#FF9800" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Style>
+                    </TextBlock.Styles>
+                </TextBlock>
+            </StackPanel>
             <StackPanel Margin="0,16" Spacing="8" HorizontalAlignment="Center">
                 <!-- O logo É o botão do Dashboard -->
                 <Button Classes="nav" ToolTip.Tip="{Binding Pages[0].Label}"
@@ -86,6 +105,7 @@
                     </Viewbox>
                 </Button>
             </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- Content -->
