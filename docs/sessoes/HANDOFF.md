@@ -1,13 +1,22 @@
 # DriveLab — Handoff
 
 > Nota pra retomar o trabalho em **qualquer máquina**. O contexto detalhado está na memória do
-> Claude Code (`~/.claude/projects/<projeto>/memory/`) — mas o essencial está aqui, no git.
+> Claude Code, que desde 12/08/2026 vive no repositório privado **`drivelab-memoria`** e é ligada por
+> link à pasta do projeto — as duas máquinas leem a mesma coisa, sincronizada por git. Mas o
+> essencial está aqui, no repositório do projeto.
+
+> ⚠️ **Os hashes citados aqui são de ANTES de 13/08/2026 e NÃO existem neste repositório.** O
+> `drivelab` foi recriado do zero naquele dia, com um único commit de snapshot; os 700 commits
+> anteriores foram para **`drivelab-legado`**, privado. Um `git show f24afab` aqui não resolve.
+>
+> Para consultar qualquer hash abaixo, use o clone do legado. O que segue vale como **registro do
+> que foi provado e quando** — a data e a descrição continuam significando; o SHA não.
 
 ## 📍 ESTADO ATUAL (2026-08-11, fim da sessão de bancada no Windows)
 
 | | |
 |---|---|
-| Último firmware **VALIDADO** | `ba6643b` — a `main` de hoje ← ponto de retorno |
+| Último firmware **VALIDADO** | o estado de **11/08 à noite** (11 voltas em Monza + Kt medido). O hash daquele commit só existe em `drivelab-legado` — ver o aviso abaixo |
 | Ponto de retorno anterior | `f24afab` (10/08), se algo der muito errado |
 | Release publicada | **`v0.2.2-alpha`** — cortada hoje, a partir do validado |
 | Repositório | descrição bilíngue + 18 topics prontos. **Visibilidade: ver abaixo — não assuma** |

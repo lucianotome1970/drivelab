@@ -1,6 +1,15 @@
 # Estado validado
 
-## ✅ PONTO DE RETORNO ATUAL — `main`, commit `ba6643b` (2026-08-11, noite)
+> ⚠️ **Os hashes citados aqui são de ANTES de 13/08/2026 e NÃO existem neste repositório.** O
+> `drivelab` foi recriado do zero naquele dia, com um único commit de snapshot; os 700 commits
+> anteriores foram para **`drivelab-legado`**, privado. Um `git show f24afab` aqui não resolve.
+>
+> Para consultar qualquer hash abaixo, use o clone do legado. O que segue vale como **registro do
+> que foi provado e quando** — a data e a descrição continuam significando; o SHA não.
+
+## ✅ PONTO DE RETORNO — validado em 2026-08-11, à noite
+
+*(era o commit `ba6643b`, hoje só no legado — ver o aviso acima)*
 
 Continuação do mesmo dia. Depois das 11 voltas em Monza (seção abaixo), a sessão virou para
 **força e medição**, com duas descobertas feitas na bancada:
