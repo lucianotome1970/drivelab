@@ -100,8 +100,12 @@ public sealed partial class ForceTestViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private bool _forceEnabled;
+    // NotifyCanExecuteChangedFor não é redundante com NotifyPropertyChangedFor: o primeiro dispara o
+    // CanExecuteChanged, que é o que faz a UI RECONSULTAR o comando. Sem ele o botão Parar aparece
+    // (o IsVisible funciona) mas nasce cinza e continua cinza durante todo o teste.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PodeParar))]
+    [NotifyCanExecuteChangedFor(nameof(PararCommand))]
     private ForceTestItemViewModel? _emExecucao;
     [ObservableProperty] private string? _aviso;
 

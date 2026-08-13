@@ -240,4 +240,18 @@ public class ForceTestViewModelTests
         Assert.Null(vm.EmExecucao);
         Assert.False(vm.ForceEnabled);
     }
+    [Fact]
+    public async Task O_Botao_Parar_Fica_HABILITADO_Enquanto_Roda()
+    {
+        // O Parar e o unico controle que importa com o volante ja se mexendo. CanExecute devolver
+        // true nao basta: e o evento CanExecuteChanged que faz a UI reconsultar o comando, e sem ele
+        // o botao fica cinza durante todo o teste. Visivel e inerte e pior que ausente.
+        var (vm, _) = Make();
+        var avisos = 0;
+        vm.PararCommand.CanExecuteChanged += (_, _) => avisos++;
+
+        await vm.RodarCommand.ExecuteAsync(Mola(vm));
+
+        Assert.True(avisos > 0, "a UI precisa ser avisada de que o Parar ficou disponivel");
+    }
 }
