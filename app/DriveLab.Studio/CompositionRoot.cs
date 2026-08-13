@@ -197,17 +197,22 @@ public static class CompositionRoot
                 _          => new SettingsGroupViewModel(session, t.Header, t.Ids),
             }))
             .Append(new PageTab(L.Get("Tab_Telemetry"), new TelemetryViewModel(session)))
-            // Testes por ULTIMO: e a aba que aplica forca, e ficar depois da telemetria
-            // significa que a pessoa passa pelo monitor antes de chegar nela.
-            .Append(new PageTab(L.Get("Tab_ForceTest"), new ForceTestViewModel(session)))
             .ToList();
 
-        // Reprodução de volta gravada: SÓ no modo avançado. Não é dificuldade de uso — é que
-        // reproduzir aplica força sem piloto no laço, e o arquivo pode vir de outra pessoa, com uma
-        // volta cuja intensidade ninguém deste lado conhece de antemão.
+        // As duas abas que APLICAM FORÇA ficam só no modo avançado, e por último — depois da
+        // telemetria, para que quem chega nelas tenha passado pelo monitor antes.
+        //
+        // Não é questão de dificuldade de uso: as duas mandam torque direto ao motor, fora do jogo e
+        // fora do laço de quem está com a mão no aro. Os testes pedem até o fundo de escala, e a
+        // reprodução toca uma volta que pode ter vindo de outra pessoa, gravada numa base mais
+        // forte, com uma intensidade que ninguém deste lado conhece de antemão. Quem recebe o DD
+        // pronto vê Feeling e Telemetria; quem monta é que decide aplicar força na bancada.
         if (advancedMode)
+        {
+            wheelBaseTabs.Add(new PageTab(L.Get("Tab_ForceTest"), new ForceTestViewModel(session)));
             wheelBaseTabs.Add(new PageTab(L.Get("Tab_Playback"),
                 new FfbPlaybackViewModel(session, new AvaloniaCaptureFilePicker())));
+        }
 
         // Volante (aro removível): simulador → sessão simulada (botão Conectar); real → HID 0x0004
         // + hotplug + LED ao vivo. Criado ANTES do dash p/ o card "Volante" acender pela conexão do aro.
