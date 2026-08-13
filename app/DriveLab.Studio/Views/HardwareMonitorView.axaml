@@ -22,7 +22,7 @@
                  que o número ganhava ou perdia um dígito ("9.9 V" → "10.0 V") a coluna se redimensionava
                  e o valor deslizava pro lado — a 2 atualizações por segundo isso vira um tremor constante
                  na tela. Largura fixa: a borda direita fica ancorada e só os dígitos mudam. -->
-            <Grid ColumnDefinitions="*,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+            <Grid ColumnDefinitions="*,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate Monitor_BusVoltage}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding BusVoltageText}" TextAlignment="Right"
@@ -49,21 +49,16 @@
                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding MotorTempText}" TextAlignment="Right"
                            Foreground="{Binding MotorTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
 
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Translate Monitor_McuTemp}"
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Translate Monitor_Clipping}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
-                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding McuTempText}" TextAlignment="Right"
-                           Foreground="{Binding McuTempLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
-
-                <TextBlock Grid.Row="6" Grid.Column="0" Text="{loc:Translate Monitor_Clipping}"
-                           Foreground="{DynamicResource DlText}" Margin="0,6" />
-                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ClippingText}" TextAlignment="Right"
+                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ClippingText}" TextAlignment="Right"
                            Foreground="{Binding ClippingLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
 
                 <!-- Pico da sessão: o clipping ao vivo some em 500 ms, e quem está pilotando não
                      consegue olhar a tela na hora. Este é o número que se lê DEPOIS de sair do jogo. -->
-                <TextBlock Grid.Row="7" Grid.Column="0" Text="{loc:Translate Monitor_ClippingPeak}"
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="{loc:Translate Monitor_ClippingPeak}"
                            Foreground="{DynamicResource DlText}" Margin="0,6" />
-                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding ClippingPeakText}" TextAlignment="Right"
+                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ClippingPeakText}" TextAlignment="Right"
                            Foreground="{Binding ClippingPeakLevel, Converter={StaticResource LevelBrush}}" Margin="0,6" />
             </Grid>
 

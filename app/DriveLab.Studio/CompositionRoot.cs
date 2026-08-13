@@ -41,9 +41,19 @@ public static class CompositionRoot
             BaseSettingId.StaticDamping,
             BaseSettingId.MaxTorqueLimit,
             BaseSettingId.ForceDirection,
-            BaseSettingId.PositionSmoothing,
-            BaseSettingId.PowerLimit,
-            BaseSettingId.BrakingLimit,
+            // PositionSmoothing, PowerLimit e BrakingLimit SAIRAM DA TELA (2026-08-13). Continuam no
+            // schema e no transporte, mas nao se oferecem mais:
+            //
+            //  · PowerLimit e BrakingLimit — os campos do ODrive que pareciam servir
+            //    (dc_max_positive_current / dc_max_negative_current) sao GATILHOS DE DESARME, nao
+            //    limites. Mapear "limite de potencia 50%" neles faria a base desarmar no meio de uma
+            //    curva forte — pior que nao fazer nada. Limite de verdade restringe o torque ANTES de
+            //    virar corrente, e isso e trabalho no caminho de FFB.
+            //  · PositionSmoothing — filtrar a leitura de posicao ATRASA a resposta, e atraso num
+            //    direct drive e o que deixa o volante borrachudo. Antes de "como implementar" falta
+            //    responder se deve existir.
+            //
+            // Controle que promete e nao entrega ocupa espaco e gasta a confianca de quem ajusta.
             BaseSettingId.ReconstructionSteps,
             BaseSettingId.ReconstructionLpf,
             BaseSettingId.OutputFilterHz,
@@ -84,8 +94,7 @@ public static class CompositionRoot
             BaseSettingId.EncoderInterface,  // TECNOLOGIA (como ela ligou) — opções dependem do modelo
             BaseSettingId.EncoderCpr,        // resolução: PPR em ABZ (×4 feito pelo app), contagens no resto
             BaseSettingId.PolePairs,
-            BaseSettingId.CurrentP,
-            BaseSettingId.CurrentI,
+            BaseSettingId.CurrentBandwidthHz,
             BaseSettingId.CalibrationCurrent,
             BaseSettingId.CurrentLim,   // limite de corrente do motor — teto da calibracao e do FFB
             // Vizinho do CurrentLim de proposito: os dois descrevem ATE ONDE a base aguenta ir. Subir

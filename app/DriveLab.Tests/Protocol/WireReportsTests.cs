@@ -42,7 +42,8 @@ public class WireReportsTests
     [Fact]
     public void SettingReport_RoundTrips_Float()
     {
-        var report = new SettingReport((byte)BaseSettingId.CurrentP, 0, new SettingValue(SettingType.Float, 0.05));
+        // Qualquer campo FLOAT serve — o que se testa e o transporte do tipo, nao o campo.
+        var report = new SettingReport((byte)BaseSettingId.TorqueConstant, 0, new SettingValue(SettingType.Float, 0.05));
         var parsed = SettingReport.Parse(report.ToBytes());
         Assert.Equal(SettingType.Float, parsed.Value.Type);
         Assert.Equal(0.05, parsed.Value.AsDouble, precision: 5);

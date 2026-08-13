@@ -29,9 +29,6 @@ RAIZ = Path(__file__).resolve().parent.parent
 # permissao: ao implementar um deles no firmware, REMOVA a linha daqui.
 # Acrescentar linha aqui so se houver motivo escrito no commit.
 ORFAOS_CONHECIDOS = {
-    "EncoderDirection",      # sentido cravado no bring-up
-    "CurrentP",              # ganhos da malha de corrente: a placa usa os da NVM do ODrive
-    "CurrentI",              # idem — e sao o parametro mais delicado da placa
     "PositionSmoothing",
     "PowerLimit",
     "BrakingLimit",

@@ -148,16 +148,47 @@ public class ForceTestViewModelTests
         Assert.Contains("Conecte a base", vm.Aviso!);
     }
 
+    /// <summary>Relogio que SEGURA a execucao ate o teste mandar seguir. Sem isto o teste de
+    /// concorrencia e uma corrida: com Task.Yield a primeira execucao pode terminar inteira antes de
+    /// a segunda comecar, e ai o teste passa sem ter testado nada — foi o que aconteceu, passando e
+    /// falhando conforme a maquina.</summary>
+    private sealed class RelogioComTravа : IRelogioDeTeste
+    {
+        private readonly TaskCompletionSource _porta = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public readonly TaskCompletionSource Chegou = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private double _s;
+        public double DecorridoS => _s;
+        public void Reiniciar() => _s = 0;
+        public void Liberar() => _porta.TrySetResult();
+        public async Task EsperarAsync(int ms, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            _s += ms / 1000.0;
+            Chegou.TrySetResult();      // avisa o teste que a execucao ja esta em andamento
+            await _porta.Task;
+        }
+    }
+
     [Fact]
     public async Task Nao_Roda_Dois_Testes_Ao_Mesmo_Tempo()
     {
         // Dois testes somando forca no mesmo volante e o caminho para um solavanco que ninguem pediu.
-        var (vm, _) = Make();
-        var primeiro = vm.RodarCommand.ExecuteAsync(Mola(vm));
-        var segundo  = vm.RodarCommand.ExecuteAsync(vm.Testes.First(t => t.Id == "Ramp"));
-        await Task.WhenAll(primeiro, segundo);
+        var transport = new FakeTransport();
+        await transport.ConnectAsync();
+        var relogio = new RelogioComTravа();
+        var vm = new ForceTestViewModel(new BaseSession(transport, new ImmediateUiDispatcher()), relogio)
+        { IsConnected = true, ForceEnabled = true, TorqueConstant = 0.397 };
 
-        Assert.False(vm.Testes.First(t => t.Id == "Ramp").TemResultado);
+        var primeiro = vm.RodarCommand.ExecuteAsync(vm.Testes.First(t => t.Id == "Spring"));
+        await relogio.Chegou.Task;                     // agora e CERTO que a primeira esta rodando
+
+        var segundo = vm.RodarCommand.ExecuteAsync(vm.Testes.First(t => t.Id == "Ramp"));
+        await segundo;
+        Assert.False(vm.Testes.First(t => t.Id == "Ramp").TemResultado);   // recusada
+
+        relogio.Liberar();
+        vm.PararCommand.Execute(null);
+        await primeiro;
     }
 
     // ── Execucao ─────────────────────────────────────────────────────────────────────────────

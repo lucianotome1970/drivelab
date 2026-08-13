@@ -157,8 +157,6 @@
   <data name="Setting_EncoderDirection" xml:space="preserve"><value>Direção do encoder</value></data>
   <data name="Setting_EncoderCpr" xml:space="preserve"><value>CPR do encoder</value></data>
   <data name="Setting_PolePairs" xml:space="preserve"><value>Pares de polos</value></data>
-  <data name="Setting_CurrentP" xml:space="preserve"><value>Ganho P (corrente)</value></data>
-  <data name="Setting_CurrentI" xml:space="preserve"><value>Ganho I (corrente)</value></data>
   <data name="Setting_CalibrationCurrent" xml:space="preserve"><value>Corrente de calibração</value></data>
   <data name="Setting_FetTempLimitC" xml:space="preserve"><value>Temperatura de recuo (placa)</value></data>
   <data name="Setting_PositionSmoothing" xml:space="preserve"><value>Suavização de posição</value></data>
@@ -191,7 +189,6 @@
   <data name="Monitor_EstimatedTorque" xml:space="preserve"><value>Torque estimado</value></data>
   <data name="Monitor_FetTemp" xml:space="preserve"><value>Temperatura FET</value></data>
   <data name="Monitor_MotorTemp" xml:space="preserve"><value>Temperatura do motor</value></data>
-  <data name="Monitor_McuTemp" xml:space="preserve"><value>Temperatura do MCU</value></data>
   <data name="Monitor_Clipping" xml:space="preserve"><value>Clipping do FFB</value></data>
   <data name="Monitor_ClippingPeak" xml:space="preserve"><value>Clipping na sessão</value></data>
   <data name="Monitor_BrakeTitle" xml:space="preserve"><value>Resistor de freio</value></data>
@@ -251,13 +248,11 @@
   <data name="SettingHelp_OutputFilterHz" xml:space="preserve"><value>Suaviza a forca que sai, cortando as frequencias acima do valor. Use so se o volante tremer com tudo o mais ajustado. Ex.: 0 desliga (padrao); comece em 100 Hz e desca aos poucos ate o tremor sumir. CUIDADO: filtrar demais e a causa mais comum de FFB sem detalhe — cada Hz a menos apaga textura de pista junto com o tremor.</value></data>
   <data name="SettingHelp_OscGuardEnable" xml:space="preserve"><value>Amortece o volante SÓ quando ele entra em auto-oscilação — aquele tremor que aparece ao levantar o começo da curva de força, quando o laço volante-piloto-base passa a se alimentar sozinho. Diferente do Damper, que é sempre ativo e come textura de pista o tempo todo, esta guarda fica fora do caminho enquanto você sente a pista e só entra durante o episódio. Ela reconhece a oscilação pelo ritmo (reversões de sentido em intervalo curto e regular), que é o que esterço normal e zebra não têm. Ex.: ligue se a base tremer na reta depois de você realçar as forças pequenas na curva.</value></data>
   <data name="SettingHelp_CoggingEnable" xml:space="preserve"><value>Usa a tabela de compensacao de cogging (ondulacao do motor) gravada na flash. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
-  <data name="SettingHelp_EncoderDirection" xml:space="preserve"><value>Sentido de contagem do encoder. Hoje quem define isto e a calibracao do boot. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
+  <data name="SettingHelp_EncoderDirection" xml:space="preserve"><value>Inverte o sentido que a base REPORTA — use se o volante gira para um lado e a tela (ou o jogo) mostra o outro, o que acontece quando o sensor foi montado espelhado. Ex.: -1 para inverter, 1 para deixar como está. NÃO mexe no sentido interno do motor: aquele a calibração descobre sozinha. Só vale depois de reiniciar a base.</value></data>
   <data name="SettingHelp_EncoderCpr" xml:space="preserve"><value>Resolucao do encoder. Em ABZ digite os PULSOS POR VOLTA impressos na etiqueta — o app faz o x4 da quadratura. Ex.: um E6B2 de 1000 P/R vira 4000 contagens.</value></data>
   <data name="SettingHelp_EncoderType" xml:space="preserve"><value>MODELO do sensor que voce comprou. Ex.: E6B2-CWZ6C (incremental) ou MT6701 (magnetico). A lista de tecnologias abaixo muda conforme o modelo.</value></data>
   <data name="SettingHelp_EncoderInterface" xml:space="preserve"><value>TECNOLOGIA de ligacao: so aparecem as opcoes que o modelo escolhido oferece. Ex.: o E6B2 e ABZ; o MT6701 aceita ABZ ou SSI.</value></data>
   <data name="SettingHelp_PolePairs" xml:space="preserve"><value>Pares de polos do motor (numero de imas dividido por 2). Ex.: 15 no motor de hoverboard. Errar isto poe corrente na bobina errada: calor sem torque.</value></data>
-  <data name="SettingHelp_CurrentP" xml:space="preserve"><value>Ganho proporcional do laco de corrente. Mexer nisto altera um laco que roda a 8 kHz. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
-  <data name="SettingHelp_CurrentI" xml:space="preserve"><value>Ganho integral do laco de corrente. Mexer nisto altera um laco que roda a 8 kHz. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
   <data name="SettingHelp_CalibrationCurrent" xml:space="preserve"><value>Corrente usada para calibrar o encoder no boot. Ex.: 5 A vencem o cogging do motor de hoverboard. E limitada automaticamente ao limite de corrente do motor.</value></data>
   <data name="SettingHelp_SoftPowerEnable" xml:space="preserve"><value>Liga o desligamento por software do barramento DC. Exige o hardware fiado. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
   <data name="SettingHelp_PowerButtonEnable" xml:space="preserve"><value>Liga o botao fisico de liga/desliga (toque liga, segurar desliga). Exige o hardware fiado. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
@@ -317,4 +312,6 @@ Esta curva vale DEPOIS da linearidade e ANTES dos limites de torque e de corrent
   <data name="ForceTest_Ramp_Desc" xml:space="preserve"><value>Sobe a força até o máximo observando a corrente acompanhar. Responde se a base entrega o que a configuração promete: o teto real é corrente máxima × Kt, e pode estar bem abaixo do número na tela.</value></data>
   <data name="ForceTest_Impact" xml:space="preserve"><value>Impacto</value></data>
   <data name="ForceTest_Impact_Desc" xml:space="preserve"><value>Três pancadas curtas, alternando o lado, como bater numa zebra. Mostra se o pico sai inteiro ou se o caminho de força o corta.</value></data>
+  <data name="Setting_CurrentBandwidthHz" xml:space="preserve"><value>Banda da malha de corrente</value></data>
+  <data name="SettingHelp_CurrentBandwidthHz" xml:space="preserve"><value>Quão rápido a malha de corrente persegue o valor pedido. Os ganhos P e I são DERIVADOS daqui e do R/L do motor — não há o que ajustar à mão. Ex.: 200 Hz nesta bancada; alto demais faz o motor assobiar e vibrar, baixo demais deixa a força mole e atrasada. Só vale depois de reiniciar a base.</value></data>
 </root>

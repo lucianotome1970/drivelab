@@ -125,7 +125,6 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         UpdateEstimatedTorque();
         FetTempText = TempText(s.FetTempC);
         MotorTempText = TempText(s.MotorTempC);
-        McuTempText = TempText(s.McuTempC);
         // SÓ A PARCELA DA BASE. O clipping do jogo continua sendo medido e trafegado (serve para
         // diagnóstico), mas não vai para a tela: é saturação que acontece DENTRO do jogo, sobre a
         // qual não temos ação nenhuma, e cada título se comporta de um jeito. Número que a pessoa
@@ -147,7 +146,6 @@ public partial class HardwareMonitorViewModel : ViewModelBase
         BusVoltageLevel = VoltageLevel(s.BusVoltageMv);
         FetTempLevel = TempLevel(s.FetTempC);
         MotorTempLevel = TempLevel(s.MotorTempC);
-        McuTempLevel = TempLevel(s.McuTempC);
         // A cor segue o mesmo número que o texto mostra — a parcela da base. Colorir pelo total
         // deixaria a linha vermelha por causa de saturação do jogo, que nenhum ajuste daqui resolve.
         ClippingLevel = ClipLevel(clipBase);

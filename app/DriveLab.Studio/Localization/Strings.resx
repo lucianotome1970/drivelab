@@ -158,8 +158,6 @@
   <data name="Setting_EncoderDirection" xml:space="preserve"><value>Encoder direction</value></data>
   <data name="Setting_EncoderCpr" xml:space="preserve"><value>Encoder CPR</value></data>
   <data name="Setting_PolePairs" xml:space="preserve"><value>Pole pairs</value></data>
-  <data name="Setting_CurrentP" xml:space="preserve"><value>P gain (current)</value></data>
-  <data name="Setting_CurrentI" xml:space="preserve"><value>I gain (current)</value></data>
   <data name="Setting_CalibrationCurrent" xml:space="preserve"><value>Calibration current</value></data>
   <data name="Setting_FetTempLimitC" xml:space="preserve"><value>Derating temperature (board)</value></data>
   <data name="Setting_PositionSmoothing" xml:space="preserve"><value>Position smoothing</value></data>
@@ -192,7 +190,6 @@
   <data name="Monitor_EstimatedTorque" xml:space="preserve"><value>Estimated torque</value></data>
   <data name="Monitor_FetTemp" xml:space="preserve"><value>FET temperature</value></data>
   <data name="Monitor_MotorTemp" xml:space="preserve"><value>Motor temperature</value></data>
-  <data name="Monitor_McuTemp" xml:space="preserve"><value>MCU temperature</value></data>
   <data name="Monitor_Clipping" xml:space="preserve"><value>FFB clipping</value></data>
   <data name="Monitor_ClippingPeak" xml:space="preserve"><value>Clipping this session</value></data>
   <data name="Monitor_BrakeTitle" xml:space="preserve"><value>Brake resistor</value></data>
@@ -252,13 +249,11 @@
   <data name="SettingHelp_OutputFilterHz" xml:space="preserve"><value>Smooths the force that comes out by cutting frequencies above this value. Use it only if the wheel shakes once everything else is dialled in. E.g. 0 is off (default); start at 100 Hz and come down slowly until the shake goes. CAREFUL: over-filtering is the most common cause of FFB with no detail — every Hz you remove erases road texture along with the shake.</value></data>
   <data name="SettingHelp_OscGuardEnable" xml:space="preserve"><value>Damps the wheel ONLY when it enters self-oscillation — the shake that shows up after you raise the low end of the force curve and the wheel-driver-base loop starts feeding itself. Unlike Damper, which is always on and eats road texture all the time, this guard stays out of the way while you feel the track and only steps in during the episode. It recognises oscillation by its rhythm (direction reversals at short, regular intervals), which normal steering and kerbs do not have. E.g. turn it on if the base shakes on the straight after you boosted small forces in the curve.</value></data>
   <data name="SettingHelp_CoggingEnable" xml:space="preserve"><value>Use the cogging compensation table stored in flash. [NOTE] This control has no effect in the current firmware yet.</value></data>
-  <data name="SettingHelp_EncoderDirection" xml:space="preserve"><value>Encoder counting direction. Today this is decided by the boot calibration. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_EncoderDirection" xml:space="preserve"><value>Flips the direction the base REPORTS — use it if the wheel turns one way and the screen (or the game) shows the other, which happens when the sensor is mounted mirrored. E.g. -1 to flip, 1 to leave as is. It does NOT touch the motor's internal direction: calibration works that out on its own. Only takes effect after the base reboots.</value></data>
   <data name="SettingHelp_EncoderCpr" xml:space="preserve"><value>Encoder resolution. On ABZ, enter the PULSES PER REVOLUTION printed on the label — the app applies the x4 quadrature. E.g. a 1000 P/R E6B2 becomes 4000 counts.</value></data>
   <data name="SettingHelp_EncoderType" xml:space="preserve"><value>Sensor MODEL you bought. E.g. E6B2-CWZ6C (incremental) or MT6701 (magnetic). The technology list below changes with the model.</value></data>
   <data name="SettingHelp_EncoderInterface" xml:space="preserve"><value>Wiring TECHNOLOGY: only the options the chosen model offers are shown. E.g. the E6B2 is ABZ; the MT6701 accepts ABZ or SSI.</value></data>
   <data name="SettingHelp_PolePairs" xml:space="preserve"><value>Motor pole pairs (magnet count divided by 2). E.g. 15 on the hoverboard motor. Getting this wrong drives current into the wrong coil: heat without torque.</value></data>
-  <data name="SettingHelp_CurrentP" xml:space="preserve"><value>Proportional gain of the current loop. Changing this alters a loop running at 8 kHz. [NOTE] This control has no effect in the current firmware yet.</value></data>
-  <data name="SettingHelp_CurrentI" xml:space="preserve"><value>Integral gain of the current loop. Changing this alters a loop running at 8 kHz. [NOTE] This control has no effect in the current firmware yet.</value></data>
   <data name="SettingHelp_CalibrationCurrent" xml:space="preserve"><value>Current used to calibrate the encoder at boot. E.g. 5 A overcomes the hoverboard motor cogging. It is automatically capped at the motor current limit.</value></data>
   <data name="SettingHelp_SoftPowerEnable" xml:space="preserve"><value>Enables software shutdown of the DC bus. Requires the hardware to be wired. [NOTE] This control has no effect in the current firmware yet.</value></data>
   <data name="SettingHelp_PowerButtonEnable" xml:space="preserve"><value>Enables the physical power button (tap on, hold off). Requires the hardware to be wired. [NOTE] This control has no effect in the current firmware yet.</value></data>
@@ -318,4 +313,6 @@ This curve applies AFTER linearity and BEFORE the torque and current limits — 
   <data name="ForceTest_Ramp_Desc" xml:space="preserve"><value>Ramps force to maximum while watching the current follow. Answers whether the base delivers what the settings promise: the real ceiling is max current × Kt, and it can sit well below the number on screen.</value></data>
   <data name="ForceTest_Impact" xml:space="preserve"><value>Impact</value></data>
   <data name="ForceTest_Impact_Desc" xml:space="preserve"><value>Three short hits, alternating sides, like striking a kerb. Shows whether the peak comes out whole or the force path clips it.</value></data>
+  <data name="Setting_CurrentBandwidthHz" xml:space="preserve"><value>Current-loop bandwidth</value></data>
+  <data name="SettingHelp_CurrentBandwidthHz" xml:space="preserve"><value>How fast the current loop chases the value asked for. The P and I gains are DERIVED from this and from the motor's R and L — there is nothing to tune by hand. E.g. 200 Hz on this bench; too high makes the motor whine and buzz, too low leaves the force soft and late. Only takes effect after the base reboots.</value></data>
 </root>

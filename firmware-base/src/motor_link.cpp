@@ -7,10 +7,26 @@
 #include "odrive_main.h"
 #include "low_level.h"   // safety_critical_arm_brake_resistor (armar sem janela — ver autoscale)
 
+// SENTIDO REPORTADO do encoder (setting 9). +1 = como vem do sensor, -1 = invertido.
+//
+// ⚠️ NAO e o sentido da FOC. Aquele o ODrive DESCOBRE sozinho na calibracao: ele gira o motor e
+// olha para onde a contagem anda (encoder.cpp). Forcar aquele valor quebraria o motor, nao o
+// configuraria — e por isso o campo nunca teve onde ser aplicado la.
+//
+// O que este resolve e o sintoma que o proprio texto de ajuda descreve: "o volante gira para um
+// lado e a tela mostra o outro". Isso acontece quando o sensor foi montado espelhado — a FOC se
+// adapta, mas tudo o que NOS reportamos sai com o sinal trocado.
+//
+// Aplicado nos DOIS getters de uma vez, que sao o ponto unico por onde a posicao passa para o FFB,
+// para o eixo do jogo, para a telemetria e para as guardas. Inverter num so deixaria a velocidade
+// discordando da posicao — e velocidade com sinal errado e anti-amortecimento, que ja nos custou
+// caro no laco de corrente.
+static float s_pos_sign = 1.0f;
+
 extern "C" float motor_link_get_pos_turns(void) {
     int32_t cnt = axes[0].encoder_.shadow_count_;      // int32 acumulado (não wrappa) — ESTADO VALIDADO
     int32_t cpr = axes[0].encoder_.config_.cpr;
-    return cpr ? (float)cnt / (float)cpr : 0.0f;
+    return cpr ? s_pos_sign * (float)cnt / (float)cpr : 0.0f;
 }
 extern "C" void motor_link_set_input_torque(float nm) {
     // Efetivo só em CLOSED_LOOP + control_mode=TORQUE + input_mode=PASSTHROUGH.
@@ -18,7 +34,7 @@ extern "C" void motor_link_set_input_torque(float nm) {
     axes[0].controller_.input_torque_ = nm;
 }
 extern "C" float motor_link_get_vel_estimate(void) {
-    return axes[0].encoder_.vel_estimate_.any().value_or(0.0f);
+    return s_pos_sign * axes[0].encoder_.vel_estimate_.any().value_or(0.0f);
 }
 extern "C" float motor_link_get_iq_measured(void) {
     return axes[0].motor_.current_control_.Iq_measured_;
@@ -489,9 +505,13 @@ extern "C" void motor_link_lock_calibration(void) {
 extern "C" int32_t a0_get_setting(uint8_t id);
 extern "C" float   a0_get_setting_f(uint8_t id);   // campos T_FLOAT (ex.: Kt)
 
-enum { SET_ENCODER_CPR = 10, SET_ENCODER_TYPE = 18, SET_ENCODER_IFACE = 46 };
+enum { SET_ENCODER_CPR = 10, SET_ENCODER_TYPE = 18, SET_ENCODER_IFACE = 46, SET_ENCODER_DIR = 9 };
 
 extern "C" int motor_link_apply_encoder_settings(void) {
+    // Sentido REPORTADO (ver s_pos_sign). So -1 inverte; qualquer outro valor mantem o de hoje —
+    // inclusive o 0, que na configuracao do ODrive significa "nao calibrado" e nao pode virar sinal.
+    s_pos_sign = (a0_get_setting(SET_ENCODER_DIR) == -1) ? -1.0f : 1.0f;
+
     const EncoderConfig ec = encoder_config_from_settings(
         (uint8_t)a0_get_setting(SET_ENCODER_TYPE),
         (uint8_t)a0_get_setting(SET_ENCODER_IFACE),
@@ -539,7 +559,7 @@ extern "C" int motor_link_apply_encoder_settings(void) {
 //
 // Chamar DEPOIS do relax_calibration, que e quem fixa os 5 A.
 // ---------------------------------------------------------------------------
-enum { SET_POLE_PAIRS = 11, SET_CALIB_CURRENT = 14, SET_CURRENT_LIM = 48,
+enum { SET_POLE_PAIRS = 11, SET_CALIB_CURRENT = 14, SET_CURRENT_LIM = 48, SET_CURRENT_BW = 55,
        SET_TORQUE_CONSTANT = 34 };   // T_FLOAT — ler com a0_get_setting_f, nao a0_get_setting
 
 extern "C" int motor_link_apply_motor_settings(void) {
@@ -573,6 +593,21 @@ extern "C" int motor_link_apply_motor_settings(void) {
         if (axes[0].motor_.config_.pole_pairs != (int32_t)mc.pole_pairs) mudou = 1;
         axes[0].motor_.config_.pole_pairs = (int32_t)mc.pole_pairs;
     }
+    // BANDA DA MALHA DE CORRENTE (setting 55). Estava cravada em 200 Hz no bring-up.
+    //
+    // Nao existem ganhos P e I para ajustar: o ODrive os DERIVA — p_gain = banda x indutancia,
+    // i_gain = (resistencia / indutancia) x p_gain. Por isso os antigos campos P e I nunca tiveram
+    // onde chegar, e por isso este e um numero com significado fisico em vez de dois sem.
+    //
+    // update_current_controller_gains() TEM de ser chamado depois de mexer na banda: sem ele o
+    // valor fica na config e os ganhos em uso continuam os antigos — o setting pareceria aplicado
+    // e nao estaria, que e o defeito que este trabalho inteiro existe para eliminar.
+    const int32_t bw = a0_get_setting(SET_CURRENT_BW);
+    if (bw >= 50 && bw <= 2000) {
+        axes[0].motor_.config_.current_control_bandwidth = (float)bw;
+        axes[0].motor_.update_current_controller_gains();
+    }
+
     if (mc.calib_current_a != 0.0f) {
         axes[0].motor_.config_.calibration_current = mc.calib_current_a;
     }

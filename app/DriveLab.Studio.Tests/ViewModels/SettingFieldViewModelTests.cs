@@ -191,7 +191,7 @@ public class SettingFieldViewModelTests
     {
         var transport = new FakeTransport();
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
-        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.CurrentP));
+        var vm = new SettingFieldViewModel(session, BaseSettingsSchema.Get(BaseSettingId.TorqueConstant));
 
         Assert.False(vm.IsInteger);
     }

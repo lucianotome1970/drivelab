@@ -21,8 +21,9 @@ public enum BaseSettingId : byte
     EncoderDirection = 9,
     EncoderCpr = 10,
     PolePairs = 11,
-    CurrentP = 12,
-    CurrentI = 13,
+    // 12 e 13 eram CurrentP e CurrentI. Saíram: o ODrive não aceita ganhos P/I, ele os DERIVA do
+    // motor e da banda — ver CurrentBandwidthHz. Os ids ficam vagos de propósito, para não
+    // reinterpretarem valores já salvos em placas.
     CalibrationCurrent = 14,
     PositionSmoothing = 15,
     PowerLimit = 16,
@@ -89,4 +90,18 @@ public enum BaseSettingId : byte
     FfbCurve8 = 52,
     FfbCurve9 = 53,
     FfbCurve10 = 54,
+
+    /// <summary>Banda da malha de corrente, em Hz.
+    ///
+    /// <para>Substitui os antigos CurrentP (12) e CurrentI (13), que eram órfãos por um motivo de
+    /// CONCEITO e não de implementação: o ODrive não aceita ganhos P e I — ele os DERIVA do motor.
+    /// <c>p_gain = banda × indutância</c> e <c>i_gain = (resistência / indutância) × p_gain</c>.
+    /// Escrever os ganhos direto seria sobrescrito na próxima vez que ele recalculasse.</para>
+    ///
+    /// <para>A banda é o parâmetro que ele realmente aceita, e é um número com significado físico:
+    /// quão rápido a malha persegue a corrente pedida. Ficava cravada em 200 Hz no bring-up.</para>
+    ///
+    /// <para>Id novo, e não reaproveitado: uma placa com CurrentP = 0,05 salvo passaria a ler
+    /// "banda de 0,05 Hz" — um valor absurdo que entraria em silêncio.</para></summary>
+    CurrentBandwidthHz = 55,
 }
