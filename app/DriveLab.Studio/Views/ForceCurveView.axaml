@@ -1,0 +1,112 @@
+<!-- ============================================================================
+     DriveLab
+     ForceCurveView.axaml — A curva de resposta da força, editada arrastando os
+     cinco pontos.
+
+     A DIAGONAL tracejada é a referência (sai o mesmo que entra) e é contra ela
+     que se enxerga o que a curva faz. Uma curva abaixo da diagonal no meio =
+     forças médias achatadas — foi exatamente o defeito que passou uma sessão
+     inteira despercebido quando só existia um número.
+
+     O desenho usa segmentos RETOS entre os pontos porque é isso que o firmware
+     faz (ffb_math.h, applyForceCurve). Suavizar aqui mostraria uma curva que a
+     base não produz.
+     Autor: Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.ForceCurveView"
+             x:DataType="vm:ForceCurveViewModel">
+    <StackPanel Spacing="8">
+
+        <!-- Mesmo "?" dos campos de setting: quem já usou o app sabe onde procurar explicação. -->
+        <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="{loc:Translate Curve_Title}"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource DlText}" />
+            <Border ToolTip.Tip="{loc:Translate Curve_Help}"
+                    ToolTip.ShowDelay="200"
+                    Width="18" Height="18" CornerRadius="9" VerticalAlignment="Center"
+                    Background="{DynamicResource DlMuted}" Opacity="0.35">
+                <TextBlock Text="?" FontSize="12" FontWeight="Bold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+        </StackPanel>
+
+        <TextBlock Text="{loc:Translate Curve_Desc}"
+                   TextWrapping="Wrap"
+                   FontSize="12"
+                   Opacity="0.75"
+                   Foreground="{DynamicResource DlText}" />
+
+        <Border Background="#22000000" CornerRadius="8" Padding="12">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="*,Auto">
+
+                <!-- Eixo Y: o que SAI -->
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="{loc:Translate Curve_AxisOut}"
+                           FontSize="11" Opacity="0.6"
+                           Foreground="{DynamicResource DlText}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0">
+                    <TextBlock.RenderTransform>
+                        <RotateTransform Angle="-90" />
+                    </TextBlock.RenderTransform>
+                </TextBlock>
+
+                <Border Grid.Row="0" Grid.Column="1"
+                        x:Name="PlotArea"
+                        Background="Transparent"
+                        MinHeight="220"
+                        PointerPressed="OnPointerPressed"
+                        PointerMoved="OnPointerMoved"
+                        PointerReleased="OnPointerReleased">
+                    <Canvas x:Name="Plot" ClipToBounds="True" />
+                </Border>
+
+                <!-- Eixo X: o que o jogo PEDE -->
+                <TextBlock Grid.Row="1" Grid.Column="1"
+                           Text="{loc:Translate Curve_AxisIn}"
+                           FontSize="11" Opacity="0.6"
+                           Foreground="{DynamicResource DlText}"
+                           HorizontalAlignment="Center"
+                           Margin="0,6,0,0" />
+            </Grid>
+        </Border>
+
+        <!-- Leitura numérica: o desenho mostra o formato, os números dão o valor exato para
+             quem quiser anotar ou repetir o ajuste em outra máquina. -->
+        <ItemsControl ItemsSource="{Binding PontosDaCurva}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <!-- Uma coluna POR PONTO, ligada ao número real: com o valor cravado, mudar a
+                         quantidade de pontos quebrava o rodapé em várias linhas e ele deixava de
+                         alinhar com o gráfico. -->
+                    <UniformGrid Columns="{x:Static vm:ForceCurveViewModel.Pontos}" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CurvePointViewModel">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Input, StringFormat='{}{0}'}"
+                                   FontSize="10" Opacity="0.55"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource DlText}" />
+                        <TextBlock Text="{Binding Output, StringFormat='{}{0:0}'}"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource DlText}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button Content="{loc:Translate Curve_Flatten}"
+                Command="{Binding AplanarCommand}"
+                HorizontalAlignment="Left" />
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,121 @@
+<!-- ============================================================================
+     DriveLab
+     SettingsGroupView.axaml — Grupo de settings em duas colunas: sliders e chips de opção/preset por campo.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:views="using:DriveLab.Studio.Views"
+             x:Class="DriveLab.Studio.Views.SettingsGroupView"
+             x:DataType="vm:SettingsGroupViewModel">
+    <UserControl.Resources>
+        <DataTemplate x:Key="FieldBlock" x:DataType="vm:SettingFieldViewModel">
+            <StackPanel Spacing="7" Margin="0,10">
+                <!-- Label + caixa de valor -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="fieldLabel" Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                        <!-- "?" só aparece onde há texto de ajuda. -->
+                        <Border IsVisible="{Binding HasHelp}" ToolTip.Tip="{Binding HelpText}"
+                                Width="18" Height="18" CornerRadius="9" VerticalAlignment="Center"
+                                Background="{DynamicResource DlMuted}" Opacity="0.35">
+                            <TextBlock Text="?" FontSize="12" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource DlText}" />
+                        </Border>
+                    </StackPanel>
+                    <Border Grid.Column="1" Classes="valueBox">
+                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding ValueText}" />
+                            <TextBlock Text="{Binding Unit}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Mín · slider · Máx -->
+                <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding ShowSlider}">
+                    <TextBlock Grid.Column="0" Classes="endLabel" Text="{Binding DisplayMin, StringFormat={}{0:0}}" Margin="0,0,10,0" />
+                    <Slider Grid.Column="1" Minimum="{Binding DisplayMin}" Maximum="{Binding DisplayMax}" Value="{Binding DisplayValue}"
+                            IsEnabled="{Binding IsConnected}" IsSnapToTickEnabled="{Binding IsInteger}"
+                            TickFrequency="1" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Classes="endLabel" Text="{Binding DisplayMax, StringFormat={}{0:0}}" Margin="10,0,0,0" />
+                </Grid>
+
+                <!-- Chips de opção (enum) -->
+                <!-- Campo numérico: valor exato, digitado. Slider não serve para resolução de
+                     encoder nem para Kt — acertar 1000 arrastando é sorte. -->
+                <NumericUpDown IsVisible="{Binding IsNumericInput}" Value="{Binding DisplayValue}"
+                               Minimum="{Binding DisplayMin}" Maximum="{Binding DisplayMax}"
+                               IsEnabled="{Binding IsValueEditable}"
+                               FormatString="{Binding NumericFormat}" Increment="{Binding NumericStep}"
+                               HorizontalAlignment="Stretch"
+                               Margin="0,8,0,0" />
+
+                <!-- Enum "catálogo" (muitas opções, ex.: tipo de encoder) → dropdown, que escala sem virar
+                     uma fileira de chips ilegível. Enum curto (2 opções) continua em chips, abaixo. -->
+                <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}"
+                          IsVisible="{Binding IsDropdown}" IsEnabled="{Binding IsConnected}"
+                          HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EnumOptionViewModel">
+                            <TextBlock Text="{Binding Label}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <ItemsControl ItemsSource="{Binding Options}" IsVisible="{Binding HasChipOptions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EnumOptionViewModel">
+                            <Button Classes="chip" Content="{Binding Label}"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Command="{Binding SelectCommand}"
+                                    HorizontalAlignment="Center" Margin="3,8,3,0"
+                                    HorizontalContentAlignment="Center" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Chips de preset -->
+                <ItemsControl ItemsSource="{Binding PresetOptions}" IsVisible="{Binding HasPresets}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <!-- Rows=1 espalha os chips igualmente pela largura da barra -->
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PresetOptionViewModel">
+                            <Button Classes="chip" Content="{Binding Value}"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Command="{Binding SelectCommand}"
+                                    HorizontalAlignment="Center" Margin="3,8,3,0"
+                                    HorizontalContentAlignment="Center" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <!-- Nomeado porque o code-behind rola este ScrollViewer na mão quando intercepta a roda do
+         mouse sobre um campo numérico (ver RodaNaoMudaSetting). -->
+    <ScrollViewer x:Name="RolagemDosCampos" VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <!-- Cabeçalho opcional (ex.: monitor de telemetria) — rola junto com os campos. -->
+            <ContentControl Content="{Binding $parent[views:SettingsGroupView].Header}" Margin="4,4,20,0" />
+            <Grid ColumnDefinitions="*,28,*" Margin="4,4,20,4">
+                <ItemsControl Grid.Column="0" ItemsSource="{Binding LeftColumn}" ItemTemplate="{StaticResource FieldBlock}" />
+                <ItemsControl Grid.Column="2" ItemsSource="{Binding RightColumn}" ItemTemplate="{StaticResource FieldBlock}" />
+            </Grid>
+            <!-- Rodapé opcional (ex.: export do perfil de hardware) — rola junto com os campos. -->
+            <ContentControl Content="{Binding $parent[views:SettingsGroupView].Footer}" Margin="4,0,20,4" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

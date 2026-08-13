@@ -1,0 +1,28 @@
+bin/
+obj/
+*.user
+.vs/
+dist/
+.DS_Store
+app/img/
+publish/
+.superpowers/
+docs/superpowers/
+tools/hidp0
+
+# Claude Code local settings
+.claude/
+
+# Artefatos do instalador Windows
+installer/windows/publish/
+installer/windows/output/
+installer/windows/hardware-profile.json
+installer/windows/.dotnet/
+installer/windows/dotnet-install.ps1
+
+# Zips e backups soltos (um git add -A ja varreu um app.zip de 387MB pro commit — nunca mais)
+*.zip
+*.bak
+# Copias de trabalho do firmware antigo (build .pio, etc.) ficam locais
+firmware-*/.pio/
+release-artifacts/

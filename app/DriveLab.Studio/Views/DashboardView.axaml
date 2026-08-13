@@ -1,0 +1,92 @@
+<!-- ============================================================================
+     DriveLab
+     DashboardView.axaml — Card do volante: imagem rotativa pelo ângulo, leitura e presets de ângulo máximo.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:conv="using:DriveLab.Studio.Converters"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+    <UserControl.Resources>
+        <conv:IntEqualsConverter x:Key="IntEquals" />
+    </UserControl.Resources>
+    <!-- Borda "conectado" acende com o ARO (rim) detectado — é o dispositivo que se pluga. -->
+    <Border Classes="card" Classes.connected="{Binding IsWheelConnected}">
+        <StackPanel Spacing="16">
+            <TextBlock Text="{loc:Translate Wheel_Title}" Classes="h2" />
+
+            <!-- Área de calibração: imagem do volante DriveLab girando com o ângulo lido -->
+            <Grid Width="240" Height="240" HorizontalAlignment="Center" ClipToBounds="False">
+                <Image Source="avares://DriveLab.Studio/Assets/wheel.png" Width="220" Stretch="Uniform"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+                    <Image.RenderTransform>
+                        <RotateTransform Angle="{Binding AngleDegrees}" />
+                    </Image.RenderTransform>
+                </Image>
+            </Grid>
+
+            <!-- Leitura de ângulo (não gira) -->
+            <TextBlock Text="{Binding AngleText}"
+                       Foreground="{DynamicResource DlText}" FontSize="26" FontWeight="Bold"
+                       HorizontalAlignment="Center" />
+
+            <!-- Presets (explicit buttons — robust, no item-template command binding) -->
+            <TextBlock Text="{loc:Translate Wheel_MaxAngle}" Classes="muted" />
+            <WrapPanel>
+                <Button Classes="chip" Content="360"  Command="{Binding SetMaxAngleCommand}" CommandParameter="360"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=360}" />
+                <Button Classes="chip" Content="540"  Command="{Binding SetMaxAngleCommand}" CommandParameter="540"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=540}" />
+                <Button Classes="chip" Content="720"  Command="{Binding SetMaxAngleCommand}" CommandParameter="720"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=720}" />
+                <Button Classes="chip" Content="900"  Command="{Binding SetMaxAngleCommand}" CommandParameter="900"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=900}" />
+                <Button Classes="chip" Content="1080" Command="{Binding SetMaxAngleCommand}" CommandParameter="1080" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1080}" />
+                <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
+            </WrapPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="accent" Content="{loc:Translate Center}" Command="{Binding CenterCommand}" />
+                <!-- O "Salvar no controlador" das abas de config NÃO alcança o dashboard: o ângulo de
+                     giro (MotionRange) e o centro vivem aqui. Sem este botão o ângulo escolhido se
+                     perde no power-cycle (constatado na bancada em 2026-08-05). -->
+                <Button Classes="accent" Content="{loc:Translate Save_ToController}"
+                        Command="{Binding SaveToControllerCommand}"
+                        ToolTip.Tip="{loc:Translate Save_ToController_Tip}" />
+            </StackPanel>
+
+            <!-- Atalho de CENTRALIZAR (estilo ACC): vários mapeamentos, de qualquer controlador HID
+                 e/ou do teclado. "Atribuir" entra em captura: segure o botão/combo e solte p/ confirmar. -->
+            <StackPanel Spacing="8" IsVisible="{Binding IsConnected}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{loc:Translate Center_Hotkey}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                    <Button Classes="chip" Content="{loc:Translate Center_Hotkey_Assign}"
+                            Command="{Binding ToggleAssignCenterButtonCommand}"
+                            Classes.selected="{Binding IsAssigningCenterButton}" />
+                    <Button Classes="chip" Content="{loc:Translate Center_Hotkey_ClearAll}"
+                            Command="{Binding ClearAllCenterButtonsCommand}" />
+                </StackPanel>
+
+                <!-- Lista dos mapeamentos ativos; cada linha tem o rótulo + ✕ para remover só aquele. -->
+                <ItemsControl ItemsSource="{Binding CenterBindings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CenterBindingRowViewModel">
+                            <Border Classes="valueBox" HorizontalAlignment="Left" Margin="0,0,0,4" Padding="10,3">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                    <Button Content="✕" Command="{Binding RemoveCommand}" Padding="7,1"
+                                            VerticalAlignment="Center" ToolTip.Tip="{loc:Translate Center_Hotkey_Remove}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="{loc:Translate Center_Hotkey_Empty}" Opacity="0.6"
+                           IsVisible="{Binding HasNoCenterBindings}" />
+                <TextBlock Text="{loc:Translate Center_Hotkey_Capturing}" Opacity="0.7" FontStyle="Italic"
+                           IsVisible="{Binding IsAssigningCenterButton}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

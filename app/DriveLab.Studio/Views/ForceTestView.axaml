@@ -1,0 +1,148 @@
+<!-- ============================================================================
+     DriveLab
+     ForceTestView.axaml — Aba de testes: cada teste é um cartão com o que ele
+     faz, quanta força chega a pedir, e o veredito depois de rodar.
+
+     O botão Parar fica FIXO no topo enquanto algo roda, e não dentro do cartão:
+     quem precisa dele está com o volante se mexendo na frente e não vai procurar.
+     Autor: Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.ForceTestView"
+             x:DataType="vm:ForceTestViewModel">
+    <ScrollViewer>
+        <StackPanel Spacing="12" Margin="4,4,20,16">
+
+            <TextBlock Text="{loc:Translate FT_Title}" FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource DlText}" />
+            <TextBlock Text="{loc:Translate FT_Desc}" TextWrapping="Wrap" Opacity="0.75"
+                       Foreground="{DynamicResource DlText}" />
+
+            <!-- O aviso não some nunca: a pessoa pode voltar à aba depois e esquecer. -->
+            <Border Background="#33FF9800" CornerRadius="6" Padding="12,10">
+                <TextBlock Text="{loc:Translate FT_Warning}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+
+            <!-- FORÇA DOS TESTES — no topo, antes de qualquer botão de rodar, porque é o controle
+                 que decide se a próxima ação é suave ou violenta. Nasce em 10%: os testes pedem 50 a
+                 100% do fundo de escala, e num DD isso arranca da mão de quem não esperava. -->
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="12,10">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate FT_Strength}"
+                               VerticalAlignment="Center" Foreground="{DynamicResource DlText}" />
+                    <Slider Grid.Row="0" Grid.Column="1" Minimum="5" Maximum="100"
+                            Value="{Binding ForcaPct}" IsSnapToTickEnabled="True" TickFrequency="5"
+                            Margin="12,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" MinWidth="46"
+                               TextAlignment="Right" Foreground="{DynamicResource DlText}"
+                               Text="{Binding ForcaPct, StringFormat={}{0:0} %}" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" FontSize="11"
+                               Opacity="0.6" TextWrapping="Wrap" Margin="0,6,0,0"
+                               Foreground="{DynamicResource DlText}"
+                               Text="{loc:Translate FT_StrengthHint}" />
+                </Grid>
+            </Border>
+
+            <!-- Motor desligado: o teste não roda, e a tela diz por quê ANTES de a pessoa tentar. -->
+            <Border Background="#332196F3" CornerRadius="6" Padding="12,10"
+                    IsVisible="{Binding !ForceEnabled}">
+                <TextBlock Text="{loc:Translate FT_NeedForce}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+
+            <Border Background="#33F44336" CornerRadius="6" Padding="12,10"
+                    IsVisible="{Binding Aviso, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="{Binding Aviso}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+
+            <!-- PARAR: fixo no topo enquanto algo roda. Aqui fica SO o botão — o progresso vai
+                 dentro do cartão que está rodando, porque o retorno tem de aparecer onde a pessoa
+                 clicou. Barra no topo para um botão lá embaixo faz procurar. -->
+            <Border Background="#44F44336" CornerRadius="8" Padding="12"
+                    IsVisible="{Binding PodeParar}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                               Text="{Binding EmExecucao.Nome}" FontWeight="SemiBold"
+                               Foreground="{DynamicResource DlText}" />
+                    <Button Grid.Column="1" Content="{loc:Translate FT_Stop}"
+                            Command="{Binding PararCommand}"
+                            FontWeight="Bold" Padding="20,8" />
+                </Grid>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding Testes}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ForceTestItemViewModel">
+                        <Border Background="#22000000" CornerRadius="8" Padding="14" Margin="0,0,0,10">
+                            <StackPanel Spacing="6">
+
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding Nome}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource DlText}" />
+                                        <TextBlock FontSize="11" Opacity="0.6"
+                                                   Foreground="{DynamicResource DlText}">
+                                            <Run Text="{Binding PicoPct, StringFormat='{}{0}%'}" />
+                                            <Run Text="{loc:Translate FT_Peak}" />
+                                            <Run Text="·" />
+                                            <Run Text="{Binding DuracaoS, StringFormat='{}{0:0}s'}" />
+                                            <Run Text="{loc:Translate FT_Duration}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="{loc:Translate FT_Run}"
+                                            Command="{Binding $parent[ItemsControl].((vm:ForceTestViewModel)DataContext).RodarCommand}"
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding !Rodando}"
+                                            Padding="18,6" VerticalAlignment="Center" />
+                                </Grid>
+
+                                <TextBlock Text="{Binding Descricao}"
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.75"
+                                           Foreground="{DynamicResource DlText}" />
+
+                                <!-- Progresso DESTE teste, no cartão em que se clicou. -->
+                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progresso}"
+                                             Height="6" Margin="0,4,0,0"
+                                             IsVisible="{Binding Rodando}" />
+
+                                <!-- Veredito -->
+                                <Border IsVisible="{Binding TemResultado}"
+                                        Background="#22FFFFFF" CornerRadius="6" Padding="10,8"
+                                        Margin="0,4,0,0">
+                                    <StackPanel Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{loc:Translate FT_Passed}"
+                                                       IsVisible="{Binding Passou}" />
+                                            <TextBlock Text="{loc:Translate FT_Attention}"
+                                                       IsVisible="{Binding !Passou}" />
+                                            <TextBlock Text="{Binding Resumo}" TextWrapping="Wrap"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource DlText}" />
+                                        </StackPanel>
+                                        <ItemsControl ItemsSource="{Binding Detalhes}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" TextWrapping="Wrap"
+                                                               FontSize="12" Opacity="0.8"
+                                                               Foreground="{DynamicResource DlText}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,446 @@
+// ============================================================================
+//  DriveLab
+//  UpdateViewModel.cs — VM da tela de atualização de firmware por USB:
+//  escolher o dispositivo, selecionar o arquivo, validar a assinatura contra
+//  o dispositivo e disparar o fluxo EnterDfu → WaitForBootloader → Flash,
+//  reportando progresso e um status final amigável.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using DriveLab.Core.Protocol;
+using DriveLab.Core.Update;
+using DriveLab.Studio.Services;
+
+namespace DriveLab.Studio.ViewModels;
+
+/// <summary>VM do módulo "Atualizar firmware". Recebe a lista de <see cref="IDeviceUpdater"/>
+/// disponíveis (hoje só a base) já ligados aos transportes reais; o seletor de arquivo e a
+/// leitura de bytes do disco são injetados para manter <see cref="SelectFileAsync"/> e
+/// <see cref="SendAsync"/> testáveis sem tocar IO/UI real.</summary>
+public sealed partial class UpdateViewModel : ViewModelBase
+{
+    /// <summary>Janela para o salto automático (por software) trazer o bootloader. Ele sobe em ~2-3s
+    /// ou não sobe — não adianta esperar muito.</summary>
+    private static readonly TimeSpan AutoBootloaderTimeout = TimeSpan.FromSeconds(8);
+
+    /// <summary>Janela para a etapa manual (SW1→DFU + power-cycle): a placa já deve estar em DFU quando
+    /// o usuário clica Continuar, então uma checagem curta basta.</summary>
+    private static readonly TimeSpan ManualBootloaderTimeout = TimeSpan.FromSeconds(10);
+
+    private readonly IFilePicker _filePicker;
+    private readonly Func<string, Task<byte[]>> _readFile;
+    private readonly IDeviceAccessCoordinator? _coordinator;
+    private readonly BaseSession? _baseSession;
+    private readonly GitHubReleaseClient? _releaseClient;
+    private readonly Func<Uri, Task<byte[]>>? _downloadBytes;
+    private GitHubAsset? _pendingAsset;   // asset do último "verificar" p/ o "baixar e usar"
+    private readonly Func<DeviceKind, (bool Connected, FirmwareVersion Version)>? _deviceStatus;
+
+    // Estado que persiste entre Send (tentativa auto) e Continuar/Cancelar (etapa manual SW1→DFU):
+    // qual dispositivo está sendo atualizado e se o acesso exclusivo à USB ainda está retido.
+    private IDeviceUpdater? _inFlightDevice;
+    private bool _exclusiveHeld;
+
+    /// <summary>Placa detectada + versão do firmware que está rodando nela (da telemetria 0x21), ou
+    /// "nenhuma placa detectada". Ajuda o usuário a ver de qual versão ele está atualizando.</summary>
+    [ObservableProperty]
+    private string _connectedDeviceInfo = "Nenhuma placa detectada.";
+
+    public IReadOnlyList<IDeviceUpdater> Devices { get; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendCommand))]
+    private IDeviceUpdater? _selectedDevice;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFirmwarePath))]
+    private string _firmwarePath = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendCommand))]
+    private bool _isFirmwareValid;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasValidationMessage))]
+    private string _validationMessage = "";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
+    private string _statusMessage = "";
+
+    /// <summary>Bindings de visibilidade (Avalonia negacao "!" so funciona bem em bool).</summary>
+    public bool HasFirmwarePath => !string.IsNullOrEmpty(FirmwarePath);
+    public bool HasValidationMessage => !string.IsNullOrEmpty(ValidationMessage);
+    public bool HasStatusMessage => !string.IsNullOrEmpty(StatusMessage);
+
+    /// <summary>Resultado do "verificar atualizações" no GitHub (última versão / nova disponível / erro).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdateCheckMessage))]
+    private string _updateCheckMessage = "";
+    public bool HasUpdateCheckMessage => !string.IsNullOrEmpty(UpdateCheckMessage);
+    public bool CanCheckUpdates => _releaseClient is not null;
+
+    /// <summary>Há um asset baixável do último "verificar" (habilita "Baixar e usar").</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DownloadUpdateCommand))]
+    private bool _updateDownloadable;
+
+    [ObservableProperty] private double _progress;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ContinueDfuCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelDfuCommand))]
+    private bool _isSending;
+
+    /// <summary>True quando o salto automático falhou e estamos esperando o usuário fazer SW1→DFU +
+    /// power-cycle e clicar Continuar. Controla a visibilidade do painel de instrução manual.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ContinueDfuCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelDfuCommand))]
+    private bool _needsManualDfu;
+
+    /// <summary>Instruções da etapa manual, específicas do dispositivo (RP2040 = BOOTSEL; base = SW1→DFU).</summary>
+    [ObservableProperty] private string _manualInstructions = "";
+
+    public UpdateViewModel(IReadOnlyList<IDeviceUpdater> devices, IFilePicker? filePicker = null,
+        Func<string, Task<byte[]>>? readFile = null, IDeviceAccessCoordinator? coordinator = null,
+        BaseSession? baseSession = null, GitHubReleaseClient? releaseClient = null,
+        Func<Uri, Task<byte[]>>? downloadBytes = null,
+        Func<DeviceKind, (bool, FirmwareVersion)>? deviceStatus = null)
+    {
+        Devices = devices;
+        _filePicker = filePicker ?? new AvaloniaFilePicker();
+        _readFile = readFile ?? (path => File.ReadAllBytesAsync(path));
+        _coordinator = coordinator;
+        _baseSession = baseSession;
+        _releaseClient = releaseClient;
+        _downloadBytes = downloadBytes;
+        _deviceStatus = deviceStatus;
+        _selectedDevice = devices.Count > 0 ? devices[0] : null;
+
+        if (_baseSession is not null)
+        {
+            // A base conecta/desconecta sozinha (auto-connect) e a versão chega na 1ª telemetria —
+            // por isso escutamos os 3 eventos e recalculamos o rótulo a cada um.
+            _baseSession.Connected += OnBaseConnectionChanged;
+            _baseSession.Disconnected += OnBaseConnectionChanged;
+            _baseSession.StateReceived += OnBaseStateReceived;
+        }
+        RefreshStatus();
+    }
+
+    private void OnBaseConnectionChanged(object? sender, EventArgs e) => RefreshStatus();
+    private void OnBaseStateReceived(object? sender, BaseState e) => RefreshStatus();
+
+    /// <summary>Atualiza o selo de status para refletir o DISPOSITIVO SELECIONADO (não só a base). Chamado ao
+    /// trocar de dispositivo e nos eventos de conexão das sessões (a base internamente; as demais via
+    /// CompositionRoot). Sem provider (`deviceStatus` null), cai no comportamento antigo (só a base).</summary>
+    public void RefreshStatus()
+    {
+        var kind = SelectedDevice?.Kind;
+        if (kind is null)
+        {
+            ConnectedDeviceInfo = "Selecione um dispositivo.";
+            return;
+        }
+
+        if (_deviceStatus is null)
+        {
+            // Fallback (sem provider): comportamento antigo, só a base.
+            if (_baseSession is null || !_baseSession.IsConnected)
+            {
+                ConnectedDeviceInfo = "Nenhuma placa detectada.";
+                return;
+            }
+            var vb = _baseSession.FirmwareVersion;
+            ConnectedDeviceInfo = $"DriveLab Base detectada — firmware v{vb.Major}.{vb.Minor}.{vb.Patch}";
+            return;
+        }
+
+        var (connected, v) = _deviceStatus(kind.Value);
+        var label = DeviceLabel(kind.Value);
+        if (!connected)
+        {
+            ConnectedDeviceInfo = $"{label}: sem conexão.";
+            return;
+        }
+        bool hasVersion = v.Major != 0 || v.Minor != 0 || v.Patch != 0;
+        ConnectedDeviceInfo = hasVersion
+            ? $"{label} conectado — firmware v{v.Major}.{v.Minor}.{v.Patch}"
+            : $"{label} conectado.";
+    }
+
+    private static string DeviceLabel(DeviceKind kind) => kind switch
+    {
+        DeviceKind.Base => "Base",
+        DeviceKind.Pedal => "Pedal",
+        DeviceKind.Handbrake => "Freio de mão",
+        DeviceKind.Wheel => "Volante",
+        _ => kind.ToString(),
+    };
+
+    partial void OnSelectedDeviceChanged(IDeviceUpdater? value)
+    {
+        RevalidateCurrentFile();
+        UpdateCheckMessage = "";   // resultado do check é por-dispositivo
+        UpdateDownloadable = false;
+        _pendingAsset = null;
+        RefreshStatus();           // selo reflete o dispositivo agora selecionado
+    }
+
+    /// <summary>Consulta o GitHub e informa a última versão do dispositivo selecionado (e se é mais nova que a
+    /// instalada, quando dá pra comparar — hoje só a base tem a versão via telemetria).</summary>
+    [RelayCommand]
+    private async Task CheckUpdatesAsync()
+    {
+        if (_releaseClient is null || SelectedDevice is null) return;
+        var device = SelectedDevice;
+        UpdateCheckMessage = "Verificando…";
+        UpdateDownloadable = false;
+        _pendingAsset = null;
+        try
+        {
+            var releases = await _releaseClient.ListReleasesAsync();
+            var prefix = GitHubReleaseClient.TagPrefixFor(device.Kind);
+            var latest = GitHubReleaseClient.LatestFor(releases, prefix);
+            if (latest is null)
+            {
+                UpdateCheckMessage = $"Nenhum release publicado para {device.Kind}.";
+                return;
+            }
+            GitHubReleaseClient.TryParseVersion(latest.TagName, prefix, out var v);
+            if (device.Kind == DeviceKind.Base && _baseSession is { IsConnected: true })
+            {
+                var inst = _baseSession.FirmwareVersion;
+                UpdateCheckMessage = GitHubReleaseClient.IsNewer(v, inst)
+                    ? $"⬆ Nova versão: v{v.Major}.{v.Minor}.{v.Patch} (instalada v{inst.Major}.{inst.Minor}.{inst.Patch})."
+                    : $"✓ Está atualizado (v{inst.Major}.{inst.Minor}.{inst.Patch}).";
+            }
+            else
+            {
+                UpdateCheckMessage = $"Última no GitHub: v{v.Major}.{v.Minor}.{v.Patch}.";
+            }
+
+            // Habilita "Baixar e usar" se o release traz o asset certo (.bin/.uf2) e sabemos baixar.
+            _pendingAsset = GitHubReleaseClient.AssetFor(latest, device.Kind);
+            UpdateDownloadable = _pendingAsset is not null && _downloadBytes is not null;
+        }
+        catch (Exception ex)
+        {
+            UpdateCheckMessage = $"Falha ao verificar: {ex.Message}";
+        }
+    }
+
+    /// <summary>Baixa o asset do release para um arquivo temporário e o carrega no fluxo de flash (valida na hora;
+    /// depois é só clicar Enviar). Não flasheia sozinho — o usuário confirma no botão Enviar.</summary>
+    [RelayCommand(CanExecute = nameof(CanDownloadUpdate))]
+    private async Task DownloadUpdateAsync()
+    {
+        if (_downloadBytes is null || _pendingAsset is null) return;
+        UpdateCheckMessage = "Baixando…";
+        try
+        {
+            var bytes = await _downloadBytes(new Uri(_pendingAsset.DownloadUrl));
+            var dest = Path.Combine(Path.GetTempPath(), _pendingAsset.Name);
+            await File.WriteAllBytesAsync(dest, bytes);
+            FirmwarePath = dest;
+            await ValidateAsync(dest);
+            UpdateCheckMessage = $"Baixado: {_pendingAsset.Name} — confira e clique Enviar.";
+        }
+        catch (Exception ex)
+        {
+            UpdateCheckMessage = $"Falha ao baixar: {ex.Message}";
+        }
+    }
+
+    private bool CanDownloadUpdate() => _downloadBytes is not null && _pendingAsset is not null && !IsSending;
+
+    [RelayCommand]
+    private async Task SelectFile()
+    {
+        var path = await _filePicker.PickFirmwareFileAsync();
+        if (path is null)
+            return;
+
+        FirmwarePath = path;
+        await ValidateAsync(path);
+    }
+
+    private void RevalidateCurrentFile()
+    {
+        if (string.IsNullOrEmpty(FirmwarePath))
+            return;
+        _ = ValidateAsync(FirmwarePath);
+    }
+
+    private async Task ValidateAsync(string path)
+    {
+        IsFirmwareValid = false;
+        try
+        {
+            var bytes = await _readFile(path);
+            if (SelectedDevice is null)
+            {
+                ValidationMessage = "Selecione um dispositivo antes de validar o arquivo.";
+                return;
+            }
+
+            if (SelectedDevice.ValidateFirmware(bytes, out var error))
+            {
+                var info = FirmwareFile.Read(bytes);
+                ValidationMessage = $"✓ Firmware válido para {SelectedDevice.Kind} — versão {info.Version}.";
+                IsFirmwareValid = true;
+            }
+            else
+            {
+                ValidationMessage = $"✗ {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ValidationMessage = $"✗ Não foi possível ler o arquivo: {ex.Message}";
+        }
+    }
+
+    private bool CanSend() => IsFirmwareValid && SelectedDevice is not null && !IsSending && !NeedsManualDfu;
+
+    [RelayCommand(CanExecute = nameof(CanSend))]
+    private async Task Send()
+    {
+        if (SelectedDevice is null || !IsFirmwareValid)
+            return;
+
+        var device = SelectedDevice;
+        _inFlightDevice = device;
+        IsSending = true;
+        NeedsManualDfu = false;
+        Progress = 0;
+        try
+        {
+            StatusMessage = "Enviando comando para entrar em modo de atualização (DFU)...";
+            await device.EnterBootloaderAsync();
+
+            // Controle exclusivo da USB: pausa o auto-connect e solta o handle HID, para o
+            // dispositivo re-enumerar como DFU sem outro ator reabrir o device (ver
+            // IDeviceAccessCoordinator). Chamado DEPOIS do EnterDfu, que ainda usa o transporte.
+            if (_coordinator is not null)
+            {
+                // Marca ANTES do await: se BeginExclusiveAsync pausar o auto-connect e então lançar,
+                // o ReleaseExclusiveAsync (no catch) ainda retoma — nunca deixa o poller pausado.
+                _exclusiveHeld = true;
+                await _coordinator.BeginExclusiveAsync(device.Kind);
+            }
+
+            StatusMessage = $"Aguardando o bootloader ({device.BootloaderName}) — salto automático...";
+            if (await device.WaitForBootloaderAsync(AutoBootloaderTimeout))
+            {
+                await FlashAndReportAsync(device);
+                await ReleaseExclusiveAsync();
+            }
+            else
+            {
+                // O salto por software não subiu o bootloader. Cai pro gatilho manual: mantém o acesso
+                // exclusivo retido e mostra a instrução CERTA do dispositivo (SW1→DFU na base; BOOTSEL no RP2040).
+                EnterManualMode(device);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Falha na atualização: {ex.Message}";
+            await ReleaseExclusiveAsync();
+        }
+        finally
+        {
+            IsSending = false;
+        }
+    }
+
+    private bool CanContinueOrCancel() => NeedsManualDfu && !IsSending;
+
+    /// <summary>Etapa manual: o usuário pôs SW1→DFU e reiniciou a placa; detecta o bootloader e grava.</summary>
+    [RelayCommand(CanExecute = nameof(CanContinueOrCancel))]
+    private async Task ContinueDfu()
+    {
+        var device = _inFlightDevice;
+        if (device is null)
+            return;
+
+        IsSending = true;
+        try
+        {
+            StatusMessage = $"Procurando o bootloader ({device.BootloaderName})...";
+            if (await device.WaitForBootloaderAsync(ManualBootloaderTimeout))
+            {
+                NeedsManualDfu = false;
+                await FlashAndReportAsync(device);
+                await ReleaseExclusiveAsync();
+            }
+            else
+            {
+                // Continua na etapa manual — deixa o usuário conferir e tentar de novo (texto por dispositivo).
+                StatusMessage = device.Kind == DeviceKind.Base
+                    ? "Ainda não vejo o bootloader (0483:df11). Confirme SW1 em DFU + power-cycle e clique em Continuar de novo."
+                    : "Ainda não vejo o volume RPI-RP2. Confirme o BOOTSEL e clique em Continuar de novo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Falha na atualização: {ex.Message}";
+            NeedsManualDfu = false;
+            await ReleaseExclusiveAsync();
+        }
+        finally
+        {
+            IsSending = false;
+        }
+    }
+
+    /// <summary>Aborta a etapa manual: solta o acesso exclusivo (retoma o auto-connect) e reseta o estado.</summary>
+    [RelayCommand(CanExecute = nameof(CanContinueOrCancel))]
+    private async Task CancelDfu()
+    {
+        StatusMessage = "Atualização cancelada.";
+        NeedsManualDfu = false;
+        await ReleaseExclusiveAsync();
+    }
+
+    /// <summary>Entra na etapa manual com a instrução CERTA do dispositivo: base = SW1→DFU (STM32);
+    /// RP2040 (pedal/freio/aro) = BOOTSEL (RPI-RP2).</summary>
+    private void EnterManualMode(IDeviceUpdater device)
+    {
+        NeedsManualDfu = true;
+        if (device.Kind == DeviceKind.Base)
+        {
+            StatusMessage = "A placa não entrou em DFU sozinha. Coloque a chave SW1 em DFU, faça um power-cycle (RESET/energia) e clique em Continuar.";
+            ManualInstructions = "1) Coloque a chave SW1 da placa em DFU.\n2) Faça um power-cycle (RESET ou tire/recoloque a energia).\n3) Clique em Continuar.";
+        }
+        else
+        {
+            StatusMessage = "O dispositivo não entrou em BOOTSEL sozinho (firmware antigo, sem o comando?). Coloque-o em BOOTSEL e clique em Continuar.";
+            ManualInstructions = "1) Segure o botão BOOT da placa e conecte o USB (ou, já plugado: segure BOOT, aperte e solte RESET, solte BOOT).\n2) O volume RPI-RP2 deve aparecer no Finder.\n3) Clique em Continuar.";
+        }
+    }
+
+    private async Task FlashAndReportAsync(IDeviceUpdater device)
+    {
+        StatusMessage = "Enviando firmware...";
+        var progress = new Progress<double>(p => Progress = p);
+        await device.FlashAsync(FirmwarePath, progress);
+        StatusMessage = "Atualização concluída com sucesso.";
+    }
+
+    /// <summary>Retoma o auto-connect (reconecta a placa já com o firmware novo) e limpa o estado em voo.
+    /// Idempotente — seguro chamar mesmo sem acesso exclusivo retido.</summary>
+    private async Task ReleaseExclusiveAsync()
+    {
+        if (_exclusiveHeld && _coordinator is not null && _inFlightDevice is not null)
+            await _coordinator.EndExclusiveAsync(_inFlightDevice.Kind);
+        _exclusiveHeld = false;
+        _inFlightDevice = null;
+    }
+}

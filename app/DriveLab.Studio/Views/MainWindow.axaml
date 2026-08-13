@@ -1,0 +1,137 @@
+<!-- ============================================================================
+     DriveLab
+     MainWindow.axaml — Janela principal: sidebar de navegação, barra de conexão e conteúdo da página atual.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DriveLab.Studio.ViewModels"
+        xmlns:loc="using:DriveLab.Studio.Localization"
+        x:Class="DriveLab.Studio.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:Name="Root"
+        Width="1040" Height="680"
+        WindowState="Maximized"
+        Title="DriveLab Studio"
+        Icon="avares://DriveLab.Studio/Assets/logo.png"
+        Background="{DynamicResource DlBackground}"
+        TransparencyLevelHint="None">
+    <Grid ColumnDefinitions="64,*">
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="{DynamicResource DlCard}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,1,0">
+            <StackPanel Margin="0,16" Spacing="8" HorizontalAlignment="Center">
+                <!-- O logo É o botão do Dashboard -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[0].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[0]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/logo.png" Width="30" Height="30" />
+                </Button>
+                <!-- Base do Volante: ícone próprio (base_ico.png) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[1].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[1]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/base_ico.png" Width="26" Height="26" />
+                </Button>
+                <!-- Volante: ícone próprio (wheel_ico.png) — logo após a base -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[2].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[2]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/wheel_ico.png" Width="26" Height="26" />
+                </Button>
+                <!-- Pedais: ícone próprio (pedais.png) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[3].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[3]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/pedais.png" Width="26" Height="26" />
+                </Button>
+                <!-- Freio de mão: ícone próprio (handbrake_ico.png) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[4].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[4]}">
+                    <Image Source="avares://DriveLab.Studio/Assets/handbrake_ico.png" Width="26" Height="26" />
+                </Button>
+                <!-- Atualizar firmware: ícone vetorial (seta para baixo sobre uma bandeja/placa) -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[5].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[5]}">
+                    <Viewbox Width="24" Height="24">
+                        <Canvas Width="20" Height="20">
+                            <!-- haste + cabeça da seta apontando para baixo -->
+                            <Rectangle Canvas.Left="9" Canvas.Top="0" Width="2" Height="10" Fill="{DynamicResource DlMuted}" />
+                            <Path Canvas.Left="4" Canvas.Top="8" Fill="{DynamicResource DlMuted}"
+                                  Data="M0,0 L12,0 L6,7 Z" />
+                            <!-- bandeja -->
+                            <Rectangle Canvas.Left="1" Canvas.Top="17" Width="18" Height="2" Fill="{DynamicResource DlMuted}" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+
+                <!-- Auto-perfil por jogo -->
+                <Button Classes="nav" ToolTip.Tip="{Binding Pages[6].Label}"
+                        Command="{Binding NavigateCommand}" CommandParameter="{Binding Pages[6]}">
+                    <TextBlock Text="&#x1F3AE;" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+
+                <!-- Separador antes da ação de sair -->
+                <Border Height="1" Width="28" Background="{DynamicResource DlBorder}" Margin="0,4" />
+
+                <!-- Sair do app: bandeira de chegada (quadriculada), desenho vetorial -->
+                <Button Classes="nav" ToolTip.Tip="{loc:Translate Nav_Quit}" Click="CloseApp_Click">
+                    <Viewbox Width="24" Height="24">
+                        <Canvas Width="20" Height="18">
+                            <!-- mastro -->
+                            <Rectangle Canvas.Left="0" Canvas.Top="0" Width="2" Height="18" Fill="{DynamicResource DlMuted}" />
+                            <!-- fundo branco da bandeira -->
+                            <Rectangle Canvas.Left="3" Canvas.Top="1" Width="16" Height="16" Fill="White"
+                                       Stroke="{DynamicResource DlBorder}" StrokeThickness="1" />
+                            <!-- quadros pretos do xadrez 4x4 -->
+                            <Path Canvas.Left="3" Canvas.Top="1" Fill="Black"
+                                  Data="M0,0 H4 V4 H0 Z M8,0 H12 V4 H8 Z M4,4 H8 V8 H4 Z M12,4 H16 V8 H12 Z M0,8 H4 V12 H0 Z M8,8 H12 V12 H8 Z M4,12 H8 V16 H4 Z M12,12 H16 V16 H12 Z" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- Content -->
+        <Grid Grid.Column="1" RowDefinitions="Auto,*">
+            <!-- Top connection bar -->
+            <Border Grid.Row="0" Padding="20,14" Background="{DynamicResource DlBackground}" BorderBrush="{DynamicResource DlBorder}" BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,Auto,Auto" DataContext="{Binding Connection}" x:DataType="vm:ConnectionViewModel">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding #Root.((vm:MainWindowViewModel)DataContext).HeaderTitle}" Classes="h2" VerticalAlignment="Center" />
+                        <!-- Badge de modo simulador (só quando iniciado com /simulator) -->
+                        <Border IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}"
+                                Background="#FF8124" CornerRadius="999" Padding="10,3" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Translate Badge_Simulator}" Foreground="#111111" FontSize="11" FontWeight="Bold" LetterSpacing="1" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Parada de emergência: sempre acessível no topo; corta a força da base (SetForceEnabled=0). -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0"
+                                DataContext="{Binding #Root.((vm:MainWindowViewModel)DataContext).EStop}" x:DataType="vm:EmergencyStopViewModel">
+                        <Button Command="{Binding StopCommand}" IsVisible="{Binding !Engaged}"
+                                Background="#D63A3A" Foreground="White" FontWeight="Bold" CornerRadius="8" Padding="14,7"
+                                Content="{loc:Translate EStop_Stop}" ToolTip.Tip="{loc:Translate EStop_Tooltip}" />
+                        <Border IsVisible="{Binding Engaged}" Background="#D63A3A" CornerRadius="8" Padding="10,5">
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <TextBlock Text="{loc:Translate EStop_Engaged}" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" />
+                                <Button Command="{Binding RearmCommand}" Content="{loc:Translate EStop_Rearm}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Sem status global de conexão: cada módulo (base, pedais, freio de mão, aro) conecta seu próprio dispositivo. -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button Content="{loc:Translate Test_Button}" Click="OpenTest_Click" ToolTip.Tip="{loc:Translate Test_Tooltip}"
+                                IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}" />
+                        <!-- Conectar/Desconectar manuais só no simulador; no modo real a conexão é automática (hotplug USB). -->
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}">
+                            <Button Classes="accent" Content="Conectar" Command="{Binding ConnectCommand}" IsVisible="{Binding !IsConnected}" />
+                            <Button Content="Desconectar" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsConnected}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Current page -->
+            <ContentControl Grid.Row="1" Margin="20" Content="{Binding CurrentPage}" />
+        </Grid>
+    </Grid>
+</Window>

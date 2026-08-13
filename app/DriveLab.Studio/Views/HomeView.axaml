@@ -1,0 +1,87 @@
+<!-- ============================================================================
+     DriveLab
+     HomeView.axaml — Dashboard inicial: cards do volante, base, resumo dos pedais e do freio de mão.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:views="using:DriveLab.Studio.Views"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             xmlns:conv="using:DriveLab.Studio.Converters"
+             x:Class="DriveLab.Studio.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!-- Cards de 420 de largura; o painel cabe exatamente 3 por linha (3×436=1308),
+             o 4º quebra para a linha de baixo. Cada card tem sua altura natural. -->
+        <WrapPanel MaxWidth="1320" HorizontalAlignment="Left" Margin="0,0,0,16">
+            <!-- Card do volante -->
+            <views:DashboardView Width="420" Margin="0,0,16,16" DataContext="{Binding Wheel}"
+                                 Tag="wheel" Tapped="Card_Tapped" />
+
+            <!-- Card da base: um único controle de força total -->
+            <Border Width="420" Margin="0,0,16,16" Classes="card" Classes.connected="{Binding IsConnected}"
+                    DataContext="{Binding Base}" x:DataType="vm:BaseViewModel"
+                    Tag="base" Tapped="Card_Tapped">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{loc:Translate Home_Base}" Classes="h2" />
+                    <Image Source="avares://DriveLab.Studio/Assets/base.png" Width="360" Stretch="Uniform"
+                           HorizontalAlignment="Center" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:Translate Base_Force}" Foreground="{DynamicResource DlText}" />
+                        <TextBlock Grid.Column="1" Text="{Binding TotalStrength, StringFormat={}{0:0}%}" Foreground="{DynamicResource DlMuted}" />
+                    </Grid>
+                    <Slider Minimum="0" Maximum="100" Value="{Binding TotalStrength}" IsEnabled="{Binding IsConnected}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Card resumo dos pedais (ao vivo) -->
+            <Border Width="420" Margin="0,0,16,16" Classes="card" Classes.connected="{Binding Pedals.IsConnected}"
+                    Tag="pedals" Tapped="Card_Tapped">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{loc:Translate Home_Pedals}" Classes="h2" />
+                    <Image Source="avares://DriveLab.Studio/Assets/pedais-dlab.png" Width="360" Stretch="Uniform"
+                           HorizontalAlignment="Center" />
+                    <ItemsControl ItemsSource="{Binding Pedals.Columns}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PedalColumnViewModel">
+                                <StackPanel Spacing="6" Margin="0,6">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="{DynamicResource DlText}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding CurrentOutput01, StringFormat={}{0:P0}}" Foreground="{DynamicResource DlMuted}" />
+                                    </Grid>
+                                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentOutput01}"
+                                                 Height="8" CornerRadius="4" Foreground="#FF6A00" Background="#22FFFFFF" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Card do freio de mão (ao vivo) -->
+            <Border Width="420" Margin="0,0,16,16" Classes="card" Classes.connected="{Binding IsConnected}"
+                    DataContext="{Binding Handbrake}" x:DataType="vm:HandbrakeViewModel"
+                    Tag="handbrake" Tapped="Card_Tapped">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{loc:Translate Home_Handbrake}" Classes="h2" />
+                    <!-- Mesma largura do card dos pedais (imagem equivalente, 1536x1024) para
+                         a imagem e a barra "Eixo" ficarem alinhadas com as barras do pedal. -->
+                    <Image Source="avares://DriveLab.Studio/Assets/handbrake.png" Width="360" Stretch="Uniform"
+                           HorizontalAlignment="Center" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:Translate Handbrake_Axis}" Foreground="{DynamicResource DlText}" />
+                        <TextBlock Grid.Column="1" Text="{Binding CurrentOutput01, StringFormat={}{0:P0}}" Foreground="{DynamicResource DlMuted}" />
+                    </Grid>
+                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentOutput01}"
+                                 Height="8" CornerRadius="4" Foreground="#FF6A00" Background="#22FFFFFF" />
+                    <Border CornerRadius="6" Padding="10,4" HorizontalAlignment="Left"
+                            Background="{Binding ButtonActive, Converter={x:Static conv:BoolToBrushConverter.Instance}}">
+                        <TextBlock Text="{loc:Translate Handbrake_Button}" Foreground="#111111" FontWeight="Bold" />
+                    </Border>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+    </ScrollViewer>
+</UserControl>

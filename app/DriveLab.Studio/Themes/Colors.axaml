@@ -1,0 +1,40 @@
+<!-- ============================================================================
+     DriveLab
+     Colors.axaml — Paleta de cores e brushes do tema escuro (accent laranja) do Studio.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="DlBackgroundColor">#0F1216</Color>
+    <Color x:Key="DlCardColor">#171B21</Color>
+    <Color x:Key="DlAccentColor">#FF6A00</Color>
+    <Color x:Key="DlTextColor">#E7EBF0</Color>
+    <Color x:Key="DlMutedColor">#9AA4B0</Color>
+    <Color x:Key="DlBorderColor">#262C34</Color>
+
+    <SolidColorBrush x:Key="DlBackground" Color="{StaticResource DlBackgroundColor}" />
+    <SolidColorBrush x:Key="DlCard" Color="{StaticResource DlCardColor}" />
+    <SolidColorBrush x:Key="DlAccent" Color="{StaticResource DlAccentColor}" />
+    <SolidColorBrush x:Key="DlText" Color="{StaticResource DlTextColor}" />
+    <SolidColorBrush x:Key="DlMuted" Color="{StaticResource DlMutedColor}" />
+    <SolidColorBrush x:Key="DlBorder" Color="{StaticResource DlBorderColor}" />
+
+    <!-- Accent laranja do Fluent (sliders, aba selecionada, toggles) — estilo MOZA -->
+    <Color x:Key="SystemAccentColor">#FF6A00</Color>
+    <Color x:Key="SystemAccentColorLight1">#FF8124</Color>
+    <Color x:Key="SystemAccentColorLight2">#FF9A4D</Color>
+    <Color x:Key="SystemAccentColorLight3">#FFB27A</Color>
+    <Color x:Key="SystemAccentColorDark1">#E65F00</Color>
+    <Color x:Key="SystemAccentColorDark2">#CC5400</Color>
+    <Color x:Key="SystemAccentColorDark3">#B34900</Color>
+
+    <!-- Slider laranja (preenchimento + pegador) -->
+    <SolidColorBrush x:Key="SliderTrackValueFill" Color="#FF6A00" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#FF8124" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="#FF8124" />
+    <SolidColorBrush x:Key="SliderTrackValueFillDisabled" Color="#5A4020" />
+    <SolidColorBrush x:Key="SliderThumbBackground" Color="#FF6A00" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#FF8124" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#FF9A4D" />
+</ResourceDictionary>

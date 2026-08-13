@@ -1,0 +1,35 @@
+<!-- ============================================================================
+     DriveLab
+     TelemetryView.axaml — Aba de telemetria: gráfico cartesiano das séries do dispositivo.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.TelemetryView"
+             x:DataType="vm:TelemetryViewModel">
+    <DockPanel>
+        <!-- Gravador de diagnóstico: grava a telemetria em CSV + marcações do usuário (loop de feedback). -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+            <Button Content="{loc:Translate Diag_Record}" Command="{Binding Recorder.StartCommand}"
+                    IsVisible="{Binding !Recorder.IsRecording}" />
+            <Button Classes="accent" Content="{loc:Translate Diag_Stop}" Command="{Binding Recorder.StopCommand}"
+                    IsVisible="{Binding Recorder.IsRecording}" />
+            <TextBox Width="180" Text="{Binding Recorder.MarkNote}" Watermark="{loc:Translate Diag_Note}"
+                     IsEnabled="{Binding Recorder.IsRecording}" />
+            <Button Content="{loc:Translate Diag_Mark}" Command="{Binding Recorder.MarkCommand}" />
+            <TextBlock Classes="muted" VerticalAlignment="Center"
+                       Text="{Binding Recorder.RowCount, StringFormat={}{0} linhas}"
+                       IsVisible="{Binding Recorder.IsRecording}" />
+        </StackPanel>
+        <!-- LEGENDA LIGADA: as séries sempre tiveram nome ("Posição %" / "Torque %"), mas a legenda
+             nunca foi habilitada — quem olhasse o gráfico não tinha como saber qual linha era qual
+             (o usuário precisou perguntar, na bancada em 2026-08-10). Rótulo que existe e não é
+             mostrado é pior que não ter: dá trabalho de manter e não ajuda ninguém. -->
+        <lvc:CartesianChart Series="{Binding Series}" YAxes="{Binding YAxes}" MinHeight="320"
+                            LegendPosition="Top" />
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,115 @@
+# ============================================================================
+#  DriveLab — CI do instalador Windows.
+#  Publica o app (self-contained x64) + compila o Inno Setup num runner Windows e sobe o setup.exe como
+#  artefato. Permite gerar o instalador SEM ter Windows (útil pra quem desenvolve no Mac).
+#  Dispare manualmente (Actions -> "Windows installer" -> Run) ou por tag studio-v*.
+# ============================================================================
+name: Windows installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão do instalador (ex.: 1.0.0)"
+        required: true
+        default: "1.0.0"
+  push:
+    tags:
+      - "studio-v*"
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish (self-contained win-x64)
+        run: >
+          dotnet publish app/DriveLab.Studio/DriveLab.Studio.csproj -c Release -r win-x64
+          --self-contained true -o installer/windows/publish
+
+      # Inclui o perfil de hardware do criador (se commitado em installer/windows/) ao lado do .exe.
+      - name: Bundle hardware profile (se existir)
+        shell: pwsh
+        run: |
+          if (Test-Path installer/windows/hardware-profile.json) {
+            Copy-Item installer/windows/hardware-profile.json installer/windows/publish/ -Force
+            Write-Host "hardware-profile.json incluído no pacote."
+          } else {
+            Write-Host "Sem hardware-profile.json — instalador genérico (aba Hardware aparece se rodar com --advanced)."
+          }
+
+      # dfu-util VAI JUNTO no instalador: sem ele o usuario final nao consegue atualizar pela USB,
+      # e exigir que instale por conta propria mata o recurso na pratica (constatado na bancada em
+      # 2026-08-10 — o EnterDfu funcionou, a placa entrou em DFU, e a atualizacao parou por falta do
+      # utilitario). O app procura primeiro ao lado do proprio executavel.
+      # GPLv2: distribuido como executavel separado, com licenca e link do fonte junto.
+      - name: Baixar dfu-util
+        shell: pwsh
+        run: |
+          $url = "https://dfu-util.sourceforge.net/releases/dfu-util-0.11-binaries.tar.xz"
+          $tmp = Join-Path $env:RUNNER_TEMP "dfu"
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile "$tmp\dfu.tar.xz"
+          tar -xf "$tmp\dfu.tar.xz" -C $tmp
+          $exe = Get-ChildItem $tmp -Recurse -Filter "dfu-util.exe" |
+                 Where-Object { $_.FullName -match "win64" } | Select-Object -First 1
+          if (-not $exe) { $exe = Get-ChildItem $tmp -Recurse -Filter "dfu-util.exe" | Select-Object -First 1 }
+          if (-not $exe) { throw "dfu-util.exe nao encontrado no pacote baixado" }
+          Copy-Item $exe.FullName installer/windows/publish/ -Force
+          # licenca junto, como manda a GPL
+          $lic = Get-ChildItem $tmp -Recurse -Include "COPYING","LICENSE*" | Select-Object -First 1
+          if ($lic) { Copy-Item $lic.FullName installer/windows/publish/dfu-util-COPYING.txt -Force }
+          Write-Host "dfu-util incluido no pacote."
+
+      # DRIVER AUTOMATICO — o usuario final nao deveria precisar do Zadig.
+      #
+      # O bootloader da ST nao declara WCID (confirmado no proprio Zadig: "WCID x"), entao o Windows
+      # nao instala o WinUSB sozinho — sem driver o dispositivo aparece com erro codigo 28 e a
+      # atualizacao por USB nao acontece (bancada, 2026-08-10).
+      #
+      # wdi-simple e o utilitario do libwdi feito para embutir em instaladores. Ele gera o .inf
+      # apontando para o WinUSB (driver da Microsoft, ja assinado) e instala. Instala MESMO SEM o
+      # dispositivo conectado, o que permite PRE-REGISTRAR o 0483:DF11 na instalacao — assim a
+      # primeira atualizacao ja funciona, sem o usuario ver erro nenhum.
+      #
+      # Compilado aqui e nao baixado pronto: o libwdi nao publica binario do wdi-simple (so o
+      # Zadig). LGPL — vai como executavel separado, com a licenca junto.
+      - name: Compilar wdi-simple (instalador de driver)
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/pbatard/libwdi.git "$env:RUNNER_TEMP\libwdi"
+          $sln = "$env:RUNNER_TEMP\libwdi\libwdi.sln"
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installerswhere.exe" `
+                       -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" |
+                     Select-Object -First 1
+          if (-not $msbuild) { throw "MSBuild nao encontrado" }
+          & $msbuild $sln /p:Configuration=Release /p:Platform=x64 /t:wdi_simple /v:minimal /nologo
+          $exe = Get-ChildItem "$env:RUNNER_TEMP\libwdi" -Recurse -Filter "wdi-simple.exe" |
+                 Select-Object -First 1
+          if (-not $exe) { throw "wdi-simple.exe nao foi gerado" }
+          Copy-Item $exe.FullName installer/windows/publish/ -Force
+          Copy-Item "$env:RUNNER_TEMP\libwdi\COPYING-LGPL" installer/windows/publish/libwdi-COPYING-LGPL.txt -Force -ErrorAction SilentlyContinue
+          Write-Host "wdi-simple incluido no pacote."
+
+      - name: Instalar Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Compilar instalador
+        shell: pwsh
+        run: |
+          $ver = "${{ github.event.inputs.version }}"
+          if (-not $ver) { $ver = "0.0.0-ci" }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$ver" installer/windows/DriveLab.iss
+
+      - name: Upload do setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: DriveLab-Windows-Installer
+          path: installer/windows/output/*.exe
+          if-no-files-found: error

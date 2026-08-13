@@ -1,0 +1,238 @@
+<!-- ============================================================================
+     DriveLab
+     PedalsView.axaml — Tela dos pedais: curvas por coluna, presets, sensor, freio (unidade/escala), monitor e calibração.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:conv="using:DriveLab.Studio.Converters"
+             xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             xmlns:controls="using:DriveLab.Studio.Controls"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.PedalsView"
+             x:DataType="vm:PedalsViewModel">
+    <UserControl.Resources>
+        <conv:IntEqualsConverter x:Key="IntEquals" />
+
+        <DataTemplate x:Key="PedalColumn" x:DataType="vm:PedalColumnViewModel">
+          <Grid ColumnDefinitions="*,Auto" Margin="6">
+            <Border Grid.Column="0" Classes="card" HorizontalAlignment="Stretch">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="{Binding Label}" Classes="h2" HorizontalAlignment="Center" />
+
+                    <!-- Curvas de saída (chips estilo Pit House) -->
+                    <TextBlock Text="{loc:Translate Pedal_OutputCurves}" Classes="muted" />
+                    <ItemsControl ItemsSource="{Binding PresetOptions}" IsEnabled="{Binding CanEdit}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PedalPresetOption">
+                                <Button Classes="chip" Content="{Binding Name}"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Command="{Binding $parent[ItemsControl].((vm:PedalColumnViewModel)DataContext).SelectPresetCommand}"
+                                        CommandParameter="{Binding Preset}"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Margin="3,8,3,0" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <controls:PedalCurveEditor Height="200"
+                        Points="{Binding Points}"
+                        DeadzoneLow="{Binding DeadzoneLow, Mode=TwoWay}"
+                        DeadzoneHigh="{Binding DeadzoneHigh, Mode=TwoWay}"
+                        LiveInput01="{Binding CurrentInput01}"
+                        LiveOutput01="{Binding CurrentOutput01}"
+                        EditEnabled="{Binding CanEdit}" />
+                    <TextBlock Text="{loc:Translate Pedal_PreviewOnly}" Classes="endLabel"
+                               HorizontalAlignment="Center" IsVisible="{Binding CurvePreviewOnly}" />
+
+                    <!-- Inverter (toggle laranja) -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Pedal_Invert}" />
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding Invert}" IsEnabled="{Binding CanEdit}"
+                                      OnContent="" OffContent="" />
+                    </Grid>
+
+                    <!-- Suavização: título + valor na mesma linha; slider abaixo (padrão "Range do batente"). -->
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{loc:Translate Pedal_Smoothing}" />
+                            <Border Grid.Column="1" Classes="valueBox">
+                                <TextBlock Text="{Binding Smooth, StringFormat={}{0:0}}" />
+                            </Border>
+                        </Grid>
+                        <Slider Minimum="0" Maximum="100" Value="{Binding Smooth}" IsEnabled="{Binding CanEdit}"
+                                VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Freio: força em % / KG + fundo de escala -->
+                    <StackPanel IsVisible="{Binding IsBrake}" Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{Binding BrakeReadout}" />
+                            <Border Grid.Column="1" Classes="valueBox" IsVisible="{Binding ForceMaxed}"
+                                    Background="{DynamicResource DlAccent}">
+                                <TextBlock Text="Force 100%" Foreground="#111111" />
+                            </Border>
+                        </Grid>
+                        <UniformGrid Rows="1">
+                            <Button Classes="chip" Content="%" Command="{Binding SetBrakeUnitCommand}" CommandParameter="pct"
+                                    Classes.selected="{Binding !BrakeUnitKg}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0" />
+                            <Button Classes="chip" Content="KG" Command="{Binding SetBrakeUnitCommand}" CommandParameter="kg"
+                                    Classes.selected="{Binding BrakeUnitKg}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0" />
+                        </UniformGrid>
+                        <UniformGrid Rows="1">
+                            <Button Classes="chip" Content="50kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="50"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=50}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,2,0" />
+                            <Button Classes="chip" Content="80kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="80"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=80}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0" />
+                            <Button Classes="chip" Content="100kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="100"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=100}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0" />
+                            <Button Classes="chip" Content="120kg" Command="{Binding SetLoadCellMaxCommand}" CommandParameter="120"
+                                    Classes.selected="{Binding LoadCellMaxKg, Converter={StaticResource IntEquals}, ConverterParameter=120}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,0,0" />
+                        </UniformGrid>
+                    </StackPanel>
+
+                    <!-- Sensor (chips) -->
+                    <TextBlock Classes="muted" Text="{loc:Translate Pedal_Sensor}" IsVisible="{Binding ShowSensor}" />
+                    <UniformGrid Rows="1" IsEnabled="{Binding CanEdit}" IsVisible="{Binding ShowSensor}">
+                        <Button Classes="chip" Content="Pot" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
+                                Command="{Binding SelectSensorCommand}" CommandParameter="0"
+                                Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=0}" />
+                        <Button Classes="chip" Content="Hall" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0"
+                                Command="{Binding SelectSensorCommand}" CommandParameter="1"
+                                Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=1}" />
+                        <Button Classes="chip" Content="Load cell" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                                Command="{Binding SelectSensorCommand}" CommandParameter="2"
+                                Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=2}" />
+                    </UniformGrid>
+
+                    <!-- Min/max calibrado (a calibração agora é o modal único no topo) -->
+                    <Grid ColumnDefinitions="*,*">
+                        <TextBlock Grid.Column="0" Classes="endLabel" HorizontalAlignment="Center"
+                                   Text="{Binding InputMin, StringFormat='min {0}'}" />
+                        <TextBlock Grid.Column="1" Classes="endLabel" HorizontalAlignment="Center"
+                                   Text="{Binding InputMax, StringFormat='max {0}'}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Barra de progressão vertical (avanço do pedal ao vivo) -->
+            <Grid Grid.Column="1" RowDefinitions="*,Auto" Width="34" Margin="10,10,0,10">
+                <ProgressBar Grid.Row="0" Orientation="Vertical" Minimum="0" Maximum="100"
+                             Value="{Binding CurrentOutputPercent}"
+                             VerticalAlignment="Stretch" HorizontalAlignment="Center" Width="12" />
+                <TextBlock Grid.Row="1" Text="{Binding CurrentOutputPercent, StringFormat={}{0:0}%}"
+                           Classes="endLabel" HorizontalAlignment="Center" Margin="0,6,0,0" />
+            </Grid>
+          </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Classes="card">
+        <Grid RowDefinitions="Auto,*">
+            <!-- Cabeçalho: o título do módulo vive no topo do app ("DriveLab Studio — Pedais").
+                 Aqui só perfil (esq) + ações (dir), alinhados entre si. -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
+                            IsEnabled="{Binding IsConnected}">
+                    <TextBlock Text="{loc:Translate Profile_Label}" Classes="muted" VerticalAlignment="Center" />
+                    <ComboBox MinWidth="170" ItemsSource="{Binding ProfileLibrary.Profiles}" SelectedItem="{Binding ProfileLibrary.SelectedName}"
+                              PlaceholderText="{loc:Translate Profile_Placeholder}" />
+                    <Button Classes="accent" Content="{loc:Translate Profile_Save}" Command="{Binding ProfileLibrary.SaveCommand}" />
+                    <TextBox Width="150" Text="{Binding ProfileLibrary.NewName}" Watermark="{loc:Translate Profile_NameWatermark}" />
+                    <Button Content="{loc:Translate Profile_SaveAs}" Command="{Binding ProfileLibrary.SaveAsCommand}" />
+                    <Button Content="{loc:Translate Profile_Rename}" Command="{Binding ProfileLibrary.RenameCommand}" />
+                    <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
+                    <!-- Compartilhar perfis: exporta (selecionado ou todos) e importa sem sobrescrever -->
+                    <Button Content="{loc:Translate Profile_Export}" Command="{Binding ProfileLibrary.ExportCommand}"
+                            IsVisible="{Binding ProfileLibrary.CanExchangeFiles}" />
+                    <Button Content="{loc:Translate Profile_Import}" Command="{Binding ProfileLibrary.ImportCommand}"
+                            IsVisible="{Binding ProfileLibrary.CanExchangeFiles}" />
+                </StackPanel>
+
+                <!-- Ações à direita (Calibrar/Padrão/Salvar no controlador). -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                    <Border Classes="statusBadge" IsVisible="{Binding IsConnected}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SourceLabel}" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
+                    <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
+                    <Button Content="{loc:Translate Pedal_Calibrate}" Command="{Binding OpenCalibrationCommand}" />
+                    <Button Content="{loc:Translate Default}" Command="{Binding ResetDefaultsCommand}" />
+                    <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="1">
+            <TabControl>
+                <TabItem Header="{loc:Translate Tab_Pedals}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Columns}" ItemTemplate="{StaticResource PedalColumn}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="3" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="{loc:Translate Tab_InputMonitor}">
+                    <lvc:CartesianChart Series="{Binding CombinedSeries}" />
+                </TabItem>
+            </TabControl>
+
+            <!-- Overlay de calibração: raw ao vivo dos 3 pedais -->
+            <Border IsVisible="{Binding IsCalibrating}" Background="#CC000000">
+                <Border Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="460">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="{loc:Translate Pedal_Calibration}" Classes="h2" />
+                        <ItemsControl ItemsSource="{Binding Columns}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PedalColumnViewModel">
+                                    <Grid ColumnDefinitions="110,*,56,120" Margin="0,4">
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="fieldLabel" VerticalAlignment="Center" />
+                                        <Grid Grid.Column="1" x:Name="track" Margin="8,0">
+                                            <ProgressBar Minimum="0" Maximum="4095" Value="{Binding RawLive}" VerticalAlignment="Center" />
+                                            <!-- Bolinha no máximo atingido na calibração -->
+                                            <Ellipse Width="12" Height="12" Fill="White"
+                                                     Stroke="{DynamicResource DlAccent}" StrokeThickness="2"
+                                                     HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                     IsVisible="{Binding Capturing}">
+                                                <Ellipse.Margin>
+                                                    <MultiBinding Converter="{x:Static conv:CalMarkerMarginConverter.Instance}">
+                                                        <Binding Path="CalMax" />
+                                                        <Binding Path="#track.Bounds.Width" />
+                                                    </MultiBinding>
+                                                </Ellipse.Margin>
+                                            </Ellipse>
+                                        </Grid>
+                                        <TextBlock Grid.Column="2" Text="{Binding RawLive}" Classes="endLabel" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3" Text="{Binding CalRange}" Classes="endLabel"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   IsVisible="{Binding Capturing}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                            <Button Content="{loc:Translate Start}" Command="{Binding StartCalibrationCommand}" />
+                            <Button Classes="accent" Content="{loc:Translate Finish}" Command="{Binding FinishCalibrationCommand}" />
+                            <Button Content="{loc:Translate Close}" Command="{Binding CloseCalibrationCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,122 @@
+<!-- ============================================================================
+     DriveLab
+     Controls.axaml — Estilos compartilhados dos controles (card, botões chip/accent, labels) do Studio.
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Card container -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource DlCard}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="20" />
+    </Style>
+
+    <!-- Selo "dispositivo detectado": pílula com borda accent + ponto laranja (usado nas barras
+         de ação de todos os módulos). O conteúdo (ponto + rótulo) fica na view; aqui é só a pílula. -->
+    <Style Selector="Border.statusBadge">
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Background" Value="{DynamicResource DlCard}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DlAccent}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Card com dispositivo detectado/conectado: borda inferior laranja (accent) mais grossa
+         + cursor de mão indicando que o card é clicável (abre a tela do módulo). -->
+    <Style Selector="Border.card.connected">
+        <Setter Property="BorderBrush" Value="{DynamicResource DlAccent}" />
+        <Setter Property="BorderThickness" Value="1,1,1,4" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <!-- Accent (primary) button -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{DynamicResource DlAccent}" />
+        <Setter Property="Foreground" Value="#111111" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="14,8" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FF8124" />
+    </Style>
+
+    <!-- Preset chip button -->
+    <Style Selector="Button.chip">
+        <Setter Property="Background" Value="{DynamicResource DlBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource DlText}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Margin" Value="0,0,6,6" />
+    </Style>
+    <!-- Preset selecionado (ângulo máximo atual) -->
+    <Style Selector="Button.chip.selected">
+        <Setter Property="Background" Value="#FF8124" />
+        <Setter Property="Foreground" Value="#111111" />
+        <Setter Property="BorderBrush" Value="#FF8124" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.chip.selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FF8124" />
+    </Style>
+
+    <!-- Caixa de valor (à direita do slider, estilo MOZA) -->
+    <Style Selector="Border.valueBox">
+        <Setter Property="Background" Value="{DynamicResource DlBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="MinWidth" Value="58" />
+    </Style>
+    <Style Selector="Border.valueBox TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource DlText}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Rótulo de setting (com espaço para o valor) -->
+    <Style Selector="TextBlock.fieldLabel">
+        <Setter Property="Foreground" Value="{DynamicResource DlText}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.endLabel">
+        <Setter Property="Foreground" Value="{DynamicResource DlMuted}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Section heading -->
+    <Style Selector="TextBlock.h2">
+        <Setter Property="Foreground" Value="{DynamicResource DlText}" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{DynamicResource DlMuted}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <!-- Sidebar nav button -->
+    <Style Selector="Button.nav">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource DlText}" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DlBorder}" />
+    </Style>
+</Styles>

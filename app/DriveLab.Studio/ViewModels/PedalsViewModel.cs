@@ -1,0 +1,233 @@
+// ============================================================================
+//  DriveLab
+//  PedalsViewModel.cs — VM da tela de Pedais: sessão do dispositivo, gráficos ao vivo e perfil persistido.
+//  Autor: Luciano Tomé <lucianotome1970@gmail.com>
+//  Copyright (c) 2026 Luciano Tomé — Licença MIT
+// ============================================================================
+
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using DriveLab.Core.Protocol;
+using DriveLab.Core.Settings;
+using DriveLab.Studio.Services;
+using LiveChartsCore;
+using LiveChartsCore.Defaults;
+using LiveChartsCore.SkiaSharpView;
+using L = DriveLab.Studio.Localization.LocalizationManager;
+
+namespace DriveLab.Studio.ViewModels;
+
+public sealed partial class PedalsViewModel : ViewModelBase
+{
+    private const int MaxSamples = 240;
+
+    private readonly PedalDeviceSession _session;
+    private readonly IPedalProfileStorage _storage;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveToControllerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ResetDefaultsCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenCalibrationCommand))]
+    private bool _isConnected;
+
+    /// <summary>App difere do que está gravado na FLASH da placa (há alteração não salva).
+    /// Habilita "Salvar no controlador"; zera ao carregar da placa e após salvar.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveToControllerCommand))]
+    private bool _isDirty;
+
+    public IReadOnlyList<PedalColumnViewModel> Columns { get; }
+
+    /// <summary>Só no simulador aparecem os botões Conectar/Desconectar (no real é automático).</summary>
+    public bool IsSimulator { get; }
+
+    /// <summary>Rótulo da fonte ativa (ex.: "Simulador" / "Simagic P2000 — leitura").</summary>
+    public string SourceLabel => _session.SourceLabel;
+
+    /// <summary>Falso para fonte read-only (Simagic): "Salvar no controlador" fica desabilitado.</summary>
+    public bool CanSaveToController => _session.SupportsConfig;
+
+    public ObservableCollection<ObservableValue> ClutchSamples { get; } = new();
+    public ObservableCollection<ObservableValue> BrakeSamples { get; } = new();
+    public ObservableCollection<ObservableValue> ThrottleSamples { get; } = new();
+    public ISeries[] CombinedSeries { get; }
+
+    /// <summary>Perfis nomeados do módulo (selecionar aplica; salvar como/renomear/excluir).</summary>
+    public ProfileLibraryViewModel<PedalProfile> ProfileLibrary { get; }
+
+    public PedalsViewModel(PedalDeviceSession session, IPedalProfileStorage storage, bool simulatorMode = false,
+                           INamedProfileStore<PedalProfile>? library = null)
+    {
+        _session = session;
+        _storage = storage;
+        IsSimulator = simulatorMode;
+
+        Columns = new List<PedalColumnViewModel>
+        {
+            new(session, PedalIndex.Clutch, L.Get("Pedal_Clutch")),
+            new(session, PedalIndex.Brake, L.Get("Pedal_Brake")),
+            new(session, PedalIndex.Throttle, L.Get("Pedal_Throttle")),
+        };
+
+        CombinedSeries = new ISeries[]
+        {
+            new LineSeries<ObservableValue> { Name = L.Get("Pedal_Clutch"), Values = ClutchSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = L.Get("Pedal_Brake"), Values = BrakeSamples, GeometrySize = 0 },
+            new LineSeries<ObservableValue> { Name = L.Get("Pedal_Throttle"), Values = ThrottleSamples, GeometrySize = 0 },
+        };
+        _session.StateReceived += OnState;
+
+        _isConnected = session.IsConnected;
+        _session.Connected += OnConnectionChanged;
+        _session.Disconnected += OnConnectionChanged;
+        _session.SettingChanged += OnSettingWritten;
+
+        // Aplicar um perfil escreve os settings no controlador (via setters das colunas) e marca "não salvo".
+        ProfileLibrary = new ProfileLibraryViewModel<PedalProfile>(
+            library, ExportProfile, p => { ApplyProfile(p); IsDirty = true; });
+    }
+
+    private void OnConnectionChanged(object? sender, EventArgs e) => IsConnected = _session.IsConnected;
+
+    // Qualquer escrita de setting (edição do usuário, preset, perfil) → app difere da flash.
+    // Leituras (LoadAsync) NÃO disparam SettingChanged, então carregar não marca dirty.
+    private void OnSettingWritten(object? sender, PedalSettingChangedEventArgs e)
+    {
+        IsDirty = true;
+        ProfileLibrary.MarkConfigChanged();
+    }
+
+    private void OnState(object? sender, PedalState state)
+    {
+        Append(ClutchSamples, state.Clutch.Output / 65535.0);
+        Append(BrakeSamples, state.Brake.Output / 65535.0);
+        Append(ThrottleSamples, state.Throttle.Output / 65535.0);
+    }
+
+    private static void Append(ObservableCollection<ObservableValue> series, double value)
+    {
+        series.Add(new ObservableValue(value));
+        if (series.Count > MaxSamples)
+            series.RemoveAt(0);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanConnect))]
+    private async Task ConnectAsync()
+    {
+        await _session.ConnectAsync();
+        foreach (var column in Columns)
+            await column.LoadAsync();
+        IsDirty = false;   // acabou de carregar da placa: app == flash
+    }
+
+    private bool CanConnect() => !IsConnected;
+
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private Task DisconnectAsync() => _session.DisconnectAsync();
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private async Task SaveToControllerAsync()
+    {
+        await _session.SendCommandAsync(PedalCommandId.SaveToFlash);
+        IsDirty = false;   // gravou na flash: firmware == app
+    }
+
+    private bool CanSave() => IsConnected && _session.SupportsConfig && IsDirty;
+
+    [ObservableProperty] private bool _isCalibrating;
+
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private void OpenCalibration() => IsCalibrating = true;
+
+    [RelayCommand]
+    private void CloseCalibration()
+    {
+        foreach (var c in Columns) c.EndCapture();
+        IsCalibrating = false;
+    }
+
+    [RelayCommand]
+    private async Task StartCalibration()
+    {
+        foreach (var c in Columns) c.BeginCapture();
+        foreach (PedalIndex p in Enum.GetValues<PedalIndex>())
+            await _session.SendCommandAsync(PedalCommandId.CalibrateStart, (byte)p);
+    }
+
+    [RelayCommand]
+    private async Task FinishCalibration()
+    {
+        foreach (var c in Columns) c.EndCapture();
+        foreach (PedalIndex p in Enum.GetValues<PedalIndex>())
+            await _session.SendCommandAsync(PedalCommandId.CalibrateStop, (byte)p);
+        foreach (var c in Columns)
+            await c.LoadAsync();
+        IsDirty = true;    // calibração mudou min/max na placa (RAM) — precisa salvar na flash
+    }
+
+    /// <summary>Restaura os padrões de fábrica no controlador (os 3 eixos), relê e marca como não salvo.</summary>
+    [RelayCommand(CanExecute = nameof(IsConnected))]
+    private async Task ResetDefaults()
+    {
+        await _session.SendCommandAsync(PedalCommandId.LoadDefaults);
+        foreach (var c in Columns) await c.LoadAsync();
+        IsDirty = true;   // defaults na RAM da placa — precisa "Salvar no controlador"
+    }
+
+    [RelayCommand]
+    private Task SavePreferencesAsync() => _storage.SaveAsync(ExportProfile());
+
+    [RelayCommand]
+    private async Task LoadPreferencesAsync()
+    {
+        var profile = await _storage.LoadAsync();
+        if (profile is not null)
+            ApplyProfile(profile);
+    }
+
+    public PedalProfile ExportProfile() => new(
+        Columns.Select(c => new PedalProfileColumn(
+            c.SensorType,
+            c.InputMin,
+            c.InputMax,
+            c.Invert,
+            (int)c.Smooth,
+            c.Points.Select(p => p.Value).ToArray(),
+            c.LoadCellScale,
+            c.LoadCellMaxKg,
+            c.BrakeUnitKg)).ToArray());
+
+    public void ApplyProfile(PedalProfile profile)
+    {
+        for (var i = 0; i < Columns.Count && i < profile.Columns.Length; i++)
+        {
+            var col = Columns[i];
+            var src = profile.Columns[i];
+            col.SensorType = src.Sensor;
+            col.Invert = src.Invert;
+            col.Smooth = src.Smooth;
+            col.InputMin = src.InputMin;
+            col.InputMax = src.InputMax;
+            col.LoadCellScale = src.LoadCellScale;
+            col.LoadCellMaxKg = src.LoadCellMaxKg;
+            col.BrakeUnitKg = src.BrakeUnitKg;
+            for (var p = 0; p < col.Points.Count && p < src.Curve.Length; p++)
+                col.Points[p].Value = src.Curve[p];
+        }
+    }
+
+    public override void Dispose()
+    {
+        _session.StateReceived -= OnState;
+        _session.Connected -= OnConnectionChanged;
+        _session.Disconnected -= OnConnectionChanged;
+        _session.SettingChanged -= OnSettingWritten;
+        foreach (var column in Columns)
+            column.Dispose();
+        _session.Dispose();
+        base.Dispose();
+    }
+}

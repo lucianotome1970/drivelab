@@ -1,0 +1,319 @@
+<!-- ============================================================================
+     DriveLab
+     WheelView.axaml — Tela do volante: LEDs/cores dos botões e configuração das pás (contagem, função, modo, atuação).
+     Autor: Luciano Tomé <lucianotome1970@gmail.com>
+     Copyright (c) 2026 Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:conv="using:DriveLab.Studio.Converters"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.WheelView"
+             x:DataType="vm:WheelViewModel">
+    <UserControl.Styles>
+        <!-- Marcador de LED: apagado = esmaecido; aceso (IsPressed) = cor cheia + destaque -->
+        <Style Selector="Border.led">
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        </Style>
+        <Style Selector="Border.led.pressed">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="scale(1.35)" />
+        </Style>
+        <Style Selector="Border.led.selected">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+
+        <!-- Pá (asa desenhada sobre as aberturas): SEMPRE visível em cinza escuro (para se ver as pás
+             conforme a contagem); ACENDE em laranja (accent) quando pressionada. -->
+        <Style Selector="Path.paddle">
+            <Setter Property="Fill" Value="#20242B" />
+        </Style>
+        <Style Selector="Path.paddle.active">
+            <Setter Property="Fill" Value="{DynamicResource DlAccent}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Classes="card">
+        <Grid RowDefinitions="Auto,*">
+            <!-- Cabeçalho: o título do módulo vive no topo do app ("DriveLab Studio — Configuração do volante").
+                 Aqui só perfil (esq) + ações (dir), alinhados entre si. -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" IsEnabled="{Binding IsConnected}">
+                        <TextBlock Text="{loc:Translate Profile_Label}" Classes="muted" VerticalAlignment="Center" />
+                        <ComboBox MinWidth="170" ItemsSource="{Binding ProfileLibrary.Profiles}" SelectedItem="{Binding ProfileLibrary.SelectedName}"
+                                  PlaceholderText="{loc:Translate Profile_Placeholder}" />
+                        <Button Classes="accent" Content="{loc:Translate Profile_Save}" Command="{Binding ProfileLibrary.SaveCommand}" />
+                        <TextBox Width="150" Text="{Binding ProfileLibrary.NewName}" Watermark="{loc:Translate Profile_NameWatermark}" />
+                        <Button Content="{loc:Translate Profile_SaveAs}" Command="{Binding ProfileLibrary.SaveAsCommand}" />
+                        <Button Content="{loc:Translate Profile_Rename}" Command="{Binding ProfileLibrary.RenameCommand}" />
+                        <Button Content="{loc:Translate Profile_Delete}" Command="{Binding ProfileLibrary.DeleteCommand}" />
+                        <!-- Compartilhar perfis: exporta (selecionado ou todos) e importa sem sobrescrever -->
+                        <Button Content="{loc:Translate Profile_Export}" Command="{Binding ProfileLibrary.ExportCommand}"
+                                IsVisible="{Binding ProfileLibrary.CanExchangeFiles}" />
+                        <Button Content="{loc:Translate Profile_Import}" Command="{Binding ProfileLibrary.ImportCommand}"
+                                IsVisible="{Binding ProfileLibrary.CanExchangeFiles}" />
+                </StackPanel>
+
+                <!-- Ações à direita (Padrão/Salvar no controlador) + selo de status. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                    <Button Content="{loc:Translate Connect}" Command="{Binding ConnectCommand}" IsVisible="{Binding IsSimulator}" />
+                    <Button Content="{loc:Translate Disconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsSimulator}" />
+                    <Border Classes="statusBadge" IsVisible="{Binding IsConnected}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Ellipse Width="8" Height="8" Fill="{DynamicResource DlAccent}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SourceLabel}" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource DlText}" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="{loc:Translate Default}" Command="{Binding ResetDefaultsCommand}" />
+                    <Button Classes="accent" Content="{loc:Translate SaveToController}" Command="{Binding SaveToControllerCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Conteúdo rolável (Row 1) -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <StackPanel Margin="6,0,6,6">
+                    <!-- Duas colunas: volante à esquerda; à direita (preenche o resto), cores (topo) + pás (abaixo), centralizado -->
+                    <Grid ColumnDefinitions="Auto,40,*">
+
+                        <!-- Coluna 0: desenho do volante -->
+                        <StackPanel Grid.Column="0" Spacing="12" Width="480" VerticalAlignment="Top">
+                            <Grid Width="480" Height="480" HorizontalAlignment="Center">
+                                <!-- Pás ATRÁS do desenho (Canvas antes da imagem): aparecem pelas ABERTURAS
+                                     transparentes reais do aro. Escuras (visíveis conforme a contagem), acendem
+                                     em laranja quando pressionadas. Ajustáveis. -->
+                                <Canvas Width="480" Height="480" IsHitTestVisible="False">
+                                    <Viewbox Canvas.Left="72" Canvas.Top="180" Width="40" Height="62">
+                                        <Path Classes="paddle" Classes.active="{Binding ShiftDown.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="368" Canvas.Top="180" Width="40" Height="62">
+                                        <Path Classes="paddle" Classes.active="{Binding ShiftUp.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="82" Canvas.Top="276" Width="30" Height="48"
+                                             IsVisible="{Binding ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding ClutchLeft.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                    <Viewbox Canvas.Left="368" Canvas.Top="276" Width="30" Height="48"
+                                             IsVisible="{Binding ShowBottomPair}">
+                                        <Path Classes="paddle" Classes.active="{Binding ClutchRight.IsPressed}"
+                                              Data="M26,4 C42,4 49,16 48,38 L44,98 C43,116 36,124 26,124 C16,124 9,116 8,98 L4,38 C3,16 10,4 26,4 Z" />
+                                    </Viewbox>
+                                </Canvas>
+                                <Image Source="avares://DriveLab.Studio/Assets/wheel-config.png" Stretch="Uniform" />
+                                <ItemsControl ItemsSource="{Binding Buttons}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><Canvas Width="480" Height="480" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ContentPresenter" x:DataType="vm:WheelButtonViewModel">
+                                            <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                            <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:WheelButtonViewModel">
+                                            <Border Classes="led"
+                                                    Classes.pressed="{Binding IsPressed}"
+                                                    Classes.selected="{Binding IsSelected}"
+                                                    Width="{Binding Diameter}" Height="{Binding Diameter}" CornerRadius="999"
+                                                    Background="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}"
+                                                    ToolTip.Tip="{Binding Name}"
+                                                    PointerPressed="OnMarkerPressed" PointerReleased="OnControlReleased" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <!-- Knobs rotativos (potência): anel que acende ao girar (Glow via telemetria). -->
+                                <ItemsControl ItemsSource="{Binding Knobs}" IsHitTestVisible="False">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><Canvas Width="480" Height="480" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ContentPresenter" x:DataType="vm:WheelButtonViewModel">
+                                            <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                            <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:WheelButtonViewModel">
+                                            <Border Width="{Binding Diameter}" Height="{Binding Diameter}" CornerRadius="999"
+                                                    BorderBrush="{Binding ColorHex, Converter={x:Static conv:HexToBrushConverter.Instance}}" BorderThickness="3"
+                                                    Background="Transparent" Opacity="{Binding Glow}"
+                                                    ToolTip.Tip="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Coluna 2: cores dos botões + brilho -->
+                        <!-- Coluna direita: cores + brilho (topo) e pás (abaixo), bloco centralizado na coluna. -->
+                        <StackPanel Grid.Column="2" Spacing="18" Width="420" HorizontalAlignment="Center" VerticalAlignment="Top">
+                            <!-- Cores dos botões + brilho -->
+                            <StackPanel Spacing="10">
+                            <TextBlock Text="{loc:Translate Wheel_Leds}" Classes="h2" />
+                            <!-- Paleta de cores (aplica no botão selecionado). Só com o aro conectado:
+                                 a cor vai AO VIVO ao dispositivo. -->
+                            <TextBlock Text="{Binding SelectedButton.Name, FallbackValue=''}" Classes="muted" />
+                            <TextBlock Text="{loc:Translate Wheel_ConnectToEditColors}" Classes="muted"
+                                       IsVisible="{Binding !IsConnected}" TextWrapping="Wrap" />
+                            <ItemsControl ItemsSource="{Binding Palette}" IsEnabled="{Binding IsConnected}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Button Width="32" Height="32" CornerRadius="16" Margin="4" Padding="0"
+                                                Background="{Binding Converter={x:Static conv:HexToBrushConverter.Instance}}"
+                                                BorderBrush="{DynamicResource DlBorder}" BorderThickness="1"
+                                                Command="{Binding $parent[ItemsControl].((vm:WheelViewModel)DataContext).SetColorCommand}"
+                                                CommandParameter="{Binding}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Brilho global dos LEDs (0..100% → 0..255 no firmware). Só com o aro conectado. -->
+                            <StackPanel Spacing="6" Margin="0,4,0,0" IsEnabled="{Binding IsConnected}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Brightness}" Classes="muted" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Classes="valueBox">
+                                        <TextBlock Text="{Binding LedBrightnessPercent, StringFormat={}{0}%}" />
+                                    </Border>
+                                </Grid>
+                                <Slider Minimum="0" Maximum="100" Value="{Binding LedBrightnessPercent}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            </StackPanel>
+
+                            <!-- Rev-lights por telemetria de jogo: liga a barra de LEDs ao RPM.
+                                 "Modo de teste" varre o RPM (validação de mesa, aro no USB, sem jogo). -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{loc:Translate Wheel_RevLights}" Classes="h2" />
+                                <TextBlock Text="{loc:Translate Wheel_RevLights_Desc}" Classes="muted" TextWrapping="Wrap" />
+                                <CheckBox IsChecked="{Binding RevLights.Enabled}" Content="{loc:Translate Wheel_RevLights_Enable}" />
+                                <CheckBox IsChecked="{Binding RevLights.TestMode}" Content="{loc:Translate Wheel_RevLights_Test}" />
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" IsVisible="{Binding RevLights.Enabled}">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate Wheel_RevLights_Source}" Classes="muted" Margin="0,0,12,2" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding RevLights.ActiveSource}" Margin="0,0,0,2" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="RPM" Classes="muted" Margin="0,0,12,2" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding RevLights.Rpm}" Margin="0,0,0,2" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate Wheel_RevLights_Gear}" Classes="muted" Margin="0,0,12,0" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding RevLights.Gear}" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Efeitos de FFB por telemetria (vão para a BASE): master + por efeito. -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{loc:Translate Wheel_Effects}" Classes="h2" />
+                                <TextBlock Text="{loc:Translate Wheel_Effects_Desc}" Classes="muted" TextWrapping="Wrap" />
+                                <CheckBox IsChecked="{Binding TelemetryEffects.Enabled}" Content="{loc:Translate Wheel_RevLights_Enable}" />
+                                <StackPanel Spacing="6" IsVisible="{Binding TelemetryEffects.Enabled}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Effects_Master}" Classes="muted" VerticalAlignment="Center" />
+                                        <Border Grid.Column="1" Classes="valueBox">
+                                            <TextBlock Text="{Binding TelemetryEffects.MasterGainPercent, StringFormat={}{0}%}" />
+                                        </Border>
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="100" Value="{Binding TelemetryEffects.MasterGainPercent}" />
+                                    <ItemsControl ItemsSource="{Binding TelemetryEffects.Effects}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:TelemetryEffectViewModel">
+                                                <Grid ColumnDefinitions="Auto,64,*,Auto" Margin="0,4">
+                                                    <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                                                    <Slider Grid.Column="2" Minimum="0" Maximum="200" Value="{Binding GainPercent}" VerticalAlignment="Center" Margin="8,0" />
+                                                    <Border Grid.Column="3" Classes="valueBox" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding GainPercent, StringFormat={}{0}%}" />
+                                                    </Border>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                        <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_Effects_Force}" Classes="muted" />
+                                        <TextBlock Grid.Column="1" Text="{Binding TelemetryEffects.ForcePercent, StringFormat={}{0}%}" />
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Pás (abaixo das cores). Desabilitada sem o aro conectado. -->
+                            <StackPanel Spacing="10" IsEnabled="{Binding IsConnected}">
+                            <TextBlock Text="{loc:Translate Wheel_Paddles}" Classes="h2" />
+                            <TextBlock Text="{loc:Translate Wheel_PaddleCount}" Classes="muted" />
+                            <UniformGrid Rows="1" MaxWidth="200" HorizontalAlignment="Left">
+                                <Button Classes="chip" Content="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
+                                        Command="{Binding SetPaddleCountCommand}" CommandParameter="2"
+                                        Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=2}" />
+                                <Button Classes="chip" Content="4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                                        Command="{Binding SetPaddleCountCommand}" CommandParameter="4"
+                                        Classes.selected="{Binding PaddleCount, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=4}" />
+                            </UniformGrid>
+
+                            <!-- As pás (indicador ativo/inativo) agora ficam SOBRE o desenho do volante,
+                                 atrás dos punhos. Aqui no painel fica só a configuração. -->
+
+                            <!-- Config do par de baixo (só quando 4 pás) -->
+                            <StackPanel Spacing="10" IsVisible="{Binding ShowBottomPair}">
+                                <StackPanel Spacing="10" DataContext="{Binding BottomPair}"
+                                            x:DataType="vm:PaddlePairViewModel">
+                                    <TextBlock Text="{loc:Translate Wheel_Function}" Classes="muted" />
+                                    <UniformGrid Rows="1">
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Clutch}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetFunctionCommand}" CommandParameter="Clutch"
+                                                Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Clutch}" />
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Free}" Margin="3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetFunctionCommand}" CommandParameter="Free"
+                                                Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Free}" />
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Button}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetFunctionCommand}" CommandParameter="Button"
+                                                Classes.selected="{Binding Function, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Button}" />
+                                    </UniformGrid>
+
+                                    <StackPanel Spacing="10" IsVisible="{Binding ShowMode}">
+                                        <TextBlock Text="{loc:Translate Wheel_Mode}" Classes="muted" />
+                                        <UniformGrid Rows="1">
+                                            <Button Classes="chip" Content="{loc:Translate Wheel_Combined}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding SetModeCommand}" CommandParameter="Combined"
+                                                    Classes.selected="{Binding Mode, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Combined}" />
+                                            <Button Classes="chip" Content="{loc:Translate Wheel_Independent}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding SetModeCommand}" CommandParameter="Independent"
+                                                    Classes.selected="{Binding Mode, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Independent}" />
+                                        </UniformGrid>
+                                    </StackPanel>
+
+                                    <TextBlock Text="{loc:Translate Wheel_Actuation}" Classes="muted" />
+                                    <UniformGrid Rows="1">
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Digital}" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetActuationCommand}" CommandParameter="Digital"
+                                                Classes.selected="{Binding Actuation, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Digital}" />
+                                        <Button Classes="chip" Content="{loc:Translate Wheel_Progression}" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding SetActuationCommand}" CommandParameter="Progression"
+                                                Classes.selected="{Binding Actuation, Converter={x:Static conv:EnumEqualsConverter.Instance}, ConverterParameter=Progression}" />
+                                    </UniformGrid>
+
+                                    <StackPanel Spacing="6" IsVisible="{Binding ShowBitePoint}">
+                                        <!-- Título + valor na mesma linha; slider abaixo (padrão "Range do batente"). -->
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{loc:Translate Wheel_BitePoint}" Classes="muted" VerticalAlignment="Center" />
+                                            <Border Grid.Column="1" Classes="valueBox">
+                                                <TextBlock Text="{Binding BitePoint, StringFormat={}{0:0}%}" />
+                                            </Border>
+                                        </Grid>
+                                        <Slider Minimum="0" Maximum="100" Value="{Binding BitePoint}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

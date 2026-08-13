@@ -1,0 +1,135 @@
+<svg viewBox="0 0 1000 810" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" role="img" aria-label="Diagrama de ligação do volante DriveLab">
+  <style>
+    .bg    { fill:#fbfaf8; stroke:#e4ded4; stroke-width:1.5; }
+    .box   { fill:#faf8f4; stroke:#e4ded4; stroke-width:1.5; }
+    .mcu   { fill:#fff3ea; stroke:#ff6a00; stroke-width:2.5; }
+    .pill  { fill:#ffffff; stroke:#e4ded4; stroke-width:1; }
+    .t     { fill:#1b1915; font-size:12px; }
+    .mut   { fill:#6c665b; font-family:monospace; }
+    .title { fill:#1b1915; font-weight:700; }
+    .lbl   { fill:#1b1915; font-family:monospace; }
+    .h1    { fill:#1b1915; font-weight:700; }
+    .acc   { fill:#ff6a00; font-family:monospace; font-weight:700; }
+    .w     { fill:none; stroke-width:3; }
+    .w5v{stroke:#e5484d;} .wgnd{stroke:#7c7669;} .wi2c{stroke:#2f6bff;}
+    .wadc{stroke:#12a150;} .wdata{stroke:#ff6a00;} .wenc{stroke:#8b5cf6;} .wbtn{stroke:#0e9488;}
+    .ledfill{fill:#ff6a00; opacity:.85;} .ledbar{fill:none; stroke:#ff6a00; stroke-width:2;}
+  </style>
+
+  <rect class="bg" x="4" y="4" width="992" height="802" rx="16"/>
+
+  <!-- header -->
+  <text class="acc" x="36" y="40" font-size="11" letter-spacing="3">DRIVELAB · VOLANTE / RIM</text>
+  <text class="h1"  x="36" y="66" font-size="22">Diagrama de ligação — RP2040-Zero + expansão</text>
+  <text class="mut" x="36" y="88" font-size="12.5">2× MCP23017 (I²C) · 5 encoders (GPIO) · 2 embreagens (ADC) · SK6812/WS2812 · PID 0x0004</text>
+
+  <!-- legenda -->
+  <g font-family="monospace" font-size="11.5" fill="#6c665b">
+    <rect x="36"  y="104" width="16" height="4" rx="2" fill="#e5484d"/><text x="58"  y="112">5 V</text>
+    <rect x="104" y="104" width="16" height="4" rx="2" fill="#7c7669"/><text x="126" y="112">GND</text>
+    <rect x="176" y="104" width="16" height="4" rx="2" fill="#2f6bff"/><text x="198" y="112">I²C</text>
+    <rect x="238" y="104" width="16" height="4" rx="2" fill="#8b5cf6"/><text x="260" y="112">Encoder A/B</text>
+    <rect x="366" y="104" width="16" height="4" rx="2" fill="#12a150"/><text x="388" y="112">ADC</text>
+    <rect x="430" y="104" width="16" height="4" rx="2" fill="#ff6a00"/><text x="452" y="112">Dados WS2812</text>
+    <rect x="580" y="104" width="16" height="4" rx="2" fill="#0e9488"/><text x="602" y="112">Botões → MCP</text>
+  </g>
+
+  <g transform="translate(0,130)">
+    <!-- ===== fios ===== -->
+    <path class="w w5v"  d="M470,120 L470,175"/>
+    <path class="w wgnd" d="M530,120 L530,175"/>
+    <path class="w wi2c" d="M395,250 L330,250 L330,205 L295,205"/>
+    <path class="w wi2c" d="M395,270 L312,270 L312,360 L295,360"/>
+    <path class="w wbtn" d="M40,205 L18,205"/>
+    <path class="w wbtn" d="M40,360 L18,360"/>
+    <path class="w wenc" d="M605,235 L690,235 L690,205 L705,205"/>
+    <path class="w wadc" d="M605,300 L672,300 L672,360 L705,360"/>
+    <path class="w wdata" d="M500,430 L500,470 L360,470 L360,505"/>
+    <path class="w w5v"  d="M640,560 L600,560"/>
+    <path class="w wgnd" d="M640,585 L600,585"/>
+
+    <!-- ===== USB ===== -->
+    <rect class="box" x="410" y="60" width="180" height="60" rx="9"/>
+    <text class="title" x="500" y="84" font-size="14" text-anchor="middle">USB-C → hub na base</text>
+    <text class="mut" x="500" y="104" font-size="11.5" text-anchor="middle">VBUS 5V · D+ · D− · GND</text>
+
+    <!-- ===== RP2040-Zero ===== -->
+    <rect class="mcu" x="395" y="175" width="210" height="255" rx="12"/>
+    <text class="title" x="500" y="205" font-size="16" text-anchor="middle">RP2040-Zero</text>
+    <text class="mut" x="500" y="224" font-size="11.5" text-anchor="middle">DriveLab Wheel · gamepad + P0</text>
+    <text class="lbl" x="405" y="254" font-size="12.5">GP0 · SDA</text>
+    <text class="lbl" x="405" y="274" font-size="12.5">GP1 · SCL</text>
+    <text class="lbl" x="595" y="239" font-size="12.5" text-anchor="end">GP2–GP11</text>
+    <text class="lbl" x="595" y="304" font-size="12.5" text-anchor="end">GP26 · GP27</text>
+    <text class="lbl" x="500" y="422" font-size="12.5" text-anchor="middle">GP28 · DATA</text>
+    <text class="mut" x="500" y="168" font-size="11" text-anchor="middle">5V / GND / D±</text>
+
+    <!-- ===== MCP #0 ===== -->
+    <rect class="box" x="40" y="160" width="255" height="95" rx="9"/>
+    <text class="title" x="55" y="184" font-size="13.5">MCP23017 #0</text>
+    <text class="mut" x="278" y="184" font-size="12" text-anchor="end">0x20</text>
+    <text class="t" x="55" y="206">10 botões → bits 0–9</text>
+    <text class="t" x="55" y="224">2 marcha ↓/↑ → 10–11</text>
+    <text class="t" x="55" y="242">D-pad ×4 → 12–15</text>
+
+    <!-- ===== MCP #1 ===== -->
+    <rect class="box" x="40" y="315" width="255" height="80" rx="9"/>
+    <text class="title" x="55" y="339" font-size="13.5">MCP23017 #1</text>
+    <text class="mut" x="278" y="339" font-size="12" text-anchor="end">0x21</text>
+    <text class="t" x="55" y="361">5 push dos rotativos</text>
+    <text class="t" x="55" y="379">→ bits 16–20</text>
+
+    <text class="mut" x="14" y="209" font-size="11" text-anchor="end">botões</text>
+    <text class="mut" x="14" y="364" font-size="11" text-anchor="end">push</text>
+
+    <!-- ===== Encoders ===== -->
+    <rect class="box" x="705" y="160" width="255" height="95" rx="9"/>
+    <text class="title" x="720" y="184" font-size="13.5">5× Encoder rotativo</text>
+    <text class="t" x="720" y="206">A/B em GPIO direto</text>
+    <text class="mut" x="720" y="226" font-size="11.5">GP2/3 · GP4/5 · GP6/7</text>
+    <text class="mut" x="720" y="244" font-size="11.5">GP8/9 · GP10/11</text>
+
+    <!-- ===== Embreagens ===== -->
+    <rect class="box" x="705" y="305" width="255" height="80" rx="9"/>
+    <text class="title" x="720" y="329" font-size="13.5">2× Embreagem (pot/Hall)</text>
+    <text class="t" x="720" y="351">Analógico → ADC</text>
+    <text class="mut" x="720" y="371" font-size="11.5">GP26 (A0) · GP27 (A1)</text>
+
+    <!-- ===== WS2812 chain ===== -->
+    <rect class="box" x="150" y="505" width="620" height="120" rx="10"/>
+    <text class="title" x="170" y="530" font-size="13.5">Cordão WS2812 / SK6812 — 1 fio de dados (em série)</text>
+    <rect class="pill" x="322" y="462" width="76" height="20" rx="10"/>
+    <text class="lbl" x="360" y="476" font-size="11" text-anchor="middle">330–470Ω</text>
+    <rect class="ledfill" x="170" y="548" width="30" height="30" rx="6"/>
+    <rect class="ledfill" x="205" y="548" width="30" height="30" rx="6"/>
+    <rect class="ledfill" x="240" y="548" width="30" height="30" rx="6"/>
+    <rect class="ledfill" x="275" y="548" width="30" height="30" rx="6"/>
+    <rect class="ledfill" x="310" y="548" width="30" height="30" rx="6"/>
+    <text class="mut" x="170" y="598" font-size="11">10 LEDs de botão (pixels 0–9)</text>
+    <rect class="ledbar" x="470" y="552" width="230" height="22" rx="6"/>
+    <line class="ledbar" x1="490" y1="552" x2="490" y2="574"/>
+    <line class="ledbar" x1="510" y1="552" x2="510" y2="574"/>
+    <line class="ledbar" x1="530" y1="552" x2="530" y2="574"/>
+    <line class="ledbar" x1="550" y1="552" x2="550" y2="574"/>
+    <line class="ledbar" x1="570" y1="552" x2="570" y2="574"/>
+    <line class="ledbar" x1="590" y1="552" x2="590" y2="574"/>
+    <text class="mut" x="470" y="598" font-size="11">Barra de LEDs / rev lights (pixels 10…)</text>
+
+    <!-- ===== Power / proteção ===== -->
+    <rect class="box" x="640" y="535" width="230" height="80" rx="9"/>
+    <text class="title" x="655" y="558" font-size="12.5">5 V da base (PSU) → LEDs</text>
+    <rect class="pill" x="655" y="566" width="52" height="18" rx="9"/>
+    <text class="lbl" x="681" y="579" font-size="10.5" text-anchor="middle">PTC 2A</text>
+    <rect class="pill" x="715" y="566" width="66" height="18" rx="9"/>
+    <text class="lbl" x="748" y="579" font-size="10.5" text-anchor="middle">1000µF</text>
+    <text class="mut" x="655" y="602" font-size="10.5">GND comum · NÃO unir os 2× 5V</text>
+
+    <!-- ===== rótulos de barramento ===== -->
+    <rect class="pill" x="300" y="238" width="66" height="18" rx="9"/>
+    <text class="lbl" x="333" y="251" font-size="10.5" text-anchor="middle">I²C bus</text>
+    <rect class="pill" x="628" y="196" width="70" height="18" rx="9"/>
+    <text class="lbl" x="663" y="209" font-size="10.5" text-anchor="middle">A/B ×5</text>
+    <rect class="pill" x="614" y="351" width="66" height="18" rx="9"/>
+    <text class="lbl" x="647" y="364" font-size="10.5" text-anchor="middle">ADC ×2</text>
+  </g>
+</svg>

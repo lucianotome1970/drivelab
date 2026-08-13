@@ -1,0 +1,77 @@
+<!-- ============================================================================
+     DriveLab
+     HardwareTabView.axaml — Aba de hardware: monitor, settings e o rodapé no MESMO scroll — a página inteira
+     rola junto. Só o criador vê esta aba.
+     Autor: Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:views="using:DriveLab.Studio.Views"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             xmlns:av="using:Avalonia.Data.Converters"
+             x:Class="DriveLab.Studio.Views.HardwareTabView"
+             x:DataType="vm:HardwareTabViewModel">
+    <!-- Tudo (monitor + campos + rodapé) num ScrollViewer só: a página rola inteira. O monitor
+         já ocupava metade da altura útil quando ficava fixo no topo. -->
+    <views:SettingsGroupView>
+        <views:SettingsGroupView.Header>
+            <StackPanel Spacing="12">
+                <views:HardwareMonitorView DataContext="{Binding Monitor}" />
+
+                <!-- Esta aba configura a MAQUINA, não o feel: encoder, geometria do motor, malha de
+                     corrente. Nada disso pode mudar com o motor girando — trocar o número de polos
+                     ou os ganhos da malha ao vivo é corrente no lugar errado, com a mão no volante.
+                     Por isso o firmware lê estes campos só no boot, e o aviso existe para a pessoa
+                     não achar que salvou e nada aconteceu. -->
+                <Border Background="#332196F3" CornerRadius="6" Padding="12,10">
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource DlText}"
+                               Text="{loc:Translate Hardware_RebootNotice}" />
+                </Border>
+
+                <!-- Corrente de calibração acima do limite do motor: o firmware rebaixa ao limite.
+                     Sem este aviso a tela mostraria um valor que a placa não usa. -->
+                <Border Background="#33FFA000" CornerRadius="6" Padding="12,10"
+                        IsVisible="{Binding CorrenteAviso, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource DlText}"
+                               Text="{Binding CorrenteAviso}" />
+                </Border>
+            </StackPanel>
+        </views:SettingsGroupView.Header>
+        <views:SettingsGroupView.Footer>
+              <StackPanel Spacing="0">
+                <!-- Reiniciar a base. O firmware DESARMA o motor antes do reset (nunca reseta com as
+                     fases energizadas). Existe para o caso de algo travar com o motor armado, quando
+                     hoje a única saída é cortar a fonte na mão. -->
+                <Border Classes="card" Margin="0,12,0,0" Padding="12">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Reiniciar a base" FontWeight="SemiBold" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Reinicia o dispositivo. O motor é desarmado antes do reset; a conexão cai e volta em alguns segundos. Ao voltar, a base refaz a calibração do encoder." />
+                        <Button Content="Reiniciar a base"
+                                Command="{Binding RebootCommand}" HorizontalAlignment="Left" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding RebootStatus}"
+                                   IsVisible="{Binding RebootStatus, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Compensação de cogging: calibrar (roda na bancada) + status da tabela na flash. Só o criador. -->
+                <Expander Header="Compensação de cogging" IsExpanded="False"
+                          Margin="0,12,0,0" HorizontalAlignment="Stretch">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Mede o ripple do motor (imã passando por imã) e grava uma tabela na flash do dispositivo. O firmware subtrai o ripple posição a posição — é o que deixa o hub com feel liso de DD caro." />
+                        <TextBlock Text="Ainda não implementado neste firmware." TextWrapping="Wrap" FontWeight="SemiBold" />
+                        <Button Classes="accent" Content="Calibrar cogging"
+                                Command="{Binding CalibrateCoggingCommand}" HorizontalAlignment="Left"
+                                IsEnabled="False" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Depende de um sensor de posição absoluto: a tabela de compensação é indexada pelo ângulo, e com um encoder que não guarda o zero entre um boot e outro ela sairia desalinhada — o que pioraria o feel em vez de melhorar. Volta quando o encoder magnético estiver funcionando." />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding CoggingStatus}"
+                                   IsVisible="{Binding CoggingStatus, Converter={x:Static av:StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Expander>
+              </StackPanel>
+        </views:SettingsGroupView.Footer>
+    </views:SettingsGroupView>
+</UserControl>

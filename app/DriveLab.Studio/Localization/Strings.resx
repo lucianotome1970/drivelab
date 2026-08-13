@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="Disconnect" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="Load" xml:space="preserve"><value>Load</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="SaveToController" xml:space="preserve"><value>Save to controller</value></data>
+  <data name="Default" xml:space="preserve"><value>Default</value></data>
+  <data name="Center" xml:space="preserve"><value>Center</value></data>
+
+  <data name="Nav_Home" xml:space="preserve"><value>Home</value></data>
+  <data name="Nav_WheelBase" xml:space="preserve"><value>Wheel Base</value></data>
+  <data name="Nav_Pedals" xml:space="preserve"><value>Pedals</value></data>
+  <data name="Nav_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
+  <data name="Nav_Wheel" xml:space="preserve"><value>Wheel</value></data>
+  <data name="Nav_Update" xml:space="preserve"><value>Firmware update</value></data>
+  <data name="Nav_AutoProfile" xml:space="preserve"><value>Auto-profile</value></data>
+  <data name="AutoProfile_Title" xml:space="preserve"><value>Auto-profile per game</value></data>
+  <data name="AutoProfile_Desc" xml:space="preserve"><value>Detects the running sim and automatically loads the chosen profile in each module. Leave blank to keep that module unchanged.</value></data>
+  <data name="AutoProfile_Enable" xml:space="preserve"><value>Enable auto-switch</value></data>
+  <data name="AutoProfile_CurrentGame" xml:space="preserve"><value>Current game:</value></data>
+  <data name="AutoProfile_Game" xml:space="preserve"><value>Game</value></data>
+  <data name="AutoProfile_NewName" xml:space="preserve"><value>Name (optional)</value></data>
+  <data name="AutoProfile_NewExe" xml:space="preserve"><value>Executable (e.g. acc)</value></data>
+  <data name="AutoProfile_Add" xml:space="preserve"><value>Add</value></data>
+  <data name="AutoProfile_Remove" xml:space="preserve"><value>Remove game</value></data>
+  <data name="EStop_Stop" xml:space="preserve"><value>⏹ STOP</value></data>
+  <data name="EStop_Tooltip" xml:space="preserve"><value>Emergency stop: cuts the base force immediately.</value></data>
+  <data name="EStop_Engaged" xml:space="preserve"><value>FORCE STOPPED</value></data>
+  <data name="EStop_Rearm" xml:space="preserve"><value>Re-arm</value></data>
+  <data name="Nav_Quit" xml:space="preserve"><value>Quit</value></data>
+  <data name="Quit_Confirm_Message" xml:space="preserve"><value>Quit DriveLab Studio?</value></data>
+  <data name="Quit_Confirm_Yes" xml:space="preserve"><value>Quit</value></data>
+  <data name="Quit_Confirm_No" xml:space="preserve"><value>Cancel</value></data>
+
+  <data name="Wheel_Title" xml:space="preserve"><value>Wheel</value></data>
+  <data name="Wheel_MaxAngle" xml:space="preserve"><value>Maximum angle</value></data>
+  <data name="Wheel_Config" xml:space="preserve"><value>Wheel configuration</value></data>
+  <data name="Wheel_Leds" xml:space="preserve"><value>Button colors</value></data>
+  <data name="Wheel_ConnectToEditColors" xml:space="preserve"><value>Connect the wheel to change LED colors.</value></data>
+  <data name="Wheel_Brightness" xml:space="preserve"><value>LED brightness</value></data>
+  <data name="Wheel_RevLights" xml:space="preserve"><value>Rev-lights (telemetry)</value></data>
+  <data name="Wheel_RevLights_Desc" xml:space="preserve"><value>The LED bar reacts to the game's RPM (ACC/AC now; iRacing/rF2 soon).</value></data>
+  <data name="Wheel_RevLights_Enable" xml:space="preserve"><value>Enable</value></data>
+  <data name="Wheel_RevLights_Test" xml:space="preserve"><value>Test mode (simulated sweep)</value></data>
+  <data name="Wheel_RevLights_Source" xml:space="preserve"><value>Source</value></data>
+  <data name="Wheel_RevLights_Gear" xml:space="preserve"><value>Gear</value></data>
+  <data name="Wheel_Effects" xml:space="preserve"><value>Telemetry effects (FFB)</value></data>
+  <data name="Wheel_Effects_Desc" xml:space="preserve"><value>Effects sent to the base from the game's telemetry (RPM, gear, ABS, slip).</value></data>
+  <data name="Wheel_Effects_Master" xml:space="preserve"><value>Master gain</value></data>
+  <data name="Wheel_Effects_Force" xml:space="preserve"><value>Force sent</value></data>
+  <data name="Profile_Label" xml:space="preserve"><value>Profile</value></data>
+  <data name="Profile_Placeholder" xml:space="preserve"><value>Select…</value></data>
+  <data name="Profile_NameWatermark" xml:space="preserve"><value>Profile name</value></data>
+  <data name="Profile_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Profile_SaveAs" xml:space="preserve"><value>Save as</value></data>
+  <data name="Profile_Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Profile_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Profile_Export" xml:space="preserve"><value>Export</value></data>
+  <data name="Profile_Import" xml:space="preserve"><value>Import</value></data>
+  <data name="Pedal_Title" xml:space="preserve"><value>Pedals</value></data>
+  <data name="Diag_Record" xml:space="preserve"><value>Record diagnostics</value></data>
+  <data name="Diag_Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="Diag_Mark" xml:space="preserve"><value>Mark</value></data>
+  <data name="Diag_Note" xml:space="preserve"><value>note (e.g. shake here)</value></data>
+
+  <data name="Wheel_Paddles" xml:space="preserve"><value>Paddles</value></data>
+  <data name="Wheel_PaddleCount" xml:space="preserve"><value>Paddle count</value></data>
+  <data name="Wheel_ShiftDown" xml:space="preserve"><value>Shift down</value></data>
+  <data name="Wheel_ShiftUp" xml:space="preserve"><value>Shift up</value></data>
+  <data name="Wheel_Function" xml:space="preserve"><value>Function</value></data>
+  <data name="Wheel_Mode" xml:space="preserve"><value>Mode</value></data>
+  <data name="Wheel_Actuation" xml:space="preserve"><value>Actuation</value></data>
+  <data name="Wheel_BitePoint" xml:space="preserve"><value>Bite point</value></data>
+  <data name="Wheel_Clutch" xml:space="preserve"><value>Clutch</value></data>
+  <data name="Wheel_Free" xml:space="preserve"><value>Free</value></data>
+  <data name="Wheel_Button" xml:space="preserve"><value>Button</value></data>
+  <data name="Wheel_Combined" xml:space="preserve"><value>Combined</value></data>
+  <data name="Wheel_Independent" xml:space="preserve"><value>Independent</value></data>
+  <data name="Wheel_Digital" xml:space="preserve"><value>Digital</value></data>
+  <data name="Wheel_Progression" xml:space="preserve"><value>Progression</value></data>
+
+  <data name="Page_WheelBase" xml:space="preserve"><value>Wheel Base</value></data>
+  <data name="Tab_Basic" xml:space="preserve"><value>Basic</value></data>
+  <data name="Tab_Advanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Tab_Hardware" xml:space="preserve"><value>Hardware</value></data>
+  <data name="Tab_Feel" xml:space="preserve"><value>Feel</value></data>
+  <data name="Tab_Telemetry" xml:space="preserve"><value>Telemetry</value></data>
+  <data name="Tab_Pedals" xml:space="preserve"><value>Pedals</value></data>
+  <data name="Tab_InputMonitor" xml:space="preserve"><value>Input monitor</value></data>
+
+  <data name="Test_Button" xml:space="preserve"><value>🕹 Test</value></data>
+  <data name="Test_Tooltip" xml:space="preserve"><value>Direct force control (separate window)</value></data>
+  <data name="Test_Title" xml:space="preserve"><value>Test — direct control</value></data>
+  <data name="Test_Desc" xml:space="preserve"><value>Sends force straight to the device (out of game). Connect and enable force.</value></data>
+  <data name="Test_ForceEnabled" xml:space="preserve"><value>Force enabled</value></data>
+  <data name="Force_Spring" xml:space="preserve"><value>Spring</value></data>
+  <data name="Force_Constant" xml:space="preserve"><value>Constant</value></data>
+  <data name="Force_Periodic" xml:space="preserve"><value>Periodic</value></data>
+  <data name="Force_Damper" xml:space="preserve"><value>Damper</value></data>
+
+  <data name="Status_Connected" xml:space="preserve"><value>Connected</value></data>
+  <data name="Status_Disconnected" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="Status_NoDevice" xml:space="preserve"><value>No device found</value></data>
+  <data name="Badge_Simulator" xml:space="preserve"><value>SIMULATOR</value></data>
+
+  <data name="Home_Pedals" xml:space="preserve"><value>Pedals</value></data>
+  <data name="Home_Base" xml:space="preserve"><value>Base</value></data>
+  <data name="Base_Force" xml:space="preserve"><value>Force</value></data>
+
+  <data name="Pedal_Clutch" xml:space="preserve"><value>Clutch</value></data>
+  <data name="Pedal_Brake" xml:space="preserve"><value>Brake</value></data>
+  <data name="Pedal_Throttle" xml:space="preserve"><value>Throttle</value></data>
+  <data name="Pedal_OutputCurves" xml:space="preserve"><value>Output curves</value></data>
+  <data name="Pedal_CurvePoints" xml:space="preserve"><value>Curve points</value></data>
+  <data name="Pedal_PreviewOnly" xml:space="preserve"><value>preview — not applied to this pedal</value></data>
+  <data name="Pedal_Invert" xml:space="preserve"><value>Invert</value></data>
+  <data name="Pedal_Sensor" xml:space="preserve"><value>Sensor</value></data>
+  <data name="Pedal_Smoothing" xml:space="preserve"><value>Smoothing</value></data>
+  <data name="Pedal_StartCalibration" xml:space="preserve"><value>Start calibration</value></data>
+  <data name="Pedal_StopCalibration" xml:space="preserve"><value>Stop calibration</value></data>
+  <data name="Pedal_Calibrate" xml:space="preserve"><value>Calibrate</value></data>
+  <data name="Pedal_Calibration" xml:space="preserve"><value>Calibration</value></data>
+  <data name="Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Finish" xml:space="preserve"><value>Finish</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Pedal_Source_Simulator" xml:space="preserve"><value>Simulator</value></data>
+  <data name="Pedal_Source_Detected" xml:space="preserve"><value>Pedals detected</value></data>
+  <data name="Handbrake_Source_Detected" xml:space="preserve"><value>Handbrake detected</value></data>
+  <data name="Wheel_Source_Detected" xml:space="preserve"><value>Wheel detected</value></data>
+
+  <data name="Splash_Starting" xml:space="preserve"><value>Starting…</value></data>
+  <data name="Splash_SearchingBase" xml:space="preserve"><value>Searching for wheel base…</value></data>
+  <data name="Splash_BaseFound" xml:space="preserve"><value>Wheel base connected</value></data>
+  <data name="Splash_BaseNotFound" xml:space="preserve"><value>Wheel base not found</value></data>
+  <data name="Splash_SearchingPedals" xml:space="preserve"><value>Searching for pedals…</value></data>
+  <data name="Splash_PedalsFound" xml:space="preserve"><value>Pedals connected</value></data>
+  <data name="Splash_PedalsNotFound" xml:space="preserve"><value>Pedals not found</value></data>
+  <data name="Splash_Ready" xml:space="preserve"><value>Ready</value></data>
+
+  <data name="Telemetry_Position" xml:space="preserve"><value>Position %</value></data>
+  <data name="Telemetry_Torque" xml:space="preserve"><value>Torque %</value></data>
+
+  <data name="Setting_MotionRange" xml:space="preserve"><value>Total steering angle</value></data>
+  <data name="Setting_SoftStopRange" xml:space="preserve"><value>End-stop range</value></data>
+  <data name="Setting_SoftStopStrength" xml:space="preserve"><value>End-stop strength</value></data>
+  <data name="Setting_TotalStrength" xml:space="preserve"><value>Total force</value></data>
+  <data name="Setting_SpringStrength" xml:space="preserve"><value>Wheel spring</value></data>
+  <data name="Setting_DamperStrength" xml:space="preserve"><value>Wheel damper</value></data>
+  <data name="Setting_StaticDamping" xml:space="preserve"><value>Static damping</value></data>
+  <data name="Setting_MaxTorqueLimit" xml:space="preserve"><value>Torque limit</value></data>
+  <data name="Setting_ForceDirection" xml:space="preserve"><value>Force direction</value></data>
+  <data name="Setting_EncoderDirection" xml:space="preserve"><value>Encoder direction</value></data>
+  <data name="Setting_EncoderCpr" xml:space="preserve"><value>Encoder CPR</value></data>
+  <data name="Setting_PolePairs" xml:space="preserve"><value>Pole pairs</value></data>
+  <data name="Setting_CurrentP" xml:space="preserve"><value>P gain (current)</value></data>
+  <data name="Setting_CurrentI" xml:space="preserve"><value>I gain (current)</value></data>
+  <data name="Setting_CalibrationCurrent" xml:space="preserve"><value>Calibration current</value></data>
+  <data name="Setting_FetTempLimitC" xml:space="preserve"><value>Derating temperature (board)</value></data>
+  <data name="Setting_PositionSmoothing" xml:space="preserve"><value>Position smoothing</value></data>
+  <data name="Setting_PowerLimit" xml:space="preserve"><value>Power limit</value></data>
+  <data name="Setting_BrakingLimit" xml:space="preserve"><value>Braking limit</value></data>
+  <data name="Setting_EncoderType" xml:space="preserve"><value>Encoder type</value></data>
+  <data name="Setting_EncoderType_Quadrature" xml:space="preserve"><value>Quadrature (E6B2)</value></data>
+  <data name="Setting_EncoderType_MagneticSPI" xml:space="preserve"><value>Magnetic SPI (AS5047)</value></data>
+  <data name="Setting_BoardVariant_24V" xml:space="preserve"><value>24V board</value></data>
+  <data name="Setting_BoardVariant_56V" xml:space="preserve"><value>56V board</value></data>
+
+  <data name="Home_Handbrake" xml:space="preserve"><value>Handbrake</value></data>
+  <data name="Handbrake_Title" xml:space="preserve"><value>Handbrake</value></data>
+  <data name="Handbrake_Axis" xml:space="preserve"><value>Axis</value></data>
+  <data name="Handbrake_Button" xml:space="preserve"><value>Button</value></data>
+  <data name="Handbrake_Sensor" xml:space="preserve"><value>Sensor type</value></data>
+  <data name="Handbrake_Smooth" xml:space="preserve"><value>Smoothing</value></data>
+  <data name="Handbrake_Invert" xml:space="preserve"><value>Invert</value></data>
+  <data name="Handbrake_Curve" xml:space="preserve"><value>Curve</value></data>
+  <data name="Handbrake_ButtonEnabled" xml:space="preserve"><value>Digital button</value></data>
+  <data name="Handbrake_ButtonThreshold" xml:space="preserve"><value>Button threshold</value></data>
+  <data name="Handbrake_CalibrateStart" xml:space="preserve"><value>Calibrate: start</value></data>
+  <data name="Handbrake_CalibrateStop" xml:space="preserve"><value>Calibrate: stop</value></data>
+  <data name="Handbrake_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Handbrake_LoadDefaults" xml:space="preserve"><value>Defaults</value></data>
+
+  <data name="Monitor_Title" xml:space="preserve"><value>Monitor</value></data>
+  <data name="Monitor_BusVoltage" xml:space="preserve"><value>Bus voltage</value></data>
+  <data name="Monitor_MotorCurrent" xml:space="preserve"><value>Motor current</value></data>
+  <data name="Monitor_EstimatedTorque" xml:space="preserve"><value>Estimated torque</value></data>
+  <data name="Monitor_FetTemp" xml:space="preserve"><value>FET temperature</value></data>
+  <data name="Monitor_MotorTemp" xml:space="preserve"><value>Motor temperature</value></data>
+  <data name="Monitor_McuTemp" xml:space="preserve"><value>MCU temperature</value></data>
+  <data name="Monitor_Clipping" xml:space="preserve"><value>FFB clipping</value></data>
+  <data name="Monitor_ClippingPeak" xml:space="preserve"><value>Clipping this session</value></data>
+  <data name="Monitor_BrakeTitle" xml:space="preserve"><value>Brake resistor</value></data>
+  <data name="Hardware_RebootNotice" xml:space="preserve"><value>These settings describe the machine itself, and the board only reads them when it starts. Save, then restart the base for them to take effect.</value></data>
+  <data name="Setting_EncoderTech_Abz" xml:space="preserve"><value>ABZ (quadrature)</value></data>
+  <data name="Setting_EncoderRes_Ppr" xml:space="preserve"><value>Pulses per revolution (PPR) — the number printed on the encoder</value></data>
+  <data name="Setting_EncoderRes_UnitPulses" xml:space="preserve"><value>pulses</value></data>
+  <data name="Setting_EncoderRes_Counts" xml:space="preserve"><value>Counts per revolution</value></data>
+  <data name="Setting_EncoderTech_Ssi" xml:space="preserve"><value>SSI</value></data>
+  <data name="Setting_EncoderTech_Spi" xml:space="preserve"><value>SPI</value></data>
+  <data name="Monitor_BrakeActivations" xml:space="preserve"><value>Activations</value></data>
+  <data name="Monitor_BrakeEnergy" xml:space="preserve"><value>Energy dissipated</value></data>
+  <data name="Monitor_BrakePeak" xml:space="preserve"><value>Peak power</value></data>
+  <data name="Monitor_BrakeHint" xml:space="preserve"><value>A cold resistor is normal — braking lasts milliseconds. These numbers show it worked.</value></data>
+  <data name="Monitor_DegC" xml:space="preserve"><value>°C</value></data>
+  <data name="Monitor_NoSensor" xml:space="preserve"><value>—</value></data>
+
+  <data name="Monitor_VoltageImplausible" xml:space="preserve"><value>⚠ Measured voltage ({0} V) doesn't match the selected supply voltage — check the 24V/56V setting.</value></data>
+  <data name="Monitor_AngleGuardTripped" xml:space="preserve"><value>🔴 Motor disarmed by safety check: current was flowing with no torque requested and the wheel still — meaning it was turning into heat, not force. Usually the calibration finished but stored a wrong electrical angle (motor phases reconnected in a different order, encoder remounted). Power-cycle the base to run a fresh calibration. It will NOT re-arm on its own.</value></data>
+
+  <data name="Update_Title" xml:space="preserve"><value>Firmware update</value></data>
+  <data name="Update_Device" xml:space="preserve"><value>Device</value></data>
+  <data name="Update_SelectFile" xml:space="preserve"><value>Select file…</value></data>
+  <data name="Update_Check" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="Update_Download" xml:space="preserve"><value>Download &amp; use</value></data>
+  <data name="Update_NoFileSelected" xml:space="preserve"><value>No file selected.</value></data>
+  <data name="Update_Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Update_Warning" xml:space="preserve"><value>Do not disconnect the device while updating — interrupting the flash can leave it unusable.</value></data>
+
+  <data name="Save_ToController" xml:space="preserve"><value>Save to controller</value></data>
+  <data name="Save_ToController_Tip" xml:space="preserve"><value>Stores the steering angle and centre in the base's flash. Force drops for about a second while it writes.</value></data>
+  <data name="Center_Hotkey" xml:space="preserve"><value>Centre shortcut</value></data>
+  <data name="Center_Hotkey_Assign" xml:space="preserve"><value>Assign</value></data>
+  <data name="Center_Hotkey_ClearAll" xml:space="preserve"><value>Clear all</value></data>
+  <data name="Center_Hotkey_Remove" xml:space="preserve"><value>Remove this shortcut</value></data>
+  <data name="Center_Hotkey_Empty" xml:space="preserve"><value>No shortcut — click Assign and press a button or key.</value></data>
+  <data name="Center_Hotkey_Capturing" xml:space="preserve"><value>Hold the button/combo (or the keys, e.g. Ctrl + F9) and release to confirm…</value></data>
+  <data name="SettingHelp_MotionRange" xml:space="preserve"><value>How many degrees the wheel turns lock to lock. E.g. 900 degrees is the road-car standard; formula and GT cars usually run 360 to 540.</value></data>
+  <data name="SettingHelp_SoftStopRange" xml:space="preserve"><value>How many degrees BEFORE the end of travel the end-stop wall starts acting. Higher = more progressive. E.g. 8 degrees ramps the force up instead of hitting a hard wall.</value></data>
+  <data name="SettingHelp_SoftStopStrength" xml:space="preserve"><value>Stiffness of the wall at the end of travel. E.g. 70% gives a firm wall; 100% returns a lot of energy and can catapult the wheel if damping is low.</value></data>
+  <data name="SettingHelp_TotalStrength" xml:space="preserve"><value>Overall FFB strength: scales everything the game sends. E.g. 100% uses the configured peak torque; 60% makes the wheel lighter without touching anything else.</value></data>
+  <data name="SettingHelp_SpringStrength" xml:space="preserve"><value>Spring pulling the wheel back to center even when the game does not ask. E.g. helps in games with weak self-aligning torque; 0% leaves the wheel loose.</value></data>
+  <data name="SettingHelp_DamperStrength" xml:space="preserve"><value>Wheel heaviness: resists how fast you turn. E.g. raise it if the wheel feels nervous or oscillates on its own.</value></data>
+  <data name="SettingHelp_StaticDamping" xml:space="preserve"><value>Constant friction, present even when the wheel is still. E.g. 5% removes the loose feeling on straights without making steering heavy.</value></data>
+  <data name="SettingHelp_MaxTorqueLimit" xml:space="preserve"><value>Torque ceiling as a percentage of the base maximum. E.g. 50% caps peak force to protect the motor or to suit a beginner.</value></data>
+  <data name="SettingHelp_ForceDirection" xml:space="preserve"><value>Flips the direction of the force. E.g. use it if the wheel pulls the wrong way through a corner.</value></data>
+  <data name="SettingHelp_EndstopDamping" xml:space="preserve"><value>Brake for the end-stop wall: absorbs the impact energy instead of returning it. E.g. 0% makes the wheel bounce and shoot back; 35% makes it settle against the stop.</value></data>
+  <data name="SettingHelp_Linearity" xml:space="preserve"><value>Force response curve. 100% = linear; below emphasises weak forces, above emphasises strong ones. E.g. 80% brings out more road detail at low force.</value></data>
+  <data name="SettingHelp_SlewRate" xml:space="preserve"><value>Smooths abrupt force changes between cycles. E.g. raise it if you feel hard jolts over kerbs.</value></data>
+  <data name="SettingHelp_ReconstructionSteps" xml:space="preserve"><value>Steps used to reconstruct force between game packets. E.g. higher values smooth games that send at 60 Hz.</value></data>
+  <data name="SettingHelp_ReconstructionLpf" xml:space="preserve"><value>Extra filter applied to the reconstructed force. E.g. raise it if high-frequency hiss remains.</value></data>
+  <data name="SettingHelp_BoardVariant" xml:space="preserve"><value>Board variant: 24 V or 56 V. Sets the bus voltage reading scale. E.g. with a 27 V supply the board is the 56 V one. Getting this wrong makes the base read the wrong voltage.</value></data>
+  <data name="SettingHelp_BusNominalV" xml:space="preserve"><value>Voltage of the supply feeding the base. E.g. 27 V. Used to derive overvoltage limits and brake resistor behaviour.</value></data>
+  <data name="SettingHelp_PositionSmoothing" xml:space="preserve"><value>Smoothing applied to the encoder position before the force calculation. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_PowerLimit" xml:space="preserve"><value>Power limit delivered to the motor, as a percentage. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_BrakingLimit" xml:space="preserve"><value>Limit for the current fed back to the supply when the wheel is braked. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_OutputFilterHz" xml:space="preserve"><value>Smooths the force that comes out by cutting frequencies above this value. Use it only if the wheel shakes once everything else is dialled in. E.g. 0 is off (default); start at 100 Hz and come down slowly until the shake goes. CAREFUL: over-filtering is the most common cause of FFB with no detail — every Hz you remove erases road texture along with the shake.</value></data>
+  <data name="SettingHelp_OscGuardEnable" xml:space="preserve"><value>Damps the wheel ONLY when it enters self-oscillation — the shake that shows up after you raise the low end of the force curve and the wheel-driver-base loop starts feeding itself. Unlike Damper, which is always on and eats road texture all the time, this guard stays out of the way while you feel the track and only steps in during the episode. It recognises oscillation by its rhythm (direction reversals at short, regular intervals), which normal steering and kerbs do not have. E.g. turn it on if the base shakes on the straight after you boosted small forces in the curve.</value></data>
+  <data name="SettingHelp_CoggingEnable" xml:space="preserve"><value>Use the cogging compensation table stored in flash. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_EncoderDirection" xml:space="preserve"><value>Encoder counting direction. Today this is decided by the boot calibration. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_EncoderCpr" xml:space="preserve"><value>Encoder resolution. On ABZ, enter the PULSES PER REVOLUTION printed on the label — the app applies the x4 quadrature. E.g. a 1000 P/R E6B2 becomes 4000 counts.</value></data>
+  <data name="SettingHelp_EncoderType" xml:space="preserve"><value>Sensor MODEL you bought. E.g. E6B2-CWZ6C (incremental) or MT6701 (magnetic). The technology list below changes with the model.</value></data>
+  <data name="SettingHelp_EncoderInterface" xml:space="preserve"><value>Wiring TECHNOLOGY: only the options the chosen model offers are shown. E.g. the E6B2 is ABZ; the MT6701 accepts ABZ or SSI.</value></data>
+  <data name="SettingHelp_PolePairs" xml:space="preserve"><value>Motor pole pairs (magnet count divided by 2). E.g. 15 on the hoverboard motor. Getting this wrong drives current into the wrong coil: heat without torque.</value></data>
+  <data name="SettingHelp_CurrentP" xml:space="preserve"><value>Proportional gain of the current loop. Changing this alters a loop running at 8 kHz. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_CurrentI" xml:space="preserve"><value>Integral gain of the current loop. Changing this alters a loop running at 8 kHz. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_CalibrationCurrent" xml:space="preserve"><value>Current used to calibrate the encoder at boot. E.g. 5 A overcomes the hoverboard motor cogging. It is automatically capped at the motor current limit.</value></data>
+  <data name="SettingHelp_SoftPowerEnable" xml:space="preserve"><value>Enables software shutdown of the DC bus. Requires the hardware to be wired. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_PowerButtonEnable" xml:space="preserve"><value>Enables the physical power button (tap on, hold off). Requires the hardware to be wired. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_FfbCurve0" xml:space="preserve"><value>Force curve point at 0% input (minimum force). E.g. raising it removes the dead zone at center.</value></data>
+  <data name="SettingHelp_FfbCurve1" xml:space="preserve"><value>Force curve point at 25% input. E.g. brings out light road forces.</value></data>
+  <data name="SettingHelp_FfbCurve2" xml:space="preserve"><value>Force curve point at 50% input. E.g. sets the middle of the response.</value></data>
+  <data name="SettingHelp_FfbCurve3" xml:space="preserve"><value>Force curve point at 75% input. E.g. controls delivery in hard corners.</value></data>
+  <data name="SettingHelp_FfbCurve4" xml:space="preserve"><value>Force curve point at 100% input (maximum force). E.g. lowering it compresses the peak without touching the rest.</value></data>
+  <data name="SettingHelp_SpringGain" xml:space="preserve"><value>How much of the SPRING effect sent by the game is applied. E.g. 100% respects the game; 50% softens the return to center.</value></data>
+  <data name="SettingHelp_DamperGain" xml:space="preserve"><value>How much of the DAMPER effect sent by the game is applied. E.g. lower it if the wheel feels too heavy when still.</value></data>
+  <data name="SettingHelp_FrictionGain" xml:space="preserve"><value>How much of the FRICTION effect sent by the game is applied. E.g. lower it if steering feels dragged.</value></data>
+  <data name="SettingHelp_InertiaGain" xml:space="preserve"><value>How much of the INERTIA effect sent by the game is applied. E.g. it simulates wheel mass when starting to turn.</value></data>
+  <data name="SettingHelp_TorqueConstant" xml:space="preserve"><value>Motor torque constant (Nm per amp) — the exchange rate between requested force and current sent. With 0 the base uses the datasheet figure (0.55 Nm/A for the hoverboard motor) and the monitor shows a dash for estimated torque. Worth measuring: a wrong Kt raises no error, it just delivers less force than the screen claims. E.g. asking for 12 Nm at 0.55 sends 21.8 A; if the real Kt is 0.40, only 8.7 Nm reach the wheel. Takes effect on the next base restart.</value></data>
+  <data name="SettingHelp_ThermalContinuousPct" xml:space="preserve"><value>Percentage of current considered safe continuously. E.g. 85% of peak. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_ThermalPeakSeconds" xml:space="preserve"><value>How many seconds peak current is tolerated before backing off. E.g. 10 s. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_FetTempLimitC" xml:space="preserve"><value>Temperature at which the board STARTS reducing force to protect itself; 20 degrees above that it cuts out completely. E.g. 85 degrees, the default — derating from 85, zero at 105. Only takes effect after the base reboots.</value></data>
+  <data name="SettingHelp_MotorTempLimitC" xml:space="preserve"><value>Maximum motor temperature before disarming. E.g. 105 degrees. Requires the NTC sensor wired. [NOTE] This control has no effect in the current firmware yet.</value></data>
+  <data name="SettingHelp_MotorEnable" xml:space="preserve"><value>Bring-up safety latch: the base starts DISARMED and only responds to commands with this on. E.g. after flashing for the first time, check board/encoder/motor in the fields below, enable here, and if anything goes wrong turn it off — the motor disarms immediately.</value></data>
+  <data name="SettingHelp_CurrentLim" xml:space="preserve"><value>Maximum current the firmware lets reach the coils. It describes YOUR motor: higher than it can take means heat, lower means wasted torque. E.g. 25 A on the bench hoverboard motor. It also caps the calibration current.</value></data>
+  <data name="Telemetry_Clipping" xml:space="preserve"><value>Clipping %</value></data>
+  <data name="Curve_Title" xml:space="preserve"><value>Force response curve</value></data>
+  <data name="Curve_Desc" xml:space="preserve"><value>How much force comes out for each force the game asks for. Drag the points. The dashed line is the reference: on it, what comes out equals what goes in. Below it in the middle means flattened mid-range forces — the wheel feels weak for most of the lap even with strong peaks.</value></data>
+  <data name="Curve_AxisIn" xml:space="preserve"><value>Force the game asks for</value></data>
+  <data name="Curve_AxisOut" xml:space="preserve"><value>Force delivered</value></data>
+  <data name="Curve_Flatten" xml:space="preserve"><value>Back to a straight line</value></data>
+  <data name="Curve_Help" xml:space="preserve"><value>Shapes how much force the base delivers for each force the game asks for.
+
+HOW TO READ IT: the dashed line is the reference — on it, what comes out is exactly what the game asked for. Where your curve sits BELOW the dashed line, the base delivers less than asked; ABOVE, it delivers more.
+
+WHERE YOU DRIVE: the middle of the graph (25% to 75%) is most of a lap — ordinary cornering, line corrections, the car sliding a little. The ends are the extremes: kerbs, impacts, a locked wheel. Changing the middle changes the whole lap; changing the end only changes the jolts.
+
+WHAT IT IS FOR: raising the middle makes light forces more noticeable, and that is where grip information lives. Lowering the right end trims only the peaks without removing detail elsewhere — that is how you tame hard impacts without leaving the base soft.
+
+THE TRAP: a curve that sags in the middle leaves the base WEAK for most of the lap and still clipping at the peaks. You compensate by raising the game's gain, and then only the jolts come through in full. If your curve sits well below the dashed line in the middle, that is what is happening.
+
+Start from the straight line. Change little, one point at a time, and drive a lap between adjustments.
+
+This curve applies AFTER linearity and BEFORE the torque and current limits — it shapes the force, it does not raise the base's ceiling.</value></data>
+  <data name="Tab_ForceTest" xml:space="preserve"><value>Tests</value></data>
+  <data name="FT_Title" xml:space="preserve"><value>Test the hardware</value></data>
+  <data name="FT_Desc" xml:space="preserve"><value>Each test applies one kind of force and concludes something about your base from what it answered. Run them top to bottom: they go from gentlest to strongest.</value></data>
+  <data name="FT_Warning" xml:space="preserve"><value>⚠️ This moves the wheel for real. Take your hands off the rim before starting, keep the Stop button in sight, and do not test with anyone next to the rig.</value></data>
+  <data name="FT_StrengthHint" xml:space="preserve"><value>Scales the force each test asks for. Start low and raise gradually — a "100% peak" test with this at 10% applies 10%.</value></data>
+  <data name="FT_Strength" xml:space="preserve"><value>Test strength</value></data>
+  <data name="FT_NeedForce" xml:space="preserve"><value>The motor is not armed, so no test can run. If "Enable motor" is already on in the Hardware tab, it DISARMED — by protection or by a fault — and will not come back on its own: power-cycle the base. That switch is your permission to arm, not the motor's state.</value></data>
+  <data name="FT_Run" xml:space="preserve"><value>Run</value></data>
+  <data name="FT_Stop" xml:space="preserve"><value>⏹ Stop</value></data>
+  <data name="FT_Peak" xml:space="preserve"><value>peak force</value></data>
+  <data name="FT_Duration" xml:space="preserve"><value>duration</value></data>
+  <data name="FT_Passed" xml:space="preserve"><value>✅</value></data>
+  <data name="FT_Attention" xml:space="preserve"><value>⚠️</value></data>
+  <data name="ForceTest_Spring" xml:space="preserve"><value>Centring spring</value></data>
+  <data name="ForceTest_Spring_Desc" xml:space="preserve"><value>Turn the wheel away from centre and run it. The base should pull it back. If it PUSHES away instead, the encoder direction is inverted — and this is the fastest way to find that without loading a game.</value></data>
+  <data name="ForceTest_Vibration" xml:space="preserve"><value>Vibration (5 to 25 Hz)</value></data>
+  <data name="ForceTest_Vibration_Desc" xml:space="preserve"><value>Sweeps through frequencies at low force, looking for one that shakes the whole rig. This is how you find a loose mount or bolt — on track everything happens at once and you cannot separate them.</value></data>
+  <data name="ForceTest_Ramp" xml:space="preserve"><value>Force ramp</value></data>
+  <data name="ForceTest_Ramp_Desc" xml:space="preserve"><value>Ramps force to maximum while watching the current follow. Answers whether the base delivers what the settings promise: the real ceiling is max current × Kt, and it can sit well below the number on screen.</value></data>
+  <data name="ForceTest_Impact" xml:space="preserve"><value>Impact</value></data>
+  <data name="ForceTest_Impact_Desc" xml:space="preserve"><value>Three short hits, alternating sides, like striking a kerb. Shows whether the peak comes out whole or the force path clips it.</value></data>
+</root>
