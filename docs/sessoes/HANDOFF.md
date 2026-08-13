@@ -12,6 +12,52 @@
 > Para consultar qualquer hash abaixo, use o clone do legado. O que segue vale como **registro do
 > que foi provado e quando** — a data e a descrição continuam significando; o SHA não.
 
+## 🆕 SESSÃO DE 13/08 (Mac) — o que mudou e o que te espera na bancada
+
+Nada disto tocou a placa. Tudo é app, build, documentação e **lógica pura de firmware ainda não
+ligada** — de propósito, porque o firmware só se mexe com você na bancada.
+
+### O que entrou
+
+| | |
+|---|---|
+| **Reprodução de volta gravada** | app toca uma volta de FFB gravada, com sincronia de vídeo. Aba só no modo avançado. Falta o lado do firmware (capturar e enviar) |
+| **Abas que aplicam força** | Testes e Volta gravada agora **só aparecem com `--advanced`** |
+| **Botão Parar era inerte** | correção real: faltava `NotifyCanExecuteChangedFor`, então o botão aparecia cinza e clicar não fazia nada, com o volante se mexendo |
+| **Instalador não levava o `dfu-util`** | quem instalava no Windows não conseguia gravar. O build agora baixa, confere o SHA-256 e empacota |
+| **ST-Link vira opcional no README** | ele nunca foi necessário para montar — a gravação é pela USB, inclusive a primeira, em placa de fábrica |
+| **`center_drive.h`** | leva o volante ao centro no boot. Lógica pura, 16 testes de host, **não ligada** |
+
+Testes: **599 no app** (244 Core + 59 Hid + 296 Studio) + **11 de host** no firmware.
+
+### ⚠️ O que precisa de você na bancada, nesta ordem
+
+**1. Rodar `installer/windows/build-installer.ps1`.** Escrevi o passo de download do `dfu-util` em
+PowerShell e **não tenho como rodá-lo do Mac**. Ele depende do `tar` do Windows suportar `.xz` (existe
+a partir do Windows 10 1803). Se falhar, ele **para o build** com a instrução de extrair à mão — não
+gera instalador incompleto em silêncio. Conferir que o `dfu-util.exe` aparece na pasta `publish`.
+
+**2. As 6 mudanças de firmware que continuam esperando validação** (corte térmico dos FETs, filtro de
+saída, guarda do encoder, curva de força, banda do current loop, direção do encoder). Todas inertes
+nos padrões, então **gravar com os padrões e confirmar que nada mudou cobre as seis**.
+
+**3. Dois planos prontos para executar**, no repo de memória em `planos/`:
+   - **medir o Kt pelo app** — tira a medição do SWD. Firmware acumula a regressão a 1 kHz e publica
+     só o coeficiente; o app recusa dar número com faixa de velocidade estreita
+   - **centro no boot** — ABZ (Z) **e** SPI absoluto, com a base **levando** o volante ao centro
+
+### 🚦 A regra que ordena o trabalho do centro no boot
+
+**Só mover o aro com a referência confiável.** Levar o volante a um centro errado é pior que não
+mover, porque o batente vai junto e a parede aparece onde ninguém espera.
+
+E não usar a busca de índice do ODrive no boot: ela é um giro em **malha aberta a 10 A**, ~150°/s, que
+segue por até ~6,7 voltas se o Z não aparecer. O caminho é deixar a interrupção do índice armada
+(`find_idx_on_lockin_only = false`, que já é o padrão) e aproveitar o cruzamento — é o que projetos
+maduros fazem, e está justificado no desenho.
+
+---
+
 ## 📍 ESTADO ATUAL (2026-08-11, fim da sessão de bancada no Windows)
 
 | | |
