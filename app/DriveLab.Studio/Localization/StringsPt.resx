@@ -314,4 +314,18 @@ Esta curva vale DEPOIS da linearidade e ANTES dos limites de torque e de corrent
   <data name="ForceTest_Impact_Desc" xml:space="preserve"><value>Três pancadas curtas, alternando o lado, como bater numa zebra. Mostra se o pico sai inteiro ou se o caminho de força o corta.</value></data>
   <data name="Setting_CurrentBandwidthHz" xml:space="preserve"><value>Banda da malha de corrente</value></data>
   <data name="SettingHelp_CurrentBandwidthHz" xml:space="preserve"><value>Quão rápido a malha de corrente persegue o valor pedido. Os ganhos P e I são DERIVADOS daqui e do R/L do motor — não há o que ajustar à mão. Ex.: 200 Hz nesta bancada; alto demais faz o motor assobiar e vibrar, baixo demais deixa a força mole e atrasada. Só vale depois de reiniciar a base.</value></data>
+  <data name="Tab_Playback" xml:space="preserve"><value>Volta gravada</value></data>
+  <data name="PB_Title" xml:space="preserve"><value>Reproduzir uma volta gravada</value></data>
+  <data name="PB_Desc" xml:space="preserve"><value>Carrega uma volta que alguém gravou de um jogo de verdade e toca as mesmas forças no seu volante — sem precisar do jogo. Com o vídeo da mesma volta rodando ao lado, você vê e sente a curva ao mesmo tempo. É também o único jeito de comparar dois ajustes na volta exatamente igual.</value></data>
+  <data name="PB_Warning" xml:space="preserve"><value>⚠️ Isto é força SEM PILOTO NO LAÇO. A volta foi gravada com alguém segurando o volante e reagindo a cada carga; aqui pode não haver ninguém. O que era "peso de curva" contra as mãos vira o volante girando sozinho. Comece com o teto baixo, tire as mãos do aro e tenha o Parar à vista.</value></data>
+  <data name="PB_Load" xml:space="preserve"><value>Abrir volta…</value></data>
+  <data name="PB_NoLap" xml:space="preserve"><value>Nenhuma volta carregada. As gravações são arquivos .dlffb — suas, ou de alguém que compartilhou.</value></data>
+  <data name="PB_Cap" xml:space="preserve"><value>Teto de força</value></data>
+  <data name="PB_CapHint" xml:space="preserve"><value>Quanto da força gravada realmente sai. Nasce em 30% de propósito: você ainda não sabe o que aquela volta faz. Suba depois de ter sentido.</value></data>
+  <data name="PB_VideoHint" xml:space="preserve"><value>Abra este vídeo, pause no segundo em que a volta começa, e dê play junto com o botão abaixo. A contagem regressiva dá tempo para os dois.</value></data>
+  <data name="PB_SyncHint" xml:space="preserve"><value>Se o que você sente chega antes ou depois do que você vê, ajuste aqui — dá para fazer com a volta tocando. O erro é constante, então acertar uma vez conserta a volta inteira.</value></data>
+  <data name="PB_NeedForce" xml:space="preserve"><value>O motor não está armado, então nada pode tocar. Se "Ativar motor" já está ligado na aba Hardware, ele DESARMOU — por proteção ou por um erro — e não volta sozinho: desligue e religue a base.</value></data>
+  <data name="PB_Play" xml:space="preserve"><value>▶ Tocar volta</value></data>
+  <data name="PB_Stop" xml:space="preserve"><value>⏹ Parar</value></data>
+  <data name="PB_Countdown" xml:space="preserve"><value>Tire as mãos do aro — a força vai começar.</value></data>
 </root>

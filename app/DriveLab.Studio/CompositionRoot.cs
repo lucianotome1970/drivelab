@@ -202,6 +202,13 @@ public static class CompositionRoot
             .Append(new PageTab(L.Get("Tab_ForceTest"), new ForceTestViewModel(session)))
             .ToList();
 
+        // Reprodução de volta gravada: SÓ no modo avançado. Não é dificuldade de uso — é que
+        // reproduzir aplica força sem piloto no laço, e o arquivo pode vir de outra pessoa, com uma
+        // volta cuja intensidade ninguém deste lado conhece de antemão.
+        if (advancedMode)
+            wheelBaseTabs.Add(new PageTab(L.Get("Tab_Playback"),
+                new FfbPlaybackViewModel(session, new AvaloniaCaptureFilePicker())));
+
         // Volante (aro removível): simulador → sessão simulada (botão Conectar); real → HID 0x0004
         // + hotplug + LED ao vivo. Criado ANTES do dash p/ o card "Volante" acender pela conexão do aro.
         WheelDeviceSession wheelSession;

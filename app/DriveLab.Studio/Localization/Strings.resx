@@ -315,4 +315,18 @@ This curve applies AFTER linearity and BEFORE the torque and current limits — 
   <data name="ForceTest_Impact_Desc" xml:space="preserve"><value>Three short hits, alternating sides, like striking a kerb. Shows whether the peak comes out whole or the force path clips it.</value></data>
   <data name="Setting_CurrentBandwidthHz" xml:space="preserve"><value>Current-loop bandwidth</value></data>
   <data name="SettingHelp_CurrentBandwidthHz" xml:space="preserve"><value>How fast the current loop chases the value asked for. The P and I gains are DERIVED from this and from the motor's R and L — there is nothing to tune by hand. E.g. 200 Hz on this bench; too high makes the motor whine and buzz, too low leaves the force soft and late. Only takes effect after the base reboots.</value></data>
+  <data name="Tab_Playback" xml:space="preserve"><value>Recorded lap</value></data>
+  <data name="PB_Title" xml:space="preserve"><value>Play a recorded lap</value></data>
+  <data name="PB_Desc" xml:space="preserve"><value>Loads a lap someone recorded from a real game and plays the same forces on your wheel — no game needed. With the video of that same lap playing beside you, you see and feel the corner at the same time. It is also the only way to compare two settings on exactly the same lap.</value></data>
+  <data name="PB_Warning" xml:space="preserve"><value>⚠️ This is force with NO DRIVER IN THE LOOP. The lap was recorded with someone holding the wheel and reacting to every load; here there may be nobody. What was "cornering weight" against their hands becomes the wheel spinning on its own. Start at a low cap, take your hands off the rim, and keep Stop in sight.</value></data>
+  <data name="PB_Load" xml:space="preserve"><value>Open lap…</value></data>
+  <data name="PB_NoLap" xml:space="preserve"><value>No lap loaded. Recordings are .dlffb files — yours, or one someone shared.</value></data>
+  <data name="PB_Cap" xml:space="preserve"><value>Force cap</value></data>
+  <data name="PB_CapHint" xml:space="preserve"><value>How much of the recorded force actually comes out. Starts at 30% on purpose: you do not yet know what that lap does. Raise it once you have felt it.</value></data>
+  <data name="PB_VideoHint" xml:space="preserve"><value>Open this video, pause it at the second the lap starts, and press Play at the same time you press the button below. The countdown gives you time for both.</value></data>
+  <data name="PB_SyncHint" xml:space="preserve"><value>If what you feel arrives before or after what you see, nudge it here — you can do it while it plays. The error is constant, so getting it right once fixes the whole lap.</value></data>
+  <data name="PB_NeedForce" xml:space="preserve"><value>The motor is not armed, so nothing can play. If "Enable motor" is already on in the Hardware tab, it DISARMED — by protection or by a fault — and will not come back on its own: power-cycle the base.</value></data>
+  <data name="PB_Play" xml:space="preserve"><value>▶ Play lap</value></data>
+  <data name="PB_Stop" xml:space="preserve"><value>⏹ Stop</value></data>
+  <data name="PB_Countdown" xml:space="preserve"><value>Take your hands off the rim — the force is about to start.</value></data>
 </root>

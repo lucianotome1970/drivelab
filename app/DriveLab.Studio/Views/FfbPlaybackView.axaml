@@ -1,0 +1,147 @@
+<!-- ============================================================================
+     DriveLab
+     FfbPlaybackView.axaml — Aba de reprodução: toca uma volta gravada no volante.
+
+     A ordem da tela segue a ordem da mão: primeiro o arquivo, depois o teto de
+     força, depois o vídeo e a sincronia, e só então o botão de tocar. O teto vem
+     ANTES do botão de propósito — é o controle que decide se o que vem a seguir
+     é suave ou violento, e não pode ser descoberto depois.
+
+     O botão Parar fica fixo no topo enquanto toca: quem precisa dele está com o
+     volante se mexendo na frente e não vai procurar dentro de um cartão.
+     Autor: Luciano Tomé — Licença MIT
+============================================================================ -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DriveLab.Studio.ViewModels"
+             xmlns:loc="using:DriveLab.Studio.Localization"
+             x:Class="DriveLab.Studio.Views.FfbPlaybackView"
+             x:DataType="vm:FfbPlaybackViewModel">
+    <ScrollViewer>
+        <StackPanel Spacing="12" Margin="4,4,20,16">
+
+            <TextBlock Text="{loc:Translate PB_Title}" FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource DlText}" />
+            <TextBlock Text="{loc:Translate PB_Desc}" TextWrapping="Wrap" Opacity="0.75"
+                       Foreground="{DynamicResource DlText}" />
+
+            <!-- Não some nunca. Reproduzir é força SEM piloto no laço: a volta foi gravada com
+                 alguém segurando o volante e reagindo, e aqui pode não haver ninguém. -->
+            <Border Background="#33FF9800" CornerRadius="6" Padding="12,10">
+                <TextBlock Text="{loc:Translate PB_Warning}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+
+            <!-- PARAR — fixo no topo, visível só enquanto toca. -->
+            <Button Content="{loc:Translate PB_Stop}" Command="{Binding PararCommand}"
+                    IsVisible="{Binding Tocando}" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center" Padding="0,10"
+                    Background="#F44336" Foreground="White" FontWeight="SemiBold" />
+
+            <!-- 1. O ARQUIVO -->
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="12,10">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Button Grid.Column="0" Content="{loc:Translate PB_Load}"
+                                Command="{Binding CarregarCommand}" IsEnabled="{Binding !Tocando}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Descricao}" Margin="12,0,0,0"
+                                   VerticalAlignment="Center" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource DlText}" />
+                    </Grid>
+                    <TextBlock Text="{loc:Translate PB_NoLap}" FontSize="11" Opacity="0.6"
+                               IsVisible="{Binding !TemVolta}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource DlText}" />
+                </StackPanel>
+            </Border>
+
+            <!-- 2. O TETO DE FORÇA — antes do botão de tocar, pelo mesmo motivo da aba de testes. -->
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="12,10">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate PB_Cap}"
+                               VerticalAlignment="Center" Foreground="{DynamicResource DlText}" />
+                    <Slider Grid.Row="0" Grid.Column="1" Minimum="5" Maximum="100"
+                            Value="{Binding TetoPct}" IsSnapToTickEnabled="True" TickFrequency="5"
+                            Margin="12,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" MinWidth="46"
+                               TextAlignment="Right" Foreground="{DynamicResource DlText}"
+                               Text="{Binding TetoPct, StringFormat={}{0:0} %}" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" FontSize="11"
+                               Opacity="0.6" TextWrapping="Wrap" Margin="0,6,0,0"
+                               Foreground="{DynamicResource DlText}"
+                               Text="{loc:Translate PB_CapHint}" />
+                </Grid>
+            </Border>
+
+            <!-- 3. VÍDEO E SINCRONIA -->
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="12,10"
+                    IsVisible="{Binding TemVolta}">
+                <StackPanel Spacing="8">
+                    <SelectableTextBlock Text="{Binding UrlDoVideo}" IsVisible="{Binding TemVideo}"
+                                         TextWrapping="Wrap" FontSize="12"
+                                         Foreground="{DynamicResource DlText}" />
+                    <TextBlock Text="{loc:Translate PB_VideoHint}" FontSize="11" Opacity="0.6"
+                               IsVisible="{Binding TemVideo}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource DlText}" />
+
+                    <!-- AJUSTE DE SINCRONIA — o erro entre vídeo e reprodução é constante (vem do
+                         reflexo de quem aperta o play), então um deslocamento fixo acerta a volta
+                         inteira. Fica utilizável DURANTE a reprodução: é sentindo que se descobre
+                         se está adiantado, e mandar recomeçar a volta para corrigir seria cruel. -->
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                        <Button Grid.Column="0" Content="−100 ms" FontSize="11"
+                                Command="{Binding AjustarSincroniaCommand}" CommandParameter="-100" />
+                        <Button Grid.Column="1" Content="−10 ms" FontSize="11" Margin="6,0,0,0"
+                                Command="{Binding AjustarSincroniaCommand}" CommandParameter="-10" />
+                        <TextBlock Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource DlText}"
+                                   Text="{Binding AjusteMs, StringFormat={}{0:+0;-0;0} ms}" />
+                        <Button Grid.Column="3" Content="+10 ms" FontSize="11" Margin="0,0,6,0"
+                                Command="{Binding AjustarSincroniaCommand}" CommandParameter="10" />
+                        <Button Grid.Column="4" Content="+100 ms" FontSize="11"
+                                Command="{Binding AjustarSincroniaCommand}" CommandParameter="100" />
+                    </Grid>
+                    <TextBlock Text="{loc:Translate PB_SyncHint}" FontSize="11" Opacity="0.6"
+                               TextWrapping="Wrap" Foreground="{DynamicResource DlText}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Motor desligado: diz por quê ANTES de a pessoa tentar. -->
+            <Border Background="#332196F3" CornerRadius="6" Padding="12,10"
+                    IsVisible="{Binding !ForceEnabled}">
+                <TextBlock Text="{loc:Translate PB_NeedForce}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+
+            <Border Background="#33F44336" CornerRadius="6" Padding="12,10"
+                    IsVisible="{Binding Aviso, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="{Binding Aviso}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+
+            <!-- 4. TOCAR -->
+            <Button Content="{loc:Translate PB_Play}" Command="{Binding TocarCommand}"
+                    IsVisible="{Binding !Tocando}" IsEnabled="{Binding TemVolta}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    Padding="0,10" FontWeight="SemiBold" />
+
+            <!-- CONTAGEM REGRESSIVA — grande de propósito: é o aviso de tirar as mãos do aro, e
+                 tem de ser legível de longe, com o vídeo já em foco na outra tela. -->
+            <Border Background="#33FF9800" CornerRadius="6" Padding="12,16"
+                    IsVisible="{Binding Contagem}">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding Contagem}" FontSize="48" FontWeight="Bold"
+                               HorizontalAlignment="Center" Foreground="{DynamicResource DlText}" />
+                    <TextBlock Text="{loc:Translate PB_Countdown}" HorizontalAlignment="Center"
+                               TextWrapping="Wrap" Foreground="{DynamicResource DlText}" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Spacing="6" IsVisible="{Binding Tocando}">
+                <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progresso}" Height="6" />
+                <TextBlock Text="{Binding RelogioTexto}" FontSize="12" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource DlText}" />
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
