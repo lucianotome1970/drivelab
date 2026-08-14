@@ -508,6 +508,13 @@ extern "C" uint8_t ffb_model_get_clipping_session(void) {
 
 // Zera o medidor quando o motor NÃO está armado. Sem isto o último valor medido congela na tela
 // (o compute_torque só roda armado), e o usuário veria "40% de clipping" numa base parada.
+extern "C" void ffb_model_reset_transient(void) {
+    // "Memória do último torque emitido" — sem sentido depois de uma pausa. Ver o header.
+    s_prevTorque = 0.0f;
+    s_outputFilter.reset();
+    s_recon.reset();
+}
+
 extern "C" void ffb_model_reset_clipping(void) {
     s_clipTicks     = 0;
     s_clipHitsGame  = 0;

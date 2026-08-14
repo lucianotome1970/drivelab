@@ -48,6 +48,18 @@ uint8_t ffb_model_get_clipping_base(void);
 uint8_t ffb_model_get_clipping_session(void);
 void    ffb_model_reset_clipping(void);
 
+/// Zera o estado TRANSITÓRIO do pipeline — o que é "memória do último torque emitido": o valor
+/// anterior do limitador de variação, o filtro de saída e o reconstrutor de força.
+///
+/// POR QUE EXISTE: com a base desarmada o ffb_model_compute_torque() não é chamado, então esse
+/// estado congela no último valor de antes do desarme. No re-arme o slewLimit() partia dali —
+/// `prev ± maxDelta` — e o primeiro tick saía perto do torque VELHO em vez de zero. Como o "Salvar
+/// no controlador" desarma e re-arma, um tranco no salvamento seria o sintoma.
+///
+/// NÃO mexe nos slots de efeito nem no device gain: esses pertencem ao host, que continua achando
+/// que os criou. Limpá-los deixaria o jogo sem efeitos até ele reenviá-los — e ele não reenvia.
+void    ffb_model_reset_transient(void);
+
 // Controle direto do app (report 0x10). `constant`/`periodic` sao FORCA -1..1 (o app ja calculou a
 // forma de onda); `spring`/`damper` sao GANHO 0..1 (dependem de posicao e velocidade, calculadas no
 // firmware). Renova o watchdog: sem novos envios a forca decai sozinha em ~800 ms.

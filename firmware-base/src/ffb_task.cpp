@@ -447,6 +447,11 @@ static void ffb_thread(void*) {
         } else {
             motor_link_set_input_torque(0.0f);
             ffb_model_reset_clipping();   // desarmado não clipa — não deixar o último valor congelado na tela
+            // Estado transitório zerado ENQUANTO desarmado, e não na borda do arme. É de
+            // propósito: chamar todo tick é idempotente e não depende de detectar transição
+            // — detecção de borda erra quando o estado muda por um caminho que ninguém
+            // lembrou (guarda que desarma, save, DFU). Custo: três atribuições por ms.
+            ffb_model_reset_transient();
         }
         // WATCHDOG — alimentado AQUI, no fim do laço de 1 kHz, e não num timer.
         //
