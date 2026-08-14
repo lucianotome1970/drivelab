@@ -292,9 +292,19 @@ public partial class SettingFieldViewModel : ViewModelBase
     /// firmware responde 0, que era a antiga opção "genérico" e hoje não existe na lista. Sem
     /// traduzir, o campo ficaria sem nenhuma opção marcada — a tela em branco depois de clicar em
     /// "Padrão", que é o pior resultado possível para um botão que promete um valor conhecido.</para></summary>
-    public void ApplyDefaultFromDevice(double valorDaBase)
+    public void ApplyDefaultFromDevice(double valorDaBase) => AdotarValorExterno(valorDaBase);
+
+    /// <summary>Adota um valor vindo de um ARQUIVO de perfil importado. Passa pelo mesmo caminho do
+    /// "Padrão": limita à faixa, normaliza o que precisa, marca como alterado — e quem grava na placa
+    /// continua sendo o Salvar. Importar nunca escreve sozinho na base.</summary>
+    public void ApplyImported(double valorDoArquivo) => AdotarValorExterno(valorDoArquivo);
+
+    /// <summary>Caminho único para valor que vem de FORA da tela (base ou arquivo). Existe para os
+    /// dois não divergirem: o tratamento do modelo do encoder precisava valer nos dois, e duplicá-lo
+    /// era garantir que um dia só um seria corrigido.</summary>
+    private void AdotarValorExterno(double valor)
     {
-        var v = _descriptor.Clamp(valorDaBase);
+        var v = _descriptor.Clamp(valor);
         if (_descriptor.Id == BaseSettingId.EncoderType)
             v = EncoderCatalog.Normalize((int)System.Math.Round(v));
         Value = v;

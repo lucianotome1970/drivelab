@@ -63,6 +63,18 @@
   <data name="Profile_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Profile_Export" xml:space="preserve"><value>Export</value></data>
   <data name="Profile_Import" xml:space="preserve"><value>Import</value></data>
+
+  <!-- Wheelbase settings profile (export/import to file). The counts are deliberate: telling
+       someone "imported successfully" after applying 3 of 40 fields is worse than an error. -->
+  <data name="BaseProfile_Exported" xml:space="preserve"><value>Exported {0} settings.</value></data>
+  <data name="BaseProfile_NothingToExport" xml:space="preserve"><value>Nothing to export yet — connect the base and wait for the values to load.</value></data>
+  <data name="BaseProfile_Imported" xml:space="preserve"><value>{0} settings applied</value></data>
+  <data name="BaseProfile_SkippedHardware" xml:space="preserve"><value>{0} hardware fields skipped (they describe the machine)</value></data>
+  <data name="BaseProfile_SkippedUnknown" xml:space="preserve"><value>{0} unknown fields ignored</value></data>
+  <data name="BaseProfile_Clamped" xml:space="preserve"><value>{0} values capped to the allowed range</value></data>
+  <data name="BaseProfile_RememberToSave" xml:space="preserve"><value>click "Save to controller" to write them to the base</value></data>
+  <data name="BaseProfile_WrongModule" xml:space="preserve"><value>This file holds '{0}' profiles, not wheelbase settings.</value></data>
+  <data name="BaseProfile_EmptyFile" xml:space="preserve"><value>This file has no settings in it.</value></data>
   <data name="Pedal_Title" xml:space="preserve"><value>Pedals</value></data>
   <data name="Diag_Record" xml:space="preserve"><value>Record diagnostics</value></data>
   <data name="Diag_Stop" xml:space="preserve"><value>Stop</value></data>

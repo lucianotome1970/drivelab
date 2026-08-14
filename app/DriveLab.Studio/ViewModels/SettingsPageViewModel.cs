@@ -5,11 +5,13 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
 using DriveLab.Studio.Services;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -26,9 +28,17 @@ public sealed record PageTab(string Header, ViewModelBase Content);
 public sealed partial class SettingsPageViewModel : ViewModelBase
 {
     private readonly BaseSession _session;
+    private readonly IProfileFilePicker? _filePicker;
 
     public string Title { get; }
     public IReadOnlyList<PageTab> Tabs { get; }
+
+    /// <summary>Resultado da última exportação/importação, exibido abaixo da barra de botões. Vazio
+    /// esconde o aviso.</summary>
+    [ObservableProperty] private string _exchangeStatus = "";
+
+    /// <summary>Exportar/importar disponível (sem seletor de arquivo — nos testes — os botões somem).</summary>
+    public bool CanExchangeFiles => _filePicker is not null;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
@@ -40,9 +50,11 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _isDirty;
 
-    public SettingsPageViewModel(BaseSession session, string title, IEnumerable<PageTab> tabs)
+    public SettingsPageViewModel(BaseSession session, string title, IEnumerable<PageTab> tabs,
+                                 IProfileFilePicker? filePicker = null)
     {
         _session = session;
+        _filePicker = filePicker;
         Title = title;
         Tabs = tabs.ToList();
         _isConnected = session.IsConnected;
@@ -123,6 +135,97 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
                 field.ResetToDefault();
             }
         }
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Exportar / importar em arquivo
+    // ------------------------------------------------------------------------------------------
+    //
+    // O ESCOPO segue as abas VISÍVEIS, e isso é de propósito. No modo cliente a aba Hardware não
+    // existe, então os campos que descrevem a MÁQUINA (pares de polos, resolução do encoder, Kt,
+    // variante da placa) não são exportados nem aceitos na importação — receber esses valores do
+    // arquivo de outra pessoa configuraria a base para um hardware que não é o dela. No modo criador
+    // a aba existe e eles entram, que é o caso de quem monta a base do zero: numa placa recém-gravada
+    // são justamente eles que precisam vir de algum lugar.
+    //
+    // ⚠️ O QUE NÃO VIAJA NO ARQUIVO: a calibração do motor (alinhamento do encoder, R/L). Ela mora na
+    // NVM do ODrive, não nos settings, e é específica do conjunto motor+encoder montado. Uma placa que
+    // recebe este arquivo ainda vai calibrar sozinha no primeiro arme — é o comportamento correto, e
+    // não um campo que ficou faltando.
+
+    /// <summary>Todos os campos editáveis desta página (só as abas visíveis no modo atual).</summary>
+    private IReadOnlyList<SettingFieldViewModel> CamposEditaveis() => AllFields().ToList();
+
+    [RelayCommand(CanExecute = nameof(CanExchangeFiles))]
+    private async Task ExportAsync()
+    {
+        if (_filePicker is null) return;
+
+        var campos = CamposEditaveis();
+        var perfil = BaseProfileExchange.Criar(campos.Select(f => (f.SettingId, f.Value, f.IsLoaded)));
+
+        if (perfil.Settings.Count == 0)
+        {
+            // Sem nenhum campo lido não há o que exportar, e gravar um arquivo vazio seria pior que
+            // não gravar: ele importaria "com sucesso" e não mudaria nada.
+            ExchangeStatus = L.Get("BaseProfile_NothingToExport");
+            return;
+        }
+
+        var path = await _filePicker.PickSaveAsync("drivelab-base.json");
+        if (path is null) return;
+
+        var json = ProfileExchange.Serialize(
+            BaseProfileExchange.Module,
+            new[] { (Name: Title, Data: perfil) },
+            DateTimeOffset.Now);
+        await File.WriteAllTextAsync(path, json);
+
+        ExchangeStatus = string.Format(L.Get("BaseProfile_Exported"), perfil.Settings.Count);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExchangeFiles))]
+    private async Task ImportAsync()
+    {
+        if (_filePicker is null) return;
+
+        var path = await _filePicker.PickOpenAsync();
+        if (path is null) return;
+
+        var envelope = ProfileExchange.Deserialize<BaseProfile>(await File.ReadAllTextAsync(path));
+        if (!string.IsNullOrEmpty(envelope.Module) &&
+            !string.Equals(envelope.Module, BaseProfileExchange.Module, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                string.Format(L.Get("BaseProfile_WrongModule"), envelope.Module));
+
+        var perfil = envelope.Profiles.FirstOrDefault()?.Data;
+        if (perfil is null || perfil.Settings.Count == 0)
+            throw new InvalidOperationException(L.Get("BaseProfile_EmptyFile"));
+
+        var campos = CamposEditaveis();
+        var porId = campos.ToDictionary(f => f.SettingId);
+        var resultado = BaseProfileExchange.Preparar(perfil, porId.Keys.ToHashSet());
+
+        foreach (var (id, valor) in resultado.Aplicar)
+            porId[id].ApplyImported(valor);
+
+        ExchangeStatus = MontarResumo(resultado);
+    }
+
+    /// <summary>Conta o que entrou e o que ficou de fora. "Importado com sucesso" depois de aplicar
+    /// 3 de 40 campos é pior que um erro — a pessoa vai pilotar achando que está com o ajuste que
+    /// escolheu. Cada categoria que não estiver vazia aparece.</summary>
+    private static string MontarResumo(BaseProfileImport r)
+    {
+        var partes = new List<string> { string.Format(L.Get("BaseProfile_Imported"), r.Aplicar.Count) };
+        if (r.ForaDestaTela.Count > 0)
+            partes.Add(string.Format(L.Get("BaseProfile_SkippedHardware"), r.ForaDestaTela.Count));
+        if (r.Desconhecidos.Count > 0)
+            partes.Add(string.Format(L.Get("BaseProfile_SkippedUnknown"), r.Desconhecidos.Count));
+        if (r.Ajustados > 0)
+            partes.Add(string.Format(L.Get("BaseProfile_Clamped"), r.Ajustados));
+        partes.Add(L.Get("BaseProfile_RememberToSave"));
+        return string.Join(" · ", partes);
     }
 
     public override void Dispose()

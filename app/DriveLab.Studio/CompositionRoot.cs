@@ -288,7 +288,11 @@ public static class CompositionRoot
                 () => wheel.DisconnectCommand.ExecuteAsync(null),
                 wheelPresent, dispatcher));
         }
-        var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs);
+        // O seletor de arquivo habilita Exportar/Importar dos ajustes da base. O ESCOPO acompanha as
+        // abas montadas acima: no modo cliente a aba Hardware nem existe, então os campos que
+        // descrevem a máquina ficam naturalmente de fora dos dois lados. Ver SettingsPageViewModel.
+        var basePage = new SettingsPageViewModel(session, L.Get("Page_WheelBase"), wheelBaseTabs,
+                                                 new AvaloniaProfileFilePicker());
 
         // NOVO MODELO (2026-08-05): a BASE (firmware) é a fonte de verdade. Sem JSON de perfil de hardware.
         // O criador configura o firmware e SALVA na flash (CMD_SAVE); a base carrega da flash no boot. O app
