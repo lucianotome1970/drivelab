@@ -453,9 +453,15 @@ extern "C" void motor_link_newboard_bringup(void) {
     // partir de R, L e Kt, e um Kt mal informado passa a EMPURRAR o erro em vez de cancelá-lo. Ligar
     // sem ganho medido é acrescentar uma dependência a valores que o usuário digita.
     //
-    // A causa do ruído segue EM ABERTO. Já descartados, todos com teste: alinhamento elétrico (não
-    // muda entre três calibrações), deadband da malha (zerado, sem diferença), estes feed-forwards,
-    // e mecânica (com o motor desarmado não há ruído nenhum — é elétrico).
+    // ✅ A CAUSA DO RUÍDO FOI ACHADA, e não era nada disto: a base DESARMAVA ao girar, por
+    // dc_max_negative_current no padrão de -0,1 A (ver o bloco desse campo, mais acima). O que se
+    // sentia como "degraus" e como "pedrinhas" era o MESMO defeito — a força sumindo e voltando a
+    // cada desarme/rearme —, e não dois problemas diferentes como chegamos a tratar.
+    //
+    // Estes feed-forwards ficam desligados porque foram testados nesse meio-tempo e não mudaram
+    // nada: ligados de verdade no boot (confirmado por leitura, FF = 1 1), o ruído continuou igual.
+    // Também descartados por teste, pela mesma razão: alinhamento elétrico (não varia entre três
+    // calibrações) e deadband da malha (zerado ao vivo, sem diferença).
 
     // Chopper MUDO aqui. Ligá-lo depende de MEDIR a fonte, e neste ponto do boot o ADC ainda não leu:
     // `vbus_voltage` vale o inicializador 12.0f de low_level.cpp ("arbitrary non-zero initial value to
