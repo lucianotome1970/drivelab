@@ -110,10 +110,6 @@ public:
     float pll_kp_ = 0.0f;   // [count/s / count]
     float pll_ki_ = 0.0f;   // [(count/s^2) / count]
     float calib_scan_response_ = 0.0f; // debug report from offset calib
-    // DriveLab: true quando a espera pelo rotor assentar estourou o teto na calibracao de offset
-    // (ver run_offset_calibration). Nao impede a calibracao — sinaliza que ela comecou com o rotor
-    // ainda se mexendo, entao o offset resultante e suspeito. Lido por SWD no diagnostico.
-    bool calib_settle_timed_out_ = false;
     int32_t pos_abs_ = 0;
     float spi_error_rate_ = 0.0f;
 

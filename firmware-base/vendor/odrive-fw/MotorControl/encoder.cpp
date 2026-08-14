@@ -454,66 +454,6 @@ bool Encoder::run_offset_calibration() {
         osDelay(1);
     }
 
-    // === DriveLab: espera o rotor ASSENTAR, em vez de confiar no tempo fixo acima ===
-    //
-    // O laco original e a unica espera antes da varredura, e ele e CEGO: passa 1 segundo e le o
-    // encoder onde quer que o rotor esteja. Num motor de bancada isso basta. Num hoverboard de 15
-    // pares de polos, nao: o cogging e forte o bastante para o rotor ainda estar oscilando em torno
-    // do ponto de travamento quando o tempo acaba. A varredura entao comeca de um ponto deslocado, e
-    // como o offset final e a MEDIA da contagem ao longo dela (linha ~524), o vies entra no
-    // resultado.
-    //
-    // MEDIDO na bancada em 14/08/2026, tres boots seguidos, mesmo hardware e mesma configuracao:
-    // o alinhamento eletrico saiu 55, 254 e 18 graus. 161 graus de espalhamento entre calibracoes
-    // que deveriam dar o mesmo numero. E a raiz do sintoma mais antigo do projeto — "um dia esta
-    // forte, no outro esquenta sem forca" —, porque corrente aplicada num angulo errado vira calor
-    // em vez de torque.
-    //
-    // A correcao vem do OpenFFBoard (MIT), que resolve o mesmo problema no TMC4671: em vez de
-    // esperar um tempo, eles esperam o encoder PARAR DE SE MEXER por varias amostras seguidas, com
-    // um teto para nao travar caso o motor nunca assente (TMC4671.cpp, bangInitEnc).
-    //
-    // A rampa de corrente ja existe aqui (max_current_ramp deriva de start_lock_duration), entao so
-    // falta a verificacao — que entra DEPOIS do laco acima, com a corrente ja no valor final.
-    {
-        const int32_t kTolCounts   = 2;    // 2 counts / 10 ms = 200 counts/s ~ 3 RPM: parado
-        const uint32_t kEstavelMs  = 300;  // tempo continuo de imobilidade exigido
-        const uint32_t kTimeoutMs  = 3000; // teto: se nunca assentar, segue mesmo assim (ver abaixo)
-        const uint32_t kPassoMs    = 10;
-
-        int32_t  anterior = shadow_count_;
-        uint32_t paradoMs = 0;
-        uint32_t gastoMs  = 0;
-
-        while (paradoMs < kEstavelMs && gastoMs < kTimeoutMs) {
-            // As MESMAS saidas do laco original: perder o arme ou receber outro pedido de estado
-            // aborta. Sem isto, uma parada de emergencia durante a calibracao ficaria presa aqui.
-            if (!axis_->motor_.is_armed_) {
-                return false;
-            }
-            if (axis_->requested_state_ != Axis::AXIS_STATE_UNDEFINED) {
-                axis_->motor_.disarm();
-                return false;
-            }
-
-            osDelay(kPassoMs);
-            gastoMs += kPassoMs;
-
-            const int32_t agora = shadow_count_;
-            if (std::abs(agora - anterior) <= kTolCounts) {
-                paradoMs += kPassoMs;
-            } else {
-                paradoMs = 0;   // mexeu: recomeca a contagem, nao acumula
-            }
-            anterior = agora;
-        }
-
-        // Estourar o teto NAO e erro. Se o rotor nao assenta em 3 s ha algo mecanico (volante
-        // encostado, atrito, alguem com a mao nele) e abortar aqui deixaria a base sem calibrar
-        // nenhuma. Seguimos com o comportamento antigo — que e exatamente o de antes desta mudanca —
-        // e o valor ruim aparece na comparacao entre boots, que e onde ele deve aparecer.
-        calib_settle_timed_out_ = (paradoMs < kEstavelMs);
-    }
 
     int32_t init_enc_val = shadow_count_;
     uint32_t num_steps = 0;

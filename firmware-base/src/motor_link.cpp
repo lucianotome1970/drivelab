@@ -329,34 +329,17 @@ extern "C" void motor_link_newboard_bringup(void) {
     //
     // find_idx_on_lockin_only=false: escuta SEMPRE, não só durante a varredura. Custa uma
     // interrupção por volta e permite validar o Z girando à mão, sem energizar o motor.
-    // ✅ ÍNDICE RELIGADO em 2026-08-14. Ele tinha sido desligado em 08/08 sob suspeita de causar a
-    // "assimetria por ordem" — o batente do primeiro lado visitado segurava e o do segundo falhava,
-    // trocando de lado conforme por onde se começava. A hipótese era a reancoragem: cada passagem
-    // pelo Z faz set_circular_count(0), e se o índice não coincidir com o offset calibrado a fase
-    // SALTA ao cruzar.
-    //
-    // A hipótese estava ERRADA, e quem sabia era o usuário: o batente falhava porque o VOLANTE
-    // ESTAVA ROÇANDO NA BASE. Atrito mecânico, não fase elétrica. O índice foi desligado por um
-    // diagnóstico que apontou para o software quando a causa era física — e ficou desligado desde
-    // então, levando junto o benefício que ele traz.
-    //
-    // O QUE SE GANHA DE VOLTA: sem índice, o zero elétrico vem de um LOCK-IN por boot, e com o
-    // cogging do hoverboard o rotor assenta num detente vizinho — esse erro VIRA o offset, e sai
-    // diferente a cada partida. É a raiz do "funciona num dia e não no outro". Ancorado numa marca
-    // FÍSICA do disco, a calibração passa a partir sempre da mesma referência, e a corrente de
-    // lock-in deixa de ser crítica (era por isso que oscilávamos entre 3, 6, 8 e 10 A sem achar
-    // valor bom — nenhum era).
-    //
-    // 📏 O QUE FOI MEDIDO (14/08/2026, scripts/ler-offset-eletrico.sh) — o índice sozinho NÃO
-    // resolveu; ele foi metade. Só com ele e a calibração antiga, três boots deram 55°, 254° e 18°
-    // de ângulo elétrico. Com a espera pelo rotor assentar (ver run_offset_calibration), quatro
-    // boots deram 296°, 296°, 191° e 296° — três idênticos bit a bit, inclusive um partindo de uma
-    // posição de volante bem diferente, mais um desvio isolado. Ainda não é "sempre igual": para
-    // isso falta PERSISTIR o offset bom e parar de recalibrar, que é o que o índice destrava.
-    //
-    // ⚠️ O ODrive força pre_calibrated=false enquanto o índice não foi encontrado
-    // (check_pre_calibrated). No primeiro boot a base pode pedir calibração até o Z ser cruzado.
-    axes[0].encoder_.config_.use_index               = true;
+    // ⚠️ TESTE 2026-08-08 — ÍNDICE DESLIGADO para isolar a assimetria POR ORDEM.
+    // O sintoma da bancada: o batente do PRIMEIRO lado visitado segura; o do SEGUNDO falha — e o
+    // lado que falha TROCA conforme por onde se começa. Isso não é posição fixa, é algo que muda de
+    // estado ao percorrer o curso. A reancoragem contínua pelo índice (que liguei hoje) é candidata:
+    // cada passagem pelo Z faz set_circular_count(0), reancorando a FASE ELÉTRICA, e o Z fica num
+    // ponto físico único — cruza-se indo para um lado, não para o outro. Se o índice não coincidir
+    // com o offset calibrado, a fase SALTA ao cruzar, e o extremo seguinte fica errado.
+    // Desligado: volta ao comportamento anterior (offset só do lock-in, sem reancoragem).
+    // Se a assimetria por ordem SUMIR → era a reancoragem (introduzida por mim hoje).
+    // Se PERSISTIR → o offset já nasce ruim da calibração, e o alvo é o método de alinhamento.
+    axes[0].encoder_.config_.use_index               = false;
     axes[0].encoder_.config_.find_idx_on_lockin_only = false;
     // 🔴 use_index_offset = FALSE — NÃO deixar o índice mexer na POSIÇÃO do volante.
     //
