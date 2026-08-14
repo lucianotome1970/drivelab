@@ -98,7 +98,12 @@ static float   s_fval[A0_NUM_SETTINGS];
 // Defaults em escopo de arquivo para poderem ser CONSULTADOS (0x17) sem alterar valor nenhum:
 // o app pergunta "qual e o padrao deste campo?" e mostra na tela; nada muda na placa ate salvar.
 static const int32_t s_idef[A0_NUM_SETTINGS] = {
-        900, 8, 70, 100, 5, 0, 5, 80, 1, 1, 4000, 15, 0, 0, 5, 0, 100, 100, 0, 0, 0, 0, 0, 35,
+        900, 8, 70, 100, 5, 0, 5, 80, 1, 1, 4000, 15, 0, 0, 5, 0, 100, 100, 1, 0, 0, 0, 0, 35,
+        //                                                              ^ 18 encoder_type = 1 (E6B2),
+        // o id CANONICO do catalogo. Era 0, que e o apelido legado "generico" e o app traduz para
+        // E6B2 — mesmo comportamento, numero diferente. Com a interface em ABZ (default) o modelo
+        // nem entra na decisao: so o ramo SPI+AS5047P o consulta. Nasce no valor canonico para o
+        // que a placa GUARDA ser o mesmo que o app MOSTRA.
         100, 0, 0, 56, 0, 10, 20, 30, 40, 1, 0, 100, 0, 85, 100, 100, 100, 100, 100, 0, 0,
         //          ^^^^^^^^^^^^^^^^^ 28-32: os cinco PRIMEIROS pontos da curva (0/10/20/30/40%)
         //^ 24 linearity: LINEAR. Ver a nota em a0_load_defaults.
