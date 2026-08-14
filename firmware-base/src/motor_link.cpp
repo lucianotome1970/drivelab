@@ -400,6 +400,28 @@ extern "C" void motor_link_newboard_bringup(void) {
     // e aciona o resistor pelo outro termo da mesma conta — que é o caminho legítimo.
     odrv.config_.max_regen_current               = 0.5f;
 
+    // QUANTA REGENERAÇÃO O BARRAMENTO ACEITA ANTES DE DESARMAR.
+    //
+    // O ODrive desarma com ERROR_DC_BUS_OVER_REGEN_CURRENT quando a corrente do barramento fica
+    // mais negativa que este limite (low_level.cpp: `if (Ibus_sum < dc_max_negative_current)`).
+    // Nunca declarávamos o valor, então ele vinha da NVM — e numa placa zerada cai no padrão
+    // **-0,1 A**, que é restritivo demais para um volante: girar o aro com o motor armado passa
+    // disso com folga, porque o motor vira gerador.
+    //
+    // MEDIDO na bancada em 14/08/2026, com a placa recém-instalada: girando devagar, 14 desarmes em
+    // 10 segundos (`odrv.error_ = 0x8`), o auto-arme religando a cada um. O usuário descreveu como
+    // "pedrinhas dentro da base" — a força sumindo e voltando em pulsos —, e notou que acontecia
+    // mais num sentido de giro que no outro, que é o esperado: um sentido regenera mais que o outro.
+    //
+    // -20 A é generoso DE PROPÓSITO, e quem protege de verdade continua no lugar: o resistor de
+    // freio dissipa a energia (2 Ω a ~27 V dá ~13 A de capacidade) e a rampa de SOBRETENSÃO age
+    // antes, em dc_bus_overvoltage_ramp_start. Este limite é a última barreira, não a primeira —
+    // deixá-lo apertado faz a base desarmar em uso normal, que é pior do que o risco que ele cobre.
+    //
+    // ⚠️ Depende do resistor de freio estar montado e habilitado. Sem resistor, a energia não tem
+    // para onde ir e a proteção que sobra é a de tensão.
+    odrv.config_.dc_max_negative_current         = -20.0f;
+
     // FEED-FORWARDS DA MALHA DE CORRENTE — sem eles o volante gira "pulando degraus".
     //
     // Os dois são `false` no ODrive de fábrica, e nós nunca os declarávamos: a base herdava o que
