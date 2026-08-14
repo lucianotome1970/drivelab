@@ -44,10 +44,30 @@ void watchdog_init(void) {
     // (no F4 o bloco DBGMCU é sempre alimentado — não há clock a habilitar)
     DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
 
+    // ⚠️ O LSI PRECISA ESTAR PRONTO ANTES. O IWDG conta nele, e enquanto ele nao oscila o IWDG->SR
+    // nunca zera. A primeira versao disto esperava `while (IWDG->SR != 0u) {}` sem limite — e
+    // travou a base inteira de um jeito nada obvio:
+    //
+    //   · watchdog_init() roda dentro do ffb_thread, que e osPriorityAboveNormal
+    //   · a task que processa a pilha USB (tud_task) e osPriorityNormal
+    //   · uma espera infinita na tarefa de prioridade MAIOR nunca cede a CPU para a menor
+    //   → tud_task nunca roda → o Windows pede o descritor e ninguem responde
+    //     ("Dispositivo USB Desconhecido — Falha na Solicitacao de Descritor de Dispositivo")
+    //
+    // E o pior: o tick do FreeRTOS CONTINUAVA avancando, porque vem de interrupcao e nao de tarefa.
+    // Todos os testes de "o firmware esta vivo?" davam positivo com o USB morto. Custou horas em
+    // 14/08/2026, e a licao vale alem do watchdog: **nunca esperar sem limite dentro de uma tarefa
+    // de prioridade alta** — o que trava nao e so ela, e tudo o que roda abaixo.
+    RCC->CSR |= RCC_CSR_LSION;
+    for (uint32_t i = 0; i < 100000u && !(RCC->CSR & RCC_CSR_LSIRDY); ++i) { }
+    if (!(RCC->CSR & RCC_CSR_LSIRDY)) {
+        return;   // sem LSI nao ha watchdog; seguir sem ele e melhor que travar a base
+    }
+
     IWDG->KR  = IWDG_KEY_UNLOCK;    // libera escrita em PR/RLR
     IWDG->PR  = WDG_PRESCALER_64;
     IWDG->RLR = WDG_RELOAD;
-    while (IWDG->SR != 0u) { }      // espera PR/RLR serem aceitos
+    for (uint32_t i = 0; i < 100000u && IWDG->SR != 0u; ++i) { }   // COM teto, sempre
     IWDG->KR  = IWDG_KEY_FEED;      // recarrega antes de armar
     IWDG->KR  = IWDG_KEY_START;     // arma — daqui em diante so reset desliga
 }
