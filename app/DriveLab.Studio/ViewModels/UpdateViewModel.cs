@@ -528,7 +528,12 @@ public sealed partial class UpdateViewModel : ViewModelBase
     private async Task FlashAndReportAsync(IDeviceUpdater device)
     {
         StatusMessage = "Enviando firmware...";
-        var progress = new Progress<double>(p => Progress = p);
+        // MONOTÔNICA de propósito: só aceita valor MAIOR. Progress<T> entrega os avisos de forma
+        // assíncrona, então um relatório de 50% emitido antes do fim pode chegar DEPOIS de a barra
+        // fechar em 100% logo abaixo — e ela volta para a metade com o texto já dizendo "concluída
+        // com sucesso". Barra que anda para trás é a aparência exata de uma gravação que deu errado
+        // no fim, no momento em que a pessoa mais precisa confiar no que vê.
+        var progress = new Progress<double>(p => { if (p > Progress) Progress = p; });
         await device.FlashAsync(FirmwarePath, progress);
 
         // 100% é uma CONCLUSÃO, não o último relatório. Progress<T> entrega os avisos de forma

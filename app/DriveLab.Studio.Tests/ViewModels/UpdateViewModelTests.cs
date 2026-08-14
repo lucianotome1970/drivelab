@@ -32,6 +32,7 @@ public class UpdateViewModelTests
         public Exception? FlashThrows;
         public string? LastFlashPath;
         public List<string>? Events;
+        public bool ProgressoForaDeOrdem;
 
         public bool ValidateFirmware(byte[] file, out string error)
         {
@@ -73,8 +74,17 @@ public class UpdateViewModelTests
             Events?.Add("flash");
             if (FlashThrows is not null)
                 throw FlashThrows;
-            progress?.Report(0.5);
-            progress?.Report(1.0);
+            if (ProgressoForaDeOrdem)
+            {
+                // Reproduz a corrida real: o aviso de 100% chega e o de 50% vem DEPOIS.
+                progress?.Report(1.0);
+                progress?.Report(0.5);
+            }
+            else
+            {
+                progress?.Report(0.5);
+                progress?.Report(1.0);
+            }
             return Task.CompletedTask;
         }
     }
@@ -84,6 +94,7 @@ public class UpdateViewModelTests
         public int BeginCalls;
         public int EndCalls;
         public List<string>? Events;
+        public bool ProgressoForaDeOrdem;
 
         public Task BeginExclusiveAsync(DeviceKind kind)
         {
@@ -427,5 +438,25 @@ public class UpdateViewModelTests
         vm.BootloaderDetected = false;    // se a vigília seguisse viva, ela poria true de volta
         await Task.Delay(150);
         Assert.False(vm.BootloaderDetected);
+    }
+    [Fact]
+    public async Task Barra_De_Progresso_NUNCA_ANDA_PARA_TRAS()
+    {
+        // Progress<T> entrega os avisos de forma ASSINCRONA. Um relatorio de 50% emitido antes do
+        // fim pode chegar DEPOIS de a gravacao fechar a barra em 100% — e a barra volta para a
+        // metade com o texto dizendo "concluida com sucesso". E a aparencia exata de uma gravacao
+        // que deu errado no fim, no momento em que a pessoa mais precisa confiar no que ve.
+        //
+        // Este teste emite os relatorios FORA DE ORDEM de proposito, que e o que a corrida produz
+        // quando a maquina esta carregada — foi assim que ela apareceu, como falha intermitente.
+        var updater = new FakeUpdater { ProgressoForaDeOrdem = true };
+        var picker = new FakeFilePicker { PathToReturn = "/tmp/fw.bin" };
+        var vm = New(updater, picker, MakeFirmwareBytes(DeviceKind.Base));
+        await vm.SelectFileCommand.ExecuteAsync(null);
+
+        await vm.SendCommand.ExecuteAsync(null);
+        for (var i = 0; i < 50 && vm.Progress < 1.0; i++) await Task.Delay(1);
+
+        Assert.Equal(1.0, vm.Progress);
     }
 }
