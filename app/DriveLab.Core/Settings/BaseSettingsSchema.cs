@@ -37,6 +37,12 @@ public static class BaseSettingsSchema
             "Quantos pares de ímã existem dentro do motor. A maioria dos motores de hoverboard tem 15. Errar faz o motor esquentar entregando pouca força, porque a corrente entra na bobina errada."),
         new(BaseSettingId.CurrentBandwidthHz, "current_bandwidth_hz", "Banda da malha de corrente", SettingType.UInt16, 50, 2000, "Hz", SettingTab.Hardware, 200,
             "Quão rápido a malha de corrente persegue o valor pedido. Os ganhos saem daqui e do R/L do motor — não se ajustam à mão. Ex.: 200 Hz nesta bancada; alto demais faz o motor assobiar e vibrar, baixo demais deixa a força mole e atrasada. Só vale depois de reiniciar a base."),
+        // Numérico, e não slider: é o valor impresso no resistor que a pessoa comprou (2, 5, 12 Ω…),
+        // não algo que se busca arrastando. Faixa 0,5-50 Ω cobre do resistor de potência baixo às
+        // montagens de 12 Ω; abaixo de 0,5 Ω a corrente de frenagem passaria do que a placa aguenta.
+        new(BaseSettingId.BrakeResistanceOhm, "brake_resistance_ohm", "Resistor de freio", SettingType.Float, 0.5, 50, "Ω", SettingTab.Hardware, 2.0,
+            "A resistência do resistor de freio que VOCÊ montou — o valor impresso nele. A placa não mede: ela acredita neste número para calcular a corrente e a potência que passam pelo resistor. Ex.: o resistor desta bancada é de 2 Ω; há montagens com 12 Ω. Declarar 2 tendo montado 12 erra essa conta por seis vezes, e é ela que decide quando cortar por aquecimento. Só vale depois de reiniciar a base.",
+            Numeric: true),
         new(BaseSettingId.CalibrationCurrent, "calibration_current", "Corrente de calibração", SettingType.UInt8, 1, 30, "A", SettingTab.Hardware, 5,
             "Corrente usada na rotina de calibração. Alta demais faz o motor se jogar entre posições e a calibração falhar; baixa demais não vence o encaixe dos ímãs do hoverboard."),
         new(BaseSettingId.PositionSmoothing, "position_smoothing", "Suavização de posição", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0,

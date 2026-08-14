@@ -56,7 +56,13 @@ int main(void) {
         check(ffb_curve_precisa_migrar(49, 49) == 1, "blob sem o ponto 49 -> migra");
         check(ffb_curve_precisa_migrar(48, 49) == 1, "blob mais antigo ainda -> migra");
         check(ffb_curve_precisa_migrar(55, 49) == 0, "blob que ja tem os 11 pontos -> NAO migra");
-        check(ffb_curve_precisa_migrar(0, 49)  == 1, "sem blob valido -> chamador usa defaults");
+
+        // 🔴 ZERO = NAO HA BLOB (flash apagada, placa de fabrica, primeiro uso). Este caso afirmava
+        //    o CONTRARIO ate 14/08/2026, e o teste passando escondia o bug: sem blob os arrays ficam
+        //    com os DEFAULTS, que ja estao na grade de 11 pontos. Migra-los trata a curva linear como
+        //    se fosse de 5 e a achata — a curva de fabrica 0,10,20...100 virava 0,4,8...40, e a base
+        //    saia entregando 40% do que o jogo pede. Invisivel para quem ja tinha blob gravado.
+        check(ffb_curve_precisa_migrar(0, 49)  == 0, "SEM blob -> NAO migra (defaults ja sao 11 pontos)");
     }
 
     // 5) IDEMPOTENCIA pelo blob: a migracao parte sempre do que esta GRAVADO, que nao muda. Rodar

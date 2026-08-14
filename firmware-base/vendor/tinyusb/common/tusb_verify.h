@@ -75,8 +75,33 @@
   #define TU_MESS_FAILED() do {} while (0)
 #endif
 
+// === PATCH DriveLab: nao PARAR o processador quando ha gravador plugado ===================
+//
+// O TU_BREAKPOINT original executa BKPT #0 — e o BKPT so tem efeito se houver um depurador
+// conectado (e o que o `if (DHCSR & 1)` abaixo testa). Isso e util em bancada de desenvolvimento de
+// USB; num volante e uma armadilha, porque o comportamento da placa passa a DEPENDER de o ST-Link
+// estar plugado ou nao.
+//
+// DIAGNOSTICADO EM 14/08/2026, depois de sessoes caçando um travamento "aleatorio" que so a tomada
+// resolvia. A base parava com o tick do FreeRTOS congelado, SEM hard fault registrado — o que nao
+// batia com nenhuma hipotese de bug de logica. Era o core em HALT DE DEPURACAO:
+//
+//     pc    = handle_epout_irq (dcd_dwc2.c:754, o TU_ASSERT do AHBERR)
+//     DHCSR = 0x30003  ->  C_DEBUGEN=1 (depurador ligado) e S_HALT=1 (core parado)
+//
+// Ou seja: uma condicao inesperada no endpoint OUT — justamente o que as rajadas da aba de Teste
+// exercitam — parava o MCU de proposito, porque o gravador estava na USB. Sem gravador, a MESMA
+// condicao passa batido e a base segue rodando. Foi o que fez o problema parecer intermitente e
+// impossivel de reproduzir: a ferramenta de diagnostico era quem o provocava.
+//
+// Com o patch a placa se comporta IGUAL com e sem ST-Link, que e o requisito de qualquer medicao
+// confiavel. Nao perdemos deteccao de erro: o TU_ASSERT continua retornando na falha, que e a parte
+// que trata o problema — o breakpoint so servia para chamar um humano com um depurador aberto.
+#if defined(DRVLAB_TUSB_NO_BREAKPOINT)
+  #define TU_BREAKPOINT() do {} while (0)
+
 // Halt CPU (breakpoint) when hitting error, only apply for Cortex M3, M4, M7, M33. M55
-#if defined(__ARM_ARCH_7M__) || defined (__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8_1M_MAIN__) || \
+#elif defined(__ARM_ARCH_7M__) || defined (__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8_1M_MAIN__) || \
     defined(__ARM7M__) || defined (__ARM7EM__) || defined(__ARM8M_MAINLINE__) || defined(__ARM8EM_MAINLINE__)
   #define TU_BREAKPOINT() do {                                                                              \
     volatile uint32_t* ARM_CM_DHCSR =  ((volatile uint32_t*) 0xE000EDF0UL); /* Cortex M CoreDebug->DHCSR */ \

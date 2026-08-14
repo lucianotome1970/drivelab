@@ -45,7 +45,7 @@ enum {
     BB_RESET_BROWN_OUT    = 2,   // ⚠️ tensão caiu abaixo do limiar: fonte/carga, NÃO firmware
     BB_RESET_PINO_NRST    = 3,   // reset externo (inclui o do ST-Link ao gravar)
     BB_RESET_SOFTWARE     = 4,   // NVIC_SystemReset (nosso reboot / entrada em DFU)
-    BB_RESET_IWDG         = 5,   // watchdog independente (não armado hoje)
+    BB_RESET_IWDG         = 5,   // watchdog independente — ARMADO desde 14/08/2026 (ver watchdog.h)
     BB_RESET_WWDG         = 6,   // window watchdog (não armado hoje)
     BB_RESET_LOW_POWER    = 7,   // saída anormal de standby
 };

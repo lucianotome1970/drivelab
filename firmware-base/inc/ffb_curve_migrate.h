@@ -58,8 +58,18 @@ static inline void ffb_curve_migrar_5_para_11(const int32_t* antiga, int32_t* no
 // A curva salva precisa de migracao? Sim quando o blob e anterior aos pontos 5-10, que moram nos
 // ids 49-54 — ou seja, quando ele tem menos campos do que o id do primeiro ponto novo.
 // `campos_no_blob` e a contagem gravada no proprio blob.
+//
+// ⚠️ ZERO NAO E "BLOB ANTIGO", E "NAO HA BLOB". Flash apagada, placa de fabrica, primeiro uso: nao
+// existe nada gravado, e os arrays ficam com os DEFAULTS — que ja nascem na grade nova de 11 pontos.
+// Migra-los trata a curva linear como se fosse de 5 pontos e a ACHATA: a curva de fabrica
+// 0,10,20...100 vira 0,4,8...40, e a base entrega no maximo 40% do que o jogo pede. Sem nada na tela
+// sugerindo erro — a curva "existe" e parece intencional.
+//
+// Isso atingia TODO usuario novo, e era invisivel para nos: em qualquer placa nossa o blob ja
+// existia, entao a condicao dava falso. Apareceu em 14/08/2026, no primeiro teste de instalacao numa
+// placa apagada de proposito.
 static inline int ffb_curve_precisa_migrar(uint16_t campos_no_blob, uint16_t id_primeiro_ponto_novo) {
-    return campos_no_blob <= id_primeiro_ponto_novo;
+    return campos_no_blob > 0 && campos_no_blob <= id_primeiro_ponto_novo;
 }
 
 #ifdef __cplusplus

@@ -370,10 +370,70 @@ extern "C" void motor_link_newboard_bringup(void) {
     // estourava dc_bus_overvoltage_trip_level (a queda de FFB na chicane). Antes ficava DESLIGADO (contorno
     // do não-arme); agora o clear_errors (delegado a odrv.clear_errors, fix 046c421) RE-ARMA o brake no
     // auto-arme → satisfaz enable&&armed → o motor arma junto. Setado no boot (não depende de NVM stale).
-    // ⚠️ Valores por-PLACA (56V aqui) → vira board profile na Fase 2. brake_resistance idealmente é setting
-    // da aba Hardware (feat/brake-resistance); aqui fixo em 2.0 = nosso resistor físico (há montagens com 12Ω).
-    odrv.config_.brake_resistance                = 2.0f;   // nosso resistor físico de 2Ω
+    // ⚠️ Valores por-PLACA (56V aqui) → vira board profile na Fase 2.
+    // O resistor de freio virou SETTING da aba Hardware (id 56) em 14/08/2026 — ele é peça que cada
+    // um compra e monta, e ficar cravado obrigava a recompilar o firmware para trocar de resistor.
+    // Este 2.0 continua sendo o ponto de partida do bring-up; motor_link_apply_motor_settings()
+    // aplica por cima o que o usuário declarou. Padrão do setting também é 2.0, então uma base que
+    // nunca tocou no campo se comporta exatamente como antes.
+    odrv.config_.brake_resistance                = 2.0f;   // ponto de partida; o setting 56 manda
     odrv.config_.dc_bus_undervoltage_trip_level  = 8.0f;   // evita brown-out; garante no boot
+
+    // BANDA MORTA DA REGENERAÇÃO — sem isto o chopper dispara com o volante PARADO.
+    //
+    // O ODrive decide acionar assim (low_level.cpp, update_brake_current):
+    //     brake_current = -Ibus_sum - max_regen_current
+    //     brake_duty    = brake_current * brake_resistance / vbus
+    // Com max_regen_current = 0 (o default dele, que nunca sobrescrevemos) NÃO EXISTE banda morta:
+    // basta a corrente do barramento oscilar para o lado negativo — ruído normal de medição — para
+    // brake_current ficar positivo e o resistor ser acionado. Motor ARMADO tem esse ruído mesmo
+    // parado, motor desarmado não tem: é por isso que o sintoma acompanha o "Ativar motor".
+    //
+    // MEDIDO na bancada em 14/08/2026, numa placa com a NVM recém-apagada: 674.586 acionamentos com
+    // o volante imóvel, 49,9 J. Energia baixa (não é perigoso), mas é o resistor chaveando à toa o
+    // tempo todo, e o medidor da tela vira ruído — some a evidência de quando ele trabalhou DE
+    // VERDADE, que é a razão de o medidor existir.
+    //
+    // 0,5 A é pequeno o bastante para não ser regeneração de verdade (a capacitância do barramento
+    // absorve isso sem a tensão subir) e grande o bastante para o ruído não atravessar. E a proteção
+    // por TENSÃO continua intacta: se o vbus subir de fato, a rampa entra em dc_bus_overvoltage_ramp_start
+    // e aciona o resistor pelo outro termo da mesma conta — que é o caminho legítimo.
+    odrv.config_.max_regen_current               = 0.5f;
+
+    // FEED-FORWARDS DA MALHA DE CORRENTE — sem eles o volante gira "pulando degraus".
+    //
+    // Os dois são `false` no ODrive de fábrica, e nós nunca os declarávamos: a base herdava o que
+    // estivesse na NVM, que ninguém escreveu de propósito. Numa placa apagada caem no padrão, e o
+    // sintoma aparece.
+    //
+    //   R_wL_FF  compensa as quedas R·I e ω·L·I — o que a malha teria de descobrir por erro
+    //   bEMF_FF  compensa a tensão que o PRÓPRIO MOTOR gera ao girar
+    //
+    // O segundo é o que se sente num volante. Girando o aro, o motor vira gerador e essa tensão se
+    // opõe à malha; sem antecipá-la, o controlador só reage DEPOIS que o erro aparece — corrige aos
+    // trancos, e o rotor prende e escapa entre posições. Descrito na bancada em 14/08/2026 como
+    // "uma pedra solta dentro, pulando degraus", e SÓ com o motor armado (desarmado não há malha, e
+    // não havia barulho — foi o que provou que era elétrico, não cogging). Ligar os dois em tempo de
+    // execução, por SWD, fez o ruído parar na hora.
+    //
+    // ⚠️ Os dois dependem de R, L e Kt estarem CERTOS: eles injetam uma correção calculada a partir
+    // desses valores. Com R/L fixados aqui no bring-up e o Kt vindo do campo da aba Hardware, isso
+    // vale. Se um dia o Kt aceitar valores muito fora do real, este é o lugar que passa a amplificar
+    // o erro em vez de compensá-lo — a compensação certa some, a errada empurra.
+    // 🔴 DEIXADOS DESLIGADOS (o padrão do ODrive), depois de TESTADOS na bancada em 14/08/2026.
+    //
+    // Ligá-los foi a hipótese para o "pulando degraus" ao girar o volante com o motor armado. O
+    // teste ao vivo (escrevendo os dois por SWD, com a base rodando) pareceu resolver na hora — mas
+    // com eles ligados DE VERDADE no boot, e confirmados por leitura (FF = 1 1), o ruído continuou
+    // exatamente igual. A melhora foi impressão, não efeito.
+    //
+    // Ficam desligados porque não resolvem e não são de graça: os dois calculam uma compensação a
+    // partir de R, L e Kt, e um Kt mal informado passa a EMPURRAR o erro em vez de cancelá-lo. Ligar
+    // sem ganho medido é acrescentar uma dependência a valores que o usuário digita.
+    //
+    // A causa do ruído segue EM ABERTO. Já descartados, todos com teste: alinhamento elétrico (não
+    // muda entre três calibrações), deadband da malha (zerado, sem diferença), estes feed-forwards,
+    // e mecânica (com o motor desarmado não há ruído nenhum — é elétrico).
 
     // Chopper MUDO aqui. Ligá-lo depende de MEDIR a fonte, e neste ponto do boot o ADC ainda não leu:
     // `vbus_voltage` vale o inicializador 12.0f de low_level.cpp ("arbitrary non-zero initial value to
@@ -382,6 +442,26 @@ extern "C" void motor_link_newboard_bringup(void) {
     // motor_link_autoscale_bus_limits() rodar com leitura de verdade.
     odrv.config_.enable_brake_resistor          = false;
     odrv.config_.enable_dc_bus_overvoltage_ramp = false;
+
+    // ⚠️ REAPLICAR A CONFIG DO MOTOR — sem isto, PLACA VIRGEM NUNCA ARMA.
+    //
+    // Motor::apply_config() faz `is_calibrated_ = config_.pre_calibrated`, e quem CONSULTA o estado
+    // do motor é o is_calibrated_, não o pre_calibrated. O apply_config roda uma vez no boot, ANTES
+    // desta função (main.cpp: config_read_all → config_apply_all → ... → nosso bring-up). Então a
+    // cópia acontece com o valor que veio da NVM, e tudo o que setamos aqui em pre_calibrated chega
+    // tarde: o flag já foi copiado.
+    //
+    // Numa placa NOSSA isso nunca apareceu — a config salva já trazia pre_calibrated=true, então a
+    // cópia do boot pegava true e o motor armava. Numa placa VIRGEM (NVM apagada, primeiro uso, ou
+    // depois de um erase) a NVM diz false, is_calibrated_ fica false para sempre, e o eixo RECUSA a
+    // calibração de offset com ERROR_INVALID_STATE (axis.cpp: `if (!motor_.is_calibrated_) goto
+    // invalid_state_label`). O auto-arme então bate contra um estado impossível até o teto de 300
+    // tentativas, sem erro de motor nem de encoder — só um eixo dizendo "não". Medido em 14/08/2026
+    // no teste de instalação do zero: 149 tentativas, axis_err=1, motor_err=0, enc_err=0.
+    //
+    // apply_config() também recalcula os ganhos do controlador de corrente, que dependem do R/L que
+    // acabamos de fixar — então reaplicar aqui é o lugar certo, não só o conserto do flag.
+    axes[0].motor_.apply_config();
 }
 
 // Deriva os limites de bus da tensão REAL medida e só então libera o chopper.
@@ -560,7 +640,8 @@ extern "C" int motor_link_apply_encoder_settings(void) {
 // Chamar DEPOIS do relax_calibration, que e quem fixa os 5 A.
 // ---------------------------------------------------------------------------
 enum { SET_POLE_PAIRS = 11, SET_CALIB_CURRENT = 14, SET_CURRENT_LIM = 48, SET_CURRENT_BW = 55,
-       SET_TORQUE_CONSTANT = 34 };   // T_FLOAT — ler com a0_get_setting_f, nao a0_get_setting
+       SET_TORQUE_CONSTANT = 34,     // T_FLOAT — ler com a0_get_setting_f, nao a0_get_setting
+       SET_BRAKE_RESISTANCE = 56 };  // T_FLOAT — idem
 
 extern "C" int motor_link_apply_motor_settings(void) {
     // Teto fisico do limite de corrente: o sensor da placa satura em requested_current_range e o
@@ -610,6 +691,19 @@ extern "C" int motor_link_apply_motor_settings(void) {
 
     if (mc.calib_current_a != 0.0f) {
         axes[0].motor_.config_.calibration_current = mc.calib_current_a;
+    }
+
+    // RESISTOR DE FREIO (setting 56). Estava CRAVADO em 2 ohms — o valor do nosso conjunto —, e o
+    // proprio comentario no bring-up ja registrava que ha montagens com 12. O firmware nao MEDE a
+    // resistencia: ele acredita neste numero para calcular a corrente e a potencia que passam pelo
+    // resistor, e e essa conta que decide quando cortar por dissipacao. Declarar 2 tendo montado 12
+    // erra por seis vezes, em silencio.
+    //
+    // Fora da faixa plausivel (ou zero, de um blob antigo que nao tinha o campo) NAO aplica nada:
+    // fica o valor do bring-up, e o comportamento e identico ao de antes deste campo existir.
+    const float r_brake = a0_get_setting_f(SET_BRAKE_RESISTANCE);
+    if (r_brake >= 0.5f && r_brake <= 50.0f) {
+        odrv.config_.brake_resistance = r_brake;
     }
 
     // Numero de pares diferente do que a calibracao usou torna a calibracao INVALIDA: o angulo

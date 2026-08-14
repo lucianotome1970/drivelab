@@ -63,7 +63,7 @@ enum { CMD_REBOOT = 1, CMD_SAVE = 2, CMD_RESET_CENTER = 3, CMD_DFU = 4, CMD_CALI
 // campos) completando com os defaults.
 // O 47 e INTERNO: nao existe no schema do app e nao aparece na UI. Guarda a identidade do firmware
 // que gravou o blob, para a trava de bring-up saber se o binario mudou (ver bringup_lock.h).
-#define A0_NUM_SETTINGS 56
+#define A0_NUM_SETTINGS 57
 
 // Tipo de cada FieldId (BaseSettingsSchema). Índice = BaseSettingId.
 static const uint8_t s_type[A0_NUM_SETTINGS] = {
@@ -85,6 +85,7 @@ static const uint8_t s_type[A0_NUM_SETTINGS] = {
     /*48 current_lim*/T_U8,         // limite de corrente do MOTOR (A) — descreve o motor de cada um
     /*49..54 ffb_curve_5..10*/T_U8, T_U8, T_U8, T_U8, T_U8, T_U8,
     /*55 current_bandwidth_hz*/T_U16,   // substitui os antigos 12/13 (P e I) — ver motor_link
+    /*56 brake_resistance_ohm*/T_FLOAT, // resistor de freio [ohm] — peca que cada um monta (era cravado em 2.0)
     // A curva de forca passou de 5 para 11 pontos (de 25 em 25% para 10 em 10%). Os cinco primeiros
     // ficaram nos ids 28-32; estes seis completam. O meio da escala — onde se dirige a maior parte
     // de uma volta — tinha UM ponto de controle e agora tem cinco.
@@ -106,7 +107,8 @@ static const int32_t s_idef[A0_NUM_SETTINGS] = {
         0,  // 47 build_id: 0 = nunca gravado por firmware que conheça este campo
         25, // 48 current_lim [A]: o valor que estava CRAVADO no firmware → padrão = comportamento de hoje
         50, 60, 70, 80, 90, 100,  // 49-54: o resto da curva (linear = sai o mesmo que entra)
-        200                       // 55 banda da malha de corrente [Hz]: o valor cravado no bring-up
+        200,                      // 55 banda da malha de corrente [Hz]: o valor cravado no bring-up
+        0                         // 56 brake_resistance_ohm: T_FLOAT → o padrao vive em s_fdef
 };
 static float s_fdef[A0_NUM_SETTINGS];   // padroes float (preenchidos em a0_load_defaults)
 
@@ -150,6 +152,10 @@ static void a0_load_defaults(void) {
     // report 0x17 ("qual e o padrao deste campo?"). Escrever so em s_fval deixaria o valor inicial
     // certo e o botao "Padrao" do app devolvendo zero.
     s_fdef[34] = 0.55f;   // torque_constant
+    // 56 brake_resistance_ohm: 2 ohms = o valor que estava CRAVADO no firmware, entao o padrao
+    // reproduz exatamente o comportamento de antes deste campo existir. Quem montou outro resistor
+    // (ha montagens com 12) passa a ter onde declarar, em vez de precisar recompilar.
+    s_fdef[56] = 2.0f;
     for (int i = 0; i < A0_NUM_SETTINGS; ++i) s_fval[i] = s_fdef[i];
 }
 

@@ -881,6 +881,46 @@ static void handle_epin_irq(uint8_t rhport) {
         if (epin->dieptsiz_bm.xfer_size == 0) {
           dwc2->diepempmsk &= ~(1 << n);
         }
+
+        // === PATCH DriveLab: quebrar a TEMPESTADE DE INTERRUPCAO do TXFE ====================
+        //
+        // A linha acima desliga a mascara SO quando a transferencia termina (xfer_size == 0). Se o
+        // endpoint for DESABILITADO no meio de uma transferencia, xfer_size nunca chega a zero e a
+        // mascara nunca desliga. E o bit TXFE e SOMENTE LEITURA: ele so se apaga quando o firmware
+        // escreve dados no FIFO. Sem endpoint habilitado nao ha o que escrever, entao a interrupcao
+        // dispara, o handler nao faz nada, retorna, e dispara de novo — para sempre. Nada mais roda:
+        // o tick do FreeRTOS congela, o USB para, e a base so volta na tomada.
+        //
+        // MEDIDO na bancada em 14/08/2026, com a placa travada e o depurador lendo o periferico:
+        //     DIEPINT1   = 0x2092  ->  TXFE pendente E EPDISD (endpoint desabilitado) juntos
+        //     DIEPEMPMSK = 0x2     ->  mascara ainda LIGADA para esse endpoint
+        //     pc dentro de handle_epin_irq, xTickCount congelado
+        //
+        // O upstream reescreveu esse caminho depois da 0.17.0 ("write initial packet directly to
+        // FIFO and only use TXFE interrupt for subsequent packets"). Trocar o driver inteiro no meio
+        // de uma bancada e mais arriscado que fechar a porta especifica: se o endpoint nao esta
+        // habilitado, nao existe transferencia para alimentar, e manter a mascara ligada so pode
+        // gerar a tempestade. No caminho normal (endpoint habilitado, FIFO cheia, sai pelo break) o
+        // comportamento nao muda — a mascara continua ligada e a IRQ seguinte continua o trabalho.
+        //
+        // 🔴 REVERTIDO EM 14/08/2026, NO MESMO DIA. A condicao era:
+        //        if ((epin->diepctl & DIEPCTL_EPENA) == 0) dwc2->diepempmsk &= ~(1 << n);
+        //
+        // Ela QUEBROU A ENUMERACAO USB: a base parou de ser reconhecida pelo host. O motivo e que
+        // "endpoint sem EPENA" NAO significa "transferencia abandonada" — durante uma transferencia
+        // de varios pacotes (um descritor grande na enumeracao, por exemplo) o endpoint passa por
+        // janelas legitimas sem EPENA entre um pacote e outro. Desligar a mascara ali interrompe a
+        // transferencia no meio, e ela nunca completa.
+        //
+        // A LICAO, que vale mais que o patch: distinguir "o endpoint parou de vez" de "o endpoint
+        // esta entre dois pacotes" exige a MAQUINA DE ESTADOS da transferencia, nao um bit do
+        // controlador. Foi exatamente isso que o upstream reescreveu depois da 0.17.0 ("write
+        // initial packet directly to FIFO and only use TXFE interrupt for subsequent packets") — e e
+        // por isso que a correcao de verdade e ATUALIZAR o driver, nao remendar esta linha.
+        //
+        // A tempestade de IRQ do TXFE (diagnosticada com DIEPINT1=0x2092 e DIEPEMPMSK=0x2 na placa
+        // travada) segue SEM correcao aqui. Quem cobre isso hoje e o watchdog: a base reinicia em
+        // ~2 s em vez de congelar. Ver inc/watchdog.h.
       }
     }
   }

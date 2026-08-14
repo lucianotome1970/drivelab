@@ -104,4 +104,16 @@ public enum BaseSettingId : byte
     /// <para>Id novo, e não reaproveitado: uma placa com CurrentP = 0,05 salvo passaria a ler
     /// "banda de 0,05 Hz" — um valor absurdo que entraria em silêncio.</para></summary>
     CurrentBandwidthHz = 55,
+
+    /// <summary>Resistência do resistor de freio (brake chopper), em ohms.
+    ///
+    /// <para>Ficava CRAVADA em 2 Ω no firmware — o valor do nosso conjunto. Mas o resistor é uma
+    /// peça que cada um compra e monta, e há montagens com 12 Ω. O firmware não mede a resistência:
+    /// ele ACREDITA no número configurado e o usa para calcular a corrente e a potência que passam
+    /// pelo resistor. Com 2 Ω declarado e 12 Ω instalado, essa conta erra por seis vezes — e ela é
+    /// quem decide quando cortar por excesso de dissipação.</para>
+    ///
+    /// <para>É a mesma lacuna que o CPR do encoder tinha: um valor que descreve a MÁQUINA de cada
+    /// um, existindo no código com o número de uma máquina só.</para></summary>
+    BrakeResistanceOhm = 56,
 }
