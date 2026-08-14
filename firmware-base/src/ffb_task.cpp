@@ -14,8 +14,8 @@
 #include "peak_tracker.h"   // picos de corrente (só leitura)
 #include "blackbox.h"          // caixa-preta: causa do ultimo reset (lida no boot)
 #include "brake_meter.h"          // zerar o medidor do chopper no arme (ver autoscale, abaixo)
-#include "wheel_center.h"
 #include "wheel_center.h"         // o zero do volante (batente nasce centrado) — ver o header
+#include "watchdog.h"             // a base reinicia sozinha em vez de congelar — ver o header
 extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
 
 // Definido em ffb_hid.cpp: joystick (direção pro jogo).
@@ -151,6 +151,14 @@ uint8_t     g_clip_peak_base  = 0;
 static void ffb_thread(void*) {
     uint32_t tick = osKernelSysTick();   // base absoluta p/ osDelayUntil (1kHz sem drift)
     uint32_t n = 0;
+
+    // Arma o watchdog AQUI, dentro da tarefa que vai alimentá-lo, e não no boot.
+    //
+    // Assim ele nasce junto de quem tem a obrigação de mantê-lo vivo: entre armar e a primeira
+    // alimentação não existe nenhuma etapa longa de inicialização que pudesse estourar a janela e
+    // reiniciar a base logo ao ligar — que seria a pior estreia possível para uma proteção.
+    watchdog_init();
+
     for (;;) {
         ffb_model_advance_clock(1);                     // relógio do modelo (1 ms/tick)
 
@@ -440,6 +448,14 @@ static void ffb_thread(void*) {
             motor_link_set_input_torque(0.0f);
             ffb_model_reset_clipping();   // desarmado não clipa — não deixar o último valor congelado na tela
         }
+        // WATCHDOG — alimentado AQUI, no fim do laço de 1 kHz, e não num timer.
+        //
+        // A diferença importa: um timer de hardware continuaria alimentando com o resto do
+        // firmware morto, e o watchdog viraria enfeite. Este ponto só é alcançado se o
+        // escalonador está rodando, esta tarefa acordou e a volta inteira executou — que é o
+        // que "sistema saudável" significa na prática. Nos dois travamentos que diagnosticamos
+        // (tempestade de IRQ do USB e breakpoint do TinyUSB) o laço parava exatamente aqui.
+        watchdog_feed();
         osDelayUntil(&tick, 1);   // 1 kHz absoluto (sem drift)
     }
 }
