@@ -27,6 +27,11 @@ extern "C" int a0_service(uint32_t nowMs);   // canal A0 do app (0x16 resposta /
 extern "C" bool a0_reboot_pending(void);     // CMD_REBOOT: desarmar e resetar o MCU
 extern "C" bool a0_dfu_pending(void);        // CMD_DFU: desarmar e saltar pro bootloader
 extern "C" int32_t a0_get_setting(uint8_t id);  // valor atual de um setting (guarda de curso excedido)
+// Id do setting lido aqui, NOMEADO em vez de cru. Não é estilo: o check-orphan-settings só
+// reconhece consumo na forma `a0_get_setting(SET_XXX)`, então `a0_get_setting(57)` fazia o campo
+// ser acusado de órfão — "aparece na tela, é salvo e não faz nada" — sendo que o firmware o lê aqui.
+// Verificador que acusa falso perde a autoridade de acusar verdadeiro.
+enum { SET_OVERTRAVEL_ACTION = 57 };
 extern "C" bool a0_save_pending(void);       // CMD_SAVE pediu persistir os settings na FFB_NVM?
 extern "C" bool a0_commit_save(void);        // empacota + grava na flash (chamar SÓ com motor IDLE)
 
@@ -470,7 +475,8 @@ static void ffb_thread(void*) {
             if (!s_overtravel_ready) { overtravel_init(&s_overtravel);
                                        s_overtravel_cfg = overtravel_default_cfg();
                                        s_overtravel_ready = 1; }
-            s_overtravel_cfg.mode = (uint8_t)(a0_get_setting(57) != 0 ? OT_MODE_REARM : OT_MODE_LOCK);
+            s_overtravel_cfg.mode = (uint8_t)(a0_get_setting(SET_OVERTRAVEL_ACTION) != 0
+                                              ? OT_MODE_REARM : OT_MODE_LOCK);
 
             const float posRad = pos * 6.2831853f;
             const float velRad = vel * 6.2831853f;

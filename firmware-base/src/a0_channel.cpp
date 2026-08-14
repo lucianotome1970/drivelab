@@ -32,6 +32,7 @@ extern "C" BrakeMeter g_brake_meter;
 // Guarda de coerência do ângulo elétrico (definida em ffb_task.cpp). 1 = disparou e desarmou.
 extern volatile int32_t g_guard_trip;
 extern volatile int32_t g_overspeed_trip;   // 1 = motor desarmado por girar sozinho
+extern volatile int32_t g_overtravel_trip;  // 1 = motor desarmado por curso excedido (guarda por posicao)
 // Medidores alimentados no ffb_task de 1 kHz (só leitura).
 extern "C" PeakTracker g_current_peak_ma;
 extern "C" uint8_t     g_clip_peak;
@@ -421,6 +422,12 @@ static void a0_build_state(uint8_t* p) {
     // "o FFB sumiu" é indistinguível de cabo solto — e a causa real (corcente virando calor por
     // ângulo errado) é justamente a que não se pode ignorar.
     if (g_guard_trip || g_overspeed_trip) flags |= 0x40;    // AngleGuardTripped (ângulo OU sobrevelocidade)
+    // Guarda de CURSO EXCEDIDO, em bit próprio e não junto da de ângulo: as duas desarmam, mas por
+    // motivos diferentes e com saídas diferentes — a de ângulo exige power-cycle, esta pode
+    // re-armar sozinha se o usuário escolheu. Somá-las num flag só faria a tela dar a instrução
+    // errada na metade dos casos. É também o que o teste de bancada consulta para saber se a guarda
+    // fez o trabalho dela, em vez de inferir do desarme (que tem muitas outras causas).
+    if (g_overtravel_trip) flags |= 0x80;                   // OvertravelTripped
     p[4] = flags;                                           // NÃO setar bit3 (UsingSimulator)
 
     const float turns = a0_centered_turns();

@@ -32,4 +32,18 @@ public enum BaseFlags : byte
     /// bancada: 18 A parado, ~98 W no motor, e giro descontrolado. O motor NÃO re-arma sozinho — é
     /// preciso um power-cycle, que dispara uma calibração nova. Ver g_guard_trip no firmware.</summary>
     AngleGuardTripped = 64,
+
+    /// <summary>A guarda de CURSO EXCEDIDO agiu: o volante apareceu muito além do fim do curso (45°
+    /// além), onde nenhum giro humano o leva. Ela freia primeiro, com amortecimento e sem parede; se
+    /// o eixo não obedecer, desarma.
+    ///
+    /// <para>Diferente da <see cref="AngleGuardTripped"/>, esta age por POSIÇÃO — a pergunta mais
+    /// simples e mais verdadeira que a base tem sobre si mesma. As outras duas guardas olham
+    /// velocidade e corrente, e ambas são cegas para o disparo LENTO: um torque parasita fraco gira
+    /// meia volta por segundo para sempre sem cruzar limiar nenhum.</para>
+    ///
+    /// <para>Se o ajuste estiver em "travar" (padrão), a base fica desarmada até reiniciar. Em
+    /// "re-armar", ela volta sozinha quando o volante estiver de novo dentro do curso e parado.
+    /// Ver g_overtravel_trip no firmware.</para></summary>
+    OvertravelTripped = 128,
 }

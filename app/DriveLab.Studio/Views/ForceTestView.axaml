@@ -106,6 +106,16 @@
                                            TextWrapping="Wrap" FontSize="12" Opacity="0.75"
                                            Foreground="{DynamicResource DlText}" />
 
+                                <!-- PREPARO: o que fazer ANTES de rodar. Em destaque, e não junto da
+                                     descrição, porque é instrução e não explicação — quem lê rápido
+                                     e clica em Rodar precisa esbarrar nisto. Só aparece nos testes
+                                     que pedem algo (hoje, o de regeneração: desacoplar o volante). -->
+                                <Border IsVisible="{Binding TemPreparo}"
+                                        Background="#33FF9800" CornerRadius="6" Padding="10,8">
+                                    <TextBlock Text="{Binding Preparo}" TextWrapping="Wrap"
+                                               FontSize="12" Foreground="{DynamicResource DlAccent}" />
+                                </Border>
+
                                 <!-- Progresso DESTE teste, no cartão em que se clicou. -->
                                 <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progresso}"
                                              Height="6" Margin="0,4,0,0"

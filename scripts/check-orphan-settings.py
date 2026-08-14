@@ -92,15 +92,27 @@ RESX_PT = RAIZ / "app/DriveLab.Studio/Localization/StringsPt.resx"
 USADOS_PELO_APP = set()   # set() e nao {}, que em Python da um DICT vazio e quebra a subtracao
 
 
+# O marcador [ATENCAO] tem DOIS usos no texto de ajuda, e confundi-los gera acusacao falsa:
+#
+#   1. "este campo ainda nao tem efeito"  -> e disto que este check trata
+#   2. um aviso de SEGURANCA sobre o que o campo faz -> legitimo, e nada tem a ver com orfao
+#
+# O OvertravelAction usa o marcador para o caso 2 ("se a base mandar frear e o eixo nao obedecer,
+# ela trava de qualquer forma"). Olhando so o marcador, o script acusava o campo de mentir sobre a
+# propria implementacao. Um verificador que acusa falso perde a autoridade de acusar verdadeiro,
+# entao ele passa a exigir a FRASE, e nao o simbolo.
+SEM_EFEITO = ("nao tem efeito", "não tem efeito", "no effect", "does nothing")
+
+
 def avisados_no_resx():
-    """Settings cujo texto de ajuda diz que nao tem efeito."""
+    """Settings cujo texto de ajuda diz, com todas as letras, que nao tem efeito."""
     if not RESX_PT.exists():
         return None
     texto = RESX_PT.read_text(encoding="utf-8")
     achados = set()
     for linha in texto.splitlines():
         m = re.search(r'name="SettingHelp_([A-Za-z0-9_]+)"', linha)
-        if m and AVISO in linha:
+        if m and AVISO in linha and any(f in linha.lower() for f in SEM_EFEITO):
             achados.add(m.group(1))
     return achados
 

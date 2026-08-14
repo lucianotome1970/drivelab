@@ -277,4 +277,138 @@ public class ForceTestTests
             Assert.False(r.Ok);
         }
     }
+    // ── Regeneração (resistor de freio) ──────────────────────────────────────────────────────
+
+    /// <summary>Amostra com os contadores do chopper, que são ACUMULADOS desde o boot da base.</summary>
+    private static ForceTestSample AmostraRegen(double t, uint acionamentos, double energiaJ,
+                                                double torque = 5.0) =>
+        new(t, 0.7, 0, torque, 12, 40, 0, acionamentos, energiaJ);
+
+    [Fact]
+    public void Regen_Passa_Quando_O_Resistor_Entra_E_Dissipa()
+    {
+        var teste = new RegenTest();
+        // Contadores começam em valores altos de propósito: são acumulados desde o boot, e o que
+        // vale é a DIFERENÇA. Um veredito que olhasse o valor absoluto passaria sempre.
+        var amostras = new List<ForceTestSample>
+        {
+            AmostraRegen(0.0, 40_000, 120.0),
+            AmostraRegen(8.0, 40_140, 123.4),
+        };
+
+        var r = teste.Avaliar(amostras);
+
+        Assert.True(r.Ok);
+        Assert.Contains("140", r.Resumo);          // 40140 - 40000
+        Assert.Contains("3,4", r.Resumo.Replace(".", ","));   // 123,4 - 120,0
+    }
+
+    /// <summary>O caso que motivou o teste existir: a banda morta de regeneração alta demais
+    /// silencia o resistor, e "frio e zerado" passaria por normal.</summary>
+    [Fact]
+    public void Regen_Acusa_Quando_O_Resistor_Nao_Entra()
+    {
+        var teste = new RegenTest();
+        var amostras = new List<ForceTestSample>
+        {
+            AmostraRegen(0.0, 500, 12.0),
+            AmostraRegen(8.0, 500, 12.0),   // nada mudou: não entrou nenhuma vez
+        };
+
+        var r = teste.Avaliar(amostras);
+
+        Assert.False(r.Ok);
+        Assert.Contains("não entrou", r.Resumo);
+    }
+
+    /// <summary>O defeito oposto, que a base de fato teve: 674 mil acionamentos com 27 J — o chopper
+    /// picando no limiar em vez de dissipar. Muita ação com energia nenhuma NÃO é saúde.</summary>
+    [Fact]
+    public void Regen_Acusa_Quando_O_Resistor_Pica_Sem_Dissipar()
+    {
+        var teste = new RegenTest();
+        var amostras = new List<ForceTestSample>
+        {
+            AmostraRegen(0.0, 0, 0.0),
+            AmostraRegen(8.0, 9_000, 0.01),   // 9 mil acionamentos, 10 mJ
+        };
+
+        var r = teste.Avaliar(amostras);
+
+        Assert.False(r.Ok);
+        Assert.Contains("picando", r.Resumo);
+    }
+
+    [Fact]
+    public void Regen_Pede_Para_Desacoplar_O_Aro()
+    {
+        // O preparo não é decoração: o teste sacode o eixo de lado a lado, e quem clica em Rodar
+        // sem ler leva o rig junto. Se a chave sumir, a tela deixa de avisar em silêncio.
+        Assert.NotEmpty(new RegenTest().PreparoKey);
+    }
+    // ── Curso excedido (a guarda que desarma) ────────────────────────────────────────────────
+
+    private static ForceTestSample AmostraCurso(double t, double angulo, bool guardaAgiu) =>
+        new(t, 0.30, angulo, 2.0, 6, 40, 0, 0, 0, guardaAgiu);
+
+    [Fact]
+    public void Curso_Passa_Quando_A_Guarda_Age()
+    {
+        var teste = new OvertravelTest();
+        var amostras = new List<ForceTestSample>
+        {
+            AmostraCurso(0.0, 100, false),
+            AmostraCurso(6.0, 440, false),
+            AmostraCurso(9.0, 487, true),    // passou do curso e a guarda agiu
+        };
+
+        var r = teste.Avaliar(amostras);
+
+        Assert.True(r.Ok);
+        Assert.Contains("guarda agiu", r.Resumo);
+    }
+
+    /// <summary>O caso que o teste existe para pegar: o volante passou do fim do curso e a proteção
+    /// ficou quieta.</summary>
+    [Fact]
+    public void Curso_Acusa_Quando_A_Guarda_Nao_Age()
+    {
+        var teste = new OvertravelTest();
+        var amostras = new List<ForceTestSample>
+        {
+            AmostraCurso(0.0, 100, false),
+            AmostraCurso(11.0, 500, false),
+        };
+
+        var r = teste.Avaliar(amostras);
+
+        Assert.False(r.Ok);
+        Assert.Contains("não agiu", r.Resumo);
+    }
+
+    /// <summary>Volante que mal se mexeu NÃO é falha da guarda — o teste sequer chegou a exercitá-la.
+    /// Chamar isso de "guarda não agiu" mandaria a pessoa investigar uma proteção que está boa.</summary>
+    [Fact]
+    public void Curso_Distingue_Guarda_Ruim_De_Teste_Que_Nao_Rodou()
+    {
+        var teste = new OvertravelTest();
+        var amostras = new List<ForceTestSample>
+        {
+            AmostraCurso(0.0, 5, false),
+            AmostraCurso(11.0, 12, false),   // não saiu do lugar
+        };
+
+        var r = teste.Avaliar(amostras);
+
+        Assert.False(r.Ok);
+        Assert.Contains("não chegou a rodar", r.Resumo);
+    }
+
+    [Fact]
+    public void Curso_Avisa_Que_Termina_Desarmado()
+    {
+        // O preparo carrega o aviso de que a base fica desarmada ao fim. Sem ele, o resultado
+        // esperado do teste parece defeito.
+        Assert.NotEmpty(new OvertravelTest().PreparoKey);
+    }
 }

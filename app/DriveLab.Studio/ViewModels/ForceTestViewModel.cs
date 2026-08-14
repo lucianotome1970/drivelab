@@ -43,6 +43,13 @@ public sealed partial class ForceTestItemViewModel : ObservableObject
     /// <summary>Pico de força em %, para a tela avisar antes de aplicar.</summary>
     public int PicoPct => (int)Math.Round(Teste.PicoDeForca * 100);
 
+    /// <summary>Instrução de preparo, quando o teste exige algo da pessoa antes de rodar. Vazio na
+    /// maioria — só o de regeneração pede, porque sacode o volante de lado a lado e com o aro
+    /// acoplado isso balança o rig inteiro.</summary>
+    public string Preparo =>
+        Teste.PreparoKey.Length == 0 ? "" : L.Get(Teste.PreparoKey);
+    public bool TemPreparo => Preparo.Length > 0;
+
     [ObservableProperty] private bool _rodando;
     /// <summary>0..1 enquanto roda. Fica no ITEM, e nao na pagina, porque o retorno tem de
     /// aparecer onde a pessoa clicou — barra no topo para um botao la embaixo faz procurar.</summary>
@@ -131,12 +138,41 @@ public sealed partial class ForceTestViewModel : ViewModelBase
         Testes = ForceTests.Todos.Select(t => new ForceTestItemViewModel(t)).ToList();
 
         _isConnected = session.IsConnected;
+        // A base pode JÁ estar conectada quando esta aba é criada (a sessão sobe antes das telas).
+        // Nesse caso o evento Connected nunca dispara, e sem isto o Kt ficaria zero justamente na
+        // situação mais comum — abrir o app com a base ligada.
+        if (session.IsConnected) _ = CarregarKtAsync();
         session.Connected += AoConectar;
         session.Disconnected += AoDesconectar;
         session.StateReceived += AoReceberEstado;
     }
 
-    private void AoConectar(object? s, EventArgs e) => IsConnected = true;
+    private void AoConectar(object? s, EventArgs e)
+    {
+        IsConnected = true;
+        _ = CarregarKtAsync();
+    }
+
+    /// <summary>Busca o Kt na base. Sem ele o torque estimado sai ZERO e todo veredito que fala de
+    /// torque fica cego — a Rampa reportava "torque máximo 0,00 Nm" com a base entregando força, e
+    /// o Impacto media o corte sem saber contra o quê.
+    ///
+    /// <para>O campo existia e ninguém o preenchia: nasceu para ser injetado de fora e o
+    /// CompositionRoot nunca o injetou. Perguntar à base é melhor que injetar — o Kt vive lá, muda
+    /// quando o usuário o mede, e assim a tela não precisa lembrar de repassar.</para></summary>
+    private async Task CarregarKtAsync()
+    {
+        try
+        {
+            var v = await _session.ReadSettingAsync(BaseSettingId.TorqueConstant);
+            TorqueConstant = v.AsDouble;
+        }
+        catch
+        {
+            // Base que não respondeu: fica zero e os vereditos dizem o que sabem, como antes.
+            // Falhar aqui não pode impedir os testes que não dependem de torque de rodar.
+        }
+    }
 
     private void AoDesconectar(object? s, EventArgs e)
     {
@@ -185,6 +221,33 @@ public sealed partial class ForceTestViewModel : ViewModelBase
         _cancelamento = new CancellationTokenSource();
         var ct = _cancelamento.Token;
 
+        // PREPARO DA BASE — hoje só o teste de curso excedido pede, e o que ele pede é abaixar a
+        // parede do fim de curso para o volante poder ATRAVESSAR o limite sem impacto.
+        //
+        // ⚠️ O valor original é guardado ANTES e restaurado no `finally`, junto com a parada da
+        // força. Não pode existir caminho de saída que deixe a base sem batente: cancelar, perder a
+        // conexão, o motor desarmar (que é justamente o que este teste provoca) ou dar exceção.
+        int? batenteOriginal = null;
+        if (item.Teste.Id == "Overtravel" && _session.IsConnected)
+        {
+            try
+            {
+                var v = await _session.ReadSettingAsync(BaseSettingId.SoftStopStrength);
+                batenteOriginal = (int)Math.Round(v.AsDouble);
+                await _session.WriteSettingAsync(BaseSettingId.SoftStopStrength,
+                                                 new SettingValue(SettingType.UInt8, 0));
+            }
+            catch
+            {
+                // Não conseguiu preparar: aborta ANTES de aplicar força. Rodar sem baixar a parede
+                // viraria justamente a queda de braço contra o batente que este desenho evita.
+                Aviso = "Não foi possível preparar a base para este teste.";
+                item.Rodando = false;
+                EmExecucao = null;
+                return;
+            }
+        }
+
         try
         {
             _relogio.Reiniciar();
@@ -210,6 +273,7 @@ public sealed partial class ForceTestViewModel : ViewModelBase
         finally
         {
             await PararForcaAsync();
+            await RestaurarBatenteAsync(batenteOriginal);
             item.Rodando = false;
             item.Progresso = 0;
             EmExecucao = null;
@@ -222,6 +286,28 @@ public sealed partial class ForceTestViewModel : ViewModelBase
 
     [RelayCommand(CanExecute = nameof(PodeParar))]
     private void Parar() => _cancelamento?.Cancel();
+
+    /// <summary>Devolve a força do batente ao valor de antes do teste. Nada a fazer quando o teste
+    /// não mexeu nele (o caso de todos os outros).
+    ///
+    /// <para>Roda no mesmo `finally` que zera a força, e por isso vale para todo caminho de saída.
+    /// Se nem assim der — a base sumiu do USB no meio —, o valor original volta no próximo boot,
+    /// porque o teste NÃO salva na flash: escreve só o valor em uso.</para></summary>
+    private async Task RestaurarBatenteAsync(int? original)
+    {
+        if (original is not { } valor || !_session.IsConnected) return;
+        try
+        {
+            await _session.WriteSettingAsync(BaseSettingId.SoftStopStrength,
+                                             new SettingValue(SettingType.UInt8, valor));
+        }
+        catch
+        {
+            // Avisar é melhor que falhar em silêncio: quem acabou de rodar o teste precisa saber
+            // que a base pode ter ficado sem batente até reiniciar.
+            Aviso = "Não foi possível restaurar a força do batente — reinicie a base antes de usar.";
+        }
+    }
 
     /// <summary>Zera a força. Passa por aqui todo caminho de saída — fim normal, aborto e erro.</summary>
     private Task PararForcaAsync() =>
@@ -254,7 +340,12 @@ public sealed partial class ForceTestViewModel : ViewModelBase
             TorqueNm: TorqueConstant > 0 ? TorqueConstant * correnteA : 0,
             CurrentA: correnteA,
             FetTempC: e.FetTempC,
-            ClippingPct: e.ClippingPercent);
+            ClippingPct: e.ClippingPercent,
+            OvertravelTripped: e.Flags.HasFlag(BaseFlags.OvertravelTripped),
+            // Contadores do resistor de freio, ACUMULADOS desde o boot da base. Quem olha a
+            // diferença entre o começo e o fim é o veredito do teste — aqui só se transporta.
+            BrakeActivations: e.BrakeActivations,
+            BrakeEnergyJ: e.BrakeEnergyJoules);
     }
 
     public override void Dispose()
