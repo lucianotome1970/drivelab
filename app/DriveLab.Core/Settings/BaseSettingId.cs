@@ -116,4 +116,16 @@ public enum BaseSettingId : byte
     /// <para>É a mesma lacuna que o CPR do encoder tinha: um valor que descreve a MÁQUINA de cada
     /// um, existindo no código com o número de uma máquina só.</para></summary>
     BrakeResistanceOhm = 56,
+
+    /// <summary>O que a base faz quando o volante vai MUITO além do fim do curso: 0 = travar até
+    /// reiniciar (padrão), 1 = voltar a armar sozinha quando o volante estiver de novo dentro do
+    /// curso e parado.
+    ///
+    /// <para>O padrão é travar de propósito. Trava de segurança cuja opção permissiva está a um
+    /// clique tende a ser ligada e esquecida — e esta existe para o caso do motor que disparou.</para>
+    ///
+    /// <para>A escolha NÃO vale quando a base mandou frear e o eixo não obedeceu: essa é a
+    /// assinatura de calibração ruim, e aí ela trava de qualquer forma. Re-armar sobre uma
+    /// calibração que não responde é repetir o disparo de propósito.</para></summary>
+    OvertravelAction = 57,
 }

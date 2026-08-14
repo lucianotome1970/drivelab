@@ -43,6 +43,8 @@ public static class BaseSettingsSchema
         new(BaseSettingId.BrakeResistanceOhm, "brake_resistance_ohm", "Resistor de freio", SettingType.Float, 0.5, 50, "Ω", SettingTab.Hardware, 2.0,
             "A resistência do resistor de freio que VOCÊ montou — o valor impresso nele. A placa não mede: ela acredita neste número para calcular a corrente e a potência que passam pelo resistor. Ex.: o resistor desta bancada é de 2 Ω; há montagens com 12 Ω. Declarar 2 tendo montado 12 erra essa conta por seis vezes, e é ela que decide quando cortar por aquecimento. Só vale depois de reiniciar a base.",
             Numeric: true),
+        new(BaseSettingId.OvertravelAction, "overtravel_action", "Se o volante passar do curso", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0,
+            "O que a base faz se o volante for parar muito além do fim do curso — 45° além, onde nenhum giro humano o leva. Ela sempre freia primeiro, sem tranco. A escolha aqui é o que vem depois: travar até você reiniciar, ou voltar a armar sozinha quando o volante estiver de novo dentro do curso e parado."),
         new(BaseSettingId.CalibrationCurrent, "calibration_current", "Corrente de calibração", SettingType.UInt8, 1, 30, "A", SettingTab.Hardware, 5,
             "Corrente usada na rotina de calibração. Alta demais faz o motor se jogar entre posições e a calibração falhar; baixa demais não vence o encaixe dos ímãs do hoverboard."),
         new(BaseSettingId.PositionSmoothing, "position_smoothing", "Suavização de posição", SettingType.UInt8, 0, 100, "%", SettingTab.Advanced, 0,

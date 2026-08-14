@@ -105,6 +105,10 @@ public static class CompositionRoot
             // resistor de freio é peça que cada um compra e monta, e o firmware ACREDITA neste
             // número para calcular a corrente e a potência que passam por ele.
             BaseSettingId.BrakeResistanceOhm,
+            // Vizinho das protecoes acima: e a ultima rede, a que age por POSICAO. As outras duas
+            // guardas (velocidade e corrente) nao tem ajuste — esta tem, porque "bati no muro no
+            // jogo" e "o motor disparou" pedem respostas diferentes e so o usuario sabe qual vive.
+            BaseSettingId.OvertravelAction,
             BaseSettingId.SoftPowerEnable,  // soft-power/contator: 0=como hoje, 1=contator ativo (opt-in)
             BaseSettingId.PowerButtonEnable,  // soft-power por botão: 0=como hoje, 1=tap-liga/segura-desliga (opt-in)
         }),

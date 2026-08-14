@@ -60,6 +60,11 @@ void    ffb_model_reset_clipping(void);
 /// que os criou. Limpá-los deixaria o jogo sem efeitos até ele reenviá-los — e ele não reenvia.
 void    ffb_model_reset_transient(void);
 
+/// Fim do curso em radianos (DOR/2), como o pipeline o enxerga NESTE instante — inclusive a faixa
+/// nova que ainda espera o volante entrar nela. Existe para a guarda de curso excedido medir contra
+/// o MESMO limite que a parede usa: dois números diferentes fariam a guarda proteger outro curso.
+float   ffb_model_dor_half_rad(void);
+
 // Controle direto do app (report 0x10). `constant`/`periodic` sao FORCA -1..1 (o app ja calculou a
 // forma de onda); `spring`/`damper` sao GANHO 0..1 (dependem de posicao e velocidade, calculadas no
 // firmware). Renova o watchdog: sem novos envios a forca decai sozinha em ~800 ms.

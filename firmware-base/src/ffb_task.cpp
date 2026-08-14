@@ -14,6 +14,7 @@
 #include "peak_tracker.h"   // picos de corrente (só leitura)
 #include "blackbox.h"          // caixa-preta: causa do ultimo reset (lida no boot)
 #include "brake_meter.h"          // zerar o medidor do chopper no arme (ver autoscale, abaixo)
+#include "overtravel_guard.h"      // o volante nao pode estar alem do curso (guarda por POSICAO)
 #include "wheel_center.h"         // o zero do volante (batente nasce centrado) — ver o header
 #include "watchdog.h"             // a base reinicia sozinha em vez de congelar — ver o header
 extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
@@ -25,6 +26,7 @@ extern "C" int32_t a0_peek_motor_enable(void);   // trava lida da NVM antes do e
 extern "C" int a0_service(uint32_t nowMs);   // canal A0 do app (0x16 resposta / 0x21 telemetria) — na sobra
 extern "C" bool a0_reboot_pending(void);     // CMD_REBOOT: desarmar e resetar o MCU
 extern "C" bool a0_dfu_pending(void);        // CMD_DFU: desarmar e saltar pro bootloader
+extern "C" int32_t a0_get_setting(uint8_t id);  // valor atual de um setting (guarda de curso excedido)
 extern "C" bool a0_save_pending(void);       // CMD_SAVE pediu persistir os settings na FFB_NVM?
 extern "C" bool a0_commit_save(void);        // empacota + grava na flash (chamar SÓ com motor IDLE)
 
@@ -134,6 +136,23 @@ static constexpr uint16_t kOverspeedMs     = 150;    // sustentado, não pico
 volatile int32_t g_overspeed_trip     = 0;   // 1 = disparou
 volatile int32_t g_overspeed_vel_mts  = 0;   // velocidade no disparo (milli-turns/s) — a prova
 volatile int32_t g_overspeed_bad_ms   = 0;   // há quanto tempo acima do limiar (0 = normal)
+
+// ============================================================================================
+// GUARDA DE CURSO EXCEDIDO — ver inc/overtravel_guard.h para o porque e a maquina de estados.
+// Complementa as duas de cima: elas olham velocidade e corrente, esta olha POSICAO — e e a unica
+// que pega o disparo LENTO, que nao cruza limiar de velocidade nenhum.
+// ============================================================================================
+static OvertravelState s_overtravel;
+static OvertravelCfg   s_overtravel_cfg;
+static uint8_t         s_overtravel_ready = 0;
+// Freio do disparo: amortecimento puro, proporcional a velocidade. Teto BAIXO de proposito — o
+// objetivo e parar sem tranco, nao construir outra parede. 0,6 Nm por rad/s satura em 5 Nm perto
+// de 8 rad/s, que ja e giro de disparo.
+static constexpr float kOtBrakeNmPerRadS = 0.6f;
+static constexpr float kOtBrakeMaxNm     = 5.0f;
+volatile int32_t g_overtravel_trip    = 0;   // 1 = disparou (legivel por SWD)
+volatile int32_t g_overtravel_pos_mrad = 0;  // posicao no disparo — a prova
+volatile int32_t g_overtravel_trips   = 0;   // quantas vezes neste boot
 
 // Medidores do monitor (SÓ LEITURA — não entram em nenhuma decisão de controle).
 // Ficam aqui, no laço de 1 kHz, e NÃO na ISR de 8 kHz: a lição de 2026-08-06 é que
@@ -443,7 +462,44 @@ static void ffb_thread(void*) {
             if (!wheel_center_is_set()) wheel_center_capture();
             const float pos = wheel_center_pos_turns();          // turns RELATIVOS ao centro
             const float vel = motor_link_get_vel_estimate();  // turns/s (derivada: o zero não a afeta)
-            motor_link_set_input_torque(ffb_model_compute_torque(pos, vel));
+
+            // GUARDA DE CURSO EXCEDIDO. Roda ANTES de aplicar o torque do pipeline, porque a
+            // decisão dela é sobre QUAL torque aplicar — não é observador como as outras duas.
+            // A ação escolhida pelo usuário (travar ou re-armar) é lida a cada tick: mudar o
+            // ajuste no app passa a valer sem reiniciar.
+            if (!s_overtravel_ready) { overtravel_init(&s_overtravel);
+                                       s_overtravel_cfg = overtravel_default_cfg();
+                                       s_overtravel_ready = 1; }
+            s_overtravel_cfg.mode = (uint8_t)(a0_get_setting(57) != 0 ? OT_MODE_REARM : OT_MODE_LOCK);
+
+            const float posRad = pos * 6.2831853f;
+            const float velRad = vel * 6.2831853f;
+            const OvertravelAction ota = overtravel_update(&s_overtravel, &s_overtravel_cfg,
+                                                           posRad, ffb_model_dor_half_rad(),
+                                                           velRad, 1);
+            g_overtravel_pos_mrad = s_overtravel.last_pos_mrad;
+            g_overtravel_trips    = s_overtravel.trips;
+
+            if (ota == OT_ACT_NORMAL) {
+                motor_link_set_input_torque(ffb_model_compute_torque(pos, vel));
+            } else if (ota == OT_ACT_BRAKE) {
+                // Amortecimento puro: nada do jogo entra. Zera o estado transitório junto, senão o
+                // limitador de variação atrapalharia o próprio freio.
+                ffb_model_reset_transient();
+                float t = -kOtBrakeNmPerRadS * velRad;
+                if (t >  kOtBrakeMaxNm) t =  kOtBrakeMaxNm;
+                if (t < -kOtBrakeMaxNm) t = -kOtBrakeMaxNm;
+                motor_link_set_input_torque(t);
+            } else {   // DISARM ou HOLD
+                g_overtravel_trip = 1;
+                motor_link_set_input_torque(0.0f);
+                if (ota == OT_ACT_DISARM) {
+                    // Trava o auto-arme SÓ quando a guarda decidiu travar. No modo re-armar ela
+                    // mesma devolve o controle assim que o volante voltar ao curso e parar.
+                    if (s_overtravel.state == OT_ST_LOCKED) g_arm_gate = 0;
+                    motor_link_request_idle();
+                }
+            }
         } else {
             motor_link_set_input_torque(0.0f);
             ffb_model_reset_clipping();   // desarmado não clipa — não deixar o último valor congelado na tela

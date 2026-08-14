@@ -63,7 +63,7 @@ enum { CMD_REBOOT = 1, CMD_SAVE = 2, CMD_RESET_CENTER = 3, CMD_DFU = 4, CMD_CALI
 // campos) completando com os defaults.
 // O 47 e INTERNO: nao existe no schema do app e nao aparece na UI. Guarda a identidade do firmware
 // que gravou o blob, para a trava de bring-up saber se o binario mudou (ver bringup_lock.h).
-#define A0_NUM_SETTINGS 57
+#define A0_NUM_SETTINGS 58
 
 // Tipo de cada FieldId (BaseSettingsSchema). Índice = BaseSettingId.
 static const uint8_t s_type[A0_NUM_SETTINGS] = {
@@ -86,6 +86,7 @@ static const uint8_t s_type[A0_NUM_SETTINGS] = {
     /*49..54 ffb_curve_5..10*/T_U8, T_U8, T_U8, T_U8, T_U8, T_U8,
     /*55 current_bandwidth_hz*/T_U16,   // substitui os antigos 12/13 (P e I) — ver motor_link
     /*56 brake_resistance_ohm*/T_FLOAT, // resistor de freio [ohm] — peca que cada um monta (era cravado em 2.0)
+    /*57 overtravel_action*/T_U8,      // curso excedido: 0=travar (padrao) · 1=re-armar sozinho
     // A curva de forca passou de 5 para 11 pontos (de 25 em 25% para 10 em 10%). Os cinco primeiros
     // ficaram nos ids 28-32; estes seis completam. O meio da escala — onde se dirige a maior parte
     // de uma volta — tinha UM ponto de controle e agora tem cinco.
@@ -113,7 +114,10 @@ static const int32_t s_idef[A0_NUM_SETTINGS] = {
         25, // 48 current_lim [A]: o valor que estava CRAVADO no firmware → padrão = comportamento de hoje
         50, 60, 70, 80, 90, 100,  // 49-54: o resto da curva (linear = sai o mesmo que entra)
         200,                      // 55 banda da malha de corrente [Hz]: o valor cravado no bring-up
-        0                         // 56 brake_resistance_ohm: T_FLOAT → o padrao vive em s_fdef
+        0,                        // 56 brake_resistance_ohm: T_FLOAT → o padrao vive em s_fdef
+        0                         // 57 overtravel_action: TRAVAR. Padrao seguro de proposito —
+                                  // trava cuja opcao permissiva esta a um clique acaba ligada e
+                                  // esquecida, e esta guarda existe para o motor que disparou.
 };
 static float s_fdef[A0_NUM_SETTINGS];   // padroes float (preenchidos em a0_load_defaults)
 
