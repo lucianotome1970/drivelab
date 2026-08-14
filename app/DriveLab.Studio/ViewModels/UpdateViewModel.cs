@@ -111,8 +111,12 @@ public sealed partial class UpdateViewModel : ViewModelBase
         Func<string, Task<byte[]>>? readFile = null, IDeviceAccessCoordinator? coordinator = null,
         BaseSession? baseSession = null, GitHubReleaseClient? releaseClient = null,
         Func<Uri, Task<byte[]>>? downloadBytes = null,
-        Func<DeviceKind, (bool, FirmwareVersion)>? deviceStatus = null)
+        Func<DeviceKind, (bool, FirmwareVersion)>? deviceStatus = null,
+        TimeSpan? bootloaderPollInterval = null,
+        IUiDispatcher? uiDispatcher = null)
     {
+        _bootloaderPollInterval = bootloaderPollInterval ?? TimeSpan.FromSeconds(3);
+        _uiDispatcher = uiDispatcher;
         Devices = devices;
         _filePicker = filePicker ?? new AvaloniaFilePicker();
         _readFile = readFile ?? (path => File.ReadAllBytesAsync(path));
@@ -132,10 +136,99 @@ public sealed partial class UpdateViewModel : ViewModelBase
             _baseSession.StateReceived += OnBaseStateReceived;
         }
         RefreshStatus();
+        RestartBootloaderWatch();
     }
 
     private void OnBaseConnectionChanged(object? sender, EventArgs e) => RefreshStatus();
     private void OnBaseStateReceived(object? sender, BaseState e) => RefreshStatus();
+
+    // ------------------------------------------------------------------------------------------
+    // Placa em modo de atualização (DFU/BOOTSEL)
+    // ------------------------------------------------------------------------------------------
+    //
+    // Uma placa em modo de atualização NÃO é o dispositivo normal: ela reenumera como outra coisa
+    // (STM32 BOOTLOADER no caso da base), então tudo que detecta conexão comum a dá como ausente. O
+    // app dizia "sem conexão" — a única resposta que não ajuda — nos dois momentos em que ela mais
+    // parece defeito e não é:
+    //
+    //   · ANTES de gravar, numa placa de fábrica: ela está pronta, e a tela sugere que deu errado
+    //   · DEPOIS de gravar, com o jumper esquecido no modo de atualização: a placa nunca vai rodar o
+    //     firmware, e isso é indistinguível de uma gravação que falhou (aconteceu na bancada em
+    //     14/08/2026, com a documentação aberta no passo que avisa exatamente isso)
+    //
+    // A verificação custa um processo (`dfu-util -l`), então roda em intervalo folgado e SÓ enquanto
+    // o dispositivo não está conectado normalmente — placa conectada não precisa ser procurada.
+
+    /// <summary>Intervalo da vigília. Injetável só para os testes não esperarem segundos de relógio —
+    /// em produção fica nos 3 s do construtor.</summary>
+    private readonly TimeSpan _bootloaderPollInterval;
+    private readonly IUiDispatcher? _uiDispatcher;
+    private CancellationTokenSource? _bootloaderWatch;
+
+    /// <summary>True quando há uma placa em modo de atualização agora (habilita o aviso na tela).</summary>
+    [ObservableProperty] private bool _bootloaderDetected;
+
+    /// <summary>Começa (ou refaz) a vigília do bootloader para o dispositivo selecionado.</summary>
+    private void RestartBootloaderWatch()
+    {
+        _bootloaderWatch?.Cancel();
+        _bootloaderWatch?.Dispose();
+        _bootloaderWatch = null;
+        BootloaderDetected = false;
+
+        var device = SelectedDevice;
+        if (device is null) return;
+
+        var cts = new CancellationTokenSource();
+        _bootloaderWatch = cts;
+        _ = WatchBootloaderAsync(device, cts.Token);
+    }
+
+    /// <summary>Publica uma mudança da vigília. Passa pelo dispatcher porque a vigília roda FORA da
+    /// thread de UI (ver o ConfigureAwait(false) abaixo) e estas propriedades alimentam bindings.</summary>
+    private void PublicarDaVigilia(Action mudanca)
+    {
+        if (_uiDispatcher is not null) _uiDispatcher.Post(mudanca);
+        else mudanca();
+    }
+
+    // ⚠️ TODOS os awaits desta função usam ConfigureAwait(false), e isso NÃO é estilo: sem ele, cada
+    // continuação da vigília volta para o SynchronizationContext capturado na construção. O fluxo de
+    // gravação reporta progresso por IProgress<double>, que POSTA nesse mesmo contexto — e o relatório
+    // ficava atrás da vigília na fila. O sintoma foi o teste de gravação passando a falhar em
+    // `Progress == 1.0` assim que a vigília nasceu: o flash rodava, o valor era reportado, e não
+    // chegava a tempo. Uma tarefa de fundo que ocupa o contexto da UI atrasa o que é da UI.
+    private async Task WatchBootloaderAsync(IDeviceUpdater device, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            // Durante a gravação o próprio fluxo já está falando com o bootloader; um segundo
+            // `dfu-util -l` no meio disso só disputa o dispositivo.
+            if (!IsSending && !DeviceIsConnected(device.Kind))
+            {
+                bool presente;
+                try { presente = await device.IsBootloaderPresentAsync().ConfigureAwait(false); }
+                catch { presente = false; }   // sem dfu-util, sem permissão: some o aviso, não quebra a tela
+
+                if (ct.IsCancellationRequested) return;
+                if (presente != BootloaderDetected)
+                    PublicarDaVigilia(() => { BootloaderDetected = presente; RefreshStatus(); });
+            }
+            else if (BootloaderDetected)
+            {
+                PublicarDaVigilia(() => { BootloaderDetected = false; RefreshStatus(); });
+            }
+
+            try { await Task.Delay(_bootloaderPollInterval, ct).ConfigureAwait(false); }
+            catch (TaskCanceledException) { return; }
+        }
+    }
+
+    private bool DeviceIsConnected(DeviceKind kind)
+    {
+        if (_deviceStatus is not null) return _deviceStatus(kind).Item1;
+        return _baseSession?.IsConnected == true;
+    }
 
     /// <summary>Atualiza o selo de status para refletir o DISPOSITIVO SELECIONADO (não só a base). Chamado ao
     /// trocar de dispositivo e nos eventos de conexão das sessões (a base internamente; as demais via
@@ -154,7 +247,9 @@ public sealed partial class UpdateViewModel : ViewModelBase
             // Fallback (sem provider): comportamento antigo, só a base.
             if (_baseSession is null || !_baseSession.IsConnected)
             {
-                ConnectedDeviceInfo = "Nenhuma placa detectada.";
+                ConnectedDeviceInfo = BootloaderDetected
+                    ? $"Placa em modo de atualização ({SelectedDevice?.BootloaderName}) — pronta para gravar."
+                    : "Nenhuma placa detectada.";
                 return;
             }
             var vb = _baseSession.FirmwareVersion;
@@ -166,7 +261,10 @@ public sealed partial class UpdateViewModel : ViewModelBase
         var label = DeviceLabel(kind.Value);
         if (!connected)
         {
-            ConnectedDeviceInfo = $"{label}: sem conexão.";
+            // Placa em modo de atualização não está "sem conexão" — está esperando ser gravada.
+            ConnectedDeviceInfo = BootloaderDetected
+                ? $"{label} em modo de atualização ({SelectedDevice?.BootloaderName}) — pronta para gravar."
+                : $"{label}: sem conexão.";
             return;
         }
         bool hasVersion = v.Major != 0 || v.Minor != 0 || v.Patch != 0;
@@ -191,6 +289,7 @@ public sealed partial class UpdateViewModel : ViewModelBase
         UpdateDownloadable = false;
         _pendingAsset = null;
         RefreshStatus();           // selo reflete o dispositivo agora selecionado
+        RestartBootloaderWatch();  // o bootloader procurado é o DESTE dispositivo (DFU vs BOOTSEL)
     }
 
     /// <summary>Consulta o GitHub e informa a última versão do dispositivo selecionado (e se é mais nova que a
@@ -431,6 +530,13 @@ public sealed partial class UpdateViewModel : ViewModelBase
         StatusMessage = "Enviando firmware...";
         var progress = new Progress<double>(p => Progress = p);
         await device.FlashAsync(FirmwarePath, progress);
+
+        // 100% é uma CONCLUSÃO, não o último relatório. Progress<T> entrega os avisos de forma
+        // assíncrona (posta no contexto/pool), então o valor final pode chegar depois daqui — e se o
+        // dfu-util simplesmente não emitir a linha de 100%, nunca chega. Nos dois casos a barra
+        // ficaria parada perto do fim com a gravação já concluída, que é a aparência exata de um
+        // travamento. Gravou sem erro: a barra fecha.
+        Progress = 1.0;
         StatusMessage = "Atualização concluída com sucesso.";
     }
 
@@ -442,5 +548,22 @@ public sealed partial class UpdateViewModel : ViewModelBase
             await _coordinator.EndExclusiveAsync(_inFlightDevice.Kind);
         _exclusiveHeld = false;
         _inFlightDevice = null;
+    }
+
+    public override void Dispose()
+    {
+        // A vigília do bootloader roda um processo a cada 3 s; deixá-la viva depois da tela morrer
+        // seria um `dfu-util -l` perpétuo em segundo plano.
+        _bootloaderWatch?.Cancel();
+        _bootloaderWatch?.Dispose();
+        _bootloaderWatch = null;
+
+        if (_baseSession is not null)
+        {
+            _baseSession.Connected -= OnBaseConnectionChanged;
+            _baseSession.Disconnected -= OnBaseConnectionChanged;
+            _baseSession.StateReceived -= OnBaseStateReceived;
+        }
+        base.Dispose();
     }
 }

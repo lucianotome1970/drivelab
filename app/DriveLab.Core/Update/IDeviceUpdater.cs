@@ -36,6 +36,15 @@ public interface IDeviceUpdater
     /// <summary>Polls for the bootloader's USB device to appear, up to <paramref name="timeout"/>. Returns true if found.</summary>
     Task<bool> WaitForBootloaderAsync(TimeSpan timeout);
 
+    /// <summary>O bootloader está presente NESTE instante? Uma verificação só, sem espera.
+    ///
+    /// <para>Existe para a tela poder DIZER que há uma placa em modo de atualização. Uma placa em DFU
+    /// não é o dispositivo normal — ela reenumera como outra coisa —, então tudo o que detecta
+    /// conexão comum a considera ausente, e o app anunciava "sem conexão" nos dois piores momentos:
+    /// com a placa pronta para gravar, e com ela presa em DFU depois de gravar (jumper esquecido).
+    /// Nas duas, "sem conexão" é a única resposta que não ajuda.</para></summary>
+    Task<bool> IsBootloaderPresentAsync();
+
     /// <summary>Flashes <paramref name="filePath"/> onto the device (already in bootloader mode) via dfu-util, reporting 0..1 progress.</summary>
     Task FlashAsync(string filePath, IProgress<double>? progress, CancellationToken ct = default);
 }

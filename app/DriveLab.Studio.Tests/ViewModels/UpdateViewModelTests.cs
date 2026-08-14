@@ -57,6 +57,15 @@ public class UpdateViewModelTests
             return Task.FromResult(BootloaderFound);
         }
 
+        /// <summary>Presença do bootloader para a VIGÍLIA da tela (o aviso "pronta para gravar").
+        ///
+        /// <para>Separada de <see cref="WaitForBootloaderAsync"/> de propósito: aquela é consumida
+        /// pelo fluxo de gravação e os testes controlam a fila dela passo a passo. Se a vigília, que
+        /// roda sozinha em segundo plano, comesse da mesma fila, ela roubaria respostas e os testes
+        /// de gravação falhariam de forma intermitente — dependendo de quem chegasse primeiro.</para></summary>
+        public bool BootloaderPresent { get; set; }
+        public Task<bool> IsBootloaderPresentAsync() => Task.FromResult(BootloaderPresent);
+
         public Task FlashAsync(string filePath, IProgress<double>? progress, CancellationToken ct = default)
         {
             FlashCalled = true;
@@ -332,5 +341,91 @@ public class UpdateViewModelTests
         Assert.Equal(1, coordinator.EndCalls);                       // retomado mesmo com exceção no flash
         Assert.Equal(new[] { "enter", "begin", "wait", "flash", "end" }, events);
         Assert.Contains("boom", vm.StatusMessage);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Placa em modo de atualização (DFU/BOOTSEL)
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>Espera a vigília reagir. Ela roda em segundo plano num intervalo curto (injetado nos
+    /// testes), então o teste aguarda a CONDIÇÃO em vez de um tempo fixo — dormir um valor fixo é o
+    /// que produz teste que falha só na máquina lenta.</summary>
+    /// <summary>Intervalo da vigília nos testes. Curto para não esperar relógio, mas NÃO agressivo:
+    /// com 10 ms as vigílias de fundo disputavam o pool de threads e faziam OUTROS testes desta
+    /// classe falharem de forma intermitente (2 em 3 execuções, sempre em asserts de tempo).</summary>
+    private static readonly TimeSpan PollDeTeste = TimeSpan.FromMilliseconds(25);
+
+    private static async Task<bool> AguardarAsync(Func<bool> condicao, int limiteMs = 2000)
+    {
+        for (var t = 0; t < limiteMs; t += 10)
+        {
+            if (condicao()) return true;
+            await Task.Delay(10);
+        }
+        return condicao();
+    }
+
+    /// <summary>Placa de fábrica em DFU: não conecta como dispositivo normal, e dizer "sem conexão"
+    /// faz a pessoa achar que deu errado justamente quando está tudo certo para gravar.</summary>
+    [Fact]
+    public async Task Placa_Em_Modo_De_Atualizacao_Aparece_No_Status()
+    {
+        var updater = new FakeUpdater { BootloaderPresent = true };
+        using var vm = new UpdateViewModel(new List<IDeviceUpdater> { updater }, new FakeFilePicker(),
+            _ => Task.FromResult(MakeFirmwareBytes(DeviceKind.Base)),
+            bootloaderPollInterval: PollDeTeste);
+
+        Assert.True(await AguardarAsync(() => vm.BootloaderDetected));
+        Assert.Contains("modo de atualização", vm.ConnectedDeviceInfo);
+    }
+
+    /// <summary>Sem placa em DFU o texto tem de continuar o de sempre — um aviso que aparece sozinho
+    /// seria pior que a mensagem antiga.</summary>
+    [Fact]
+    public async Task Sem_Bootloader_Mantem_A_Mensagem_De_Sempre()
+    {
+        var updater = new FakeUpdater { BootloaderPresent = false };
+        using var vm = new UpdateViewModel(new List<IDeviceUpdater> { updater }, new FakeFilePicker(),
+            _ => Task.FromResult(MakeFirmwareBytes(DeviceKind.Base)),
+            bootloaderPollInterval: PollDeTeste);
+
+        await Task.Delay(120);  // deixa a vigília rodar algumas vezes
+        Assert.False(vm.BootloaderDetected);
+        Assert.Equal("Nenhuma placa detectada.", vm.ConnectedDeviceInfo);
+    }
+
+    /// <summary>A placa saiu do modo de atualização (gravou e reiniciou): o aviso tem de SUMIR. Um
+    /// aviso que fica preso diria "pronta para gravar" com a base já rodando o firmware.</summary>
+    [Fact]
+    public async Task Aviso_Some_Quando_A_Placa_Sai_Do_Modo_De_Atualizacao()
+    {
+        var updater = new FakeUpdater { BootloaderPresent = true };
+        using var vm = new UpdateViewModel(new List<IDeviceUpdater> { updater }, new FakeFilePicker(),
+            _ => Task.FromResult(MakeFirmwareBytes(DeviceKind.Base)),
+            bootloaderPollInterval: PollDeTeste);
+
+        Assert.True(await AguardarAsync(() => vm.BootloaderDetected));
+
+        updater.BootloaderPresent = false;
+        Assert.True(await AguardarAsync(() => !vm.BootloaderDetected));
+        Assert.Equal("Nenhuma placa detectada.", vm.ConnectedDeviceInfo);
+    }
+
+    /// <summary>Descartar a tela encerra a vigília — senão fica um processo externo rodando a cada
+    /// poucos segundos pelo resto da vida do app.</summary>
+    [Fact]
+    public async Task Dispose_Encerra_A_Vigilia()
+    {
+        var updater = new FakeUpdater { BootloaderPresent = true };
+        var vm = new UpdateViewModel(new List<IDeviceUpdater> { updater }, new FakeFilePicker(),
+            _ => Task.FromResult(MakeFirmwareBytes(DeviceKind.Base)),
+            bootloaderPollInterval: PollDeTeste);
+
+        Assert.True(await AguardarAsync(() => vm.BootloaderDetected));
+
+        vm.Dispose();
+        vm.BootloaderDetected = false;    // se a vigília seguisse viva, ela poria true de volta
+        await Task.Delay(150);
+        Assert.False(vm.BootloaderDetected);
     }
 }

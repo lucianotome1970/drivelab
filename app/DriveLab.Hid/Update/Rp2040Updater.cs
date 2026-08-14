@@ -85,6 +85,9 @@ public sealed class Rp2040Updater : IDeviceUpdater
         return _findVolume() is not null;
     }
 
+    /// <summary>Verificação única: no RP2040 o "bootloader presente" é o volume BOOTSEL montado.</summary>
+    public Task<bool> IsBootloaderPresentAsync() => Task.FromResult(_findVolume() is not null);
+
     /// <summary>
     /// Flasheia copiando <paramref name="filePath"/> para <c>&lt;volume&gt;/firmware.uf2</c>. O
     /// bootloader RP2040 grava a flash e reinicia sozinho assim que a cópia termina.

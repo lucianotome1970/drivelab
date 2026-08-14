@@ -104,6 +104,11 @@ public sealed class BaseUpdater : IDeviceUpdater
         return found;
     }
 
+    /// <summary>Verificação única, para a tela informar que há placa em modo de atualização.
+    /// Delega ao mesmo `dfu-util -l` que o fluxo de gravação já usa — uma segunda forma de detectar
+    /// diria "tem placa" onde a gravação diz "não tem", que é pior que não informar.</summary>
+    public Task<bool> IsBootloaderPresentAsync() => IsBootloaderPresentAsync(0, default);
+
     private async Task<bool> IsBootloaderPresentAsync(int poll = 0, DateTime start = default)
     {
         var dfuUtilPath = ResolveDfuUtilPath();

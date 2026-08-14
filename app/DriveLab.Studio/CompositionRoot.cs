@@ -101,6 +101,10 @@ public static class CompositionRoot
             // a corrente custa calor que cresce com o QUADRADO dela, e e este campo que diz a que
             // temperatura a placa comeca a recuar. Quem mexe num quer ver o outro.
             BaseSettingId.FetTempLimitC,
+            // Junto dos dois acima pelo mesmo motivo: também descreve até onde a base aguenta ir. O
+            // resistor de freio é peça que cada um compra e monta, e o firmware ACREDITA neste
+            // número para calcular a corrente e a potência que passam por ele.
+            BaseSettingId.BrakeResistanceOhm,
             BaseSettingId.SoftPowerEnable,  // soft-power/contator: 0=como hoje, 1=contator ativo (opt-in)
             BaseSettingId.PowerButtonEnable,  // soft-power por botão: 0=como hoje, 1=tap-liga/segura-desliga (opt-in)
         }),
@@ -331,7 +335,10 @@ public static class CompositionRoot
                 DeviceKind.Handbrake => (handbrakeSession.IsConnected, handbrakeSession.FirmwareVersion),
                 DeviceKind.Wheel => (wheelSession.IsConnected, wheelSession.FirmwareVersion),
                 _ => (session.IsConnected, session.FirmwareVersion),   // Base
-            });
+            },
+            // A vigília do bootloader (o aviso "placa em modo de atualização") roda fora da thread de
+            // UI e mexe em propriedades que alimentam bindings — as mudanças passam por aqui.
+            uiDispatcher: dispatcher);
         // Selo do módulo Update reflete o dispositivo SELECIONADO: refresca quando qualquer módulo conecta/
         // desconecta (a base já é escutada dentro do VM). Evita mostrar "sem conexão" da base ao atualizar o pedal.
         void RefreshUpdateStatus(object? s, EventArgs e) => dispatcher.Post(update.RefreshStatus);

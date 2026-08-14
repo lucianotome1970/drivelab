@@ -25,6 +25,9 @@ public class UpdateCheckViewModelTests
         public bool ValidateFirmware(byte[] file, out string error) { error = ""; return true; }
         public Task EnterBootloaderAsync() => Task.CompletedTask;
         public Task<bool> WaitForBootloaderAsync(TimeSpan timeout) => Task.FromResult(true);
+        // Falso: estes testes são sobre a CONSULTA de versão, e uma placa "em modo de atualização"
+        // trocaria o rótulo de status que eles verificam.
+        public Task<bool> IsBootloaderPresentAsync() => Task.FromResult(false);
         public Task FlashAsync(string filePath, IProgress<double>? progress, CancellationToken ct) => Task.CompletedTask;
     }
 
