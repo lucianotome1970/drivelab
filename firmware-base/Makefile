@@ -84,7 +84,7 @@ DEFS = -DSTM32F405xx \
        -DHW_VERSION_VOLTAGE=56 \
        -DUSB_PROTOCOL_NATIVE \
        -DUART_PROTOCOL_ASCII \
-       -DDRVLAB_TUSB_NO_BREAKPOINT \
+       -DCFG_TUSB_DEBUG_BREAKPOINT=drvlab_tusb_no_breakpoint \
        -DUSE_EEPROM_EMULATION \
        -DEEPROM_START_ADDRESS=0x08004000 \
        -DPAGE_SIZE=0x4000 \
@@ -164,7 +164,6 @@ C_SOURCES_USBLIB = \
   $(TUSB_DIR)/tusb.c \
   $(TUSB_DIR)/common/tusb_fifo.c \
   $(TUSB_DIR)/device/usbd.c \
-  $(TUSB_DIR)/device/usbd_control.c \
   $(TUSB_DIR)/class/cdc/cdc_device.c \
   $(TUSB_DIR)/class/hid/hid_device.c \
   $(TUSB_DIR)/portable/synopsys/dwc2/dcd_dwc2.c \

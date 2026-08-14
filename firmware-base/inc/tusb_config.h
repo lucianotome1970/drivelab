@@ -18,6 +18,16 @@
 #ifndef _TUSB_CONFIG_H_
 #define _TUSB_CONFIG_H_
 
+// PONTE PARA O FreeRTOS DO ODRIVE (v9). O TinyUSB 0.21 usa macros que so existem em FreeRTOS mais
+// novo; o nosso vem junto com o core do ODrive e nao da para trocar sozinho. Definir aqui e a forma
+// menos invasiva — vale para todo o TinyUSB, sem tocar no vendor nem no FreeRTOS.
+//
+// pdTICKS_TO_MS e o inverso do pdMS_TO_TICKS que o nosso FreeRTOS ja tem (projdefs.h:41).
+#include "FreeRTOS.h"
+#ifndef pdTICKS_TO_MS
+  #define pdTICKS_TO_MS(xTicks) ((uint32_t)(((uint64_t)(xTicks) * 1000u) / configTICK_RATE_HZ))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
