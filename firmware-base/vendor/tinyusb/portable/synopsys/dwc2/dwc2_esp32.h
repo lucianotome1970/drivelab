@@ -37,14 +37,35 @@
 
 #include "esp_intr_alloc.h"
 #include "soc/periph_defs.h"
+
+// ESP32-S31 does not have USB_WRAP peripheral (HS-only with UTMI PHY)
+#if !TU_CHECK_MCU(OPT_MCU_ESP32S31)
 #include "soc/usb_wrap_struct.h"
+#endif
 
 #if TU_CHECK_MCU(OPT_MCU_ESP32S2, OPT_MCU_ESP32S3)
 #define DWC2_FS_REG_BASE   0x60080000UL
 #define DWC2_EP_MAX        7
 
 static const dwc2_controller_t _dwc2_controller[] = {
-  { .reg_base = DWC2_FS_REG_BASE, .irqnum = ETS_USB_INTR_SOURCE, .ep_count = 7, .ep_in_count = 5, .ep_fifo_size = 1024 }
+  { .reg_base = DWC2_FS_REG_BASE, .irqnum = ETS_USB_INTR_SOURCE, .ep_count = 7, .ep_in_count = 5, .otg_dfifo_depth = 256 }
+};
+
+#elif TU_CHECK_MCU(OPT_MCU_ESP32H4)
+// H4's USB_WRAP register block uses "wrap_*" field names. Map them to the
+// names used by TinyUSB's DWC2 port to keep the source unchanged.
+#define otg_conf                wrap_otg_conf
+#define pad_pull_override       wrap_pad_pull_override
+#define dp_pullup               wrap_dp_pullup
+#define dp_pulldown             wrap_dp_pulldown
+#define dm_pullup               wrap_dm_pullup
+#define dm_pulldown             wrap_dm_pulldown
+
+#define DWC2_FS_REG_BASE   0x60040000UL
+#define DWC2_EP_MAX        7
+
+static const dwc2_controller_t _dwc2_controller[] = {
+  { .reg_base = DWC2_FS_REG_BASE, .irqnum = ETS_USB_OTG11_INTR_SOURCE, .ep_count = 7, .ep_in_count = 5, .otg_dfifo_depth = 256 }
 };
 
 #elif TU_CHECK_MCU(OPT_MCU_ESP32P4)
@@ -55,8 +76,16 @@ static const dwc2_controller_t _dwc2_controller[] = {
 // On ESP32 for consistency we associate
 // - Port0 to OTG_FS, and Port1 to OTG_HS
 static const dwc2_controller_t _dwc2_controller[] = {
-{ .reg_base = DWC2_FS_REG_BASE, .irqnum = ETS_USB_OTG11_CH0_INTR_SOURCE, .ep_count = 7, .ep_in_count = 5, .ep_fifo_size = 1024 },
-{ .reg_base = DWC2_HS_REG_BASE, .irqnum = ETS_USB_OTG_INTR_SOURCE, .ep_count = 16, .ep_in_count = 8, .ep_fifo_size = 4096 }
+  { .reg_base = DWC2_FS_REG_BASE, .irqnum = ETS_USB_OTG11_CH0_INTR_SOURCE, .ep_count = 7, .ep_in_count = 5, .otg_dfifo_depth = 256 },
+  { .reg_base = DWC2_HS_REG_BASE, .irqnum = ETS_USB_OTG_INTR_SOURCE, .ep_count = 16, .ep_in_count = 8, .otg_dfifo_depth = 1024 }
+};
+
+#elif TU_CHECK_MCU(OPT_MCU_ESP32S31)
+#define DWC2_HS_REG_BASE   0x20300000UL
+#define DWC2_EP_MAX        16
+
+static const dwc2_controller_t _dwc2_controller[] = {
+  { .reg_base = DWC2_HS_REG_BASE, .irqnum = ETS_USB_OTGHS_INTR_SOURCE, .ep_count = 16, .ep_in_count = 8, .otg_dfifo_depth = 1024 }
 };
 #endif
 
@@ -73,11 +102,17 @@ static void dwc2_int_handler_wrap(void* arg) {
     dcd_int_handler(rhport);
   }
 #endif
-#if CFG_TUH_ENABLED
+#if CFG_TUH_ENABLED && !CFG_TUH_MAX3421
   if (role == TUSB_ROLE_HOST) {
     hcd_int_handler(rhport, true);
   }
 #endif
+}
+
+// MCU specific to enable dwc2 clock/power before any access to register
+TU_ATTR_ALWAYS_INLINE static inline void dwc2_clock_init(uint8_t rhport, tusb_role_t role) {
+  (void) rhport;
+  (void) role;
 }
 
 TU_ATTR_ALWAYS_INLINE static inline void dwc2_int_set(uint8_t rhport, tusb_role_t role, bool enabled) {
@@ -104,12 +139,59 @@ TU_ATTR_ALWAYS_INLINE static inline void dwc2_phy_init(dwc2_regs_t* dwc2, uint8_
 
 }
 
+// MCU specific PHY deinit, disable PHY power
+TU_ATTR_ALWAYS_INLINE static inline void dwc2_phy_deinit(dwc2_regs_t* dwc2, uint8_t hs_phy_type) {
+  (void)dwc2;
+  (void)hs_phy_type;
+  // PHY managed by ESP-IDF
+}
+
 // MCU specific PHY update, it is called AFTER init() and core reset
 TU_ATTR_ALWAYS_INLINE static inline void dwc2_phy_update(dwc2_regs_t* dwc2, uint8_t hs_phy_type) {
   (void)dwc2;
   (void)hs_phy_type;
   // maybe usb_utmi_hal_disable()
 }
+
+//--------------------------------------------------------------------+
+// Data Cache
+//--------------------------------------------------------------------+
+#if CFG_TUD_DWC2_DMA_ENABLE || CFG_TUH_DWC2_DMA_ENABLE
+#if defined(SOC_CACHE_INTERNAL_MEM_VIA_L1CACHE) && SOC_CACHE_INTERNAL_MEM_VIA_L1CACHE
+#include "esp_cache.h"
+
+#if CFG_TUD_MEM_DCACHE_LINE_SIZE != CONFIG_CACHE_L1_CACHE_LINE_SIZE || \
+    CFG_TUH_MEM_DCACHE_LINE_SIZE != CONFIG_CACHE_L1_CACHE_LINE_SIZE
+#error "CFG_TUD/TUH_MEM_DCACHE_LINE_SIZE must match CONFIG_CACHE_L1_CACHE_LINE_SIZE"
+#endif
+
+TU_ATTR_ALWAYS_INLINE static inline uint32_t round_up_to_cache_line_size(uint32_t size) {
+  if (size & (CONFIG_CACHE_L1_CACHE_LINE_SIZE-1)) {
+    size = (size & ~(CONFIG_CACHE_L1_CACHE_LINE_SIZE-1)) + CONFIG_CACHE_L1_CACHE_LINE_SIZE;
+  }
+  return size;
+}
+
+TU_ATTR_ALWAYS_INLINE static inline bool dwc2_dcache_clean(const void* addr, uint32_t data_size) {
+  const int flag = ESP_CACHE_MSYNC_FLAG_TYPE_DATA | ESP_CACHE_MSYNC_FLAG_DIR_C2M;
+  data_size = round_up_to_cache_line_size(data_size);
+  return ESP_OK == esp_cache_msync((void*)addr, data_size, flag);
+}
+
+TU_ATTR_ALWAYS_INLINE static inline bool dwc2_dcache_invalidate(const void* addr, uint32_t data_size) {
+  const int flag = ESP_CACHE_MSYNC_FLAG_TYPE_DATA | ESP_CACHE_MSYNC_FLAG_DIR_M2C;
+  data_size = round_up_to_cache_line_size(data_size);
+  return ESP_OK == esp_cache_msync((void*)addr, data_size, flag);
+}
+
+TU_ATTR_ALWAYS_INLINE static inline bool dwc2_dcache_clean_invalidate(const void* addr, uint32_t data_size) {
+  const int flag = ESP_CACHE_MSYNC_FLAG_TYPE_DATA | ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_DIR_M2C;
+  data_size = round_up_to_cache_line_size(data_size);
+  return ESP_OK == esp_cache_msync((void*)addr, data_size, flag);
+}
+
+#endif
+#endif
 
 #ifdef __cplusplus
 }

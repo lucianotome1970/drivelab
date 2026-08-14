@@ -107,3 +107,21 @@ extern "C" void tud_umount_cb(void)  { osMessagePut(usb_event_queue, 2, 0); }
 extern "C" void tud_suspend_cb(bool) { osMessagePut(usb_event_queue, 2, 0); }
 extern "C" void tud_resume_cb(void)  { osMessagePut(usb_event_queue, 1, 0); }
 extern "C" void tud_cdc_tx_complete_cb(uint8_t) { osMessagePut(usb_event_queue, 3, 0); }
+
+// ============================================================================================
+// TU_BREAKPOINT desarmado — ver o porquê abaixo.
+//
+// O TinyUSB, ao encontrar uma condição inesperada, executa BKPT #0 — que SÓ tem efeito quando há
+// depurador conectado. Em bancada de desenvolvimento de USB isso é útil; num volante é uma
+// armadilha, porque o comportamento da placa passa a depender de o ST-Link estar plugado.
+//
+// Diagnosticado em 14/08/2026 depois de sessões caçando um travamento "aleatório" que só a tomada
+// resolvia: o core estava em HALT DE DEPURAÇÃO (DHCSR=0x30003), parado dentro da ISR do USB, com o
+// tick do FreeRTOS congelado e nenhum hard fault registrado. A ferramenta de diagnóstico é que
+// provocava o defeito.
+//
+// A partir da 0.21 o TinyUSB oferece este ponto de extensão oficial (CFG_TUSB_DEBUG_BREAKPOINT), em
+// vez de precisarmos patchar o vendor: ele chama esta função no lugar do BKPT. Não perdemos detecção
+// de erro — o TU_ASSERT continua retornando na falha, que é a parte que trata o problema; o
+// breakpoint só servia para chamar um humano com um depurador aberto.
+extern "C" void drvlab_tusb_no_breakpoint(void) { /* de propósito, não faz nada */ }
