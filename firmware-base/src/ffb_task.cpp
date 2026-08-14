@@ -184,6 +184,7 @@ static void ffb_thread(void*) {
     watchdog_init();
 
     for (;;) {
+        blackbox_step(BB_STEP_INICIO);
         ffb_model_advance_clock(1);                     // relógio do modelo (1 ms/tick)
 
         // Diagnóstico do eixo (só leitura por SWD)
@@ -245,13 +246,29 @@ static void ffb_thread(void*) {
         // ms (F405 single-bank) → precisa do motor IDLE, senão a ISR do controle perde deadline. Suspende
         // o auto-arme, desarma, grava, e re-permite o arme (o app re-liga a força). ⚠️ A força cai ~1s e
         // o motor re-arma (pode re-calibrar o offset do encoder) — validar o feel na bancada.
+        blackbox_step(BB_STEP_SAVE_FLASH);
         if (a0_save_pending()) {
             g_arm_gate = 0;                              // suspende o auto-arme (senão re-arma na hora)
             if (motor_link_motor_is_armed()) {
                 motor_link_request_idle();            // desarma p/ a flash não estourar deadline
             } else {
                 motor_link_set_input_torque(0.0f);    // torque zero antes de congelar a CPU
+                // ⚠️ ALIMENTAR O WATCHDOG EM VOLTA DA GRAVAÇÃO. O erase/program CONGELA a CPU, e
+                // este laço é justamente quem alimenta — durante a gravação ninguém alimenta, e o
+                // watchdog reinicia a base achando que ela travou.
+                //
+                // MEDIDO em 14/08/2026: a base reiniciou sozinha 3× num dia de ajustes, e a
+                // caixa-preta mostrou IWDGRSTF nos três boots. Não era travamento: era o próprio
+                // "Salvar no controlador". O watchdog é novo (13/08); antes disso a mesma pausa
+                // passava despercebida.
+                //
+                // Alimentar ANTES dá a janela inteira para a gravação, e alimentar DEPOIS garante
+                // que o tick seguinte não herde um contador já quase no fim. Uma pausa longa e
+                // CONHECIDA não é o que o watchdog existe para pegar — ele existe para o travamento
+                // que ninguém previu.
+                watchdog_feed();
                 a0_commit_save();                        // erase+program (bloqueia, mas motor OFF = ok)
+                watchdog_feed();
                 g_arm_gate = 1;                          // re-permite o arme
             }
         }
@@ -267,6 +284,7 @@ static void ffb_thread(void*) {
         //     aborta ("gira um pouco pra um lado e para" → UNKNOWN_PHASE_ESTIMATE).
         // Com o motor armado, a cal já terminou e o vbus é leitura real e estável. (O arme do
         // resistor em si é feito sem janela dentro da função — ver motor_link.cpp.)
+        blackbox_step(BB_STEP_AUTOSCALE);
         if (!g_bus_autoscaled && g_axis_dbg[1] == 8) {
             g_bus_autoscaled = motor_link_autoscale_bus_limits();
             // Zera o medidor do chopper AQUI: a calibração de offset do boot GIRA o motor, e girar
@@ -278,6 +296,7 @@ static void ffb_thread(void*) {
             brake_meter_init(&g_brake_meter);
         }
 
+        blackbox_step(BB_STEP_GUARDAS);
         // GUARDA DE SOBREVELOCIDADE — vem ANTES de tudo: é a proteção que não pode falhar.
         // Só observa a velocidade; não corta torque, não limita nada enquanto o giro for humano.
         if (g_axis_dbg[0] && !g_overspeed_trip) {
@@ -522,6 +541,7 @@ static void ffb_thread(void*) {
         // escalonador está rodando, esta tarefa acordou e a volta inteira executou — que é o
         // que "sistema saudável" significa na prática. Nos dois travamentos que diagnosticamos
         // (tempestade de IRQ do USB e breakpoint do TinyUSB) o laço parava exatamente aqui.
+        blackbox_step(BB_STEP_FIM);
         watchdog_feed();
         osDelayUntil(&tick, 1);   // 1 kHz absoluto (sem drift)
     }

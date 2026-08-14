@@ -63,6 +63,56 @@ typedef struct {
 #define BB_BOOT_MAGIC  0x0B007C71u   // "BOOT CTR" — marca que o contador de boots vale
 
 // ---------------------------------------------------------------------------------------------
+// RASTRO DO LAÇO — onde o firmware estava quando o watchdog o reiniciou
+// ---------------------------------------------------------------------------------------------
+// POR QUE EXISTE: o watchdog salva a base, e ao salvá-la APAGA a evidência. Diferente do hard
+// fault, ele não guarda PC nem LR — o reset é limpo, e no boot seguinte só se sabe QUE reiniciou,
+// nunca ONDE. Em 14/08/2026 a base reiniciou três vezes num dia, com IWDGRSTF nos três boots e
+// nenhuma pista do motivo.
+//
+// COMO FUNCIONA: o laço de 1 kHz marca em que trecho está antes de entrar nele. Como isto vive em
+// .noinit, o valor SOBREVIVE ao reset — e no boot seguinte diz qual trecho estava executando
+// quando o tempo acabou. Não é um depurador; é a diferença entre "travou em algum lugar" e "travou
+// gravando a flash".
+//
+// ⚠️ Sobrevive a reset, NÃO a queda de energia (é RAM comum). Depois de tirar da tomada, o valor
+// não vale nada — por isso o magic.
+#define BB_TRACE_MAGIC 0x0B007ACEu   // "BOOT TRACE"
+
+// Trechos do laço de FFB. Ordem = ordem de execução, para o número sozinho já situar.
+enum {
+    BB_STEP_NENHUM        = 0,
+    BB_STEP_INICIO        = 1,   // topo do laço, antes de qualquer trabalho
+    BB_STEP_TELEMETRIA    = 2,   // hid_send_joystick / a0_service (canal do app)
+    BB_STEP_SAVE_FLASH    = 3,   // a0_commit_save — CONGELA a CPU de propósito
+    BB_STEP_AUTOSCALE     = 4,   // dimensionamento dos limites de bus
+    BB_STEP_GUARDAS       = 5,   // sobrevelocidade, ângulo elétrico, curso excedido
+    BB_STEP_ARME          = 6,   // auto-arme / calibração pedida ao ODrive
+    BB_STEP_TORQUE        = 7,   // cálculo do FFB e escrita do torque
+    BB_STEP_FIM           = 8,   // depois do watchdog_feed, antes de dormir
+};
+
+typedef struct {
+    uint32_t magic;      // BB_TRACE_MAGIC quando o conteúdo vale
+    uint32_t step;       // BB_STEP_* em que o laço estava
+    uint32_t tick;       // contador do laço — se estiver parado entre boots, travou de vez
+    uint32_t last_step;  // o trecho ANTERIOR: um passo que trava muito cedo não chega a se marcar
+} BlackBoxTrace;
+
+extern BlackBoxTrace g_bb_trace;
+
+/// O rastro DO BOOT ANTERIOR, fotografado em blackbox_init() antes de o laço voltar a escrever.
+/// Sem esta cópia o rastro seria inútil: o laço sobrescreve o valor em milissegundos, e quem for
+/// ler por SWD depois do reset já encontra o do boot novo. Aqui vive o do que travou.
+extern volatile uint32_t g_bb_trace_prev_step;
+extern volatile uint32_t g_bb_trace_prev_last;
+extern volatile uint32_t g_bb_trace_prev_tick;
+
+/// Marca o trecho atual. Chamada MUITAS vezes por volta do laço — é uma escrita em RAM, sem custo
+/// mensurável a 1 kHz.
+void blackbox_step(uint32_t step);
+
+// ---------------------------------------------------------------------------------------------
 // CONTADOR DE BOOTS — o que faltava para diagnosticar reinício INTERMITENTE.
 //
 // A caixa-preta guardava só o ÚLTIMO reset. Serve para "a placa reiniciou agora, por quê?", e não

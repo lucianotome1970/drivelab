@@ -15,6 +15,26 @@ volatile uint32_t g_bb_reset_reason = BB_RESET_DESCONHECIDA;
 // aconteceu depois de a placa já ter reiniciado.
 BlackBoxFault g_bb_fault __attribute__((section(".noinit")));
 BlackBoxBoots g_bb_boots __attribute__((section(".noinit")));
+BlackBoxTrace g_bb_trace __attribute__((section(".noinit")));
+
+// Cópia do rastro do boot ANTERIOR. Em .bss comum de propósito: ela é preenchida no init a partir
+// da .noinit e não precisa sobreviver a mais nada — o que precisa sobreviver é a origem.
+volatile uint32_t g_bb_trace_prev_step = 0;
+volatile uint32_t g_bb_trace_prev_last = 0;
+volatile uint32_t g_bb_trace_prev_tick = 0;
+
+// Marca o trecho do laço. Guarda o ANTERIOR junto: um trecho que trava logo na entrada pode não
+// chegar a se marcar, e aí o par (anterior, atual) situa melhor que o atual sozinho.
+void blackbox_step(uint32_t step) {
+    if (g_bb_trace.magic != BB_TRACE_MAGIC) {   // primeira marcação depois de uma queda de energia
+        g_bb_trace.magic     = BB_TRACE_MAGIC;
+        g_bb_trace.tick      = 0;
+        g_bb_trace.last_step = BB_STEP_NENHUM;
+    }
+    if (step != g_bb_trace.step) g_bb_trace.last_step = g_bb_trace.step;
+    g_bb_trace.step = step;
+    if (step == BB_STEP_INICIO) g_bb_trace.tick++;   // uma volta completa do laço
+}
 
 void blackbox_init(void) {
     const uint32_t csr = RCC->CSR;
@@ -29,6 +49,15 @@ void blackbox_init(void) {
         g_bb_boots.idx   = 0;
         for (uint32_t i = 0; i < BB_BOOT_HIST; ++i) g_bb_boots.csr[i] = 0;
     }
+    // FOTOGRAFA O RASTRO ANTES QUE O LAÇO O APAGUE. Poucos milissegundos depois daqui o ffb_task
+    // começa a marcar de novo, e o valor de quem travou some. Só vale se o magic bater: sem ele a
+    // energia caiu e a .noinit veio com lixo.
+    if (g_bb_trace.magic == BB_TRACE_MAGIC) {
+        g_bb_trace_prev_step = g_bb_trace.step;
+        g_bb_trace_prev_last = g_bb_trace.last_step;
+        g_bb_trace_prev_tick = g_bb_trace.tick;
+    }
+
     g_bb_boots.boots++;
     g_bb_boots.csr[g_bb_boots.idx % BB_BOOT_HIST] = csr;
     g_bb_boots.idx++;
