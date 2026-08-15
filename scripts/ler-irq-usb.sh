@@ -29,14 +29,14 @@ BASE=$("$NM" "$ELF" | grep -E " [Bb] g_bb_irq_bits$" | cut -d' ' -f1)
 [ -n "$BASE" ] || { echo "g_bb_irq_bits nao existe neste firmware — grave o build novo"; exit 1; }
 
 out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -f target/stm32f4x.cfg \
-  -c "init" -c "echo M:[read_memory 0x$BASE 32 33]" -c "shutdown" 2>&1)
+  -c "init" -c "echo M:[read_memory 0x$BASE 32 36]" -c "shutdown" 2>&1)
 
 linha=$(echo "$out" | grep -oE '^M:.*')
 [ -n "$linha" ] || { echo "SWD nao respondeu — o ST-Link esta na USB?"; exit 1; }
 
 read -r -a v <<< "${linha#M:}"
 magic=$((${v[0]}))
-if [ "$magic" -ne $((0x1B175A1F)) ]; then   # deixar o shell converter: transcrever o magic em decimal a mao ja custou uma leitura falsa
+if [ "$magic" -ne $((0x1B175A20)) ]; then   # deixar o shell converter: transcrever o magic em decimal a mao ja custou uma leitura falsa
     echo "contadores ainda nao inicializados (a base bootou agora?)"
     exit 0
 fi
@@ -84,6 +84,26 @@ done
 echo
 printf "  %-58s %10d\n" "TOTAL" "$total"
 echo
+
+# ⚠️ A TAXA DE PICO E O NUMERO QUE IMPORTA, NAO A MEDIA. Um surto de 2 s desaparece numa media de
+# 3 minutos — e e o surto que estrangula a CPU e derruba o laco. Em 15/08/2026 li 2.792/s de media
+# num boot que travou e quase conclui "nao houve tempestade": a media e que nao servia.
+atual=$(( ${v[33]} ))
+maxima=$(( ${v[34]} ))
+echo
+echo "TAXA DE INTERRUPCAO (janelas de 1 s, contadas pelo proprio laco de FFB)"
+printf "  agora            : %6d por segundo
+" "$atual"
+printf "  PICO desde ligar : %6d por segundo
+" "$maxima"
+if   [ "$maxima" -ge 10000 ]; then
+  echo "  -> TEMPESTADE confirmada: a ISR come a CPU e o laco de FFB nao roda."
+elif [ "$maxima" -ge 3000 ]; then
+  echo "  -> acima do normal (~1.100/s), mas longe de estrangular a CPU."
+else
+  echo "  -> dentro do normal (~1.100/s = um por volta do laco de 1 kHz)."
+fi
+
 echo "COMO LER: rode isto ANTES e DEPOIS de um reinicio (sem tirar da tomada) — a causa da"
 echo "tempestade e a linha que DISPARAR entre as duas leituras, nao a maior em termos absolutos."
 echo "SOF sempre domina em operacao normal: sao os 1.000 quadros por segundo do host."

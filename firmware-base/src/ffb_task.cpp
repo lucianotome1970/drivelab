@@ -22,7 +22,8 @@ extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/l
 
 // Definido em ffb_hid.cpp: joystick (direção pro jogo).
 extern "C" int hid_send_joystick(void);      // joystick (direção pro jogo) — PRIORIDADE
-extern "C" void hid_usb_watchdog(uint32_t nowTick);   // destrava o EP IN se o host parar de aceitar
+extern "C" void hid_usb_watchdog(uint32_t nowTick);      // destrava o EP IN se o host parar de aceitar
+extern "C" void drvlab_irq_janela(uint32_t irq_total);   // taxa de IRQ do USB, janela de 1 s
 extern "C" int32_t a0_peek_motor_enable(void);   // trava lida da NVM antes do eixo iniciar
 extern "C" int a0_service(uint32_t nowMs);   // canal A0 do app (0x16 resposta / 0x21 telemetria) — na sobra
 extern "C" bool a0_reboot_pending(void);     // CMD_REBOOT: desarmar e resetar o MCU
@@ -665,6 +666,12 @@ static void ffb_thread(void*) {
         // escalonador está rodando, esta tarefa acordou e a volta inteira executou — que é o
         // que "sistema saudável" significa na prática. Nos dois travamentos que diagnosticamos
         // (tempestade de IRQ do USB e breakpoint do TinyUSB) o laço parava exatamente aqui.
+        // Fecha a janela de 1 s da taxa de interrupcao do USB (ver drvlab_irq_janela). Fica aqui,
+        // no fim do laco, porque "mil voltas deste laco" E o segundo que interessa: se ele parar de
+        // rodar, para de medir junto — e o ultimo valor gravado vira o retrato do que havia pouco
+        // antes de travar.
+        if ((n % 1000u) == 0u) drvlab_irq_janela(g_bb_trace.usb_irq_ticks);
+
         blackbox_step(BB_STEP_FIM);
         watchdog_feed();
         osDelayUntil(&tick, 1);   // 1 kHz absoluto (sem drift)

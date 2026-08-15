@@ -143,18 +143,37 @@ extern "C" void MX_USB_DEVICE_Init(void) {
 // e zera quando a energia cai. Magic separado do BlackBoxTrace de proposito, para nao repetir o
 // erro de mudar layout compartilhado e ler lixo com cara de medicao.
 // ─────────────────────────────────────────────────────────────────────────────
-#define DRVLAB_IRQBITS_MAGIC 0x1B175A1Fu
+#define DRVLAB_IRQBITS_MAGIC 0x1B175A20u   // +1 a cada mudanca de layout (ver blackbox.h)
 
 struct DrvlabIrqBits {
     uint32_t magic;
     uint32_t bit[32];
+    // ⚠️ A MEDIA ESCONDE O SURTO, e foi ela que me enganou em 15/08/2026: um boot que travou
+    // mostrou 2.792 IRQ/s de media em 206 s — perto do normal —, enquanto outro, que durou 35 s,
+    // mostrou 23.020/s. Um surto de dois segundos some numa media de tres minutos, e e o surto que
+    // derruba o laco. Estes campos guardam a taxa INSTANTANEA e o PIOR valor ja visto.
+    uint32_t taxa_atual;   // IRQ/s na ultima janela de 1 s
+    uint32_t taxa_maxima;  // maior IRQ/s desde que a base foi ligada na tomada
+    uint32_t irq_anterior; // marca da janela anterior (uso interno)
 };
 DrvlabIrqBits g_bb_irq_bits __attribute__((section(".noinit")));
+
+/// Fecha uma janela de 1 s e guarda a taxa. Chamada pelo laco de FFB, que roda a 1 kHz — e por
+/// isso a janela e simplesmente "mil voltas". Se o laco parar, o ultimo valor gravado fica sendo o
+/// retrato de ate 1 s antes do travamento, que e exatamente o que queremos ler depois.
+extern "C" void drvlab_irq_janela(uint32_t irq_total) {
+    if (g_bb_irq_bits.magic != DRVLAB_IRQBITS_MAGIC) return;   // ainda nao inicializado pela ISR
+    const uint32_t taxa = irq_total - g_bb_irq_bits.irq_anterior;
+    g_bb_irq_bits.irq_anterior = irq_total;
+    g_bb_irq_bits.taxa_atual = taxa;
+    if (taxa > g_bb_irq_bits.taxa_maxima) g_bb_irq_bits.taxa_maxima = taxa;
+}
 
 static inline void irqbits_conta(void) {
     if (g_bb_irq_bits.magic != DRVLAB_IRQBITS_MAGIC) {
         g_bb_irq_bits.magic = DRVLAB_IRQBITS_MAGIC;
         for (int i = 0; i < 32; ++i) g_bb_irq_bits.bit[i] = 0;
+        g_bb_irq_bits.taxa_atual = g_bb_irq_bits.taxa_maxima = g_bb_irq_bits.irq_anterior = 0;
     }
     USB_OTG_GlobalTypeDef *U = (USB_OTG_GlobalTypeDef *)USB_OTG_FS_PERIPH_BASE;
     uint32_t act = U->GINTSTS & U->GINTMSK;   // so o que esta ATIVO E habilitado
