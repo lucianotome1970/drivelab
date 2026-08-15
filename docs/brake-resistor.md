@@ -77,6 +77,40 @@ Peak dump (chopper fully on):
 > compare them under real FFB** — pick the highest R (least EMI) that still holds the bus on your
 > worst counter-steer. (At **56V** the peaks are ~2× higher, so lean toward 12Ω+.)
 
+### The 56 V variant has almost no margin
+
+Both ODESC variants use **60 V MOSFETs** and **63 V bus capacitors** — the sticker changes, the
+silicon does not. What differs is the headroom left above your supply, and that is what decides
+whether a regen spike is survivable:
+
+| Supply | Headroom to the 60 V MOSFETs |
+|---|---|
+| 24 V | 36 V — 150 % of the supply |
+| 56 V | **4 V — 7 % of the supply** |
+
+Our bench measured, on a **24 V** supply during a zig-zag under real FFB, a bus peak of **33.5 V
+without the brake resistor** and **27.5 V with it**. What carries over to another bus voltage is the
+*energy*, not the voltage step, so `E = ½C(V₂² − V₁²)` transports it:
+
+| Setup | Bus peak | Margin to 60 V |
+|---|---|---|
+| 24 V, no resistor | 33.5 V (measured) | 26.5 V |
+| 24 V, with resistor | 27.5 V (measured) | 32.5 V |
+| **56 V, no resistor** | **60.7 V** | **over the limit** |
+| **56 V, with resistor** | **57.6 V** | **2.4 V** |
+
+On a 56 V board running at 56 V, the same manoeuvre we already ran on our own bench **crosses the
+MOSFETs' rating without the resistor** and leaves 2.4 V with it. The 63 V capacitors are just as
+tight.
+
+So if you build on the 56 V variant, the resistor stops being a safety net and becomes part of the
+circuit — and it is worth asking whether you need the full 56 V at all. Running the supply lower
+costs you torque; running it at 56 V can cost you the board.
+
+**What this estimate does not know:** it assumes the same regen energy and the same bus capacitance
+as our 24 V bench. A 56 V build reaches higher speeds and can regenerate more, which moves the
+number the wrong way. Treat 60.7 V as a floor, not a worst case.
+
 ### Wattage: 50W or 100W?
 
 The **W rating is thermal headroom, not the peak dump power.** Braking happens in **short
@@ -168,6 +202,42 @@ Pico de dissipação (chopper 100% ligado):
 > capacidade (hedge se o FFB for agressivo). Os dois são baratos, então o jeito honesto é **comprar
 > um 8Ω e um 12Ω e comparar sob FFB de verdade** — escolher o maior R (menos EMI) que ainda segura o
 > bus no pior contra-esterço. (A **56V** os picos são ~2× maiores → puxe pra 12Ω+.)
+
+### A variante de 56 V quase não tem margem
+
+As duas variantes da ODESC usam **MOSFETs de 60 V** e **capacitores de barramento de 63 V** — muda o
+adesivo, não muda o silício. O que muda é a folga que sobra acima da sua fonte, e é ela que decide se
+um pico de regeneração é sobrevivível:
+
+| Fonte | Folga até os 60 V do MOSFET |
+|---|---|
+| 24 V | 36 V — 150 % da fonte |
+| 56 V | **4 V — 7 % da fonte** |
+
+Medimos na nossa bancada, com fonte de **24 V** num zigue-zague sob FFB real, um pico de barramento
+de **33,5 V sem o resistor de freio** e **27,5 V com ele**. O que se conserva ao levar isso para
+outra tensão de barramento é a *energia*, não o degrau de tensão, então `E = ½C(V₂² − V₁²)` faz o
+transporte:
+
+| Configuração | Pico no barramento | Margem até 60 V |
+|---|---|---|
+| 24 V, sem resistor | 33,5 V (medido) | 26,5 V |
+| 24 V, com resistor | 27,5 V (medido) | 32,5 V |
+| **56 V, sem resistor** | **60,7 V** | **estourou** |
+| **56 V, com resistor** | **57,6 V** | **2,4 V** |
+
+Numa placa de 56 V rodando a 56 V, a mesma manobra que já fizemos na nossa bancada **passa do limite
+dos MOSFETs sem o resistor** e deixa 2,4 V com ele. Os capacitores de 63 V ficam igualmente no
+limite.
+
+Ou seja: se você montar na variante de 56 V, o resistor deixa de ser rede de segurança e vira parte
+do circuito — e vale perguntar se você precisa mesmo dos 56 V inteiros. Baixar a fonte custa torque;
+manter 56 V pode custar a placa.
+
+**O que esta estimativa NÃO sabe:** ela assume a mesma energia de regeneração e a mesma capacitância
+de barramento da nossa bancada de 24 V. Uma montagem de 56 V alcança velocidades maiores e pode
+regenerar mais, o que empurra o número para o lado errado. Trate os 60,7 V como piso, não como pior
+caso.
 
 ### Watts: 50W ou 100W?
 

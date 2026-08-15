@@ -2,6 +2,10 @@
 
 **🇬🇧 [English](#-english) · 🇧🇷 [Português](#-português)**
 
+> ⚠️ **The contactor is OPTIONAL on this hardware — the arithmetic below shows why. · O contator é
+> OPCIONAL neste hardware — a conta mais abaixo mostra por quê.** What is **not** optional is the
+> brake resistor · O que **não** é opcional é o resistor de freio.
+>
 > ⚠️ **Status: groundwork (firmware pronto e opt-in, NÃO validado em bancada com hardware real).**
 > O firmware está implementado e **desligado por padrão** (`soft_power_enable = 0` → placa igual a
 > hoje). A fiação do contator e a validação ainda são passo de bancada. O **pino GPIO é um
@@ -13,10 +17,40 @@
 
 ### What it does & why
 When the board is **off**, spinning the motor by hand makes it act as a generator (back-EMF). That
-voltage is **rectified by the MOSFETs' body diodes** straight onto the DC bus → charges the bus
-capacitors → a hard spin can over-volt the board. The **contactor physically disconnects the motor
-phases when the board isn't driving**, so the back-EMF has nowhere to go. It's the off-state
-protection a firmware brake-resistor can't provide (the chopper needs firmware running).
+voltage is **rectified by the MOSFETs' body diodes** straight onto the DC bus and charges the bus
+capacitors. The **contactor physically disconnects the motor phases when the board isn't driving**,
+so the back-EMF has nowhere to go. It is the off-state protection a firmware brake resistor cannot
+provide, because the chopper needs firmware running.
+
+### Do the numbers before you buy one
+
+This page used to claim that a hard spin can over-volt the board. Run the arithmetic and that turns
+out not to be true for this motor at these voltages. With our hub motor's `Kt = 0.55 Nm/A`,
+inverting the formula from [calculo-torque.md](calculo-torque.md) and rectifying through the body
+diodes:
+
+```
+V_bus ≈ 0.181 × Kt × RPM − 1.4      →      V_bus ≈ 0.0998 × RPM − 1.4
+```
+
+| Spin at the wheel | Bus voltage |
+|---|---|
+| 2 rev/s (120 RPM) — a hard flick | 10 V |
+| 3 rev/s (180 RPM) | 16 V |
+| 5 rev/s (300 RPM) — a very aggressive spin | 28 V |
+| **10.3 rev/s (615 RPM)** | **60 V — the MOSFET rating** |
+
+You would have to spin the wheel **more than ten turns per second** to threaten the MOSFETs, three
+to four times the fastest spin a person can give it. On this motor, **off-state back-EMF is not a
+real danger and the contactor is optional.**
+
+It earns its place only if you change one of those inputs — a motor with a much higher Ke, or a bus
+that already sits near the MOSFET rating. Recompute with your own `Kt` before deciding; the formula
+above is all you need.
+
+**The energy that does threaten the board is the energy the contactor never sees:** regen while you
+are actually driving. That is the brake resistor's job, and the brake resistor is **not optional**.
+See [brake-resistor.md](brake-resistor.md).
 
 ### How it works
 - **Contactor = normally-open (NO), 3-pole**, on the motor phases (A/B/C). **Coil energized = CLOSED**
@@ -103,10 +137,39 @@ wheel** when off.
 
 ### O que faz e por quê
 Com a placa **desligada**, girar o motor na mão o transforma em gerador (back-EMF). Essa tensão é
-**retificada pelos diodos internos dos MOSFETs** direto pro barramento DC → carrega os capacitores →
-um giro brusco pode dar sobretensão na placa. O **contator desconecta fisicamente as fases do motor
-quando a placa não está dirigindo**, então a back-EMF não tem pra onde ir. É a proteção do estado
-**desligado** que o brake resistor por firmware não cobre (o chopper precisa do firmware rodando).
+**retificada pelos diodos internos dos MOSFETs** direto pro barramento DC e carrega os capacitores.
+O **contator desconecta fisicamente as fases do motor quando a placa não está dirigindo**, então a
+back-EMF não tem pra onde ir. É a proteção do estado **desligado** que o brake resistor por firmware
+não cobre, porque o chopper precisa do firmware rodando.
+
+### Faça a conta antes de comprar um
+
+Esta página afirmava que um giro brusco pode dar sobretensão na placa. Fazendo a aritmética, isso
+não se sustenta para este motor nestas tensões. Com o `Kt = 0,55 Nm/A` do nosso motor de hoverboard,
+invertendo a fórmula do [calculo-torque.md](calculo-torque.md) e retificando pelos diodos de corpo:
+
+```
+V_bus ≈ 0,181 × Kt × RPM − 1,4      →      V_bus ≈ 0,0998 × RPM − 1,4
+```
+
+| Giro no volante | Tensão no barramento |
+|---|---|
+| 2 rev/s (120 RPM) — um tapa forte | 10 V |
+| 3 rev/s (180 RPM) | 16 V |
+| 5 rev/s (300 RPM) — giro muito agressivo | 28 V |
+| **10,3 rev/s (615 RPM)** | **60 V — o limite do MOSFET** |
+
+Você teria que girar o volante a **mais de dez voltas por segundo** para ameaçar os MOSFETs, três a
+quatro vezes o giro mais rápido que uma pessoa consegue dar. Neste motor, **a back-EMF do estado
+desligado não é perigo real e o contator é opcional.**
+
+Ele só se justifica se você mudar uma dessas entradas — um motor de Ke muito maior, ou um barramento
+que já fique perto do limite do MOSFET. Refaça a conta com o seu próprio `Kt` antes de decidir; a
+fórmula acima é tudo de que você precisa.
+
+**A energia que ameaça a placa de verdade é a que o contator nunca vê:** a regeneração enquanto você
+está dirigindo. Essa é a função do resistor de freio, e o resistor de freio **não é opcional**. Veja
+o [brake-resistor.md](brake-resistor.md).
 
 ### Como funciona
 - **Contator = normalmente-aberto (NO), 3 polos**, nas fases do motor (A/B/C). **Bobina energizada =
