@@ -14,6 +14,7 @@
 #include "tusb.h"
 #include "motor_link.h"
 #include "ffb_model.h"
+#include "fw_version.h"       // fonte ÚNICA da versão — o carimbo do .bin lê o mesmo header
 #include "settings_store.h"   // (de)serialização pura do blob de settings (magic+versão+CRC)
 #include "settings_flash.h"   // I/O de flash da região FFB_NVM (setor 1 @0x08004000)
 #include "brake_meter.h"      // contadores do brake chopper (energia, acionamentos, pico)
@@ -410,7 +411,13 @@ static void a0_build_state(uint8_t* p) {
     // <Version> do Studio: os tres eram numeros diferentes (app 0.1.5, firmware 0.4.0, release
     // 0.2.3) e nenhum respondia a unica pergunta que o usuario faz — "preciso atualizar?".
     // Ao cortar uma release nova, subir os TRES juntos.
-    p[0] = 0; p[1] = 0; p[2] = 2; p[3] = 3;                 // 0.2.3
+    //
+    // Vem do fw_version.h, e nao mais escrito a mao aqui: o carimbo do .bin (fw_signature.c) ficou
+    // em 0.4.0 enquanto esta linha andava para 0.2.3, e o efeito era a tela de atualizacao dizer
+    // "arquivo versao 0.4.0" e, depois de gravar com sucesso, "base v0.2.3" — que parece gravacao
+    // que nao pegou. Enquanto forem duas declaracoes, elas voltam a divergir.
+    p[0] = 0;
+    p[1] = DRVLAB_FW_VER_MAJOR; p[2] = DRVLAB_FW_VER_MINOR; p[3] = DRVLAB_FW_VER_PATCH;
 
     uint8_t flags = 0;
     const bool armed = motor_link_motor_is_armed();

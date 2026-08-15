@@ -29,15 +29,13 @@
 // ============================================================================
 
 #include <stdint.h>
+#include "fw_version.h"   // fonte ÚNICA da versão — ver o cabeçalho de lá
 
 #define FW_KIND_BASE  1u   // DeviceKind.Base
-#define FW_VER_MAJOR  0u
-#define FW_VER_MINOR  4u
-#define FW_VER_PATCH  0u   // casar com o Firmware reportado no report 0x21 (a0_channel.cpp)
 
 __attribute__((used, section(".rodata.fwsig")))
 const uint8_t g_fw_signature[12] = {
     'D','R','V','L','A','B','F','W',
     FW_KIND_BASE,
-    FW_VER_MAJOR, FW_VER_MINOR, FW_VER_PATCH
+    DRVLAB_FW_VER_MAJOR, DRVLAB_FW_VER_MINOR, DRVLAB_FW_VER_PATCH
 };
