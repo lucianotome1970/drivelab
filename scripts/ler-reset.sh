@@ -31,6 +31,7 @@ B=$(printf '0x%x' $(( $(a g_bb_boots) + 4 )))
 S=$(a g_bb_trace_prev_step); L=$(a g_bb_trace_prev_last); T=$(a g_bb_trace_prev_tick)
 V=$(a g_bb_trace_prev_vbus_mv); I=$(a g_bb_trace_prev_iq_ma); P=$(a g_bb_trace_prev_pos_mrad)
 UT=$(a g_bb_trace_prev_usb_task); UI=$(a g_bb_trace_prev_usb_irq)
+UC=$(a g_bb_trace_prev_usb_claim)
 F=$(a g_bb_fault)
 
 out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -f target/stm32f4x.cfg \
@@ -39,6 +40,7 @@ out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -
   -c "echo S:[read_memory $CSR 32 1]" \
   -c "echo C:[read_memory $V 32 1]:[read_memory $I 32 1]:[read_memory $P 32 1]" \
   -c "echo U:[read_memory $UT 32 1]:[read_memory $UI 32 1]" \
+  -c "echo K:[read_memory $UC 32 1]" \
   -c "echo E:[read_memory $F 32 7]" \
   -c "shutdown" 2>&1)
 linha=$(echo "$out" | grep -oE '^D:.*')
@@ -150,6 +152,24 @@ else
             else if (i==0 && t>0)  print "  -> tarefa viva, INTERRUPCAO parada: o host parou de falar"
             else                   print "  -> os dois vivos: a pilha nao travou; o problema e outro"
         }'
+    fi
+
+    # DESISTENCIAS DE TOMAR O ENDPOINT. Zero e o esperado. Acima de zero prova que a espera pelo
+    # mutex acontecia de verdade — e que agora ela termina em vez de derrubar a base.
+    uclaim=$(echo "$out" | grep -oE '^K:.*')
+    if [ -n "$uclaim" ]; then
+        IFS=':' read -r _ nclaim <<< "$uclaim"
+        n=$(d "$nclaim")
+        echo
+        printf "Desistencias de enviar (mutex do endpoint ocupado): %d
+" "$n"
+        if [ "$n" -eq 0 ]; then
+            echo "  -> nenhuma: neste boot o envio nunca esperou. Se a base reiniciou mesmo assim,"
+            echo "     a causa NAO foi a espera pelo mutex — procure em outro lugar."
+        else
+            echo "  -> a espera acontecia. Sem o prazo, CADA uma destas teria travado o laco e"
+            echo "     reiniciado a base pelo watchdog. Falta achar quem segura o mutex."
+        fi
     fi
 fi
 

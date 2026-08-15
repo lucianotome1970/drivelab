@@ -224,12 +224,38 @@ uint8_t const* tu_desc_find3(uint8_t const* desc, uint8_t const* end, uint8_t by
 // Endpoint Helper for both Host and Device stack
 //--------------------------------------------------------------------+
 
+// ⚠️ DRIVELAB — ESPERA COM PRAZO, NAO INFINITA.
+//
+// O upstream faz `osal_mutex_lock(mutex, OSAL_TIMEOUT_WAIT_FOREVER)`. Num PC isso e inofensivo:
+// a thread dorme e o resto do sistema segue. Aqui quem chama e o laco de FFB a 1 kHz, e "esperar
+// para sempre" significa a base parar de responder — o watchdog reinicia, e para quem esta
+// jogando a base "reiniciou sozinha no meio da reta".
+//
+// MEDIDO EM 15/08/2026, com a caixa-preta: o laco morreu no passo 15 (envio da telemetria 0x21,
+// dentro do TinyUSB), com a pilha USB VIVA — a tarefa tinha rodado 10.282 voltas e a interrupcao
+// 809.774 vezes enquanto quem chamou estava preso. Bus em 27,12 V e corrente em -0,2 A descartam
+// alimentacao e motor. Pilha viva com o chamador preso e, por definicao, espera por mutex.
+//
+// A troca e deliberada e o custo e conhecido: perder UM pacote de telemetria, que sai mil vezes
+// por segundo e cujo atraso ninguem percebe. Nenhum envio de telemetria pode ter o poder de
+// derrubar a base — esperar sem prazo por um recurso de I/O dentro de um laco de tempo real e o
+// defeito, independentemente de quem segura o mutex.
+//
+// Isto NAO substitui achar quem o segura: g_bb_trace.usb_claim_timeouts conta as desistencias,
+// para sabermos se o caso acontece e com que frequencia. Zero significa que o problema estava em
+// outro lugar; qualquer coisa acima de zero e a prova do diagnostico.
+#include "blackbox.h"
+#define DRVLAB_EDPT_CLAIM_TIMEOUT_MS  2u   // duas voltas do laco de 1 kHz; o lock legitimo dura us
+
 bool tu_edpt_claim(volatile uint8_t* ep_state, osal_mutex_t mutex) {
   (void) mutex;
 
   // pre-check to help reducing mutex lock
   TU_VERIFY((*ep_state & (TU_EDPT_STATE_BUSY | TU_EDPT_STATE_CLAIMED)) == 0);
-  (void) osal_mutex_lock(mutex, OSAL_TIMEOUT_WAIT_FOREVER);
+  if (!osal_mutex_lock(mutex, DRVLAB_EDPT_CLAIM_TIMEOUT_MS)) {
+    g_bb_trace.usb_claim_timeouts++;
+    return false;   // "agora nao da" — o chamador tenta de novo no proximo tick
+  }
 
   // can only claim the endpoint if it is not busy and not claimed yet.
   bool const available = (*ep_state & (TU_EDPT_STATE_BUSY | TU_EDPT_STATE_CLAIMED)) == 0;

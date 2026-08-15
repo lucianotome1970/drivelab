@@ -26,6 +26,7 @@ volatile int32_t  g_bb_trace_prev_vbus_mv  = 0;
 volatile int32_t  g_bb_trace_prev_iq_ma    = 0;
 volatile int32_t  g_bb_trace_prev_pos_mrad = 0;
 volatile uint32_t g_bb_trace_prev_usb_task = 0;
+volatile uint32_t g_bb_trace_prev_usb_claim = 0;
 volatile uint32_t g_bb_trace_prev_usb_irq  = 0;
 
 // As condições do último tick antes de o laço parar. Servem tanto para CONFIRMAR quanto para
@@ -76,11 +77,13 @@ void blackbox_init(void) {
         g_bb_trace_prev_pos_mrad = g_bb_trace.pos_mrad;
         g_bb_trace_prev_usb_task = g_bb_trace.usb_task_ticks;
         g_bb_trace_prev_usb_irq  = g_bb_trace.usb_irq_ticks;
+        g_bb_trace_prev_usb_claim = g_bb_trace.usb_claim_timeouts;
     }
     // Zera os contadores do USB para o boot NOVO: eles contam a vida desta sessao, e o valor do
     // boot anterior ja foi copiado acima.
     g_bb_trace.usb_task_ticks = 0;
     g_bb_trace.usb_irq_ticks  = 0;
+    g_bb_trace.usb_claim_timeouts = 0;
 
     g_bb_boots.boots++;
     g_bb_boots.csr[g_bb_boots.idx % BB_BOOT_HIST] = csr;

@@ -98,7 +98,13 @@ typedef struct {
 // valida "estes bytes sao do formato que este codigo espera". Sem trocar, o primeiro boot depois
 // da gravacao leria o rastro do firmware ANTIGO com o layout NOVO — e os campos novos sairiam de
 // lixo, que e pior que nao ter rastro porque parece dado.
-#define BB_TRACE_MAGIC 0x0B007AD0u   // "BOOT TRACE"
+// ⚠️ TROQUE ESTE VALOR SEMPRE QUE MEXER NO LAYOUT DE BlackBoxTrace. O magic não é enfeite: a
+// struct vive em .noinit e SOBREVIVE ao reset, então um firmware novo lê a memória deixada pelo
+// antigo. Se o layout mudou e o magic não, os campos são lidos deslocados e o rastro vira lixo com
+// cara de medição — em 15/08/2026 acrescentei usb_claim_timeouts sem trocar o magic e o script
+// reportou 184.581.233 desistências, número que só não enganou porque era absurdo.
+// A cada mudança de layout: incremente o último dígito.
+#define BB_TRACE_MAGIC 0x0B007AD1u   // "BOOT TRACE" rev 1
 
 // Trechos do laço de FFB. Ordem = ordem de execução, para o número sozinho já situar.
 enum {
@@ -156,6 +162,10 @@ typedef struct {
     //   os dois subindo           -> a pilha estava viva; o problema e outro
     uint32_t usb_task_ticks;  // voltas da tarefa do TinyUSB
     uint32_t usb_irq_ticks;   // entradas na interrupcao do USB
+    // Quantas vezes o laco DESISTIU de tomar o mutex do endpoint em vez de esperar para sempre.
+    // Zero e o esperado; qualquer valor acima disso e a prova de que a espera infinita acontecia —
+    // e a diferenca entre perder um pacote de telemetria e perder a base inteira.
+    uint32_t usb_claim_timeouts;
 } BlackBoxTrace;
 
 extern BlackBoxTrace g_bb_trace;
@@ -170,6 +180,10 @@ extern volatile int32_t  g_bb_trace_prev_vbus_mv;
 extern volatile int32_t  g_bb_trace_prev_iq_ma;
 extern volatile int32_t  g_bb_trace_prev_pos_mrad;
 extern volatile uint32_t g_bb_trace_prev_usb_task;
+/// Desistencias de tomar o mutex do endpoint NO BOOT ANTERIOR. Sobrevive ao reset, que e
+/// justamente o caso interessante: se a base reiniciou, este numero diz se ela chegou a
+/// desistir antes — ou seja, se a espera infinita estava mesmo acontecendo.
+extern volatile uint32_t g_bb_trace_prev_usb_claim;
 extern volatile uint32_t g_bb_trace_prev_usb_irq;
 
 /// Anota as condicoes eletricas/mecanicas do tick atual. Chamada UMA vez por volta do laco — tres
