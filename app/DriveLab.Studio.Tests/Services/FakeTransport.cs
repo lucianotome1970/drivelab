@@ -35,7 +35,14 @@ public sealed class FakeTransport : IBaseTransport
     public Task ConnectAsync(CancellationToken ct = default) { ConnectCalls++; IsConnected = ConnectSucceeds; return Task.CompletedTask; }
     public Task DisconnectAsync() { DisconnectCalls++; IsConnected = false; return Task.CompletedTask; }
     public Task WriteSettingAsync(BaseSettingId id, SettingValue value) { LastWrite = (id, value); return Task.CompletedTask; }
-    public Task<SettingValue> ReadSettingAsync(BaseSettingId id) => Task.FromResult(new SettingValue(SettingType.UInt16, 900));
+    /// <summary>Valores por setting, para quem precisa de um em particular. O que não estiver aqui
+    /// cai no 900 de sempre — havia um só valor para toda pergunta, e isso deixou de servir quando o
+    /// painel de testes passou a ler o AJUSTE DE FORÇA para descontá-lo: força total e limite máximo
+    /// valendo 900% cada davam um fator de 81, e o teste media uma base que não existe.</summary>
+    public Dictionary<BaseSettingId, SettingValue> Settings { get; } = new();
+
+    public Task<SettingValue> ReadSettingAsync(BaseSettingId id) =>
+        Task.FromResult(Settings.TryGetValue(id, out var v) ? v : new SettingValue(SettingType.UInt16, 900));
     /// <summary>Padrao de fabrica devolvido pela base. Diferente do valor atual de proposito:
     /// e assim que o teste distingue "perguntou o padrao" de "releu o valor gravado".</summary>
     public SettingValue DefaultToReturn { get; set; } = new(SettingType.UInt16, 540);

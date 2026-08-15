@@ -12,6 +12,7 @@
 // ============================================================================
 
 using DriveLab.Core.Protocol;
+using DriveLab.Core.Settings;
 using DriveLab.Core.Testing;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
@@ -38,9 +39,14 @@ public class ForceTestViewModelTests
         }
     }
 
-    private static (ForceTestViewModel vm, FakeTransport t) Make()
+    private static (ForceTestViewModel vm, FakeTransport t) Make(double totalPct = 100, double tetoPct = 100)
     {
         var transport = new FakeTransport();
+        // O ajuste de forca da base, que o painel desconta do que os testes pedem. 100 x 100 = fator
+        // 1, entao por padrao o comando enviado e o que o teste pediu — que e o que as assercoes dos
+        // outros testes deste arquivo assumem.
+        transport.Settings[BaseSettingId.TotalStrength]  = new SettingValue(SettingType.UInt16, (int)totalPct);
+        transport.Settings[BaseSettingId.MaxTorqueLimit] = new SettingValue(SettingType.UInt16, (int)tetoPct);
         transport.ConnectAsync().GetAwaiter().GetResult();
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new ForceTestViewModel(session, new RelogioFalso())
@@ -94,6 +100,25 @@ public class ForceTestViewModelTests
         var picoDamper = t.Controls.Max(c => (int)c.DamperForce);
         Assert.Equal(2500, picoMola);    // 0,5 x 50%
         Assert.Equal(750, picoDamper);   // 0,15 x 50%
+    }
+
+    [Fact]
+    public async Task O_Comando_NAO_Depende_Do_Ajuste_De_Forca_Da_Base()
+    {
+        // O controle da tela e uma fracao do que a BASE ENTREGA, e quem multiplica os dois e o
+        // firmware — o app manda a fracao crua. Ja tentamos descontar o ajuste aqui, para o teste
+        // aplicar sempre o mesmo torque; o efeito foi um controle que deixava de ser literal (30%
+        // com a base em 80% virava 37,5%), e um controle de seguranca precisa dizer o que faz.
+        var (baixo, tBaixo) = Make(totalPct: 40, tetoPct: 50);
+        var (alto,  tAlto)  = Make(totalPct: 100, tetoPct: 100);
+        baixo.ForcaPct = 10;
+        alto.ForcaPct  = 10;
+
+        await baixo.RodarCommand.ExecuteAsync(Mola(baixo));
+        await alto.RodarCommand.ExecuteAsync(Mola(alto));
+
+        Assert.Equal(tAlto.Controls.Max(c => (int)c.SpringForce),
+                     tBaixo.Controls.Max(c => (int)c.SpringForce));
     }
 
     [Fact]

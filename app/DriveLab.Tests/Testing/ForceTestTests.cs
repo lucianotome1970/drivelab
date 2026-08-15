@@ -24,17 +24,28 @@ public class ForceTestTests
 
     // ── Rampa ────────────────────────────────────────────────────────────────────────────────
 
+    /// Amostras a partir do comando REAL do teste, e nao de uma copia da rampa escrita a mao aqui.
+    /// A copia passaria a mentir no dia em que o comando mudasse — foi o que aconteceu quando a
+    /// Rampa passou a alternar de sentido.
+    private static List<ForceTestSample> AmostrarRampa(RampTest teste, Func<double, double> corrente)
+    {
+        var amostras = new List<ForceTestSample>();
+        for (var i = 0; i < 160; i++)
+        {
+            var t = i * 0.05;
+            var pedido = teste.ForcaEm(t).Constant;
+            var a = corrente(pedido);
+            amostras.Add(Amostra(t, pedido, corrente: a, torque: a * 0.39));
+        }
+        return amostras;
+    }
+
     [Fact]
     public void Rampa_Passa_Quando_A_Corrente_Acompanha_A_Forca()
     {
         var teste = new RampTest();
         // Corrente proporcional ao pedido: 25 A no talo. E o comportamento saudavel.
-        var amostras = Enumerable.Range(0, 80)
-            .Select(i => { var t = i * 0.1; var pedido = Math.Clamp(t / 6.0, 0, 1);
-                           return Amostra(t, pedido, corrente: pedido * 25, torque: pedido * 9.75); })
-            .ToList();
-
-        var r = teste.Avaliar(amostras);
+        var r = teste.Avaliar(AmostrarRampa(teste, pedido => pedido * 25));
 
         Assert.True(r.Ok);
         Assert.Contains("9,75", r.Resumo.Replace(".", ","));
@@ -46,17 +57,31 @@ public class ForceTestTests
         // O caso que custou caro a este projeto: a configuracao pede 15 Nm, mas o teto real e
         // corrente x Kt = 9,75. A partir de meia forca a corrente para de crescer.
         var teste = new RampTest();
-        var amostras = Enumerable.Range(0, 80)
-            .Select(i => { var t = i * 0.1; var pedido = Math.Clamp(t / 6.0, 0, 1);
-                           var corrente = Math.Min(pedido * 25, 13);   // satura em 13 A
-                           return Amostra(t, pedido, corrente: corrente, torque: corrente * 0.39); })
-            .ToList();
-
-        var r = teste.Avaliar(amostras);
+        var r = teste.Avaliar(AmostrarRampa(teste,
+            pedido => Math.Sign(pedido) * Math.Min(Math.Abs(pedido) * 25, 13)));   // satura em 13 A
 
         Assert.False(r.Ok);
         Assert.Contains("satura", r.Resumo);
         Assert.Contains(r.Detalhes, d => d.Contains("parou de acompanhar"));
+    }
+
+    [Fact]
+    public void Rampa_Alterna_O_Sentido_Para_O_Volante_Nao_Acumular_Deslocamento()
+    {
+        // Empurrar sempre para o mesmo lado com forca crescente levava o volante ao fim do curso e
+        // alem dele — a guarda de curso excedido desarmava o motor, corretamente. Medido na bancada
+        // em 14/08/2026: 495 graus, exatos 45 alem do curso de 450. O teste tem que ir e voltar.
+        var teste = new RampTest();
+        var comandos = Enumerable.Range(0, 160).Select(i => teste.ForcaEm(i * 0.05).Constant).ToList();
+
+        Assert.Contains(comandos, c => c > 0.9);    // chega ao talo dos dois lados
+        Assert.Contains(comandos, c => c < -0.9);
+
+        // O que de fato protege o curso: a INTEGRAL do comando volta a zero. Uma senoide com
+        // amplitude crescente pode ir ao talo dos dois lados e ainda assim empurrar mais para um.
+        var deslocamento = comandos.Sum() * 0.05;
+        Assert.True(Math.Abs(deslocamento) < 0.5,
+                    $"O comando empurra liquido para um lado ({deslocamento:0.00}) e o volante acumula curso");
     }
 
     // ── Impacto ──────────────────────────────────────────────────────────────────────────────

@@ -70,7 +70,14 @@ public interface IForceTest
     /// <summary>Duração total, em segundos.</summary>
     double DuracaoS { get; }
 
-    /// <summary>Pico de força que este teste chega a pedir, 0..1. A tela usa para avisar antes.</summary>
+    /// <summary>Pico de força que este teste chega a pedir, 0..1. A tela usa para avisar antes.
+    /// <para><b>Fração do que a base está CONFIGURADA para entregar</b> — não do fundo de escala do
+    /// hardware. Quem regulou a força em 70% tem 70% como o seu máximo, e 30% no controle da tela é
+    /// 30% desses 70%. É a leitura certa também para o veredito: a Rampa pergunta se a base entrega
+    /// o que a configuração promete, e quem promete é a configuração de cada um.</para>
+    /// <para>⚠️ A consequência é que estes números NÃO são torque absoluto: o mesmo teste aplica
+    /// menos Nm numa base regulada mais baixo. Ao calibrar um valor daqui a partir de uma medição de
+    /// bancada, anote junto o ajuste em que a medição foi feita — senão o número perde o sentido.</para></summary>
     double PicoDeForca { get; }
 
     /// <summary>O que a pessoa precisa FAZER antes de rodar — vazio quando não há preparo.
@@ -103,10 +110,46 @@ public sealed class RampTest : IForceTest
     public double DuracaoS => 8.0;
     public double PicoDeForca => 1.0;
 
-    // Sobe em 6 s e segura 2 s no topo: a corrente precisa de tempo para estabilizar antes de
-    // concluir qualquer coisa sobre ela.
-    public ForceCommand ForcaEm(double t) =>
-        ForceCommand.Const(Math.Clamp(t / 6.0, 0, 1));
+    // Este é o teste que pede força CHEIA, e o que ele mede depende de o eixo ficar mais parado que
+    // solto — por isso pede o aro montado, ao contrário do de regeneração, que pede o contrário.
+    public string PreparoKey => "ForceTest_Ramp_Prep";
+
+    /// <summary>Três idas e voltas por segundo — cada meio-ciclo empurra por ~167 ms.
+    /// <para><b>Era 1 Hz e o volante girava rápido demais</b> (bancada, 14/08/2026). A velocidade
+    /// que o eixo atinge é proporcional ao TEMPO que a força passa empurrando para o mesmo lado, e
+    /// meio segundo é muito: a 3 Hz esse tempo cai a um terço, e a velocidade junto.</para>
+    /// <para>E isso melhora a medição em vez de piorá-la, o que não é óbvio: girando, o motor gera
+    /// back-EMF e a corrente CAI. Um teste que deveria medir o teto de corrente estava medindo o
+    /// motor fugindo dele. Quanto menos o eixo corre, mais perto do rotor bloqueado — que é a
+    /// condição em que o teto de corrente realmente aparece.</para></summary>
+    private const double Hz = 3.0;
+
+    // A força sobe em 6 s e segura 2 s no talo — a corrente precisa de tempo para estabilizar antes
+    // de concluir qualquer coisa sobre ela. Mas ela ALTERNA de sentido enquanto sobe.
+    //
+    // POR QUE ALTERNAR: a versão anterior empurrava sempre para o mesmo lado com força crescente. O
+    // volante corria até o fim do curso e ali ficava a disputa — o teste com força cheia contra o
+    // batente, que segura com bem menos. O teste ganhava, o volante passava do curso, e a guarda de
+    // curso excedido desarmava o motor, corretamente. Medido na bancada em 14/08/2026: 495°, exatos
+    // 45° além do curso de 450° por lado, que é o limiar da guarda.
+    //
+    // Nenhum dos dois estava errado. A Rampa PRECISA de força cheia para medir o teto real da base,
+    // e a guarda PRECISA desarmar quando o volante vai parar onde não deveria; eram incompatíveis
+    // porque este teste foi escrito num mundo sem aquela guarda. Indo e voltando, o volante oscila
+    // em torno de onde começou em vez de acumular curso, e a medição é a mesma — o que interessa
+    // aqui é a corrente acompanhar a AMPLITUDE, não o lado para onde ela empurra.
+    //
+    // POR QUE A AMPLITUDE SOBE EM DEGRAUS, e não continuamente: com amplitude subindo DENTRO do
+    // ciclo, o segundo meio-ciclo é sempre mais forte que o primeiro, e o volante ainda anda para um
+    // lado só — mais devagar, mas anda. Mantendo a amplitude fixa ao longo de cada ciclo inteiro, as
+    // duas metades se cancelam e o deslocamento líquido é exatamente zero. O degrau cai no
+    // cruzamento por zero, onde a força já é nula, então não há salto nenhum a sentir.
+    public ForceCommand ForcaEm(double t)
+    {
+        var ciclo     = Math.Floor(t * Hz);
+        var amplitude = Math.Clamp((ciclo + 1) / (6.0 * Hz), 0, 1);
+        return ForceCommand.Const(amplitude * Math.Sin(2 * Math.PI * Hz * t));
+    }
 
     public ForceTestResult Avaliar(IReadOnlyList<ForceTestSample> amostras)
     {
@@ -121,8 +164,9 @@ public sealed class RampTest : IForceTest
         };
 
         // O sinal de saturação: na última parte da rampa a força ainda sobe e a corrente já não.
-        var fim    = amostras.Where(a => a.Commanded >= 0.8).ToList();
-        var comeco = amostras.Where(a => a.Commanded is >= 0.4 and < 0.6).ToList();
+        // Em módulo, porque o comando alterna de sentido — o que compara é a AMPLITUDE pedida.
+        var fim    = amostras.Where(a => Math.Abs(a.Commanded) >= 0.8).ToList();
+        var comeco = amostras.Where(a => Math.Abs(a.Commanded) is >= 0.4 and < 0.6).ToList();
         if (fim.Count > 0 && comeco.Count > 0)
         {
             var cFim    = fim.Average(a => Math.Abs(a.CurrentA));
@@ -340,7 +384,19 @@ public sealed class RegenTest : IForceTest
 {
     public string Id => "Regen";
     public double DuracaoS => 8.0;
-    public double PicoDeForca => 0.7;
+
+    // 0,7 era demais, e o número veio da bancada em 14/08/2026: com a base regulada em 12 Nm o teste
+    // jogava 8,4 Nm num eixo DESACOPLADO — sem a inércia do aro para segurá-lo, ele chegou a 5,12
+    // voltas/s e a guarda de sobrevelocidade desarmou o motor, corretamente.
+    //
+    // Da velocidade medida sai a inércia do eixo nu (~0,05 kg·m²), e dela o torque que mantém o pico
+    // perto de 2,5 voltas/s: ~4 Nm, que nesse mesmo ajuste de 12 Nm dá 0,33 do que a base entrega.
+    // Arredondado para baixo — a folga interessa mais que o último décimo de energia regenerada.
+    //
+    // ⚠️ Fração do que a BASE ENTREGA, então quem regular mais baixo aplica menos Nm que estes ~4.
+    // O teste continua válido: o resistor de freio entra proporcionalmente menos, e é isso que o
+    // veredito lê. O ajuste da medição acima fica anotado porque sem ele o 0,3 não diz torque nenhum.
+    public double PicoDeForca => 0.3;
     public string PreparoKey => "ForceTest_Regen_Prep";
 
     /// <summary>2,5 Hz: rápido o bastante para a reversão regenerar de verdade, devagar o bastante
