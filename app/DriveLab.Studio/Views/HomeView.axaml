@@ -25,7 +25,23 @@
                     DataContext="{Binding Base}" x:DataType="vm:BaseViewModel"
                     Tag="base" Tapped="Card_Tapped">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="{loc:Translate Home_Base}" Classes="h2" />
+                    <!-- Título com o ESTADO DO MOTOR à direita. A bolinha responde "posso encostar
+                         no volante?", e é a primeira coisa que se procura ao olhar o card.
+
+                         ⚠️ Três estados: verde = armada; vermelho = conectada e desarmada; cinza =
+                         sem base. "Desarmada" e "sem base" são coisas diferentes, e pintar as duas
+                         de vermelho ensinaria a ignorar o vermelho. O halo no estado armado deixa a
+                         FORMA carregar a informação junto com a cor, para quem não distingue as duas. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:Translate Home_Base}" Classes="h2" />
+                        <Grid Grid.Column="1" Width="22" Height="22" VerticalAlignment="Center"
+                              ToolTip.Tip="{Binding EstadoTooltip}">
+                            <Ellipse Width="22" Height="22" Fill="#3327C93F" IsVisible="{Binding MotorArmado}" />
+                            <Ellipse Width="12" Height="12" Fill="#27C93F"   IsVisible="{Binding MotorArmado}" />
+                            <Ellipse Width="12" Height="12" Fill="#D63A3A"   IsVisible="{Binding MotorDesarmado}" />
+                            <Ellipse Width="12" Height="12" Fill="#5A5A5A"   IsVisible="{Binding !IsConnected}" />
+                        </Grid>
+                    </Grid>
                     <Image Source="avares://DriveLab.Studio/Assets/base.png" Width="360" Stretch="Uniform"
                            HorizontalAlignment="Center" />
                     <Grid ColumnDefinitions="*,Auto">

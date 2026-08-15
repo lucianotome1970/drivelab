@@ -7,8 +7,10 @@
 
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -22,10 +24,35 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     private bool _loading;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MotorArmado))]
+    [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
+    [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _isConnected;
 
     [ObservableProperty]
     private int _totalStrength = 100;
+
+    // ── ESTADO DO MOTOR, no cartão da base ──────────────────────────────────────────────────────
+    // "O motor está ligado?" decide se é seguro encostar no volante. Fica no cartão da base porque
+    // é ali que se olha para saber como a base está — e não numa aba que pode não estar aberta.
+    //
+    // ⚠️ TRÊS estados, não dois: armada (verde), conectada e desarmada (vermelho), sem base
+    // (cinza). "Desarmada" e "não tem base" são situações diferentes — uma é um volante parado que
+    // pode ganhar força a qualquer momento, a outra é um app sem hardware. Pintar as duas de
+    // vermelho ensinaria a ignorar o vermelho.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MotorArmado))]
+    [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
+    [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
+    private bool _forceEnabled;
+
+    public bool MotorArmado    => IsConnected && ForceEnabled;
+    public bool MotorDesarmado => IsConnected && !ForceEnabled;
+
+    public string EstadoTooltip =>
+        !IsConnected  ? L.Get("BaseState_Offline")
+        : ForceEnabled ? L.Get("BaseState_Armed")
+                       : L.Get("BaseState_Disarmed");
 
     public BaseViewModel(BaseSession session)
     {
@@ -33,6 +60,8 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
         _session.Connected += OnConnected;
         _session.Disconnected += OnDisconnected;
         _session.SettingChanged += OnSettingChanged;
+        // O estado do motor só existe na telemetria — nenhum evento de conexão o informa.
+        _session.StateReceived += (_, estado) => ForceEnabled = estado.Flags.HasFlag(BaseFlags.ForceEnabled);
         IsConnected = _session.IsConnected;
         // Já conectado ao criar o card → o Connected não dispara mais; lê a força da placa agora.
         if (IsConnected)
@@ -59,7 +88,13 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
         }
     }
 
-    private void OnDisconnected(object? sender, EventArgs e) => IsConnected = false;
+    private void OnDisconnected(object? sender, EventArgs e)
+    {
+        IsConnected = false;
+        // Sem isto a bolinha ficaria verde depois que a base sumisse: telemetria que parou de
+        // chegar não gera evento nenhum, e o último valor recebido continuaria valendo.
+        ForceEnabled = false;
+    }
 
     private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
     {
