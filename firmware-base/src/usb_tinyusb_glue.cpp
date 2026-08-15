@@ -124,7 +124,48 @@ extern "C" void MX_USB_DEVICE_Init(void) {
     osThreadCreate(osThread(tusbTask), NULL);
 }
 
-extern "C" void OTG_FS_IRQHandler(void) { g_bb_trace.usb_irq_ticks++; tud_int_handler(0); }
+// ─────────────────────────────────────────────────────────────────────────────
+// QUAL interrupcao do USB esta inundando a CPU.
+//
+// MEDIDO EM 15/08/2026: em operacao normal a ISR do USB entra ~1.121 vezes por segundo (batendo
+// com o laco de 1 kHz). No instante em que a base reinicia sozinha, o rastro mostra ~23.020 por
+// segundo — VINTE VEZES mais. Nao e "a pilha continua viva", como li antes: a ISR come a CPU, o
+// laco de FFB nao roda, para de alimentar o watchdog e a placa reinicia 2 s depois.
+//
+// O que faltava era o NOME do evento. O DWC2 tem um bit por causa em GINTSTS; contando por bit,
+// o culpado aparece nominalmente em vez de por deducao.
+//
+// ⚠️ ISTO SO CONTA. Nao mascara, nao limpa, nao muda a ordem de nada — o comportamento do USB fica
+// identico. So o `act &= act - 1` (derruba o bit mais baixo) percorre os bits ATIVOS, tipicamente
+// um ou dois, entao o custo por interrupcao e desprezivel mesmo a 23 kHz.
+//
+// Vive em .noinit com magic proprio: sobrevive ao reset — que e justamente o caso interessante —
+// e zera quando a energia cai. Magic separado do BlackBoxTrace de proposito, para nao repetir o
+// erro de mudar layout compartilhado e ler lixo com cara de medicao.
+// ─────────────────────────────────────────────────────────────────────────────
+#define DRVLAB_IRQBITS_MAGIC 0x1B175A1Fu
+
+struct DrvlabIrqBits {
+    uint32_t magic;
+    uint32_t bit[32];
+};
+DrvlabIrqBits g_bb_irq_bits __attribute__((section(".noinit")));
+
+static inline void irqbits_conta(void) {
+    if (g_bb_irq_bits.magic != DRVLAB_IRQBITS_MAGIC) {
+        g_bb_irq_bits.magic = DRVLAB_IRQBITS_MAGIC;
+        for (int i = 0; i < 32; ++i) g_bb_irq_bits.bit[i] = 0;
+    }
+    USB_OTG_GlobalTypeDef *U = (USB_OTG_GlobalTypeDef *)USB_OTG_FS_PERIPH_BASE;
+    uint32_t act = U->GINTSTS & U->GINTMSK;   // so o que esta ATIVO E habilitado
+    while (act) {
+        const int b = __builtin_ctz(act);
+        g_bb_irq_bits.bit[b]++;
+        act &= act - 1;
+    }
+}
+
+extern "C" void OTG_FS_IRQHandler(void) { g_bb_trace.usb_irq_ticks++; irqbits_conta(); tud_int_handler(0); }
 
 // Callbacks do TinyUSB → eventos do ODrive
 extern "C" void tud_mount_cb(void)   { osMessagePut(usb_event_queue, 1, 0); }
