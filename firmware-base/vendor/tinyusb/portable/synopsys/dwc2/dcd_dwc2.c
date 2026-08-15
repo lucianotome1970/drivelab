@@ -325,6 +325,10 @@ static void edpt_activate(uint8_t rhport, const tusb_desc_endpoint_t* p_endpoint
 // 168 MHz) so termina quando algo esta de fato errado.
 #define DRVLAB_EDPT_WAIT_MAX 100000u
 volatile uint32_t g_dwc2_wait_timeouts = 0;   // legivel por SWD; 0 = nunca estourou
+// Teto do laco de leitura do FIFO de recepcao, que roda na ISR (ver o patch em dcd_int_handler).
+// 1000 pacotes numa unica interrupcao ja e ordens de grandeza acima do normal.
+#define DRVLAB_RXFLVL_MAX 1000u
+volatile uint32_t g_dwc2_rxflvl_timeouts = 0;
 #define DRVLAB_WAIT_FOR(cond) do {                                     \
     uint32_t _n = DRVLAB_EDPT_WAIT_MAX;                                \
     while (!(cond) && --_n) { }                                        \
@@ -1281,9 +1285,25 @@ void dcd_int_handler(uint8_t rhport) {
     // RXFLVL bit is read-only
     dwc2->gintmsk &= ~GINTMSK_RXFLVLM; // disable RXFLVL interrupt while reading
 
-    do {
-      handle_rxflvl_irq(rhport); // read all packets
-    } while(dwc2->gintsts & GINTSTS_RXFLVL);
+    // PATCH DriveLab (2026-08-14) — TETO NESTE LACO, e ele e mais grave que o do edpt_disable
+    // porque roda DENTRO DA INTERRUPCAO. Preso aqui nao e o laco de FFB que para: e a CPU inteira.
+    // Nenhuma tarefa roda, ninguem alimenta o watchdog, e a base reinicia 2 s depois sem deixar
+    // rastro — o boot seguinte so mostra o passo em que a tarefa foi interrompida, que engana.
+    //
+    // Sair antes da hora e SEGURO aqui, ao contrario do edpt_disable: o RXFLVLM e reabilitado logo
+    // abaixo, entao o que sobrar no FIFO gera uma nova interrupcao e e lido na proxima. O teto e
+    // generoso — o normal sao poucas voltas, uma por pacote.
+    //
+    // O contador nao e enfeite: e o que separa "esta e a causa" de "e outra coisa". O teto do
+    // edpt_disable foi posto pela mesma logica e o contador dele ficou em ZERO na ocorrencia
+    // seguinte, o que descartou aquela hipotese. Este numero decide esta.
+    {
+      uint32_t giros = DRVLAB_RXFLVL_MAX;
+      do {
+        handle_rxflvl_irq(rhport); // read all packets
+      } while ((dwc2->gintsts & GINTSTS_RXFLVL) && --giros);
+      if (giros == 0) g_dwc2_rxflvl_timeouts++;
+    }
 
     dwc2->gintmsk |= GINTMSK_RXFLVLM;
   }
