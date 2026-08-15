@@ -25,8 +25,21 @@ public class PedalSettingsSchemaTests
         var d = PedalSettingsSchema.Get(PedalSettingId.SensorType);
         Assert.Equal(SettingType.UInt8, d.Type);
         Assert.Equal(0, d.Min);
-        Assert.Equal(2, d.Max);
+        Assert.Equal(3, d.Max);   // 0=Pot, 1=Hall, 2=HX711, 3=célula por amplificador no ADC
         Assert.Equal(0, d.Default);
+    }
+
+    /// <summary>
+    /// O tipo de sensor é um índice que o firmware interpreta num switch; um máximo apertado
+    /// demais no schema faz o app recusar em silêncio um tipo que a placa aceita. Este teste
+    /// prende as duas pontas do caminho analógico da célula de carga (`sensor_type == 3`).
+    /// </summary>
+    [Fact]
+    public void SensorType_Accepts_Analog_LoadCell()
+    {
+        var d = PedalSettingsSchema.Get(PedalSettingId.SensorType);
+        Assert.Equal(3, d.Clamp(3));
+        Assert.Equal(3, d.Clamp(9));   // acima da faixa continua sendo cortado
     }
 
     [Fact]

@@ -24,7 +24,8 @@ public static class PedalSettingsSchema
 {
     public static IReadOnlyList<PedalSettingDescriptor> All { get; } = new List<PedalSettingDescriptor>
     {
-        new(PedalSettingId.SensorType, "sensor_type", "Tipo de sensor", SettingType.UInt8, 0, 2, "", 0),
+        // 0=Pot, 1=Hall, 2=Célula por HX711, 3=Célula por amplificador de instrumentação no ADC.
+        new(PedalSettingId.SensorType, "sensor_type", "Tipo de sensor", SettingType.UInt8, 0, 3, "", 0),
         new(PedalSettingId.InputMin, "input_min", "Mínimo (calibração)", SettingType.UInt16, 0, 65535, "", 0),
         new(PedalSettingId.InputMax, "input_max", "Máximo (calibração)", SettingType.UInt16, 0, 65535, "", 4095),
         new(PedalSettingId.Invert, "invert", "Inverter", SettingType.UInt8, 0, 1, "", 0),

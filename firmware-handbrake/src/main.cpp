@@ -15,10 +15,9 @@
 // Porta direta de firmware-pedal/src/main.cpp (M4), reduzindo de 3 eixos p/ 1 eixo + botão digital
 // com limiar/histerese (espelha DriveLab.Core.Handbrake.HandbrakeDeviceModel.UpdateButton).
 //
-// ESTADO: escrito SEM placa (não validado em hardware). Suspeitos nº1 na bancada (iguais ao pedal):
-//   (a) o plumbing dos OUTPUT reports do TinyUSB (setReportCallback) — ver onSetReport;
-//   (b) o report descriptor vendor e o novo layout do Joystick (1 eixo 16-bit + 1 bit de botão + 7 padding).
-// Ver checklist de bancada no README.
+// ESTADO: validado em hardware — enumera, o Studio conecta, lê/grava settings e recebe telemetria.
+// O que ainda NÃO foi exercitado com sensor real é a ponta da célula de carga: nem o HX711
+// (sensor_type 2) nem a célula analógica via amplificador de instrumentação (sensor_type 3).
 // Contrato: protocolo P0 (notas internas de projeto)
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
@@ -73,7 +72,13 @@ static bool     g_btnPressed = false;            // estado persistente da hister
 static volatile bool    g_pendingValue = false;
 static volatile uint8_t g_pvField = 0, g_pvIndex = 0;
 
-static const uint8_t kAdcPin = A0;                // GP26 (pot/hall)
+static const uint8_t kAdcPin = A0;                // GP26 (pot/hall e célula analógica)
+
+// Sobreamostragem: a média de N leituras derruba o ruído branco por √N e, ao contrário do filtro
+// de saída (`smooth`), não custa atraso. A célula sai amplificada centenas de vezes (o ruído
+// junto) e paga por mais amostras que um potenciômetro, que já entrega sinal forte.
+static const uint8_t kOversamplePotHall  = 8;
+static const uint8_t kOversampleLoadCell = 64;
 
 // --- Load cell (HX711), quando sensor_type == 2. Pinos digitais (DT/SCK), iguais ao pedal índice 0. ---
 static const uint8_t kHxDT  = 2;  // GP2 (dados)
@@ -81,6 +86,16 @@ static const uint8_t kHxSCK = 3;  // GP3 (clock)
 static HX711  g_hx;
 static long   g_hxLast   = 0;     // última leitura crua (24-bit)
 static long   g_hxOffset = 0;     // tara (offset de repouso)
+
+// --- Célula de carga analógica (amplificador de instrumentação no ADC), sensor_type == 3. ---
+// Menos resolução que o HX711, em troca de taxa de leitura livre em vez dos 10/80 Hz dele.
+// Célula mede força, e o zero da força anda com temperatura e com o aperto da fixação — por
+// isso este caminho precisa de tara a cada boot, coisa que potenciômetro nunca precisou.
+static uint16_t g_adcOffset = 0;  // tara (repouso), em contagens do ADC
+// Trocar o tipo de sensor pelo app não passa por boot, e sem uma tara nova o eixo fica preso no
+// fundo até religar — parece firmware quebrado. O pedido é marcado aqui e atendido no loop(),
+// porque quem escreve o campo é o callback USB e ele não é lugar de ficar amostrando ADC.
+static volatile bool g_retareAdc = false;
 
 // ===================== HID report descriptor: Joystick (1 eixo + 1 botão) + vendor P0 =====================
 static uint8_t const kHidReport[] = {
@@ -177,7 +192,7 @@ static double readField(uint8_t f) {
 static void writeField(uint8_t f, double v) {
   HandbrakeCfg& c = g_cfg;
   switch (f) {
-    case F_SENSOR:     c.sensorType = (uint8_t)v; break;
+    case F_SENSOR:     c.sensorType = (uint8_t)v; if (c.sensorType == 3) g_retareAdc = true; break;
     case F_INMIN:      c.inputMin = (uint16_t)v; break;
     case F_INMAX:      c.inputMax = (uint16_t)v; break;
     case F_INVERT:     c.invert = (uint8_t)v; break;
@@ -224,6 +239,14 @@ static void sendSettingValue(uint8_t field, uint8_t index) {
 static void seedDefaults() { g_cfg = HandbrakeCfg(); }
 
 // ===================== leitura do sensor (ADC ou HX711) =====================
+// Média de `samples` leituras seguidas do ADC. O acumulador cabe folgado em 32 bits:
+// o pior caso é 255 amostras de 4095 (~1,04 M), longe do limite.
+static uint16_t readAdcAveraged(uint8_t pin, uint8_t samples) {
+  uint32_t acc = 0;
+  for (uint8_t i = 0; i < samples; i++) acc += (uint32_t)analogRead(pin);
+  return (uint16_t)(acc / samples);
+}
+
 // Retorna raw 0..4095 independente do tipo de sensor; o pipeline normaliza depois.
 static uint16_t readSensorRaw() {
   if (g_cfg.sensorType == 2) {  // LoadCell (HX711)
@@ -235,7 +258,15 @@ static uint16_t readSensorRaw() {
     if (out > 4095) out = 4095;
     return (uint16_t)out;
   }
-  return (uint16_t)analogRead(kAdcPin);  // Pot/Hall
+  if (g_cfg.sensorType == 3) {  // LoadCell analógica (amplificador no ADC)
+    // O ganho já é físico (resistor do amplificador), então aqui não existe `loadCellScale`:
+    // só a tara. Negativo vira 0 — repouso abaixo do zero é folga, não sensor invertido.
+    long v = (long)readAdcAveraged(kAdcPin, kOversampleLoadCell) - (long)g_adcOffset;
+    if (v < 0) v = 0;
+    if (v > 4095) v = 4095;
+    return (uint16_t)v;
+  }
+  return readAdcAveraged(kAdcPin, kOversamplePotHall);  // Pot/Hall
 }
 
 // ===================== persistência em flash (EEPROM emulada) =====================
@@ -306,6 +337,13 @@ void setup() {
   g_hx.begin(kHxDT, kHxSCK);
   if (g_cfg.sensorType == 2 && g_hx.is_ready()) g_hxOffset = g_hx.read();  // tara
 
+  // Tara da célula analógica. Espera o amplificador assentar antes de amostrar o repouso —
+  // taras tiradas com a alimentação ainda subindo viram zero errado pelo resto da sessão.
+  if (g_cfg.sensorType == 3) {
+    delay(50);
+    g_adcOffset = readAdcAveraged(kAdcPin, kOversampleLoadCell);
+  }
+
   g_hid.setReportDescriptor(kHidReport, sizeof(kHidReport));
   g_hid.setReportCallback(nullptr, onSetReport);  // (get_cb, set_cb)
   g_hid.begin();
@@ -320,7 +358,8 @@ static unsigned long g_lastTelem = 0;
 void loop() {
   if (!g_hid.ready()) { delay(1); return; }
 
-  // 1) ler sensor (ADC pot/hall OU HX711 load cell, por sensor_type)
+  // 1) ler sensor (ADC pot/hall/célula analógica OU HX711, por sensor_type)
+  if (g_retareAdc) { g_retareAdc = false; g_adcOffset = readAdcAveraged(kAdcPin, kOversampleLoadCell); }
   g_raw = readSensorRaw();                  // 0..4095
   if (g_cal) {
     if (g_raw < g_calMin) g_calMin = g_raw;

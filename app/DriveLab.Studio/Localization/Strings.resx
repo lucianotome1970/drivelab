@@ -133,6 +133,10 @@
   <data name="Pedal_PreviewOnly" xml:space="preserve"><value>preview — not applied to this pedal</value></data>
   <data name="Pedal_Invert" xml:space="preserve"><value>Invert</value></data>
   <data name="Pedal_Sensor" xml:space="preserve"><value>Sensor</value></data>
+  <data name="Pedal_SensorTip_Amp" xml:space="preserve"><value>Load cell through an instrumentation amplifier (INA333 and similar) on the analog pin</value></data>
+  <data name="Pedal_SensorTip_Hall" xml:space="preserve"><value>Analog Hall sensor on the analog pin</value></data>
+  <data name="Pedal_SensorTip_Hx711" xml:space="preserve"><value>Load cell through an HX711 module on the digital pins</value></data>
+  <data name="Pedal_SensorTip_Pot" xml:space="preserve"><value>Linear potentiometer on the analog pin</value></data>
   <data name="Pedal_Smoothing" xml:space="preserve"><value>Smoothing</value></data>
   <data name="Pedal_StartCalibration" xml:space="preserve"><value>Start calibration</value></data>
   <data name="Pedal_StopCalibration" xml:space="preserve"><value>Stop calibration</value></data>

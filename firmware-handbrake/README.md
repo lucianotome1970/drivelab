@@ -14,7 +14,7 @@ Stack: RP2040 + **arduino-pico** (Earle Philhower's core) + **Adafruit_TinyUSB**
 
 ## What a handbrake is here
 
-A single axis (potentiometer, Hall sensor or HX711 load cell) plus one digital button. **The button is not a physical button** — the firmware derives it from the axis: cross a threshold and it presses, drop below it and it releases. That means your lever needs no extra switch and no extra wiring.
+A single axis (potentiometer, Hall sensor or load cell — through an HX711 or an instrumentation amplifier) plus one digital button. **The button is not a physical button** — the firmware derives it from the axis: cross a threshold and it presses, drop below it and it releases. That means your lever needs no extra switch and no extra wiring.
 
 It is `firmware-pedal` reduced from three axes to one, speaking the same P0 protocol the app already knows.
 
@@ -25,7 +25,7 @@ It is `firmware-pedal` reduced from three axes to one, speaking the same P0 prot
   - `0x20` telemetry (~100 Hz) — the axis rides in the **Clutch** slot (raw u16 LE + output u16 LE); the Brake and Throttle slots are zeroed; `Flags` bit 0 is the button state.
   - `0x14` write / `0x15` read request / `0x16` value — fields 0–13 are the same as the pedal (sensor, min, max, invert, smoothing, 6-point curve, load-cell scale, deadzone), plus **14 = ButtonThreshold** and **15 = ButtonEnabled**. The index byte on the wire is accepted and ignored, since there is only one axis.
   - `0x02` command — calibrate start/stop, save to flash, load defaults.
-- **Sensor:** ADC on `A0`/`GP26` when `sensorType != 2`, or HX711 (DT `GP2`, SCK `GP3`) when `sensorType == 2`. The read never blocks the loop.
+- **Sensor:** ADC on `A0`/`GP26` for potentiometer, Hall and analog load cell (`sensorType` 0, 1 and 3), or HX711 (DT `GP2`, SCK `GP3`) when `sensorType == 2`. The read never blocks the loop. The ADC path is oversampled, and the analog load cell is also tared on boot — measured force has a zero that drifts, position does not.
 - **Pipeline:** normalize (min/max) → invert → deadzone → 6-point curve → smoothing → clamp. Same maths as the pedal.
 - **Button with hysteresis:** presses at `buttonThreshold`, releases 3 points below it. The gap is what stops it flickering when you hold the lever right at the threshold.
 - **Flash persistence** (emulated EEPROM, magic `"DLH1"`): the whole config including the button settings.
@@ -36,8 +36,8 @@ It is `firmware-pedal` reduced from three axes to one, speaking the same P0 prot
 |----:|------|-------|
 | 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Any RP2040 works (`board = pico`). |
 | 1 | **USB-C cable** | to the PC. |
-| 1 | **Sensor** — your choice: **10 kΩ pot**, **analog Hall**, or **load cell + HX711** | pot and Hall on **`A0` = `GP26`**; a load cell needs the HX711 (**DT `GP2`, SCK `GP3`**). |
-| 0–1 | **HX711 amplifier** | only if you use a load cell. |
+| 1 | **Sensor** — your choice: **10 kΩ pot**, **analog Hall**, or **load cell** | pot and Hall on **`A0` = `GP26`**; a load cell needs an amplifier — HX711 (**DT `GP2`, SCK `GP3`**) or an instrumentation amp, whose output goes on **`A0`** itself. |
+| 0–1 | **Load-cell amplifier** — **HX711** or **instrumentation amplifier** (INA333 / CJMCU-333) | only if you use a load cell. The HX711 delivers 10 or 80 readings per second; the instrumentation amp uses the board's ADC and has no such limit. Power either one at **3.3 V, never 5 V**. |
 | — | Lever mechanics and spring | no extra button needed — it is derived in firmware. |
 
 ## Build & flash

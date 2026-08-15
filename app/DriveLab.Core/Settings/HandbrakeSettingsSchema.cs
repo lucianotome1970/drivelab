@@ -24,7 +24,8 @@ public static class HandbrakeSettingsSchema
 {
     public static IReadOnlyList<HandbrakeSettingDescriptor> All { get; } = new List<HandbrakeSettingDescriptor>
     {
-        new(HandbrakeSettingId.SensorType, "sensor_type", "Tipo de sensor", SettingType.UInt8, 0, 2, "", 0),
+        // 0=Pot, 1=Hall, 2=Célula por HX711, 3=Célula por amplificador de instrumentação no ADC.
+        new(HandbrakeSettingId.SensorType, "sensor_type", "Tipo de sensor", SettingType.UInt8, 0, 3, "", 0),
         new(HandbrakeSettingId.InputMin, "input_min", "Mínimo (calibração)", SettingType.UInt16, 0, 65535, "", 0),
         new(HandbrakeSettingId.InputMax, "input_max", "Máximo (calibração)", SettingType.UInt16, 0, 65535, "", 4095),
         new(HandbrakeSettingId.Invert, "invert", "Inverter", SettingType.UInt8, 0, 1, "", 0),

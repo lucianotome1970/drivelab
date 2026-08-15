@@ -16,8 +16,10 @@ Stack: RP2040 + **arduino-pico** (core do Earle Philhower) + **Adafruit_TinyUSB*
 
 - **Joystick HID**, 3 eixos de 12 bits, alimentados pelo pipeline de sinal: normaliza → zona morta → curva → suavização.
 - **Canal vendor P0** para o app: telemetria `0x20`, `SettingWrite 0x14`, `ReadRequest 0x15`, `SettingValue 0x16`, `Command 0x02`. Calibração de mínimo e máximo incluída.
-- **Três tipos de sensor por pedal**, escolhidos no app: potenciômetro, Hall analógico ou célula de carga.
-- **Célula de carga** por HX711 (`sensor_type == 2`), lida sem travar o loop, tarada no boot.
+- **Quatro tipos de sensor por pedal**, escolhidos no app: potenciômetro, Hall analógico e dois caminhos de célula de carga.
+- **Célula de carga por HX711** (`sensor_type == 2`), lida sem travar o loop, tarada no boot.
+- **Célula de carga por amplificador de instrumentação** (`sensor_type == 3`, INA333 e afins): entra pelo ADC da placa. Menos resolução que o HX711, em troca de taxa de leitura livre em vez dos 10 ou 80 Hz dele. Tarada no boot e sobreamostrada.
+- **Sobreamostragem do ADC**: a média de várias leituras seguidas derruba o ruído sem custar atraso, ao contrário do filtro de saída (`smooth`).
 - **Configuração permanente na flash** (EEPROM emulada, magic `"DLP1"`): os ajustes ficam **no dispositivo**, sobrevivem a desconectar, e o app carrega eles ao conectar.
 
 ## Ligação
@@ -38,6 +40,20 @@ Stack: RP2040 + **arduino-pico** (core do Earle Philhower) + **Adafruit_TinyUSB*
 | Freio | `GP4` | `GP5` |
 | Acelerador | `GP6` | `GP7` |
 
+**Célula de carga analógica (amplificador de instrumentação)** — a saída do amplificador entra no mesmo pino do potenciômetro, então vale a tabela do ADC acima.
+
+A diferença que mais confunde quem vem do HX711: o amplificador de instrumentação **não alimenta a célula**. Os dois fios de excitação (em geral vermelho e preto) vão direto no `3V3` e no `GND` da placa, e só os dois de sinal entram no `IN+`/`IN-` do módulo. Alimente o módulo por esse mesmo `3V3`: assim o sinal e a referência do ADC sobem e descem juntos, e o erro de tensão se cancela em boa parte.
+
+Três cuidados nesse caminho:
+
+- Alimente o módulo em **3,3 V, nunca 5 V**. Os pinos do RP2040 não toleram 5 V e a saída do amplificador vai direto num deles.
+- Ajuste o `REF` do amplificador para um pouco acima de zero. Com ele no `GND`, o desequilíbrio de repouso da célula pode encostar no fundo da escala e você perde o começo do curso.
+- Monte o módulo **junto da célula**, não junto da placa. O sentido de existir um amplificador de instrumentação é levantar o sinal antes de ele viajar pelo cabo.
+
+Se um pedal de célula ler sempre zero, inverta os dois fios de sinal entre si: célula ligada ao contrário não fica invertida, fica morta.
+
+A tara dos dois caminhos de célula é feita no boot. Não pise no pedal enquanto pluga o cabo, senão a força aplicada nesse instante vira o novo zero.
+
 Sem nada ligado, as entradas do ADC ficam flutuando e os eixos leem ruído. Isso é normal, não é defeito.
 
 ## Lista de materiais
@@ -46,8 +62,8 @@ Sem nada ligado, as entradas do ADC ficam flutuando e os eixos leem ruído. Isso
 |----:|------|-------------|
 | 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Qualquer RP2040 serve (`board = pico` no `platformio.ini`). |
 | 1 | **Cabo USB-C** | até o PC. |
-| 3 | **Um sensor por pedal** — sua escolha: **potenciômetro linear 10 kΩ**, **Hall analógico** (SS49E / A1302), ou **célula de carga + HX711** | potenciômetro e Hall vão no ADC; célula de carga precisa do amplificador HX711. O tipo é definido por pedal, no app. |
-| 0–3 | **Amplificador HX711** | um por pedal de célula de carga. |
+| 3 | **Um sensor por pedal** — sua escolha: **potenciômetro linear 10 kΩ**, **Hall analógico** (SS49E / A1302), ou **célula de carga** | potenciômetro e Hall vão direto no ADC; a célula precisa de um amplificador. O tipo é definido por pedal, no app. |
+| 0–3 | **Amplificador da célula** — **HX711** ou **amplificador de instrumentação** (INA333 / CJMCU-333) | um por pedal de célula de carga. O HX711 tem 24 bits mas entrega só 10 ou 80 leituras por segundo, o que se sente como atraso num pedal de freio; o de instrumentação usa o ADC da placa, com menos resolução e sem esse limite. |
 | — | Fios, estrutura e molas dos pedais | a parte mecânica é sua. |
 
 ## Compilar e gravar

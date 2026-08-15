@@ -102,14 +102,21 @@
                     <TextBlock Classes="muted" Text="{loc:Translate Pedal_Sensor}" IsVisible="{Binding ShowSensor}" />
                     <UniformGrid Rows="1" IsEnabled="{Binding CanEdit}" IsVisible="{Binding ShowSensor}">
                         <Button Classes="chip" Content="Pot" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
+                                ToolTip.Tip="{loc:Translate Pedal_SensorTip_Pot}"
                                 Command="{Binding SelectSensorCommand}" CommandParameter="0"
                                 Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=0}" />
                         <Button Classes="chip" Content="Hall" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0"
+                                ToolTip.Tip="{loc:Translate Pedal_SensorTip_Hall}"
                                 Command="{Binding SelectSensorCommand}" CommandParameter="1"
                                 Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=1}" />
-                        <Button Classes="chip" Content="Load cell" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                        <Button Classes="chip" Content="HX711" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0"
+                                ToolTip.Tip="{loc:Translate Pedal_SensorTip_Hx711}"
                                 Command="{Binding SelectSensorCommand}" CommandParameter="2"
                                 Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=2}" />
+                        <Button Classes="chip" Content="Amp" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                                ToolTip.Tip="{loc:Translate Pedal_SensorTip_Amp}"
+                                Command="{Binding SelectSensorCommand}" CommandParameter="3"
+                                Classes.selected="{Binding SensorType, Converter={StaticResource IntEquals}, ConverterParameter=3}" />
                     </UniformGrid>
 
                     <!-- Min/max calibrado (a calibração agora é o modal único no topo) -->

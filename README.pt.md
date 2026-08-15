@@ -49,7 +49,7 @@ Todas as versões ficam na [página de releases](https://github.com/lucianotome1
 
 <p align="center"><img src="docs/screenshots/pedals.png" width="860" alt="Pedais"></p>
 
-**Pedais** — curvas de saída por pedal (Linear / S-Curve / Fast / Slow) com editor de curva arrastável, inverter, suavização e tipo de sensor (potenciômetro / hall / célula de carga); o freio ganha um alvo de célula de carga em % ou kg. Barras de entrada ao vivo à direita.
+**Pedais** — curvas de saída por pedal (Linear / S-Curve / Fast / Slow) com editor de curva arrastável, inverter, suavização e tipo de sensor (potenciômetro / hall / célula de carga por HX711 ou por amplificador); o freio ganha um alvo de célula de carga em % ou kg. Barras de entrada ao vivo à direita.
 
 <p align="center"><img src="docs/screenshots/wheel.png" width="860" alt="Volante"></p>
 
@@ -127,7 +127,7 @@ As duas variantes da ODESC são idênticas fora o adesivo e a cor do LED — os 
 O DriveLab é dividido em firmwares independentes — um por dispositivo, cada um com seu próprio README. O app Studio conecta em cada um por USB HID e detecta automaticamente pelo VID/PID.
 
 - **[Base »](firmware-base/README.pt.md)** — classe ODrive v3.6 (MKS ODRIVE-S V3.6-S6V) · STM32F405 · o estágio do motor de FFB. *Roda o motor em FOC; caminho do FFB validado com ACC/AMS2/EVO. Efeitos de jogo (M6) na bancada.*
-- **[Pedais »](firmware-pedal/README.pt.md)** — RP2040 · 3 eixos · célula de carga (HX711) · protocolo **P0**. **✅ Validado em hardware.**
+- **[Pedais »](firmware-pedal/README.pt.md)** — RP2040 · 3 eixos · célula de carga (HX711 ou amplificador de instrumentação) · protocolo **P0**. **✅ Validado em hardware.**
 - **[Freio de mão »](firmware-handbrake/README.pt.md)** — RP2040 · 1 eixo + botão · protocolo **P0**. **✅ Validado em hardware** (falta testar com o sensor físico).
 - **[Aro »](firmware-wheel/README.pt.md)** — RP2040 · gamepad (botões + pás) · LEDs WS2812 · **P0**. *Escrito, aguardando validação na bancada.*
 
@@ -194,7 +194,7 @@ O DriveLab transforma peças baratas e fáceis de achar — uma controladora **c
 - Se apresenta como **volante FFB DirectInput** — os jogos mandam force feedback pra ele igualzinho a qualquer volante comercial, sem plugin.
 - **Controle orientado a campo** do motor, construído sobre o firmware do ODrive.
 - Segurança em múltiplos estágios: chopper do resistor de freio, limites de corrente e torque, batente, corte por sobretensão, mais **contator off-state e botão soft-power (opt-in)** — base testada no host.
-- Firmwares companheiros para os módulos de **pedais** e **freio de mão** (RP2040 + célula de carga HX711).
+- Firmwares companheiros para os módulos de **pedais** e **freio de mão** (RP2040 + célula de carga).
 
 ## Hardware — base do volante (lista de materiais)
 
@@ -216,8 +216,8 @@ Cada dispositivo é independente (placa e USB próprios). Lista completa de peç
 | Módulo | Hardware principal | Lista completa |
 |--------|--------------------|----------------|
 | **Base do volante** | Placa F405 + motor + encoder + resistor de freio + fonte (tabela acima) | esta página |
-| **Pedais** | RP2040-Zero + 3 sensores (pot / Hall / célula+HX711) | **[firmware-pedal »](firmware-pedal/README.md#lista-de-materiais-pedais)** |
-| **Freio de mão** | RP2040-Zero + 1 sensor (pot / Hall / célula+HX711) | **[firmware-handbrake »](firmware-handbrake/README.md#lista-de-materiais-freio-de-mão)** |
+| **Pedais** | RP2040-Zero + 3 sensores (pot / Hall / célula + HX711 ou amplificador) | **[firmware-pedal »](firmware-pedal/README.md#lista-de-materiais-pedais)** |
+| **Freio de mão** | RP2040-Zero + 1 sensor (pot / Hall / célula + HX711 ou amplificador) | **[firmware-handbrake »](firmware-handbrake/README.md#lista-de-materiais-freio-de-mão)** |
 | **Volante (aro)** | RP2040-Zero + 2× MCP23017 + 5 encoders + LEDs SK6812 | **[firmware-wheel »](firmware-wheel/README.pt.md)** |
 
 ## Como o force feedback funciona
@@ -240,8 +240,8 @@ Os efeitos de condição (mola/damper) são calculados dentro do dispositivo a p
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, testes
 firmware-base/       Firmware da base — classe ODrive v3.6 / STM32F405, o motor de FFB  [MIT]
-firmware-pedal/      Firmware dos pedais — RP2040 + HX711                               [MIT]
-firmware-handbrake/  Firmware do freio de mão — RP2040 + HX711                          [MIT]
+firmware-pedal/      Firmware dos pedais — RP2040 + célula de carga                     [MIT]
+firmware-handbrake/  Firmware do freio de mão — RP2040 + célula de carga                [MIT]
 firmware-wheel/      Firmware do aro — RP2040 (Waveshare Zero): gamepad + LEDs WS2812   [MIT]
 tools/HidDump/       Ferramenta de debug do protocolo HID
 docs/                Guias, specs de design e planos de implementação

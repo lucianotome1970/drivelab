@@ -14,7 +14,7 @@ Stack: RP2040 + **arduino-pico** (core do Earle Philhower) + **Adafruit_TinyUSB*
 
 ## O que é o freio de mão aqui
 
-Um eixo único (potenciômetro, sensor Hall ou célula de carga com HX711) mais um botão digital. **O botão não é um botão físico** — o firmware deriva ele do eixo: passou do limiar, o botão aperta; caiu abaixo, solta. Ou seja, a sua alavanca não precisa de chave nenhuma nem de fiação extra.
+Um eixo único (potenciômetro, sensor Hall ou célula de carga — por HX711 ou por amplificador de instrumentação) mais um botão digital. **O botão não é um botão físico** — o firmware deriva ele do eixo: passou do limiar, o botão aperta; caiu abaixo, solta. Ou seja, a sua alavanca não precisa de chave nenhuma nem de fiação extra.
 
 É o `firmware-pedal` reduzido de três eixos para um, falando o mesmo protocolo P0 que o app já conhece.
 
@@ -25,7 +25,7 @@ Um eixo único (potenciômetro, sensor Hall ou célula de carga com HX711) mais 
   - `0x20` telemetria (~100 Hz) — o eixo viaja no lugar da **embreagem** (raw u16 LE + saída u16 LE); os lugares de freio e acelerador vão zerados; o bit 0 de `Flags` é o estado do botão.
   - `0x14` write / `0x15` read request / `0x16` value — os campos 0–13 são os mesmos do pedal (sensor, mínimo, máximo, inverter, suavização, curva de 6 pontos, escala da célula, zona morta), mais **14 = ButtonThreshold** e **15 = ButtonEnabled**. O byte de índice do fio é aceito e ignorado, já que só existe um eixo.
   - `0x02` comando — iniciar/parar calibração, salvar na flash, restaurar padrões.
-- **Sensor:** ADC em `A0`/`GP26` quando `sensorType != 2`, ou HX711 (DT `GP2`, SCK `GP3`) quando `sensorType == 2`. A leitura nunca trava o loop.
+- **Sensor:** ADC em `A0`/`GP26` para potenciômetro, Hall e célula analógica (`sensorType` 0, 1 e 3), ou HX711 (DT `GP2`, SCK `GP3`) quando `sensorType == 2`. A leitura nunca trava o loop. O caminho do ADC é sobreamostrado, e a célula analógica ainda é tarada no boot — força medida tem zero que anda, posição não.
 - **Pipeline:** normaliza (mínimo/máximo) → inverte → zona morta → curva de 6 pontos → suavização → limita. Mesma matemática do pedal.
 - **Botão com histerese:** aperta no `buttonThreshold`, solta 3 pontos abaixo. É essa folga que impede o botão de piscar quando você segura a alavanca bem em cima do limiar.
 - **Persistência em flash** (EEPROM emulada, magic `"DLH1"`): a configuração inteira, incluindo os ajustes do botão.
@@ -36,8 +36,8 @@ Um eixo único (potenciômetro, sensor Hall ou célula de carga com HX711) mais 
 |----:|------|-------------|
 | 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Qualquer RP2040 serve (`board = pico`). |
 | 1 | **Cabo USB-C** | até o PC. |
-| 1 | **Sensor** — sua escolha: **potenciômetro 10 kΩ**, **Hall analógico**, ou **célula de carga + HX711** | potenciômetro e Hall em **`A0` = `GP26`**; célula de carga precisa do HX711 (**DT `GP2`, SCK `GP3`**). |
-| 0–1 | **Amplificador HX711** | só se você usar célula de carga. |
+| 1 | **Sensor** — sua escolha: **potenciômetro 10 kΩ**, **Hall analógico**, ou **célula de carga** | potenciômetro e Hall em **`A0` = `GP26`**; a célula precisa de amplificador — HX711 (**DT `GP2`, SCK `GP3`**) ou de instrumentação, cuja saída vai no próprio **`A0`**. |
+| 0–1 | **Amplificador da célula** — **HX711** ou **amplificador de instrumentação** (INA333 / CJMCU-333) | só se você usar célula de carga. O HX711 entrega 10 ou 80 leituras por segundo; o de instrumentação usa o ADC da placa e não tem esse limite. Alimente qualquer um deles em **3,3 V, nunca 5 V**. |
 | — | Mecânica e mola da alavanca | não precisa de botão extra — ele é derivado no firmware. |
 
 ## Compilar e gravar

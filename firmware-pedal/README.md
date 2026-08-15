@@ -16,8 +16,10 @@ Stack: RP2040 + **arduino-pico** (Earle Philhower's core) + **Adafruit_TinyUSB**
 
 - **HID joystick**, 3 axes at 12 bits, fed by the signal pipeline: normalize → deadzone → curve → smoothing.
 - **Vendor P0 channel** for the app: telemetry `0x20`, `SettingWrite 0x14`, `ReadRequest 0x15`, `SettingValue 0x16`, `Command 0x02`. Min/max calibration included.
-- **Three sensor types per pedal**, chosen in the app: potentiometer, analog Hall, or load cell.
-- **Load cell** through an HX711 (`sensor_type == 2`), read without blocking the loop, tared on boot.
+- **Four sensor types per pedal**, chosen in the app: potentiometer, analog Hall, and two load-cell paths.
+- **Load cell through an HX711** (`sensor_type == 2`), read without blocking the loop, tared on boot.
+- **Load cell through an instrumentation amplifier** (`sensor_type == 3`, INA333 and similar): comes in on the board's ADC. Less resolution than the HX711, in exchange for an unrestricted sample rate instead of its 10 or 80 Hz. Tared on boot and oversampled.
+- **ADC oversampling**: averaging several back-to-back readings knocks down noise at no latency cost, unlike the output filter (`smooth`).
 - **Persistent config in flash** (emulated EEPROM, magic `"DLP1"`): the settings are stored **on the device**, so they survive unplugging and the app loads them on connect.
 
 ## Wiring
@@ -38,6 +40,20 @@ Stack: RP2040 + **arduino-pico** (Earle Philhower's core) + **Adafruit_TinyUSB**
 | Brake | `GP4` | `GP5` |
 | Throttle | `GP6` | `GP7` |
 
+**Analog load cell (instrumentation amplifier)** — the amplifier's output goes into the same pin as a potentiometer, so the ADC table above applies.
+
+The difference that trips up people coming from the HX711: an instrumentation amplifier **does not excite the cell**. The two excitation wires (usually red and black) go straight to the board's `3V3` and `GND`, and only the two signal wires enter the module's `IN+`/`IN-`. Power the module from that same `3V3`: signal and ADC reference then rise and fall together, and most of the supply error cancels out.
+
+Three things to watch on this path:
+
+- Power the module at **3.3 V, never 5 V**. RP2040 pins are not 5 V tolerant and the amplifier's output drives one directly.
+- Bias the amplifier's `REF` slightly above zero. With `REF` at `GND`, the cell's resting imbalance can sit against the bottom of the range and you lose the start of travel.
+- Mount the module **next to the cell**, not next to the board. The whole point of an instrumentation amplifier is to lift the signal before it travels down the cable.
+
+If a load-cell pedal always reads zero, swap the two signal wires. A cell wired backwards does not read inverted — it reads dead.
+
+Both load-cell paths are tared on boot. Do not press the pedal while plugging the cable in, or whatever force is applied at that moment becomes the new zero.
+
 With nothing wired, the ADC inputs float and the axes read noise. That is normal, not a fault.
 
 ## Bill of materials
@@ -46,8 +62,8 @@ With nothing wired, the ADC inputs float and the axes read noise. That is normal
 |----:|------|-------|
 | 1 | **Waveshare RP2040-Zero** | RP2040 + USB-C. Any RP2040 works (`board = pico` in `platformio.ini`). |
 | 1 | **USB-C cable** | to the PC. |
-| 3 | **One sensor per pedal** — your choice: **10 kΩ linear pot**, **analog Hall** (SS49E / A1302), or **load cell + HX711** | pot and Hall go on the ADC; a load cell needs the HX711 amplifier. The type is set per pedal in the app. |
-| 0–3 | **HX711 amplifier** | one per load-cell pedal. |
+| 3 | **One sensor per pedal** — your choice: **10 kΩ linear pot**, **analog Hall** (SS49E / A1302), or **load cell** | pot and Hall go straight on the ADC; a load cell needs an amplifier. The type is set per pedal in the app. |
+| 0–3 | **Load-cell amplifier** — **HX711** or **instrumentation amplifier** (INA333 / CJMCU-333) | one per load-cell pedal. The HX711 has 24 bits but delivers only 10 or 80 readings per second, which feels like lag on a brake pedal; the instrumentation amp uses the board's ADC, with less resolution and no such limit. |
 | — | Wires, pedal frame and springs | the mechanical rig is yours. |
 
 ## Build & flash

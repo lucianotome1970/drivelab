@@ -49,7 +49,7 @@ All builds live on the [releases page](https://github.com/lucianotome1970/drivel
 
 <p align="center"><img src="docs/screenshots/pedals.png" width="860" alt="Pedals"></p>
 
-**Pedals** — per-pedal output curves (Linear / S-Curve / Fast / Slow) with a draggable curve editor, invert, smoothing and sensor type (pot / hall / load cell); the brake adds a load-cell target in % or kg. Live input bars on the right.
+**Pedals** — per-pedal output curves (Linear / S-Curve / Fast / Slow) with a draggable curve editor, invert, smoothing and sensor type (pot / hall / load cell through an HX711 or an instrumentation amp); the brake adds a load-cell target in % or kg. Live input bars on the right.
 
 <p align="center"><img src="docs/screenshots/wheel.png" width="860" alt="Wheel"></p>
 
@@ -127,7 +127,7 @@ The two ODESC variants look identical apart from the sticker and the LED colour 
 DriveLab is split into independent firmwares — one per device, each with its own README. The Studio app connects to each over USB HID and auto-detects it by VID/PID.
 
 - **[Wheelbase »](firmware-base/README.md)** — ODrive v3.6-class (MKS ODRIVE-S V3.6-S6V) · STM32F405 · the FFB motor stage. *Runs the motor under FOC; FFB pipe validated with ACC/AMS2/EVO. Game-effects (M6) on the bench.*
-- **[Pedals »](firmware-pedal/README.md)** — RP2040 · 3 axes · load cell (HX711) · **P0** protocol. **✅ Validated on hardware.**
+- **[Pedals »](firmware-pedal/README.md)** — RP2040 · 3 axes · load cell (HX711 or instrumentation amp) · **P0** protocol. **✅ Validated on hardware.**
 - **[Handbrake »](firmware-handbrake/README.md)** — RP2040 · 1 axis + button · **P0** protocol. **✅ Validated on hardware** (physical sensor still to test).
 - **[Rim »](firmware-wheel/README.md)** — RP2040 · gamepad (buttons + paddles) · WS2812 LEDs · **P0**. *Written, awaiting bench validation.*
 
@@ -194,7 +194,7 @@ It is a fully open alternative to closed solutions like FFBeast, with two halves
 - Enumerates as a **DirectInput FFB wheel** — games send force feedback to it exactly like they would to any commercial wheel, no plugin needed.
 - **Field-oriented control** of the hub motor, built on the ODrive firmware.
 - Multi-stage safety: brake-resistor chopper, current/torque limits, soft-stop, over-voltage cutoff, plus **opt-in off-state contactor and soft-power button** (host-tested groundwork).
-- Companion firmware for **pedals** and **handbrake** modules (RP2040 + HX711 load cell).
+- Companion firmware for **pedals** and **handbrake** modules (RP2040 + load cell).
 
 ## Hardware — wheelbase (bill of materials)
 
@@ -216,8 +216,8 @@ Each device is independent (its own board + USB). Full parts list + wiring/pinou
 | Module | Core hardware | Full BOM |
 |--------|---------------|----------|
 | **Wheelbase** | F405 board + hub motor + encoder + brake resistor + PSU (table above) | this page |
-| **Pedals** | RP2040-Zero + 3 sensors (pot / Hall / load-cell+HX711) | **[firmware-pedal »](firmware-pedal/README.md#bill-of-materials-pedals)** |
-| **Handbrake** | RP2040-Zero + 1 sensor (pot / Hall / load-cell+HX711) | **[firmware-handbrake »](firmware-handbrake/README.md#bill-of-materials-handbrake)** |
+| **Pedals** | RP2040-Zero + 3 sensors (pot / Hall / load cell + HX711 or instrumentation amp) | **[firmware-pedal »](firmware-pedal/README.md#bill-of-materials-pedals)** |
+| **Handbrake** | RP2040-Zero + 1 sensor (pot / Hall / load cell + HX711 or instrumentation amp) | **[firmware-handbrake »](firmware-handbrake/README.md#bill-of-materials-handbrake)** |
 | **Wheel (rim)** | RP2040-Zero + 2× MCP23017 + 5 encoders + SK6812 LEDs | **[firmware-wheel »](firmware-wheel/README.md)** |
 
 ## How force feedback works
@@ -240,8 +240,8 @@ Condition effects (spring/damper) are computed on the device from the **encoder*
 ```
 app/                 DriveLab Studio (.NET 8 / Avalonia) + Core, Hid, Simulator, tests
 firmware-base/       Wheelbase firmware — ODrive v3.6-class / STM32F405, the FFB motor  [MIT]
-firmware-pedal/      Pedals firmware — RP2040 + HX711                                   [MIT]
-firmware-handbrake/  Handbrake firmware — RP2040 + HX711                                [MIT]
+firmware-pedal/      Pedals firmware — RP2040 + load cell                               [MIT]
+firmware-handbrake/  Handbrake firmware — RP2040 + load cell                            [MIT]
 firmware-wheel/      Rim firmware — RP2040 (Waveshare Zero): gamepad + WS2812 LEDs      [MIT]
 tools/HidDump/       HID protocol debug tool
 docs/                Guides, design specs & implementation plans
