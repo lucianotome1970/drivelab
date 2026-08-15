@@ -75,7 +75,7 @@
                 </Grid>
             </Border>
 
-            <ItemsControl ItemsSource="{Binding Testes}">
+            <ItemsControl x:Name="ListaDeTestes" ItemsSource="{Binding Testes}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ForceTestItemViewModel">
                         <Border Background="#22000000" CornerRadius="8" Padding="14" Margin="0,0,0,10">
@@ -110,10 +110,17 @@
                                      descrição, porque é instrução e não explicação — quem lê rápido
                                      e clica em Rodar precisa esbarrar nisto. Só aparece nos testes
                                      que pedem algo (hoje, o de regeneração: desacoplar o volante). -->
+                                <!-- ⚠️ O DESTAQUE É O FUNDO, NÃO O TEXTO. Este bloco já foi texto na
+                                     cor de acento sobre o mesmo fundo de acento translúcido: laranja
+                                     sobre laranja, e a instrução mais importante do cartão virou a
+                                     mais difícil de ler. Uma faixa colorida à esquerda chama o olho
+                                     sem custar contraste; a letra fica na cor normal de leitura. -->
                                 <Border IsVisible="{Binding TemPreparo}"
-                                        Background="#33FF9800" CornerRadius="6" Padding="10,8">
+                                        Background="#22FF9800" CornerRadius="6" Padding="12,10"
+                                        BorderBrush="#FFB74D" BorderThickness="3,0,0,0">
                                     <TextBlock Text="{Binding Preparo}" TextWrapping="Wrap"
-                                               FontSize="12" Foreground="{DynamicResource DlAccent}" />
+                                               FontSize="12" LineHeight="18"
+                                               Foreground="{DynamicResource DlText}" />
                                 </Border>
 
                                 <!-- Progresso DESTE teste, no cartão em que se clicou. -->

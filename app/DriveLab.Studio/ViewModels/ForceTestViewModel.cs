@@ -133,6 +133,23 @@ public sealed partial class ForceTestViewModel : ViewModelBase
 
     public bool PodeParar => EmExecucao is not null;
 
+    /// <summary>Disparado quando um teste termina e tem veredito. A TELA escuta para rolar até ele.
+    ///
+    /// <para>Existe por um tropeço real: o resultado nasce ABAIXO do cartão, fora da área visível
+    /// quando a descrição e o preparo são longos. Quem clicou em Rodar fica olhando o topo, não vê
+    /// nada mudar e conclui que o teste não respondeu — foi o que aconteceu com o de encoder em
+    /// 15/08/2026. Escrever o resultado num lugar que ninguém está olhando é o mesmo que não
+    /// escrever.</para></summary>
+    public event Action<ForceTestItemViewModel>? ResultadoPronto;
+
+    /// <summary>Único caminho por onde um veredito chega à tela. Centralizado para que nenhum teste
+    /// novo possa publicar resultado sem avisar quem precisa rolar até ele.</summary>
+    private void PublicarResultado(ForceTestItemViewModel item, ForceTestResult r)
+    {
+        item.Aplicar(r);
+        ResultadoPronto?.Invoke(item);
+    }
+
     public ForceTestViewModel(BaseSession session, IRelogioDeTeste? relogio = null)
     {
         _session = session;
@@ -295,7 +312,7 @@ public sealed partial class ForceTestViewModel : ViewModelBase
             _cancelamento = null;
         }
 
-        item.Aplicar(item.Teste.Avaliar(amostras));
+        PublicarResultado(item, item.Teste.Avaliar(amostras));
     }
 
     /// <summary>Dispara a medição de alinhamento do encoder e espera a base devolvê-la.
@@ -372,7 +389,7 @@ public sealed partial class ForceTestViewModel : ViewModelBase
 
         if (medicao is null)
         {
-            item.Aplicar(new ForceTestResult(false, "A base não devolveu a medição", new[]
+            PublicarResultado(item, new ForceTestResult(false, "A base não devolveu a medição", new[]
             {
                 "A varredura não terminou dentro do tempo. As causas mais comuns:",
                 "  • o motor não está energizado (a fonte precisa estar ligada, não só o USB)",
@@ -382,7 +399,7 @@ public sealed partial class ForceTestViewModel : ViewModelBase
             return;
         }
 
-        item.Aplicar(EncoderHealth.Avaliar(new EncoderMeasurement(
+        PublicarResultado(item, EncoderHealth.Avaliar(new EncoderMeasurement(
             Valido: medicao.EncoderTestValido,
             CoberturaVolta: medicao.EncoderCoberturaVolta,
             ExcentricidadeGraus: medicao.EncoderExcentricidadeGraus,
