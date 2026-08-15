@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 #  DriveLab - build TUDO-EM-UM do instalador Windows (para o CRIADOR de DD).
 #  Leve a pasta do projeto pro Windows e rode este script. Ele:
 #    1) garante o .NET 8 SDK (usa o do PATH, ou instala local sem admin);
@@ -53,12 +53,31 @@ if (-not (Test-Path $proj)) {
 # ---------------------------------------------------------------------------
 # 1) .NET 8 SDK - usa o do PATH; senao instala local (sem admin).
 # ---------------------------------------------------------------------------
-function Test-Sdk8 {
-    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { return $false }
-    try { return [bool]((& dotnet --list-sdks 2>$null) -match '^8\.') } catch { return $false }
+function Test-Sdk8($exe) {
+    if (-not $exe) { return $false }
+    try { return [bool]((& $exe --list-sdks 2>$null) -match '^8\.') } catch { return $false }
 }
-$dotnet = "dotnet"
-if (-not (Test-Sdk8)) {
+
+# Onde procurar, em ordem. O PATH sozinho NAO bastava: em 14/08/2026 esta maquina tinha o SDK
+# 8.0.423 instalado em %USERPROFILE%\.dotnet — que e onde o instalador oficial "sem admin" o poe,
+# e ele nao mexe no PATH da sessao. O script nao achava, partia para baixar outro, e o download
+# travava sem dizer nada: quinze minutos parado com a pasta .dotnet vazia. Baixar 200 MB do que ja
+# esta no disco tambem seria desperdicio mesmo quando funciona.
+function Find-Dotnet {
+    $c = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($c -and (Test-Sdk8 $c.Source)) { return $c.Source }
+    foreach ($p in @("$env:USERPROFILE\.dotnet\dotnet.exe",
+                     "$env:ProgramFiles\dotnet\dotnet.exe",
+                     "${env:ProgramFiles(x86)}\dotnet\dotnet.exe",
+                     "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe",
+                     (Join-Path $here ".dotnet\dotnet.exe"))) {
+        if ($p -and (Test-Path $p) -and (Test-Sdk8 $p)) { return $p }
+    }
+    return $null
+}
+
+$dotnet = Find-Dotnet
+if (-not $dotnet) {
     Info "==> .NET 8 SDK nao encontrado. Instalando localmente em .dotnet\ (sem admin)..."
     $insScript = Join-Path $here "dotnet-install.ps1"
     try {
@@ -94,9 +113,14 @@ function Find-Iscc {
     }
     $c = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     if ($c) { return $c.Source }
+    # Busca larga como ultimo recurso, mas com PROFUNDIDADE LIMITADA. A versao anterior varria
+    # Program Files inteiro recursivamente e, numa maquina sem o Inno instalado, ficava quinze
+    # minutos sem imprimir nada — indistinguivel de travamento, que foi como diagnosticamos em
+    # 14/08/2026. O Inno se instala em <raiz>\<pasta>\ISCC.exe; dois niveis cobrem isso.
     foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, "$env:LOCALAPPDATA\Programs")) {
         if ($root -and (Test-Path $root)) {
-            $hit = Get-ChildItem -Path $root -Filter "ISCC.exe" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            $hit = Get-ChildItem -Path $root -Filter "ISCC.exe" -File -Depth 2 -ErrorAction SilentlyContinue |
+                   Select-Object -First 1
             if ($hit) { return $hit.FullName }
         }
     }
@@ -212,7 +236,11 @@ $tarball = Join-Path $tmp "dfu-util-binaries.tar.xz"
 
 try {
     Dim "    baixando $DfuUrl ..."
-    Invoke-WebRequest -Uri $DfuUrl -OutFile $tarball -UseBasicParsing -UserAgent "Mozilla/5.0"
+    # SEM -UserAgent, e isso e proposital. O "Mozilla/5.0" estava aqui para parecer navegador, e e
+    # exatamente o que o servidor do dfu-util RECUSA: medido em 14/08/2026, com ele vem 403 Proibido
+    # e sem ele vem 200. O download quebrava o build inteiro — e como o instalador sem dfu-util nao
+    # grava firmware, o script para ali. Ou seja, um disfarce desnecessario impedia qualquer release.
+    Invoke-WebRequest -Uri $DfuUrl -OutFile $tarball -UseBasicParsing
 } catch {
     Die @("Nao foi possivel baixar o dfu-util: $($_.Exception.Message)",
           "O instalador SEM o dfu-util nao consegue gravar firmware — por isso paramos aqui.",

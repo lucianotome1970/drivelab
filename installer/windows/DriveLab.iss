@@ -75,12 +75,20 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 ; A placa NAO precisa estar conectada: sem ela, o driver fica no DriverStore e o Windows o aplica
 ; sozinho no dia em que ela aparecer.
 ;
-; runascurrentuser porque o instalador ja roda elevado; -WindowStyle Hidden para nao piscar um
-; console preto no meio da instalacao. Falhar aqui NAO aborta a instalacao do app — quem so quer
-; ajustar a base nao depende deste passo, e o caminho manual continua documentado.
+; ⚠️ SEM 'runascurrentuser' — e a flag faz o CONTRARIO do que o nome sugere aqui. O instalador ja
+; roda elevado (PrivilegesRequired=admin), e por padrao as entradas [Run] herdam essa elevacao.
+; 'runascurrentuser' REBAIXA o processo para o usuario original, sem privilegio — e registrar driver
+; exige administrador. Custou uma rodada inteira do teste de implantacao em 14/08/2026: o script era
+; copiado, era chamado, recusava por falta de privilegio e a instalacao seguia como se nada fosse.
+; O sintoma final era a placa em modo de atualizacao com CM_PROB_FAILED_INSTALL e o dfu-util dizendo
+; LIBUSB_ERROR_NOT_SUPPORTED — que parece problema de driver e era problema de permissao.
+;
+; -WindowStyle Hidden para nao piscar um console preto no meio da instalacao. Falhar aqui NAO aborta
+; a instalacao do app — quem so quer ajustar a base nao depende deste passo, e o caminho manual
+; continua documentado.
 Filename: "powershell.exe"; \
   Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\driver\instalar-driver.ps1"" -Silencioso"; \
   StatusMsg: "Preparando o modo de atualizacao da placa..."; \
-  Flags: runascurrentuser waituntilterminated skipifdoesntexist
+  Flags: waituntilterminated
 ; O 'dfu-util', que e quem de fato grava, VAI no pacote (ver build-installer.ps1, etapa 4b).
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent

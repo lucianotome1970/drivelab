@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 #  DriveLab
 #  instalar-driver.ps1 — Deixa o Windows falar com a placa em modo de
 #  atualizacao, sem o usuario precisar do Zadig.
