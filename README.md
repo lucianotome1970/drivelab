@@ -114,6 +114,8 @@ The wheelbase (the FFB motor stage) runs on any **STM32F405 ODrive-class control
 
 Both encoder headers are present on every one of these boards, so the sensor choice is not a board choice. The firmware currently drives the **incremental A/B/Z** path; **SPI magnetic** support is in progress — see [encoders.md](docs/encoders.md) for which sensor to buy and why.
 
+Adding a sensor or a button? **[Pinout & wiring reference](docs/pinout.md)** maps every MCU pin, marks what is free, and has the wiring for the motor NTC, the centering button and the phase contactor — including why the NTC pull-up is 1 kΩ and not the obvious 10 kΩ.
+
 The two ODESC variants look identical apart from the sticker and the LED colour — the capacitors are 63 V on both, so they tell you nothing. Feeding the 24 V one more than it takes destroys it.
 
 > ℹ️ The firmware is currently **pinned to the ODrive v3.6 layout** and **validated on an MKS ODRIVE-S V3.6-S6V**. Other F405 ODrive-class boards share the MCU and USB, but a board with a **different pinout (e.g. ODESC v4.2)** may need a pin remap in `firmware-base/vendor/odrive-fw/Board/v3/`.

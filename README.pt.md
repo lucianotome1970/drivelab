@@ -114,6 +114,8 @@ A base (o estágio do motor de FFB) roda em qualquer **controladora STM32F405 cl
 
 Os dois conectores de encoder existem em todas essas placas, então a escolha do sensor não é escolha de placa. O firmware hoje aciona o caminho **incremental A/B/Z**; o suporte a **magnético por SPI** está em andamento — veja o [encoders.md](docs/encoders.md) para escolher qual sensor comprar e por quê.
 
+Vai acrescentar um sensor ou um botão? A **[referência de pinagem e montagem](docs/pinout.md)** mapeia cada pino do microcontrolador, marca o que está livre, e traz a ligação do NTC do motor, do botão de centralização e do contator das fases — inclusive por que o resistor do NTC é de 1 kΩ e não os 10 kΩ óbvios.
+
 As duas variantes da ODESC são idênticas fora o adesivo e a cor do LED — os capacitores são de 63 V nas duas, então não dizem nada. Dar na de 24 V mais tensão do que ela aceita destrói a placa.
 
 > ℹ️ O firmware está hoje **fixado no layout da ODrive v3.6** e **validado numa MKS ODRIVE-S V3.6-S6V**. Outras placas F405 classe ODrive compartilham o MCU e o USB, mas uma placa com **pinagem diferente (ex.: ODESC v4.2)** pode exigir remapear os pinos em `firmware-base/vendor/odrive-fw/Board/v3/`.

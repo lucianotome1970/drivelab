@@ -8,7 +8,11 @@
 
 ; ---- O CRIADOR edita estes campos ----
 #define MyAppName "DriveLab Studio"
-#define MyAppVersion "1.0.0"
+; ⚠️ MESMA versao do app, do firmware e da release — os QUATRO sobem juntos ao cortar uma release.
+; Era "1.0.0" enquanto todo o resto estava em 0.2.3, e um quarto numero solto so gera a duvida que a
+; regra existe para evitar: "preciso atualizar?". A fonte do firmware e firmware-base/inc/fw_version.h
+; e a do app e o <Version> do DriveLab.Studio.csproj.
+#define MyAppVersion "0.2.3"
 #define MyAppPublisher "Sua Marca DD"
 #define MyAppURL "https://exemplo.com"
 #define MyAppExeName "DriveLab.Studio.exe"
