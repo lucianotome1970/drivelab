@@ -473,7 +473,7 @@ public static class CompositionRoot
     public static StartupDetector CreateStartupDetector(bool simulatorMode) =>
         new(
             probeBase: () => Task.FromResult(simulatorMode || ProbeBaseHardware()),
-            probePedals: () => Task.FromResult(false), // módulo de pedais em construção
+            probePedals: () => Task.FromResult(simulatorMode || HidPedalTransport.IsDevicePresent()),
             stepDelayMs: 450);
 
     private static bool ProbeBaseHardware() => HidBaseTransport.IsDevicePresent();
