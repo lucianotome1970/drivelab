@@ -18,6 +18,7 @@
 #include "motor_link.h"
 #include "ffb_model.h"
 #include "wheel_center.h"   // eixo do jogo tem de sair do MESMO zero que o FFB
+#include "blackbox.h"       // rastro do laço: separar "travou no TinyUSB" de "travou aqui"
 
 // Canal A0 (app DriveLab Studio) — trata os OUT reports vendor (a0_channel.cpp).
 extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len);
@@ -94,6 +95,7 @@ extern "C" void hid_usb_watchdog(uint32_t nowTick) {
 }
 
 extern "C" int hid_send_joystick(void) {
+    blackbox_step(BB_STEP_TLM_HID);
     if (!tud_hid_ready()) {
         // Só conta como travado quando o host DEVERIA estar pollando. Sem isto, um device
         // desmontado ou suspenso (situações normais) dispararia a recuperação à toa.
@@ -113,6 +115,9 @@ extern "C" int hid_send_joystick(void) {
     if (norm > 1.0f) norm = 1.0f; else if (norm < -1.0f) norm = -1.0f;
     rep.axes[0] = (int16_t)(norm * 32767.0f);      // eixo X = direção
 
+    // A partir daqui estamos DENTRO do TinyUSB, que toma o mutex do endpoint com espera infinita.
+    // Se o rastro parar neste passo, o travamento e ali — e nao no nosso codigo.
+    blackbox_step(BB_STEP_TLM_HID_XFER);
     if (!tud_hid_report(RID_JOYSTICK, &rep, sizeof(rep))) return 0;
     g_hid_sent++;
     return 1;

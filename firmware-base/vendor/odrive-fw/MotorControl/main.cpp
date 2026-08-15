@@ -10,6 +10,7 @@
 #include <communication/interface_uart.h>
 #include <communication/interface_i2c.h>
 #include <communication/interface_can.hpp>
+#include <blackbox.h>   // DriveLab: registrar travamento sem fault (ver vApplicationStackOverflowHook)
 
 osSemaphoreId sem_usb_irq;
 osMessageQId uart_event_queue;
@@ -266,6 +267,18 @@ void vApplicationStackOverflowHook(xTaskHandle *pxTask, signed portCHAR *pcTaskN
         axis.motor_.disarm();
     }
     safety_critical_disarm_brake_resistor();
+    // DriveLab: registrar ANTES do laco. Sem isto, um estouro de pilha e indistinguivel de qualquer
+    // outro travamento: a CPU nao falta, ela fica presa aqui, o laco de FFB para de alimentar o
+    // watchdog e a placa reinicia limpa 2 s depois. O nome da tarefa e o que diz QUEM estourou —
+    // guardamos os 4 primeiros chars, que ja separam "ffb" de "usb" de "axis".
+    {
+        uint32_t nome = 0;
+        if (pcTaskName) {
+            for (int i = 0; i < 4 && pcTaskName[i]; ++i)
+                nome |= ((uint32_t)(uint8_t)pcTaskName[i]) << (8 * i);
+        }
+        blackbox_record_hang(BB_HANG_STACK_OVERFLOW, nome);
+    }
     for (;;); // TODO: safe action
 }
 

@@ -233,6 +233,13 @@ static void ffb_thread(void*) {
         g_axis_dbg[5] = (int32_t)(motor_link_get_pos_turns() * 1000.0f);
         g_axis_dbg[6] = (int32_t)(motor_link_get_vel_estimate() * 1000.0f);
 
+        // As condições em que o laço estava, para a caixa-preta. Sobrevivem ao reset: se ele parar,
+        // o boot seguinte diz não só ONDE parou como COM QUANTA corrente e em que posição — que é o
+        // que separa "foi a batida" de "foi coincidência" (ver blackbox_condicoes).
+        blackbox_condicoes((int32_t)(motor_link_get_vbus() * 1000.0f),
+                           (int32_t)(motor_link_get_iq_measured() * 1000.0f),
+                           (int32_t)(motor_link_get_pos_turns() * 6283.1853f));
+
         // Medidores do monitor (só leitura, a 1 kHz — pega transiente que a telemetria
         // de 50 Hz perderia entre amostras).
         peak_tracker_update(&g_current_peak_ma,
@@ -402,6 +409,7 @@ static void ffb_thread(void*) {
         // contra uma falha persistente vira churn arma/desarma (medimos ~140 Hz por SWD), que o
         // usuário sente como "tec". O contador só zera quando o motor SUSTENTA o arme por 1 s —
         // assim uma recuperação real limpa o histórico, mas um ciclo de falha não se disfarça.
+        blackbox_step(BB_STEP_ARME);
         {
             static uint32_t s_cal_ticks    = 0;
             static int      s_arm_attempts = 0;
@@ -531,8 +539,13 @@ static void ffb_thread(void*) {
         // Disciplina de envio (1 report por janela de EP, como o firmware-base): JOYSTICK tem
         // prioridade (o jogo precisa da direção); o canal A0 do app pega a SOBRA (janela 3 de 4).
         // Se A0 não tem nada a enviar, o joystick usa a janela.
-        if ((n & 3) == 3) { if (!a0_service(n)) hid_send_joystick(); }
-        else              { hid_send_joystick(); }
+        blackbox_step(BB_STEP_TELEMETRIA);
+        if ((n & 3) == 3) {
+            blackbox_step(BB_STEP_TLM_A0);
+            if (!a0_service(n)) hid_send_joystick();
+        } else {
+            hid_send_joystick();
+        }
         hid_usb_watchdog(n);   // EP IN travado > 2 s → re-enumera sozinho (eixo congelado ao sair do jogo)
         n++;
 
@@ -544,6 +557,7 @@ static void ffb_thread(void*) {
             const float pos = wheel_center_pos_turns();          // turns RELATIVOS ao centro
             const float vel = motor_link_get_vel_estimate();  // turns/s (derivada: o zero não a afeta)
 
+            blackbox_step(BB_STEP_TORQUE);
             // GUARDA DE CURSO EXCEDIDO. Roda ANTES de aplicar o torque do pipeline, porque a
             // decisão dela é sobre QUAL torque aplicar — não é observador como as outras duas.
             // A ação escolhida pelo usuário (travar ou re-armar) é lida a cada tick: mudar o

@@ -22,6 +22,19 @@ BlackBoxTrace g_bb_trace __attribute__((section(".noinit")));
 volatile uint32_t g_bb_trace_prev_step = 0;
 volatile uint32_t g_bb_trace_prev_last = 0;
 volatile uint32_t g_bb_trace_prev_tick = 0;
+volatile int32_t  g_bb_trace_prev_vbus_mv  = 0;
+volatile int32_t  g_bb_trace_prev_iq_ma    = 0;
+volatile int32_t  g_bb_trace_prev_pos_mrad = 0;
+
+// As condições do último tick antes de o laço parar. Servem tanto para CONFIRMAR quanto para
+// DESCARTAR: das quatro reinicializações de 14/08/2026, três foram com o volante parado e uma
+// durante uma batida com o volante no fim do batente. Se as próximas mostrarem corrente baixa,
+// a explicação elétrica cai por terra e sobra o caminho do USB, que é o suspeito principal.
+void blackbox_condicoes(int32_t vbus_mv, int32_t iq_ma, int32_t pos_mrad) {
+    g_bb_trace.vbus_mv  = vbus_mv;
+    g_bb_trace.iq_ma    = iq_ma;
+    g_bb_trace.pos_mrad = pos_mrad;
+}
 
 // Marca o trecho do laço. Guarda o ANTERIOR junto: um trecho que trava logo na entrada pode não
 // chegar a se marcar, e aí o par (anterior, atual) situa melhor que o atual sozinho.
@@ -56,6 +69,9 @@ void blackbox_init(void) {
         g_bb_trace_prev_step = g_bb_trace.step;
         g_bb_trace_prev_last = g_bb_trace.last_step;
         g_bb_trace_prev_tick = g_bb_trace.tick;
+        g_bb_trace_prev_vbus_mv  = g_bb_trace.vbus_mv;
+        g_bb_trace_prev_iq_ma    = g_bb_trace.iq_ma;
+        g_bb_trace_prev_pos_mrad = g_bb_trace.pos_mrad;
     }
 
     g_bb_boots.boots++;
@@ -82,19 +98,41 @@ void blackbox_init(void) {
     // Num reset com energia mantida o magic sobrevive e o registro do fault é preservado.
     if (g_bb_fault.magic != BB_FAULT_MAGIC) {
         g_bb_fault.magic = 0;
-        g_bb_fault.pc = g_bb_fault.lr = g_bb_fault.cfsr = g_bb_fault.count = 0;
+        g_bb_fault.kind  = BB_HANG_NENHUM;
+        g_bb_fault.pc = g_bb_fault.lr = g_bb_fault.cfsr = g_bb_fault.task = g_bb_fault.count = 0;
     }
 }
 
-void blackbox_record_fault(uint32_t pc, uint32_t lr, uint32_t cfsr) {
-    // Preserva o PRIMEIRO fault: o primeiro é o diagnóstico, os seguintes costumam ser consequência
-    // (o handler já desligou o PWM, o estado está inconsistente). Só o contador segue subindo.
+/// Preserva o PRIMEIRO registro: o primeiro é o diagnóstico, os seguintes costumam ser consequência
+/// (o handler já desligou o PWM, o estado está inconsistente). Só o contador segue subindo.
+static void registrar(uint32_t kind, uint32_t pc, uint32_t lr, uint32_t cfsr, uint32_t task) {
     if (g_bb_fault.magic != BB_FAULT_MAGIC) {
         g_bb_fault.magic = BB_FAULT_MAGIC;
+        g_bb_fault.kind  = kind;
         g_bb_fault.pc    = pc;
         g_bb_fault.lr    = lr;
         g_bb_fault.cfsr  = cfsr;
+        g_bb_fault.task  = task;
         g_bb_fault.count = 0;
     }
     g_bb_fault.count++;
+}
+
+void blackbox_record_fault(uint32_t pc, uint32_t lr, uint32_t cfsr) {
+    registrar(BB_HANG_HARD_FAULT, pc, lr, cfsr, 0);
+}
+
+// TRAVAMENTO SEM FAULT — a lacuna que este bloco fecha.
+//
+// Em 14/08/2026 a base reiniciou sozinha e a caixa-preta disse "watchdog, e o laco estava nas
+// guardas". Nao havia hard fault registrado, e o handler de fault JA gravava aqui — entao a falta
+// de registro era informacao: nao foi fault. Mas nao existia registro nenhum para o outro caminho
+// possivel, que e o FreeRTOS chamando um hook que termina em `for(;;)`.
+//
+// A CPU nao falta nesse caso: ela fica presa num laco vazio, o laco de FFB para de alimentar o
+// watchdog, e 2 s depois a placa reinicia limpa. Do lado de fora e indistinguivel de qualquer outra
+// coisa — e "reiniciou sozinha" volta a ser misterio, que e exatamente o que a caixa-preta existe
+// para acabar.
+void blackbox_record_hang(uint32_t kind, uint32_t task) {
+    registrar(kind, 0, 0, 0, task);
 }

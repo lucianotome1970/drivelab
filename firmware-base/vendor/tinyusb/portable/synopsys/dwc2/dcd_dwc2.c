@@ -303,6 +303,34 @@ static void edpt_activate(uint8_t rhport, const tusb_desc_endpoint_t* p_endpoint
   dwc2->daintmsk |= TU_BIT(epnum + DAINT_SHIFT(dir));
 }
 
+// ============================================================================================
+// PATCH DriveLab (2026-08-14) — TETO NAS ESPERAS DE HARDWARE DESTA FUNCAO.
+//
+// O upstream espera bits do DWC2 em `while (...) {}` sem saida. O comentario original diz "se este
+// laco nunca terminar, temos problemas maiores que a pilha" — e numa placa de desenvolvimento isso
+// e verdade. Num volante direct-drive nao e: a base reiniciou TRES vezes, uma delas no meio de uma
+// corrida, e o mecanismo e este.
+//
+// Esta funcao roda com o MUTEX do usbd na mao. Presa aqui, ela nao o devolve; o laco de FFB, que
+// chama tud_hid_report a 1 kHz para mandar a posicao do volante, bloqueia em osal_mutex_lock com
+// OSAL_TIMEOUT_WAIT_FOREVER e nunca mais volta. O laco para de alimentar o watchdog e a placa
+// reinicia 2 s depois, limpa: sem erro, sem fault, sem nada. Foi por isso que "reiniciou sozinha"
+// ficou tanto tempo sem explicacao.
+//
+// Sair por tempo deixa o endpoint em estado imperfeito. Derrubar a base no meio de uma curva e pior
+// — e, ao contrario do endpoint, nao tem recuperacao. O contador abaixo existe para isto nao virar
+// remendo silencioso: se ele sair de zero, a espera ESTA estourando e ha uma causa a caçar.
+//
+// O teto e generoso de proposito: estes bits chegam em microssegundos, entao 100.000 giros (~ms a
+// 168 MHz) so termina quando algo esta de fato errado.
+#define DRVLAB_EDPT_WAIT_MAX 100000u
+volatile uint32_t g_dwc2_wait_timeouts = 0;   // legivel por SWD; 0 = nunca estourou
+#define DRVLAB_WAIT_FOR(cond) do {                                     \
+    uint32_t _n = DRVLAB_EDPT_WAIT_MAX;                                \
+    while (!(cond) && --_n) { }                                        \
+    if (_n == 0) g_dwc2_wait_timeouts++;                               \
+  } while (0)
+
 static void edpt_disable(uint8_t rhport, uint8_t ep_addr, bool stall) {
   (void) rhport;
 
@@ -319,11 +347,11 @@ static void edpt_disable(uint8_t rhport, uint8_t ep_addr, bool stall) {
     } else {
       // Stop transmitting packets and NAK IN xfers.
       dep->diepctl |= DIEPCTL_SNAK;
-      while ((dep->diepint & DIEPINT_INEPNE) == 0) {}
+      DRVLAB_WAIT_FOR((dep->diepint & DIEPINT_INEPNE) != 0);
 
       // Disable the endpoint.
       dep->diepctl |= DIEPCTL_EPDIS | stall_mask;
-      while ((dep->diepint & DIEPINT_EPDISD_Msk) == 0) {}
+      DRVLAB_WAIT_FOR((dep->diepint & DIEPINT_EPDISD_Msk) != 0);
 
       dep->diepint = DIEPINT_EPDISD;
     }
@@ -341,11 +369,11 @@ static void edpt_disable(uint8_t rhport, uint8_t ep_addr, bool stall) {
       // anyway, and it can't be cleared by user code. If this while loop never
       // finishes, we have bigger problems than just the stack.
       dwc2->dctl |= DCTL_SGONAK;
-      while ((dwc2->gintsts & GINTSTS_BOUTNAKEFF_Msk) == 0) {}
+      DRVLAB_WAIT_FOR((dwc2->gintsts & GINTSTS_BOUTNAKEFF_Msk) != 0);
 
       // Ditto here disable the endpoint.
       dep->doepctl |= DOEPCTL_EPDIS | stall_mask;
-      while ((dep->doepint & DOEPINT_EPDISD_Msk) == 0) {}
+      DRVLAB_WAIT_FOR((dep->doepint & DOEPINT_EPDISD_Msk) != 0);
 
       dep->doepint = DOEPINT_EPDISD;
 

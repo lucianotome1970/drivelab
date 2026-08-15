@@ -50,14 +50,31 @@ enum {
     BB_RESET_LOW_POWER    = 7,   // saída anormal de standby
 };
 
-#define BB_FAULT_MAGIC 0xDB1FA017u   // "DriveLab FAULT" — marca que os campos abaixo valem
+// ⚠️ O magic MUDA quando o layout do struct muda (era ...A017). Ele nao valida so "houve fault":
+// valida "estes bytes na .noinit sao do formato que este codigo espera". Sem trocar, um boot logo
+// apos a gravacao leria o registro do firmware ANTIGO com o layout NOVO, e os campos novos sairiam
+// de lixo — que e pior que nao ter registro, porque parece dado.
+#define BB_FAULT_MAGIC 0xDB1FA018u   // "DriveLab FAULT" — marca que os campos abaixo valem
+
+// COMO A BASE TRAVOU. Nem todo travamento e hard fault, e essa foi a lacuna que custou caro:
+// o FreeRTOS trata estouro de pilha chamando um hook que termina em `for(;;)`, e o hook do ODrive
+// faz exatamente isso. A CPU nao falta — ela fica presa num laco vazio. Sem fault, sem PC, sem
+// nada: o watchdog reinicia 2 s depois e o boot seguinte so sabe dizer "reiniciou".
+enum {
+    BB_HANG_NENHUM         = 0,
+    BB_HANG_HARD_FAULT     = 1,   // acesso invalido, instrucao ilegal — pc/lr/cfsr valem
+    BB_HANG_STACK_OVERFLOW = 2,   // uma tarefa passou do fim da propria pilha; `task` diz qual
+    BB_HANG_MALLOC_FALHOU  = 3,   // heap do FreeRTOS esgotado
+};
 
 typedef struct {
-    uint32_t magic;   // BB_FAULT_MAGIC quando há um fault registrado
+    uint32_t magic;   // BB_FAULT_MAGIC quando há um registro válido
+    uint32_t kind;    // BB_HANG_* — sem isto, "sem fault registrado" e ambiguo
     uint32_t pc;      // endereço da instrução que faltou (casar com o .map/addr2line)
     uint32_t lr;      // quem chamou
     uint32_t cfsr;    // Configurable Fault Status Register — diz o TIPO do fault
-    uint32_t count;   // faults desde o último power-on (>1 = está repetindo)
+    uint32_t task;    // 4 primeiros chars do nome da tarefa (estouro de pilha) — quem foi
+    uint32_t count;   // ocorrências desde o último power-on (>1 = está repetindo)
 } BlackBoxFault;
 
 #define BB_BOOT_MAGIC  0x0B007C71u   // "BOOT CTR" — marca que o contador de boots vale
@@ -90,6 +107,13 @@ enum {
     BB_STEP_ARME          = 6,   // auto-arme / calibração pedida ao ODrive
     BB_STEP_TORQUE        = 7,   // cálculo do FFB e escrita do torque
     BB_STEP_FIM           = 8,   // depois do watchdog_feed, antes de dormir
+    // Sub-passos da TELEMETRIA. Em 14/08/2026 o rastro apontou "telemetria" e isso ainda eram duas
+    // chamadas com o TinyUSB inteiro por baixo — e o TinyUSB toma o mutex do endpoint com
+    // OSAL_TIMEOUT_WAIT_FOREVER, entao uma espera que nunca termina prende o laco de 1 kHz e o
+    // watchdog reinicia a base 2 s depois. Estes tres separam ONDE, em vez de deixar adivinhar.
+    BB_STEP_TLM_A0        = 9,   // a0_service (canal do app)
+    BB_STEP_TLM_HID       = 10,  // hid_send_joystick, antes de qualquer chamada ao TinyUSB
+    BB_STEP_TLM_HID_XFER  = 11,  // dentro do tud_hid_report — e aqui que o mutex e tomado
 };
 
 typedef struct {
@@ -97,6 +121,14 @@ typedef struct {
     uint32_t step;       // BB_STEP_* em que o laço estava
     uint32_t tick;       // contador do laço — se estiver parado entre boots, travou de vez
     uint32_t last_step;  // o trecho ANTERIOR: um passo que trava muito cedo não chega a se marcar
+    // AS CONDICOES DO INSTANTE. Saber ONDE travou nao basta para saber POR QUE: em 14/08/2026 a base
+    // reiniciou durante uma batida, com o volante esterçado no fim do batente — corrente alta e
+    // posicao no extremo ao mesmo tempo. Um pico de consumo afunda o barramento, e o USB engasgando
+    // e o caminho conhecido para o STALL que leva ao travamento. Sem estes numeros, "foi a batida"
+    // ou "foi coincidencia" continuam empatados.
+    int32_t  vbus_mv;    // tensao do barramento
+    int32_t  iq_ma;      // corrente do motor
+    int32_t  pos_mrad;   // posicao do volante (extremo = perto do batente)
 } BlackBoxTrace;
 
 extern BlackBoxTrace g_bb_trace;
@@ -107,6 +139,13 @@ extern BlackBoxTrace g_bb_trace;
 extern volatile uint32_t g_bb_trace_prev_step;
 extern volatile uint32_t g_bb_trace_prev_last;
 extern volatile uint32_t g_bb_trace_prev_tick;
+extern volatile int32_t  g_bb_trace_prev_vbus_mv;
+extern volatile int32_t  g_bb_trace_prev_iq_ma;
+extern volatile int32_t  g_bb_trace_prev_pos_mrad;
+
+/// Anota as condicoes eletricas/mecanicas do tick atual. Chamada UMA vez por volta do laco — tres
+/// escritas em RAM, sem custo mensuravel a 1 kHz.
+void blackbox_condicoes(int32_t vbus_mv, int32_t iq_ma, int32_t pos_mrad);
 
 /// Marca o trecho atual. Chamada MUITAS vezes por volta do laço — é uma escrita em RAM, sem custo
 /// mensurável a 1 kHz.
@@ -145,6 +184,10 @@ void blackbox_init(void);
 
 // Chamado pelo handler de hard fault, imediatamente antes de ele travar.
 void blackbox_record_fault(uint32_t pc, uint32_t lr, uint32_t cfsr);
+
+/// Chamado pelos hooks do FreeRTOS que terminam em `for(;;)`, antes de o laco prender.
+/// `task` sao os 4 primeiros chars do nome da tarefa, ou 0 quando nao se aplica.
+void blackbox_record_hang(uint32_t kind, uint32_t task);
 
 #ifdef __cplusplus
 }
