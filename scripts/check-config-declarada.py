@@ -47,6 +47,12 @@ FONTES = [FW / "src" / "motor_link.cpp"]
 ALVOS = [
     ("Motor::Config_t",   VENDOR / "motor.hpp",   r"motor_\.config_\."),
     ("Encoder::Config_t", VENDOR / "encoder.hpp", r"encoder_\.config_\."),
+    # Entrou em 14/08/2026, depois de esta struct derrubar a base tres vezes num dia.
+    # `enable_overspeed_error` mora aqui: nos desligamos o clamp de velocidade e o ERRO
+    # ficou ligado, comparando com um `vel_limit` que mandamos ignorar — o motor desarmava
+    # a 6 voltas/s, dentro do que ele alcanca. Era exatamente o tipo de campo que este
+    # script existe para nao deixar decidir sozinho, e ele nao estava sendo conferido.
+    ("Controller::Config_t", VENDOR / "controller.hpp", r"controller_\.config_\."),
 ]
 
 # ---------------------------------------------------------------------------
@@ -62,6 +68,11 @@ SAIDA_CALIB   = "SAIDA_CALIB"    # e RESULTADO, nao entrada. Escrever descarta a
 MEDIDO        = "MEDIDO"         # conferido NA BANCADA, com o efeito observado.
 A_VERIFICAR   = "A_VERIFICAR"    # julgamento por leitura, sem teste. E DIVIDA.
 PENDENTE      = "PENDENTE"       # sai da lista quando um trabalho ja previsto for feito.
+# O valor foi decidido, mas EDITANDO O DEFAULT dentro de vendor/ em vez de atribuir em
+# motor_link.cpp. Nao e o mesmo que herdar sem olhar — tem razao registrada la — mas espalha
+# as decisoes por dois lugares, e quem procura "o que mudamos" no motor_link nao encontra.
+# Existe para tornar essa divida CONTAVEL: cada linha destas e uma decisao a repatriar.
+EDITADO_VENDOR = "EDITADO_VENDOR"
 
 # ---------------------------------------------------------------------------
 # HERDADOS DE PROPOSITO. Cada linha e uma decisao registrada, nao uma permissao.
@@ -118,9 +129,73 @@ HERDADOS = {
     "enable_phase_interpolation": (A_VERIFICAR, "ligado. Interpola posicao entre contagens pela "
                                                 "velocidade; deve ser o que tira o degrau em giro "
                                                 "lento, mas nao foi testado desligado"),
+
+    # =========================================================================
+    # Controller::Config_t
+    # =========================================================================
+    # A maioria nao se aplica por UMA razao so, e vale dizer de uma vez: rodamos em
+    # CONTROL_MODE_TORQUE_CONTROL com INPUT_MODE_PASSTHROUGH. Um volante FFB recebe TORQUE
+    # pronto do jogo; malha de posicao e de velocidade nao entram no caminho. Todo campo que
+    # so alimenta essas malhas esta morto aqui — nao por escolha de tuning, mas porque o
+    # codigo que os le nao executa neste modo.
+
+    # --- So valem em POSITION/VELOCITY_CONTROL, que nao usamos -------------
+    "pos_gain":             (NAO_SE_APLICA, "malha de posicao; rodamos em torque"),
+    "vel_gain":             (NAO_SE_APLICA, "malha de velocidade. Tambem entra no clamp do "
+                                            "enable_torque_mode_vel_limit, que esta desligado"),
+    "vel_integrator_gain":  (NAO_SE_APLICA, "malha de velocidade"),
+    "vel_integrator_limit": (NAO_SE_APLICA, "clamp do integrador da malha de velocidade"),
+    "inertia":              (NAO_SE_APLICA, "feed-forward de aceleracao das malhas de pos/vel"),
+
+    # --- So valem em outros INPUT_MODE ------------------------------------
+    "vel_ramp_rate":         (NAO_SE_APLICA, "INPUT_MODE_VEL_RAMP; usamos PASSTHROUGH"),
+    "torque_ramp_rate":      (NAO_SE_APLICA, "INPUT_MODE_TORQUE_RAMP. ⚠️ NAO confundir com rampa "
+                                             "de forca: a nossa vive no ffb_model, nao aqui"),
+    "input_filter_bandwidth": (NAO_SE_APLICA, "INPUT_MODE_POS_FILTER"),
+
+    # --- Hardware ou recurso que nao temos --------------------------------
+    "circular_setpoints":       (NAO_SE_APLICA, "setpoint de posicao circular; modo torque"),
+    "circular_setpoint_range":  (NAO_SE_APLICA, "idem"),
+    "steps_per_circular_range": (NAO_SE_APLICA, "interface step/dir, que nao expomos"),
+    "homing_speed":             (NAO_SE_APLICA, "homing por fim de curso fisico; nao temos "
+                                                "endstop. Nosso centro e por software"),
+    "gain_scheduling_width":    (NAO_SE_APLICA, "so com enable_gain_scheduling"),
+    "enable_gain_scheduling":   (NAO_SE_APLICA, "desligado; agenda ganhos da malha de posicao"),
+    "axis_to_mirror":           (NAO_SE_APLICA, "espelhar um segundo eixo; placa de 1 eixo"),
+    "mirror_ratio":             (NAO_SE_APLICA, "idem"),
+    "torque_mirror_ratio":      (NAO_SE_APLICA, "idem"),
+    "load_encoder_axis":        (NAO_SE_APLICA, "segundo encoder, na carga; temos um so"),
+
+    # --- MEDIDO na bancada ------------------------------------------------
+    "enable_overspeed_error": (MEDIDO, "LIGADO de proposito, e a decisao e de 14/08/2026. Foi ele "
+                                       "que desarmou o motor a 6 voltas/s, mas desligar levaria "
+                                       "junto o outro ramo do mesmo `if`, que detecta estimativa "
+                                       "de velocidade invalida. Em vez disso subimos o vel_limit "
+                                       "para 25: o erro vira ultimo recurso a 30 voltas/s, muito "
+                                       "alem do que a mecanica alcanca, e a nossa guarda de "
+                                       "sobrevelocidade — que exige persistencia — age primeiro"),
+
+    # --- EDITADO_VENDOR: decidido, mas no default dentro de vendor/ --------
+    "enable_torque_mode_vel_limit": (EDITADO_VENDOR, "false (stock true). O clamp "
+                                     "`(vel_limit - vel) * vel_gain` cortava torque em modo TORQUE "
+                                     "mesmo com o motor parado. Razao registrada no controller.hpp"),
+
+    # --- A_VERIFICAR: julgamento por LEITURA, sem teste ---------------------
+    "vel_limit_tolerance": (A_VERIFICAR, "1,2, o padrao. Multiplica o vel_limit no disparo do "
+                                         "overspeed: mexemos no vel_limit e deixamos este quieto, "
+                                         "porque dois fatores para o mesmo teto so confundem"),
+    "mechanical_power_bandwidth": (A_VERIFICAR, "20 rad/s, o padrao. Filtro da potencia que "
+                                                "alimenta a deteccao de spinout"),
+    "electrical_power_bandwidth": (A_VERIFICAR, "20 rad/s, o padrao; par do de cima"),
+    "spinout_electrical_power_threshold": (A_VERIFICAR, "50 W (stock 10), subido no vendor por "
+                                                        "leitura. Num volante FFB segurar contra a "
+                                                        "forca e frear consumindo corrente — a "
+                                                        "condicao NORMAL que dispara spinout. "
+                                                        "Nunca exercitamos o limiar de proposito"),
+    "spinout_mechanical_power_threshold": (A_VERIFICAR, "-50 W (stock -10); par do de cima"),
 }
 
-PROCEDENCIAS = (NAO_SE_APLICA, SAIDA_CALIB, MEDIDO, PENDENTE, A_VERIFICAR)
+PROCEDENCIAS = (NAO_SE_APLICA, SAIDA_CALIB, MEDIDO, PENDENTE, EDITADO_VENDOR, A_VERIFICAR)
 
 
 def campos_da_struct(caminho: Path, nome: str) -> list[str]:
