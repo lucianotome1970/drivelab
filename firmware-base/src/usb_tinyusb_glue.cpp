@@ -32,9 +32,32 @@ extern "C" void usb_rx_process_packet(uint8_t *buf, uint32_t len, uint8_t endpoi
 // Modelo de RX do ODrive: ele "arma" um buffer; nós copiamos do FIFO do TinyUSB quando chega.
 static struct { uint8_t* buf; uint16_t size; uint8_t ep; volatile bool active; } s_rx{};
 
+// ============================================================================================
+// SINAIS DE VIDA DA PILHA USB — SÓ OBSERVAM, não mudam nada.
+//
+// POR QUE EXISTEM: em 15/08/2026 a base ficou com o USB morto e o resto perfeito — laço de FFB a
+// 1 kHz, motor respondendo, watchdog satisfeito — e o Windows acusando "falha na solicitação de
+// descritor". Reiniciar SÓ o processador, sem tocar na alimentação, ressuscitou o USB: prova de que
+// a pilha trava em execução e não se recupera, e de que não é cabo, porta nem fonte.
+//
+// Falta saber ONDE ela trava, e são dois lugares possíveis com conserto bem diferente:
+//   · a TAREFA (tud_task) — travada num mutex ou espera; a interrupção segue rodando
+//   · a INTERRUPÇÃO — presa num laço; aí nada mais roda, nem a tarefa
+//
+// Dois contadores respondem isso sem alterar comportamento nenhum. Já erramos hoje mexendo num laço
+// de interrupção por hipótese (a base entrou em ciclo de reset), então desta vez a ordem é: medir
+// primeiro, mexer depois.
+//
+// COMO LER, com o USB morto: se `irq` sobe e `task` está parado, a tarefa travou. Se os dois estão
+// parados, é a interrupção. Se os dois sobem e mesmo assim não enumera, o problema é de protocolo,
+// não de travamento.
+volatile uint32_t g_usb_task_ticks = 0;   // voltas da tarefa do TinyUSB
+volatile uint32_t g_usb_irq_ticks  = 0;   // entradas na interrupção do USB
+
 // Task: roda tud_task + drena o CDC RX no buffer armado
 static void usb_tusb_task(void*) {
     for (;;) {
+        g_usb_task_ticks++;
         tud_task();
         if (s_rx.active && tud_cdc_available() > 0) {
             uint32_t n = tud_cdc_available();
@@ -99,7 +122,7 @@ extern "C" void MX_USB_DEVICE_Init(void) {
     osThreadCreate(osThread(tusbTask), NULL);
 }
 
-extern "C" void OTG_FS_IRQHandler(void) { tud_int_handler(0); }
+extern "C" void OTG_FS_IRQHandler(void) { g_usb_irq_ticks++; tud_int_handler(0); }
 
 // Callbacks do TinyUSB → eventos do ODrive
 extern "C" void tud_mount_cb(void)   { osMessagePut(usb_event_queue, 1, 0); }

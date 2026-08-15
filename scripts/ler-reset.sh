@@ -25,6 +25,7 @@ GDB=$(find "$HOME/.platformio/packages" -name "arm-none-eabi-gdb.exe" 2>/dev/nul
 # Enderecos mudam A CADA BUILD: derivar sempre, nunca cravar.
 a(){ "$GDB" -q -batch "$ELF" -ex "print &$1" 2>/dev/null | grep -oE '0x[0-9a-f]{6,}' | head -1; }
 R=$(a g_bb_reset_reason)
+CSR=$(a g_bb_reset_csr)
 # +4: o primeiro campo do BlackBoxBoots e o magic; o contador de boots vem logo depois.
 B=$(printf '0x%x' $(( $(a g_bb_boots) + 4 )))
 S=$(a g_bb_trace_prev_step); L=$(a g_bb_trace_prev_last); T=$(a g_bb_trace_prev_tick)
@@ -34,6 +35,7 @@ F=$(a g_bb_fault)
 out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -f target/stm32f4x.cfg \
   -c "init" \
   -c "echo D:[read_memory $R 32 1]:[read_memory $B 32 1]:[read_memory $S 32 1]:[read_memory $L 32 1]:[read_memory $T 32 1]" \
+  -c "echo S:[read_memory $CSR 32 1]" \
   -c "echo C:[read_memory $V 32 1]:[read_memory $I 32 1]:[read_memory $P 32 1]" \
   -c "echo E:[read_memory $F 32 7]" \
   -c "shutdown" 2>&1)
@@ -57,6 +59,18 @@ case $(d "$razao") in
   *) causa="desconhecida";;
 esac
 
+# ⚠️ TODAS as flags, e nao so a "vencedora" da ordem de prioridade acima.
+#
+# A decodificacao escolhe UMA causa, e isso escondeu o diagnostico real em 15/08/2026: o CSR estava
+# em 0x1E000003 — software, power-on, pino E BROWN-OUT acesos ao mesmo tempo — e como 'software' vem
+# antes de 'brown-out' na ordem, o script reportou "SOFTWARE" varias vezes seguidas. Passamos horas
+# procurando quem mandava a base reiniciar, quando o que a placa dizia era que a TENSAO CAIU.
+#
+# As flags vem combinadas por natureza (um power-on normal acende POR e PIN juntos), entao escolher
+# uma e util para ler rapido — mas esconder as outras nao. Agora aparecem todas, e brown-out ganha
+# destaque proprio porque e a unica que aponta para fora do firmware.
+csr=$(echo "$out" | grep -oE '^S:0x[0-9a-f]+' | cut -d: -f2)
+
 case $(d "$step") in
   0) onde="(nada marcado)";;
   1) onde="inicio do laco";;
@@ -74,6 +88,20 @@ case $(d "$step") in
 esac
 
 echo "causa do ultimo reset : $causa"
+if [ -n "$csr" ]; then
+    flags=$(awk -v v=$(printf "%d" "$csr") 'BEGIN{
+        n=split("25 BROWN-OUT(a tensao caiu),26 pino NRST,27 POWER-ON,28 SOFTWARE,29 WATCHDOG,30 window-watchdog,31 low-power", a, ",")
+        out=""
+        for (i=1;i<=n;i++){ split(a[i],b," "); bit=b[1]+0
+            nome=substr(a[i], length(b[1])+2)
+            if (int(v / 2^bit) % 2) out = out (out==""?"":", ") nome }
+        print out }')
+    echo "flags acesas no CSR   : $flags"
+    case "$flags" in *BROWN-OUT*)
+        echo "  ⚠️ BROWN-OUT presente: a tensao caiu abaixo do limiar. Isso e ALIMENTACAO —"
+        echo "     fonte, cabo ou contato — e nao firmware. Confira antes de caçar bug de codigo.";;
+    esac
+fi
 echo "boots desde a tomada  : $(d "$boots")"
 echo
 if [ "$(d "$step")" -eq 0 ]; then
