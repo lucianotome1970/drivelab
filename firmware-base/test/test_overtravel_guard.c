@@ -104,7 +104,29 @@ int main(void) {
         ok("dentro e parado: re-arma",
            overtravel_update(&s, &c, 0.0f, kDor, 0.0f, 1) == OT_ACT_NORMAL);
         ok("volta ao normal", s.state == OT_ST_NORMAL);
-        ok("contou o disparo", s.trips == 1);
+        ok("contou o re-arme", s.trips == 1);
+        ok("e contou o disparo", s.disparos == 1);
+    }
+
+    // ---- O TESTE QUE FALTAVA: no modo TRAVAR, o disparo tem de ser contado -----------------
+    //
+    // `trips` so incrementa na RECUPERACAO (estado OUT -> NORMAL), e no modo travar essa transicao
+    // nunca acontece — o estado vai direto para LOCKED. O relatorio de bancada usava `trips` como
+    // "disparos" e imprimiu "disparou 0x neste boot" logo abaixo de mostrar um disparo real, com o
+    // volante a -496,5 graus e o motor desarmado (15/08/2026). Um contador que nao conta estraga o
+    // diagnostico seguinte, que e exatamente quando ele seria util.
+    {
+        OvertravelState s; overtravel_init(&s);
+        OvertravelCfg c = overtravel_default_cfg();
+        c.mode = (uint8_t)OT_MODE_LOCK;
+        const float fora = kDor + 0.85f;
+
+        overtravel_update(&s, &c, fora, kDor, 10.0f, 1);   // dispara
+        overtravel_update(&s, &c, fora, kDor, 0.1f, 1);    // freia e desarma
+
+        ok("modo travar vai direto para LOCKED", s.state == OT_ST_LOCKED);
+        ok("no modo travar NAO ha re-arme para contar", s.trips == 0);
+        ok("mas o DISPARO foi contado", s.disparos == 1);
     }
 
     // ---- histerese: recuperar exige voltar ao curso, nao so sair da margem -----------------

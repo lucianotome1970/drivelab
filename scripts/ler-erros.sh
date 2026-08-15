@@ -36,6 +36,7 @@ GATE=$(a g_arm_gate)
 GUARD=$(a g_guard_trip);      GIQ=$(a g_guard_iq_ma)
 OVER=$(a g_overspeed_trip);   OVEL=$(a g_overspeed_vel_mts); ON=$(a g_overspeed_trips)
 TRAV=$(a g_overtravel_trip);  TPOS=$(a g_overtravel_pos_mrad); TN=$(a g_overtravel_trips)
+TD=$(a g_overtravel_disparos)
 FAIL=$(a g_fail_dbg)          # a fotografia — ver o layout em ffb_task.cpp
 # ⚠️ `&odrv` da o inicio do objeto, nao o campo: sem o `.error_` sai um ponteiro de
 # vtable (0x08...) que parece um codigo de erro gigante e nao e nada.
@@ -45,7 +46,7 @@ out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -
   -c "init" \
   -c "echo A:[read_memory $AXIS 32 7]" \
   -c "echo B:[read_memory $GATE 32 1]:[read_memory $GUARD 32 1]:[read_memory $GIQ 32 1]:[read_memory $OVER 32 1]:[read_memory $OVEL 32 1]:[read_memory $ON 32 1]" \
-  -c "echo C:[read_memory $TRAV 32 1]:[read_memory $TPOS 32 1]:[read_memory $TN 32 1]" \
+  -c "echo C:[read_memory $TRAV 32 1]:[read_memory $TPOS 32 1]:[read_memory $TN 32 1]:[read_memory $TD 32 1]" \
   -c "echo F:[read_memory $FAIL 32 10]" \
   -c "echo O:[read_memory $ODRV 32 1]" \
   -c "shutdown" 2>&1)
@@ -58,7 +59,7 @@ lo=$(echo "$out" | grep -oE '^O:.*')
 read -r _ armado estado axis_err motor_err enc_err pos vel <<< "${la//:/ }"
 read -r _ tentativas f_ctrl f_axis f_motor f_enc f_pmec f_pele f_vbus f_odrv desarmes <<< "${lf//:/ }"
 IFS=':' read -r _ gate guard giq over ovel <<< "$lb"
-IFS=':' read -r _ trav tpos tn <<< "$lc"
+IFS=':' read -r _ trav tpos tn td <<< "$lc"
 IFS=':' read -r _ odrv_err <<< "$lo"
 
 # Complemento de dois: posicao/velocidade sao assinados e o read_memory devolve cru.

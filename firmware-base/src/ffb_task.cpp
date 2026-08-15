@@ -198,7 +198,8 @@ static constexpr float kOtBrakeNmPerRadS = 0.6f;
 static constexpr float kOtBrakeMaxNm     = 5.0f;
 volatile int32_t g_overtravel_trip    = 0;   // 1 = disparou (legivel por SWD)
 volatile int32_t g_overtravel_pos_mrad = 0;  // posicao no disparo — a prova
-volatile int32_t g_overtravel_trips   = 0;   // quantas vezes neste boot
+volatile int32_t g_overtravel_trips   = 0;   // RE-ARMES neste boot (é o que max_trips limita)
+volatile int32_t g_overtravel_disparos = 0;  // DISPAROS de verdade — ver overtravel_guard.h
 
 // Medidores do monitor (SÓ LEITURA — não entram em nenhuma decisão de controle).
 // Ficam aqui, no laço de 1 kHz, e NÃO na ISR de 8 kHz: a lição de 2026-08-06 é que
@@ -629,6 +630,7 @@ static void ffb_thread(void*) {
                                                            velRad, 1);
             g_overtravel_pos_mrad = s_overtravel.last_pos_mrad;
             g_overtravel_trips    = s_overtravel.trips;
+            g_overtravel_disparos = s_overtravel.disparos;
 
             if (ota == OT_ACT_NORMAL) {
                 motor_link_set_input_torque(ffb_model_compute_torque(pos, vel));

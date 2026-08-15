@@ -75,7 +75,17 @@ typedef struct {
     uint8_t  state;           ///< interno: 0=normal 1=freando 2=fora-desarmado 3=travado
     uint16_t brake_ticks;     ///< ms dentro do freio controlado
     float    vel_at_trip;     ///< velocidade no instante do disparo — a referência do "caiu?"
-    uint8_t  trips;           ///< quantas vezes já disparou neste boot
+    /// Quantas vezes a guarda RE-ARMOU neste boot — não quantas disparou. É este que `max_trips`
+    /// limita: três re-armes seguidos deixam de ser "bati no muro" e viram defeito.
+    uint8_t  trips;
+    /// ⚠️ DISPAROS DE VERDADE, contados no instante em que a guarda começa a agir.
+    ///
+    /// `trips` só incrementa na RECUPERAÇÃO (estado OUT → NORMAL), e no modo travar essa transição
+    /// nunca acontece: o estado vai direto para LOCKED. Resultado medido em 15/08/2026 — a guarda
+    /// desarmou o motor com o volante a −496,5°, e o relatório imprimiu "disparou 0x neste boot"
+    /// logo abaixo de mostrar o disparo. Um contador que não conta estraga o diagnóstico seguinte,
+    /// que é justamente quando ele seria útil.
+    uint8_t  disparos;
     // provas, para SWD e telemetria (só leitura)
     int32_t  last_pos_mrad;   ///< posição no disparo, em milirradianos
     int32_t  last_vel_mrad_s; ///< velocidade no disparo
@@ -89,6 +99,7 @@ static inline void overtravel_init(OvertravelState* s) {
     s->brake_ticks = 0;
     s->vel_at_trip = 0.0f;
     s->trips = 0;
+    s->disparos = 0;
     s->last_pos_mrad = 0;
     s->last_vel_mrad_s = 0;
     s->disarmed_by_us = 0;
@@ -120,6 +131,7 @@ static inline OvertravelAction overtravel_update(OvertravelState* s, const Overt
         s->last_vel_mrad_s = (int32_t)(vel_rad_s * 1000.0f);
         s->vel_at_trip     = ot_abs(vel_rad_s);
         s->brake_ticks     = 0;
+        s->disparos        = (uint8_t)(s->disparos + 1);   // aqui, e não na recuperação
         s->state           = OT_ST_BRAKING;
         return OT_ACT_BRAKE;
 
