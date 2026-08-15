@@ -42,15 +42,9 @@ Stack: RP2040 + **arduino-pico** (Earle Philhower's core) + **Adafruit_TinyUSB**
 | Brake | `GP4` | `GP5` |
 | Throttle | `GP6` | `GP7` |
 
-**Analog load cell (instrumentation amplifier)** — the amplifier's output goes into the same pin as a potentiometer, so the ADC table above applies.
+**Analog load cell (instrumentation amplifier)** — the amplifier's output goes into the same pin as a potentiometer, so the ADC table above applies. Two things surprise everyone arriving from the HX711: an instrumentation amplifier **does not excite the cell** (the excitation wires go straight to `3V3` and `GND`, and only the signal pair enters the module), and it runs at **3.3 V, never 5 V** — RP2040 pins are not 5 V tolerant and the amplifier drives one of them directly.
 
-The difference that trips up people coming from the HX711: an instrumentation amplifier **does not excite the cell**. The two excitation wires (usually red and black) go straight to the board's `3V3` and `GND`, and only the two signal wires enter the module's `IN+`/`IN-`. Power the module from that same `3V3`: signal and ADC reference then rise and fall together, and most of the supply error cancels out.
-
-Three things to watch on this path:
-
-- Power the module at **3.3 V, never 5 V**. RP2040 pins are not 5 V tolerant and the amplifier's output drives one directly.
-- Bias the amplifier's `REF` slightly above zero. With `REF` at `GND`, the cell's resting imbalance can sit against the bottom of the range and you lose the start of travel.
-- Mount the module **next to the cell**, not next to the board. The whole point of an instrumentation amplifier is to lift the signal before it travels down the cable.
+You can wire this path with **no extra parts at all** and see the axis move today. The wiring diagram, the handful of components that go between the boards, which of them you can skip and what each one buys you are all in **[docs/pedal-wiring.md](../docs/pedal-wiring.md)**.
 
 If a load-cell pedal always reads zero, swap the two signal wires. A cell wired backwards does not read inverted — it reads dead.
 
@@ -140,15 +134,9 @@ Stack: RP2040 + **arduino-pico** (core do Earle Philhower) + **Adafruit_TinyUSB*
 | Freio | `GP4` | `GP5` |
 | Acelerador | `GP6` | `GP7` |
 
-**Célula de carga analógica (amplificador de instrumentação)** — a saída do amplificador entra no mesmo pino do potenciômetro, então vale a tabela do ADC acima.
+**Célula de carga analógica (amplificador de instrumentação)** — a saída do amplificador entra no mesmo pino do potenciômetro, então vale a tabela do ADC acima. Duas coisas surpreendem todo mundo que chega do HX711: o amplificador de instrumentação **não alimenta a célula** (os fios de excitação vão direto no `3V3` e no `GND`, e só o par de sinal entra no módulo), e ele trabalha em **3,3 V, nunca 5 V** — os pinos do RP2040 não toleram 5 V e o amplificador vai direto num deles.
 
-A diferença que mais confunde quem vem do HX711: o amplificador de instrumentação **não alimenta a célula**. Os dois fios de excitação (em geral vermelho e preto) vão direto no `3V3` e no `GND` da placa, e só os dois de sinal entram no `IN+`/`IN-` do módulo. Alimente o módulo por esse mesmo `3V3`: assim o sinal e a referência do ADC sobem e descem juntos, e o erro de tensão se cancela em boa parte.
-
-Três cuidados nesse caminho:
-
-- Alimente o módulo em **3,3 V, nunca 5 V**. Os pinos do RP2040 não toleram 5 V e a saída do amplificador vai direto num deles.
-- Ajuste o `REF` do amplificador para um pouco acima de zero. Com ele no `GND`, o desequilíbrio de repouso da célula pode encostar no fundo da escala e você perde o começo do curso.
-- Monte o módulo **junto da célula**, não junto da placa. O sentido de existir um amplificador de instrumentação é levantar o sinal antes de ele viajar pelo cabo.
+Esse caminho pode ser ligado **sem nenhuma peça extra** e já dá para ver o eixo se mexer hoje. O diagrama de ligação, as poucas peças que vão entre as placas, quais delas dá para pular e o que cada uma compra estão em **[docs/pedal-wiring.md](../docs/pedal-wiring.md)**.
 
 Se um pedal de célula ler sempre zero, inverta os dois fios de sinal entre si: célula ligada ao contrário não fica invertida, fica morta.
 

@@ -44,36 +44,9 @@ four pins that can measure voltage.
 This is the path worth taking on the **brake**, where response speed matters. Recommended for the
 brake; pot or Hall is enough for clutch and throttle, which measure travel and not force.
 
-```
-   LOAD CELL               INA333                    RP2040-Zero
-   (4 wires)          (amplifies only)               (converts)
+<p align="center"><img src="screenshots/pedal-wiring-ina333.svg" width="100%" alt="Load cell to INA333 to RP2040-Zero: four cell wires, the 1 kΩ series resistor and 100 nF to ground on the output, plus the REF bias divider and the supply decoupling."></p>
 
-   red   ─────────────────────────────────────────────► 3V3
-   black ─────────────────────────────────────────────► GND
-   green ───────────► IN+ ┐
-   white ───────────► IN- ┴──► OUT ──[ 1 kΩ ]──┬──────► 26 / 27 / 28
-                                               │
-                     VCC ─────────► 3V3     [ 100 nF ]
-                     GND ─────────► GND        │
-                     REF ─────────► ~0.2 V     └──────► GND
-```
-
-The REF bias, when your module ties `REF` to `GND`:
-
-```
-   3V3 ──[ 1 kΩ ]──┬──[ 68 Ω ]── GND
-                   │
-                   └──────────► REF          (0.21 V, ~64 Ω source)
-```
-
-Decoupling, as close to the chip as it will go:
-
-```
-   VCC ──┬── 3V3
-      [ 100 nF ]
-         │
-        GND
-```
+#### What goes between, and why
 
 **The cell has four wires, but only two enter the amplifier.** This is the difference that trips up
 everyone coming from the HX711. The HX711 excites the bridge itself; an instrumentation amplifier
@@ -83,8 +56,6 @@ and only the signal pair (green and white) reaches `IN+`/`IN-`.
 Feeding the bridge from the same `3V3` that the ADC uses as its reference is deliberate: when the
 supply drifts, signal and reference drift together and most of the error cancels. The RP2040-Zero
 has no separate `ADC_VREF` pin, so this is free accuracy.
-
-#### What goes between, and why
 
 | Part | Where | Why it is there |
 |---|---|---|
@@ -102,6 +73,25 @@ which is low enough that the amplifier's noise rejection barely notices.
 
 Check your module first: some CJMCU-333 boards expose `REF` on a pin, some tie it to `GND`, and
 some already have an offset trimmer. If yours has the trimmer, use it and skip the divider.
+
+#### Can it work without these parts?
+
+**Yes — start without any of them.** The cell, the module and four wires are enough to see the axis
+move. The module already carries the gain trimmer and, on most boards, its own supply capacitor.
+Wire it bare, watch the raw value in DriveLab Studio, and add parts **against a symptom you actually
+see** rather than on faith.
+
+| Part | Can you skip it? | What you give up |
+|---|---|---|
+| 1 kΩ + 100 nF | Yes, to begin with | The reading jitters — the last digits dance with your foot off the pedal. You also lose the only thing limiting current into the ADC pin if the output ever goes above 3.3 V. |
+| REF divider | Maybe — it is a coin flip | If the cell's resting imbalance happens to push the output up, nothing happens and you never need it. If it pushes down, the output sits against zero and the first part of the pedal travel is dead. |
+| 100 nF decoupling | Usually | Most CJMCU boards already have one next to the chip. Check yours before adding a second. |
+| Gain resistor | No | But it is the trimmer already fitted to the module, so you are not buying anything. |
+
+The order that wastes least: wire it bare → set the gain with the trimmer → if the start of travel
+is dead, add the REF divider → if the value is restless at rest, add the RC. Three of the four parts
+cost under a real each, so buying them up front is also fine; the point is that none of them block
+you from testing today.
 
 #### Choosing the gain resistor
 
@@ -240,36 +230,9 @@ quatro pinos que sabem medir tensão.
 É o caminho que vale a pena no **freio**, onde a velocidade de resposta importa. Recomendado para o
 freio; para embreagem e acelerador, potenciômetro ou Hall bastam — eles medem curso, não força.
 
-```
-   CÉLULA                  INA333                    RP2040-Zero
-   (4 fios)          (só amplifica)                  (converte)
+<p align="center"><img src="screenshots/pedal-wiring-ina333.svg" width="100%" alt="Célula de carga para INA333 para RP2040-Zero: os quatro fios da célula, o resistor de 1 kΩ em série e os 100 nF para o terra na saída, mais o divisor do REF e o desacoplamento da alimentação."></p>
 
-   verm.  ────────────────────────────────────────────► 3V3
-   preto  ────────────────────────────────────────────► GND
-   verde  ──────────► IN+ ┐
-   branco ──────────► IN- ┴──► OUT ──[ 1 kΩ ]──┬──────► 26 / 27 / 28
-                                               │
-                     VCC ─────────► 3V3     [ 100 nF ]
-                     GND ─────────► GND        │
-                     REF ─────────► ~0,2 V     └──────► GND
-```
-
-O divisor do REF, quando o seu módulo amarra o `REF` no `GND`:
-
-```
-   3V3 ──[ 1 kΩ ]──┬──[ 68 Ω ]── GND
-                   │
-                   └──────────► REF          (0,21 V, ~64 Ω de impedância)
-```
-
-Desacoplamento, o mais perto do chip que der:
-
-```
-   VCC ──┬── 3V3
-      [ 100 nF ]
-         │
-        GND
-```
+#### O que vai no meio, e por quê
 
 **A célula tem quatro fios, mas só dois entram no amplificador.** É a diferença que confunde todo
 mundo que vem do HX711. O HX711 alimenta a ponte sozinho; o amplificador de instrumentação não. Os
@@ -279,8 +242,6 @@ sinal (verde e branco) chega no `IN+`/`IN-`.
 Alimentar a ponte pelo mesmo `3V3` que o ADC usa como referência é de propósito: quando a tensão
 oscila, sinal e referência oscilam juntos e a maior parte do erro se cancela. A RP2040-Zero não tem
 pino `ADC_VREF` separado, então isso é precisão de graça.
-
-#### O que vai no meio, e por quê
 
 | Peça | Onde | Por que está ali |
 |---|---|---|
@@ -298,6 +259,25 @@ impedância, baixo o bastante para a rejeição de ruído do amplificador quase 
 
 Confira o seu módulo antes: alguns CJMCU-333 expõem o `REF` num pino, alguns amarram no `GND`, e
 alguns já trazem um trimpot de offset. Se o seu tem o trimpot, use ele e pule o divisor.
+
+#### Dá para funcionar sem essas peças?
+
+**Dá — comece sem nenhuma delas.** A célula, o módulo e quatro fios já bastam para ver o eixo se
+mexer. O módulo já traz o trimpot de ganho e, na maioria das placas, o próprio capacitor de
+alimentação. Ligue pelado, olhe o valor bruto no DriveLab Studio, e acrescente peça **contra um
+sintoma que você viu**, não por fé.
+
+| Peça | Dá para pular? | O que você abre mão |
+|---|---|---|
+| 1 kΩ + 100 nF | Sim, para começar | A leitura fica inquieta — os últimos dígitos dançam com o pé fora do pedal. E some a única coisa que limita corrente no pino do ADC se a saída passar de 3,3 V. |
+| Divisor do REF | Talvez — é cara ou coroa | Se o desequilíbrio de repouso da célula empurrar a saída para cima, não acontece nada e você nunca precisa dele. Se empurrar para baixo, a saída encosta no zero e o começo do curso do pedal fica morto. |
+| 100 nF de desacoplamento | Em geral sim | A maioria das placas CJMCU já tem um ao lado do chip. Confira a sua antes de pôr um segundo. |
+| Resistor de ganho | Não | Mas ele é o trimpot que já veio no módulo, então você não vai comprar nada. |
+
+A ordem que desperdiça menos: ligar pelado → acertar o ganho no trimpot → se o começo do curso
+estiver morto, pôr o divisor do REF → se o valor ficar inquieto em repouso, pôr o RC. Três das
+quatro peças custam menos de um real cada, então comprar tudo de uma vez também serve; o ponto é que
+nenhuma delas impede você de testar hoje.
 
 #### Escolhendo o resistor de ganho
 
