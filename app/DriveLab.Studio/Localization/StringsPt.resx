@@ -287,7 +287,7 @@
   <data name="SettingHelp_ThermalPeakSeconds" xml:space="preserve"><value>Por quantos segundos o pico de corrente e tolerado antes de recuar. Ex.: 10 s. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
   <data name="SettingHelp_FetTempLimitC" xml:space="preserve"><value>Temperatura em que a placa COMECA a reduzir a forca para se proteger; 20 graus acima ela corta de vez. Ex.: 85 graus, o padrao — reduz a partir de 85, zera em 105. So vale depois de reiniciar a base.</value></data>
   <data name="SettingHelp_MotorTempLimitC" xml:space="preserve"><value>Temperatura maxima do motor antes de desarmar. Ex.: 105 graus. Exige o sensor NTC fiado. [ATENCAO] Este controle ainda nao tem efeito nesta versao do firmware.</value></data>
-  <data name="SettingHelp_MotorEnable" xml:space="preserve"><value>Trava de seguranca do bring-up: a base sobe DESARMADA e so responde a comando com isto ligado. Ex.: ao gravar o firmware pela primeira vez, confira placa/encoder/motor nos campos abaixo, ative aqui, e se algo sair errado desative — o motor desarma na hora.</value></data>
+  <data name="SettingHelp_MotorEnable" xml:space="preserve"><value>Sua permissão para a base armar — não o estado do motor. Ela sobe desarmada e só aplica força com isto ligado. Desligar desarma na hora, e serve como parada de emergência. Ex.: depois que a guarda de curso dispara, isto continua LIGADO e o motor fica PARADO — a permissão não foi retirada, a proteção é que agiu. Quem mostra o estado real é a bolinha no painel.</value></data>
   <data name="SettingHelp_CurrentLim" xml:space="preserve"><value>Corrente maxima que o firmware deixa chegar as bobinas. Descreve o SEU motor: mais alto que ele aguenta e calor, mais baixo e torque desperdicado. Ex.: 25 A no motor de hoverboard da bancada. Serve tambem de teto para a corrente de calibracao.</value></data>
   <data name="Telemetry_Clipping" xml:space="preserve"><value>Clipping %</value></data>
   <data name="Curve_Title" xml:space="preserve"><value>Curva de resposta da força</value></data>
@@ -360,4 +360,5 @@ Esta curva vale DEPOIS da linearidade e ANTES dos limites de torque e de corrent
   <data name="BaseState_Armed" xml:space="preserve"><value>Base armada — o motor pode aplicar força a qualquer momento</value></data>
   <data name="BaseState_Disarmed" xml:space="preserve"><value>Base conectada, motor desligado — sem força</value></data>
   <data name="BaseState_Offline" xml:space="preserve"><value>Nenhuma base conectada</value></data>
+  <data name="Setting_MotorEnable" xml:space="preserve"><value>Permitir armar o motor</value></data>
 </root>

@@ -110,8 +110,13 @@ public static class BaseSettingsSchema
             "Liga o contator que isola as fases do motor com a base desligada. Protege contra a tensão que o motor gera ao ser girado sem energia."),
         new(BaseSettingId.PowerButtonEnable, "power_button_enable", "Soft-power por botão (0=como hoje · 1=botão tap-liga/segura-desliga)", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0,
             "Liga o botão de energia: toque liga, segurar desliga. Precisa do hardware do contator instalado."),
-        new(BaseSettingId.MotorEnable, "motor_enable", "Ativar motor", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0,
-            "Trava de bring-up: a base sobe com o motor desligado e só aplica força depois que você liga aqui. Desligar desarma na hora, e serve como parada de emergência."),
+        // ⚠️ O NOME É "PERMITIR", NÃO "ATIVAR", e a diferença não é preciosismo. Isto é uma AUTORIZAÇÃO
+        // que fica salva, não o estado do motor. Quando uma proteção desarma — curso excedido, por
+        // exemplo —, este campo continua ligado e o motor fica parado: a tela de Hardware dizia
+        // "Ativar motor: 1" enquanto o painel mostrava desarmado, e as duas estavam certas. Duas partes
+        // do app respondendo coisas opostas à mesma pergunta aparente é pior que uma estar errada.
+        new(BaseSettingId.MotorEnable, "motor_enable", "Permitir armar o motor", SettingType.UInt8, 0, 1, "", SettingTab.Hardware, 0,
+            "Sua permissão para a base armar — não o estado do motor. Ela sobe desarmada e só aplica força com isto ligado. Desligar desarma na hora, e serve como parada de emergência. Ex.: depois que a guarda de curso dispara, isto continua LIGADO e o motor fica PARADO — a permissão não foi retirada, a proteção é que agiu. Quem mostra o estado real é a bolinha no painel."),
         new(BaseSettingId.EncoderInterface, "encoder_interface", "Tecnologia do encoder", SettingType.UInt8, 0, 2, "", SettingTab.Hardware, 0,
             "Como você ligou o sensor. ABZ usa os fios A, B e Z no conector ABZ; SSI e SPI usam o conector SPI da placa. Só aparecem as opções que o SEU sensor oferece."),
         new(BaseSettingId.CurrentLim, "current_lim", "Limite de corrente do motor", SettingType.UInt8, 5, 40, "A", SettingTab.Hardware, 25,

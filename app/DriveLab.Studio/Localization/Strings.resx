@@ -288,7 +288,7 @@
   <data name="SettingHelp_ThermalPeakSeconds" xml:space="preserve"><value>How many seconds peak current is tolerated before backing off. E.g. 10 s. [NOTE] This control has no effect in the current firmware yet.</value></data>
   <data name="SettingHelp_FetTempLimitC" xml:space="preserve"><value>Temperature at which the board STARTS reducing force to protect itself; 20 degrees above that it cuts out completely. E.g. 85 degrees, the default — derating from 85, zero at 105. Only takes effect after the base reboots.</value></data>
   <data name="SettingHelp_MotorTempLimitC" xml:space="preserve"><value>Maximum motor temperature before disarming. E.g. 105 degrees. Requires the NTC sensor wired. [NOTE] This control has no effect in the current firmware yet.</value></data>
-  <data name="SettingHelp_MotorEnable" xml:space="preserve"><value>Bring-up safety latch: the base starts DISARMED and only responds to commands with this on. E.g. after flashing for the first time, check board/encoder/motor in the fields below, enable here, and if anything goes wrong turn it off — the motor disarms immediately.</value></data>
+  <data name="SettingHelp_MotorEnable" xml:space="preserve"><value>Your permission for the base to arm — not the motor's state. It powers up disarmed and only applies force with this on. Turning it off disarms immediately, and works as an emergency stop. E.g. after the travel guard trips, this stays ON and the motor stays STOPPED: the permission was never withdrawn, the protection acted. The dot on the dashboard is what shows the real state.</value></data>
   <data name="SettingHelp_CurrentLim" xml:space="preserve"><value>Maximum current the firmware lets reach the coils. It describes YOUR motor: higher than it can take means heat, lower means wasted torque. E.g. 25 A on the bench hoverboard motor. It also caps the calibration current.</value></data>
   <data name="Telemetry_Clipping" xml:space="preserve"><value>Clipping %</value></data>
   <data name="Curve_Title" xml:space="preserve"><value>Force response curve</value></data>
@@ -361,4 +361,5 @@ This curve applies AFTER linearity and BEFORE the torque and current limits — 
   <data name="BaseState_Armed" xml:space="preserve"><value>Wheelbase armed — the motor can apply force at any moment</value></data>
   <data name="BaseState_Disarmed" xml:space="preserve"><value>Wheelbase connected, motor off — no force</value></data>
   <data name="BaseState_Offline" xml:space="preserve"><value>No wheelbase connected</value></data>
+  <data name="Setting_MotorEnable" xml:space="preserve"><value>Allow the motor to arm</value></data>
 </root>
