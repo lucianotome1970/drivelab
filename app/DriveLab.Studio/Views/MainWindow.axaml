@@ -137,7 +137,31 @@
                     </StackPanel>
 
                     <!-- Sem status global de conexão: cada módulo (base, pedais, freio de mão, aro) conecta seu próprio dispositivo. -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+
+                        <!-- ESTADO DA BASE — a pergunta "o motor está ligado?" decide se é seguro
+                             encostar no volante, e a resposta não pode depender de qual aba está
+                             aberta. Por isso fica aqui, no cabeçalho, e não numa página.
+
+                             ⚠️ TRÊS estados, não dois: verde = armada; vermelho = conectada e
+                             desarmada; cinza = sem base. Pintar "sem base" de vermelho ensinaria a
+                             ignorar o vermelho, que é justamente o que não pode acontecer.
+
+                             O anel externo existe para quem não distingue verde de vermelho: o
+                             estado armado tem halo, os outros não — a forma carrega a informação
+                             junto com a cor. -->
+                        <Grid VerticalAlignment="Center" Margin="0,0,6,0" Width="22" Height="22"
+                              ToolTip.Tip="{Binding #Root.((vm:MainWindowViewModel)DataContext).EstadoDaBaseTooltip}">
+                            <Ellipse Width="22" Height="22" Fill="#3327C93F"
+                                     IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).BaseArmada}" />
+                            <Ellipse Width="12" Height="12" Fill="#27C93F"
+                                     IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).BaseArmada}" />
+                            <Ellipse Width="12" Height="12" Fill="#D63A3A"
+                                     IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).BaseDesarmada}" />
+                            <Ellipse Width="12" Height="12" Fill="#5A5A5A"
+                                     IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).BaseAusente}" />
+                        </Grid>
+
                         <Button Content="{loc:Translate Test_Button}" Click="OpenTest_Click" ToolTip.Tip="{loc:Translate Test_Tooltip}"
                                 IsVisible="{Binding #Root.((vm:MainWindowViewModel)DataContext).SimulatorMode}" />
                         <!-- Conectar/Desconectar manuais só no simulador; no modo real a conexão é automática (hotplug USB). -->

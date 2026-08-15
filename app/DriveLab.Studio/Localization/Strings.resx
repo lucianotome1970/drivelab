@@ -358,4 +358,7 @@ This curve applies AFTER linearity and BEFORE the torque and current limits — 
   <data name="ForceTest_Encoder" xml:space="preserve"><value>Encoder alignment (magnet centring)</value></data>
   <data name="ForceTest_Encoder_Desc" xml:space="preserve"><value>Turns the motor slowly under open loop and compares what the encoder reported with where the rotor actually was — the motor's own iron is the ruler, so the answer does not depend on the sensor being right. It then converts the error into what it costs you: how much force is lost and how much extra heat the motor makes. Run it when the wheel feels weaker than it should, shudders, or the motor runs hot with no error on screen. It does not change your calibration.</value></data>
   <data name="ForceTest_Encoder_Prep" xml:space="preserve"><value>Leave the motor OFF for this one — untick "Enable motor". Unlike the other tests, here the base drives the motor itself, and it needs the control loop out of the way. The power supply must still be on: USB alone cannot turn the motor. The wheel will rotate slowly on its own for about half a minute, so keep hands clear and make sure the rim cabling can take a full turn.</value></data>
+  <data name="BaseState_Armed" xml:space="preserve"><value>Wheelbase armed — the motor can apply force at any moment</value></data>
+  <data name="BaseState_Disarmed" xml:space="preserve"><value>Wheelbase connected, motor off — no force</value></data>
+  <data name="BaseState_Offline" xml:space="preserve"><value>No wheelbase connected</value></data>
 </root>

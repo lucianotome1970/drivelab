@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DriveLab.Core.Protocol;
 using DriveLab.Studio.Services;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.ViewModels;
 
@@ -53,6 +54,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // atualizar um e esquecer o outro. Até 2026-08-13 os dois números nem batiam entre si (app
         // 0.1.5, firmware 0.4.0, release 0.2.3) e nenhum servia para decidir nada.
         session.StateReceived += AoReceberEstadoParaVersao;
+        // Sem isto a bolinha ficaria verde para sempre depois que a base sumisse: telemetria que
+        // parou de chegar não gera evento nenhum, e o último valor recebido continuaria valendo.
+        session.Disconnected += (_, _) => { BaseOnline = false; BaseArmed = false; };
     }
 
     /// <summary>Versão do app, do assembly (`&lt;Version&gt;` no csproj); sem o sufixo "+hash".</summary>
@@ -63,6 +67,35 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Versão do firmware da base, vinda da telemetria. "—" enquanto não houver base.</summary>
     [ObservableProperty] private string _baseVersion = "—";
+
+    // ── ESTADO DA BASE, sempre à vista ──────────────────────────────────────────────────────────
+    // Fica no cabeçalho e não numa aba: "o motor está ligado?" é a pergunta que decide se encostar
+    // no volante é seguro, e ela não pode depender de qual aba está aberta.
+    //
+    // ⚠️ SÃO TRÊS ESTADOS, não dois. "Desarmada" e "não tem base" são situações diferentes — uma é
+    // um volante parado que pode ganhar força a qualquer momento, a outra é um app sem hardware
+    // nenhum. Pintar as duas de vermelho ensinaria a ignorar o vermelho.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BaseArmada))]
+    [NotifyPropertyChangedFor(nameof(BaseDesarmada))]
+    [NotifyPropertyChangedFor(nameof(BaseAusente))]
+    [NotifyPropertyChangedFor(nameof(EstadoDaBaseTooltip))]
+    private bool _baseOnline;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BaseArmada))]
+    [NotifyPropertyChangedFor(nameof(BaseDesarmada))]
+    [NotifyPropertyChangedFor(nameof(EstadoDaBaseTooltip))]
+    private bool _baseArmed;
+
+    public bool BaseArmada    => BaseOnline && BaseArmed;
+    public bool BaseDesarmada => BaseOnline && !BaseArmed;
+    public bool BaseAusente   => !BaseOnline;
+
+    public string EstadoDaBaseTooltip =>
+        !BaseOnline ? L.Get("BaseState_Offline")
+        : BaseArmed ? L.Get("BaseState_Armed")
+                    : L.Get("BaseState_Disarmed");
 
     /// <summary>True quando app e base divergem — é o único estado que pede ação de quem usa.</summary>
     [ObservableProperty] private bool _versionMismatch;
@@ -89,6 +122,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void AoReceberEstadoParaVersao(object? s, BaseState e)
     {
+        // ⚠️ ANTES do early-return abaixo. Ele existe para não repetir trabalho quando a versão não
+        // mudou — que é quase sempre —, e o estado do motor muda o tempo todo. Atualizar depois dele
+        // deixaria a bolinha congelada no primeiro valor recebido.
+        BaseOnline = true;
+        BaseArmed  = e.Flags.HasFlag(BaseFlags.ForceEnabled);
+
         var fw = $"{e.Firmware.Major}.{e.Firmware.Minor}.{e.Firmware.Patch}";
         if (fw == BaseVersion) return;
         BaseVersion = fw;

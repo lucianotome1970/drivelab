@@ -357,4 +357,7 @@ Esta curva vale DEPOIS da linearidade e ANTES dos limites de torque e de corrent
   <data name="ForceTest_Encoder" xml:space="preserve"><value>Alinhamento do encoder (centro do ímã)</value></data>
   <data name="ForceTest_Encoder_Desc" xml:space="preserve"><value>Gira o motor devagar em malha aberta e compara o que o encoder informou com onde o rotor realmente estava — a régua é o próprio ferro do motor, então a resposta não depende de o sensor estar certo. Depois converte o erro no que ele custa: quanta força se perde e quanto calor a mais o motor gera. Rode quando o volante parecer mais fraco do que deveria, tremer, ou o motor esquentar sem erro nenhum na tela. Não altera a sua calibração.</value></data>
   <data name="ForceTest_Encoder_Prep" xml:space="preserve"><value>Deixe o motor DESLIGADO neste — desmarque "Ativar motor". Ao contrário dos outros testes, aqui é a base que gira o motor, e ela precisa do laço de controle fora do caminho. A fonte tem de continuar ligada: só o USB não gira o motor. O volante vai girar sozinho, devagar, por cerca de meio minuto — mantenha as mãos longe e confira se o cabo do aro aguenta uma volta inteira.</value></data>
+  <data name="BaseState_Armed" xml:space="preserve"><value>Base armada — o motor pode aplicar força a qualquer momento</value></data>
+  <data name="BaseState_Disarmed" xml:space="preserve"><value>Base conectada, motor desligado — sem força</value></data>
+  <data name="BaseState_Offline" xml:space="preserve"><value>Nenhuma base conectada</value></data>
 </root>
