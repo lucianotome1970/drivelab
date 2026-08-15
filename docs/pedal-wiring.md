@@ -120,14 +120,7 @@ bit of noise in the room; 3 V collects none.
 
 ### Path B — load cell + HX711
 
-```
-   LOAD CELL                    HX711 module              RP2040-Zero
-  ┌─────────┐  red   ─────────► E+                 VCC ──── 3V3
-  │         │  green ─────────► A+                 GND ──── GND
-  │ bridge  │  white ─────────► A-                 DT  ────► GP2 / GP4 / GP6
-  │         │  black ─────────► E-                 SCK ◄──── GP3 / GP5 / GP7
-  └─────────┘
-```
+<p align="center"><img src="screenshots/pedal-wiring-hx711-pot.svg" width="100%" alt="Load cell wired into an HX711 module talking to the RP2040-Zero over DT and SCK, and a potentiometer whose wiper goes straight to an ADC pin."></p>
 
 **Nothing goes between.** The HX711 amplifies and converts on the spot and hands the board a number
 over two digital wires — a home-grown protocol, not I²C or SPI: the board pulses `SCK` 25 times and
@@ -148,11 +141,7 @@ module lets you jumper the fast mode. Even 80 Hz will be the slowest link in the
 
 ### Path C — potentiometer or Hall
 
-```
-   3V3 ──── one end
-                       wiper ────► board pin 26 / 27 / 28
-   GND ──── other end
-```
+Ends to `3V3` and `GND`, wiper to the ADC pin — the lower panel of the diagram in Path B.
 
 Nothing in between. A potentiometer measures position, its output is volts already, and it does not
 drift, so it needs neither amplifier nor tare.
@@ -306,14 +295,7 @@ cabo recolhem todo o ruído do ambiente; 3 V não recolhem nada.
 
 ### Caminho B — célula de carga + HX711
 
-```
-   CÉLULA                       módulo HX711              RP2040-Zero
-  ┌─────────┐  verm.  ────────► E+                 VCC ──── 3V3
-  │         │  verde  ────────► A+                 GND ──── GND
-  │  ponte  │  branco ────────► A-                 DT  ────► GP2 / GP4 / GP6
-  │         │  preto  ────────► E-                 SCK ◄──── GP3 / GP5 / GP7
-  └─────────┘
-```
+<p align="center"><img src="screenshots/pedal-wiring-hx711-pot.svg" width="100%" alt="Load cell wired into an HX711 module talking to the RP2040-Zero over DT and SCK, and a potentiometer whose wiper goes straight to an ADC pin."></p>
 
 **Não vai nada no meio.** O HX711 amplifica e converte ali mesmo e entrega um número para a placa
 por dois fios digitais — um protocolo caseiro, não é I²C nem SPI: a placa pulsa o `SCK` 25 vezes e o
@@ -335,11 +317,7 @@ pedaleira.
 
 ### Caminho C — potenciômetro ou Hall
 
-```
-   3V3 ──── uma ponta
-                       cursor ────► pino 26 / 27 / 28 da placa
-   GND ──── outra ponta
-```
+Pontas em `3V3` e `GND`, cursor no pino do ADC — o painel de baixo do diagrama do Caminho B.
 
 Nada no meio. Potenciômetro mede posição, a saída dele já é tensão, e ele não deriva — então não
 precisa nem de amplificador nem de tara.

@@ -227,14 +227,7 @@ Each device is independent (its own board + USB). Full parts list + wiring/pinou
 
 The game does **not** send telemetry — it sends the **already-computed force**:
 
-```
-Game physics (ACC/iRacing)  →  one torque value for the wheel  (~360–400 Hz)
-        ↓  DirectInput / HID PID  (Windows)
-        ↓  USB
-Firmware (TinyUSB HID PID parser → FfbEngine.step)  →  torque
-        ↓  FOC (ODrive)
-Motor torque  →  you feel it
-```
+<p align="center"><img src="docs/screenshots/ffb-chain.svg" width="100%" alt="The force feedback chain: the game computes one torque value, sends it over DirectInput HID PID and USB, the firmware parses it into FfbEngine.step, and FOC turns it into motor torque."></p>
 
 Condition effects (spring/damper) are computed on the device from the **encoder** position/velocity; your Studio settings (gain, damper, filters) shape the result before it reaches the motor.
 
@@ -508,14 +501,7 @@ Cada dispositivo é independente (placa e USB próprios). Lista completa de peç
 
 O jogo **não** manda telemetria — ele manda a **força já calculada**:
 
-```
-Física do jogo (ACC/iRacing)  →  um valor de torque pro volante  (~360–400 Hz)
-        ↓  DirectInput / HID PID  (Windows)
-        ↓  USB
-Firmware (parser HID PID do TinyUSB → FfbEngine.step)  →  torque
-        ↓  FOC (ODrive)
-Torque no motor  →  você sente
-```
+<p align="center"><img src="docs/screenshots/ffb-chain.svg" width="100%" alt="The force feedback chain: the game computes one torque value, sends it over DirectInput HID PID and USB, the firmware parses it into FfbEngine.step, and FOC turns it into motor torque."></p>
 
 Os efeitos de condição (mola/damper) são calculados dentro do dispositivo a partir da posição e da velocidade do **encoder**; os seus ajustes no Studio (ganho, damper, filtros) moldam o resultado antes de ele chegar ao motor.
 

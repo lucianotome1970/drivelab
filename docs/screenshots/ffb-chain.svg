@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 492" width="940" height="492" role="img" aria-label="Force feedback chain: the game computes one torque value at 360 to 400 Hz, sends it over DirectInput HID PID and USB, the firmware parses it into FfbEngine.step, and FOC turns it into motor torque you feel.">
+  <rect x="0" y="0" width="940" height="492" fill="#ffffff"/>
+  <g font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+
+    <text x="24" y="28" font-size="17" font-weight="700" fill="#1b1f24">The force feedback chain / A cadeia do force feedback</text>
+    <text x="24" y="47" font-size="12.5" fill="#57606a">The game does not send telemetry — it sends the already-computed force · O jogo não manda telemetria — manda a força já calculada</text>
+
+    <rect x="16" y="60" width="908" height="356" rx="10" fill="#ffffff" stroke="#d8dde3" stroke-width="1.5"/>
+
+    <!-- box 1 -->
+    <rect x="260" y="92" width="420" height="64" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="470" y="114" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Game physics (ACC / iRacing)</text>
+    <text x="470" y="131" font-size="11.5" fill="#57606a" text-anchor="middle">Física do jogo (ACC / iRacing)</text>
+    <text x="470" y="148" font-size="11" fill="#0969da" text-anchor="middle">one torque value · um valor de torque · ~360–400 Hz</text>
+
+    <!-- arrow 1 -->
+    <path d="M470,156 V198" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M470,206 l-5,-9 h10 z" fill="#24292f"/>
+    <text x="492" y="174" font-size="12" font-weight="600" fill="#1b1f24">DirectInput / HID PID (Windows)</text>
+    <text x="492" y="190" font-size="11.5" fill="#57606a">USB</text>
+
+    <!-- box 2 -->
+    <rect x="260" y="214" width="420" height="64" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="470" y="236" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Firmware · HID PID parser → FfbEngine.step</text>
+    <text x="470" y="253" font-size="11.5" fill="#57606a" text-anchor="middle">Firmware · parser HID PID → FfbEngine.step</text>
+    <text x="470" y="270" font-size="11" fill="#0969da" text-anchor="middle">no plugin, no telemetry · sem plugin, sem telemetria</text>
+
+    <!-- arrow 2 -->
+    <path d="M470,278 V320" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M470,328 l-5,-9 h10 z" fill="#24292f"/>
+    <text x="492" y="296" font-size="12" font-weight="600" fill="#1b1f24">FOC (ODrive)</text>
+    <text x="492" y="312" font-size="11.5" fill="#57606a">controle orientado a campo</text>
+
+    <!-- box 3 -->
+    <rect x="260" y="336" width="420" height="54" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="470" y="358" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Motor torque — you feel it</text>
+    <text x="470" y="375" font-size="11.5" fill="#57606a" text-anchor="middle">Torque do motor — você sente</text>
+
+    <text x="24" y="444" font-size="11" fill="#57606a">This is why the wheel needs no game plugin: it presents itself as a DirectInput force feedback device, like any commercial wheel.</text>
+    <text x="24" y="462" font-size="11" fill="#57606a">É por isso que o volante não precisa de plugin: ele se apresenta como um dispositivo DirectInput de force feedback, igual a qualquer volante comercial.</text>
+  </g>
+</svg>

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 542" width="940" height="542" role="img" aria-label="The two paths that need nothing between the boards: a load cell wired into an HX711 module, which talks to the RP2040-Zero over DT and SCK, and a potentiometer whose wiper goes straight to an ADC pin.">
+  <rect x="0" y="0" width="940" height="542" fill="#ffffff"/>
+  <g font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+
+    <text x="24" y="28" font-size="17" font-weight="700" fill="#1b1f24">The paths with nothing in between / Os caminhos sem nada no meio</text>
+    <text x="24" y="47" font-size="12.5" fill="#57606a">Unlike the instrumentation amplifier, these two need no extra components · Diferente do amplificador de instrumentação, estes dois não precisam de peça extra</text>
+
+    <!-- ============ PANEL — HX711 ============ -->
+    <rect x="16" y="60" width="908" height="260" rx="10" fill="#ffffff" stroke="#d8dde3" stroke-width="1.5"/>
+    <text x="32" y="86" font-size="13" font-weight="700" fill="#1b1f24">Load cell + HX711 — selected as HX711 in the app · selecionado como HX711 no app</text>
+
+    <!-- load cell -->
+    <text x="109" y="122" font-size="12.5" font-weight="700" fill="#1b1f24" text-anchor="middle">LOAD CELL / CÉLULA</text>
+    <rect x="44" y="132" width="130" height="146" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="109" y="200" font-size="11.5" fill="#57606a" text-anchor="middle">bridge / ponte</text>
+    <text x="109" y="218" font-size="11.5" fill="#57606a" text-anchor="middle">2 mV/V</text>
+
+    <!-- all four wires go INTO the module -->
+    <path d="M174,160 H300" fill="none" stroke="#cf222e" stroke-width="2.2"/>
+    <path d="M174,192 H300" fill="none" stroke="#1a7f37" stroke-width="2.2"/>
+    <path d="M174,224 H300" fill="none" stroke="#8c959f" stroke-width="2.2"/>
+    <path d="M174,256 H300" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <text x="182" y="154" font-size="10.5" fill="#cf222e">red / verm.</text>
+    <text x="182" y="186" font-size="10.5" fill="#1a7f37">green / verde</text>
+    <text x="182" y="218" font-size="10.5" fill="#6e7781">white / branco</text>
+    <text x="182" y="250" font-size="10.5" fill="#24292f">black / preto</text>
+
+    <!-- HX711 -->
+    <rect x="300" y="132" width="210" height="146" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="405" y="120" font-size="12.5" font-weight="700" fill="#1b1f24" text-anchor="middle">HX711</text>
+    <text x="310" y="164" font-size="12" fill="#1b1f24">E+</text>
+    <text x="310" y="196" font-size="12" fill="#1b1f24">A+</text>
+    <text x="310" y="228" font-size="12" fill="#1b1f24">A−</text>
+    <text x="310" y="260" font-size="12" fill="#1b1f24">E−</text>
+    <text x="500" y="164" font-size="12" fill="#1b1f24" text-anchor="end">VCC</text>
+    <text x="500" y="196" font-size="12" fill="#1b1f24" text-anchor="end">GND</text>
+    <text x="500" y="228" font-size="12" fill="#1b1f24" text-anchor="end">DT</text>
+    <text x="500" y="260" font-size="12" fill="#1b1f24" text-anchor="end">SCK</text>
+    <text x="405" y="296" font-size="10.5" fill="#57606a" text-anchor="middle">amplifies AND converts · amplifica E converte</text>
+
+    <!-- module to board -->
+    <path d="M510,160 H740" fill="none" stroke="#cf222e" stroke-width="2.2"/>
+    <path d="M510,192 H740" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M510,224 H732" fill="none" stroke="#0969da" stroke-width="2.2"/>
+    <path d="M740,224 l-9,-5 v10 z" fill="#0969da"/>
+    <path d="M740,256 H518" fill="none" stroke="#0969da" stroke-width="2.2"/>
+    <path d="M510,256 l9,-5 v10 z" fill="#0969da"/>
+    <text x="625" y="218" font-size="10.5" fill="#0969da" text-anchor="middle">data · dados</text>
+    <text x="625" y="274" font-size="10.5" fill="#0969da" text-anchor="middle">clock · relógio</text>
+
+    <!-- board -->
+    <text x="820" y="120" font-size="12.5" font-weight="700" fill="#1b1f24" text-anchor="middle">RP2040-Zero</text>
+    <rect x="740" y="132" width="160" height="146" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="750" y="164" font-size="12" fill="#1b1f24">3V3</text>
+    <text x="750" y="196" font-size="12" fill="#1b1f24">GND</text>
+    <text x="750" y="228" font-size="12" fill="#1b1f24">GP2 / GP4 / GP6</text>
+    <text x="750" y="260" font-size="12" fill="#1b1f24">GP3 / GP5 / GP7</text>
+
+    <!-- ============ PANEL — pot / Hall ============ -->
+    <rect x="16" y="336" width="908" height="142" rx="10" fill="#ffffff" stroke="#d8dde3" stroke-width="1.5"/>
+    <text x="32" y="362" font-size="13" font-weight="700" fill="#1b1f24">Potentiometer or Hall — selected as Pot or Hall · selecionado como Pot ou Hall</text>
+
+    <path d="M170,398 H240" fill="none" stroke="#cf222e" stroke-width="2.2"/>
+    <text x="164" y="402" font-size="11.5" font-weight="600" fill="#cf222e" text-anchor="end">3V3</text>
+    <rect x="240" y="382" width="150" height="32" rx="3" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <path d="M390,398 H460" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <text x="468" y="402" font-size="11.5" font-weight="600" fill="#24292f">GND</text>
+
+    <path d="M315,440 V422" fill="none" stroke="#0969da" stroke-width="2.2"/>
+    <path d="M315,414 l-5,9 h10 z" fill="#0969da"/>
+    <path d="M315,440 H612" fill="none" stroke="#0969da" stroke-width="2.2"/>
+    <path d="M620,440 l-9,-5 v10 z" fill="#0969da"/>
+    <text x="325" y="458" font-size="11" fill="#0969da">wiper · cursor</text>
+    <text x="628" y="444" font-size="12" font-weight="600" fill="#1b1f24">board pin 26 / 27 / 28  (A0 / A1 / A2)</text>
+
+    <text x="628" y="462" font-size="10.5" fill="#57606a">no amplifier, no tare — position does not drift</text>
+    <text x="628" y="476" font-size="10.5" fill="#57606a">sem amplificador, sem tara — posição não deriva</text>
+
+    <text x="24" y="504" font-size="11" fill="#57606a">The HX711 excites the bridge itself, so all four cell wires enter the module — that is what differs from the instrumentation amplifier.</text>
+    <text x="24" y="522" font-size="11" fill="#57606a">O HX711 alimenta a ponte sozinho, então os quatro fios da célula entram no módulo — é isso que muda em relação ao amplificador de instrumentação.</text>
+  </g>
+</svg>

@@ -25,23 +25,7 @@
 It receives a **torque command**, continuously **measures** position and current, computes the
 action needed, and corrects the result thousands of times per second.
 
-```
-Game / USB HID
-      │
-      ▼  "I want 6 N·m"
-Microcontroller + FOC algorithm
-      │            ▲
-      ▼            │
-PWM → Driver → MOSFETs ◄── current sensors
-      │
-      ▼
-BLDC motor ◄────── encoder (position)
-      │
-      ▼
-Torque at the wheel
-
-Regen energy → DC bus → brake resistor
-```
+<p align="center"><img src="screenshots/how-it-works.svg" width="100%" alt="How a direct drive wheel works: the game sends a force over USB HID, the microcontroller runs FOC, PWM drives the MOSFETs and the BLDC motor, and current sensors plus the encoder close the loop."></p>
 
 **The 4-block mental model** (great for debugging — you isolate the block, not guess):
 
@@ -218,23 +202,7 @@ electrical angle · FFB clipping/limit in the pipeline.
 Ele recebe um **comando de torque**, **mede** continuamente a posição e a corrente, calcula a ação
 necessária e corrige o resultado milhares de vezes por segundo.
 
-```
-Jogo / USB HID
-      │
-      ▼  "Quero 6 N·m"
-Microcontrolador + algoritmo FOC
-      │            ▲
-      ▼            │
-PWM → Driver → MOSFETs ◄── sensores de corrente
-      │
-      ▼
-Motor BLDC ◄────── encoder (posição)
-      │
-      ▼
-Torque no volante
-
-Energia regenerativa → barramento DC → resistor de frenagem
-```
+<p align="center"><img src="screenshots/how-it-works.svg" width="100%" alt="How a direct drive wheel works: the game sends a force over USB HID, the microcontroller runs FOC, PWM drives the MOSFETs and the BLDC motor, and current sensors plus the encoder close the loop."></p>
 
 **O modelo mental de 4 blocos** (ótimo pra depurar — você isola o bloco, não chuta):
 

@@ -75,14 +75,7 @@ wheel** when off.
   inductive kick when the coil de-energizes; protects the driver transistor.
 
 ### Wiring (concept)
-```
-  STM32 GPIO (kOdrivePinContactor, HIGH=close) ──▶ [transistor/MOSFET] ──▶ contactor COIL ──▶ coil supply (+)
-                                                          coil has a FLYBACK DIODE across it
-  Motor phase A ─┐                         ┌─ to motor A
-  Motor phase B ─┤  (board side)  3-POLE   ├─ to motor B      ← 3 poles in series with the phases
-  Motor phase C ─┘                CONTACTOR └─ to motor C
-        (closed when coil energized = board driving; open otherwise)
-```
+<p align="center"><img src="screenshots/contactor-wiring.svg" width="100%" alt="Contactor wiring: a GPIO drives a transistor that energises the coil, with a flyback diode across it; three poles sit in series with the motor phases."></p>
 - Break **at least 2 phases** (ideally all 3): opening only one phase does NOT isolate — the
   back-EMF between the other two still reaches the bus through the diode bridge.
 - The **GPIO pin** is `kOdrivePinContactor` in the firmware (currently a **placeholder `PC6`** —
@@ -173,14 +166,7 @@ seguro** quando desligado.
   bobina desliga; protege o transistor.
 
 ### Fiação (conceito)
-```
-  GPIO do STM32 (kOdrivePinContactor, HIGH=fecha) ──▶ [transistor/MOSFET] ──▶ BOBINA do contator ──▶ (+) trilho da bobina
-                                                            bobina com DIODO FLYBACK em paralelo
-  Fase A do motor ─┐                         ┌─ pro motor A
-  Fase B do motor ─┤  (lado placa)  CONTATOR ├─ pro motor B     ← 3 polos em série com as fases
-  Fase C do motor ─┘                3 POLOS  └─ pro motor C
-        (fechado quando a bobina energiza = placa dirigindo; aberto caso contrário)
-```
+<p align="center"><img src="screenshots/contactor-wiring.svg" width="100%" alt="Contactor wiring: a GPIO drives a transistor that energises the coil, with a flyback diode across it; three poles sit in series with the motor phases."></p>
 - Abra **pelo menos 2 fases** (ideal as 3): abrir só uma fase **NÃO** isola — a back-EMF entre as
   outras duas ainda chega ao barramento pela ponte de diodos.
 - O **pino GPIO** é o `kOdrivePinContactor` no firmware (hoje um **placeholder `PC6`** — confirme o

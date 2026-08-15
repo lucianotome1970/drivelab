@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 762" width="940" height="762" role="img" aria-label="How a direct drive wheel works: the game sends a force over USB HID, the microcontroller runs FOC, PWM drives the MOSFETs and the BLDC motor, and current sensors plus the encoder feed the loop back thousands of times per second.">
+  <rect x="0" y="0" width="940" height="762" fill="#ffffff"/>
+  <g font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+
+    <text x="24" y="28" font-size="17" font-weight="700" fill="#1b1f24">How a direct drive wheel works / Como funciona um volante direct drive</text>
+    <text x="24" y="47" font-size="12.5" fill="#57606a">The game sends force, not telemetry · O jogo manda força, não telemetria</text>
+
+    <!-- ============ MAIN PANEL ============ -->
+    <rect x="16" y="60" width="908" height="524" rx="10" fill="#ffffff" stroke="#d8dde3" stroke-width="1.5"/>
+
+    <!-- main flow arrows -->
+    <path d="M330,154 V196" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M330,204 l-5,-9 h10 z" fill="#24292f"/>
+    <path d="M330,256 V298" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M330,306 l-5,-9 h10 z" fill="#24292f"/>
+    <path d="M330,358 V400" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M330,408 l-5,-9 h10 z" fill="#24292f"/>
+    <path d="M330,460 V502" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M330,510 l-5,-9 h10 z" fill="#24292f"/>
+
+    <text x="344" y="178" font-size="12.5" font-weight="600" fill="#1b1f24">“I want 6 N·m”</text>
+    <text x="344" y="193" font-size="11" fill="#57606a">“quero 6 N·m”</text>
+
+    <!-- box 1 -->
+    <rect x="200" y="104" width="260" height="50" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="330" y="126" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Game · USB HID</text>
+    <text x="330" y="143" font-size="11.5" fill="#57606a" text-anchor="middle">Jogo · USB HID</text>
+
+    <!-- box 2 -->
+    <rect x="200" y="206" width="260" height="50" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="330" y="228" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Microcontroller + FOC</text>
+    <text x="330" y="245" font-size="11.5" fill="#57606a" text-anchor="middle">Microcontrolador + FOC</text>
+
+    <!-- box 3 -->
+    <rect x="200" y="308" width="260" height="50" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="330" y="330" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">PWM → driver → MOSFETs</text>
+    <text x="330" y="347" font-size="11.5" fill="#57606a" text-anchor="middle">o estágio de potência · the power stage</text>
+
+    <!-- box 4 -->
+    <rect x="200" y="410" width="260" height="50" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="330" y="432" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">BLDC motor</text>
+    <text x="330" y="449" font-size="11.5" fill="#57606a" text-anchor="middle">Motor BLDC</text>
+
+    <!-- box 5 -->
+    <rect x="200" y="512" width="260" height="50" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="330" y="534" font-size="13.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Torque at the wheel</text>
+    <text x="330" y="551" font-size="11.5" fill="#57606a" text-anchor="middle">Torque no volante</text>
+
+    <!-- sensors -->
+    <rect x="580" y="308" width="220" height="50" rx="6" fill="#ffffff" stroke="#0969da" stroke-width="1.8"/>
+    <text x="690" y="330" font-size="13" font-weight="600" fill="#0969da" text-anchor="middle">Current sensors</text>
+    <text x="690" y="347" font-size="11.5" fill="#57606a" text-anchor="middle">Sensores de corrente</text>
+
+    <rect x="580" y="410" width="220" height="50" rx="6" fill="#ffffff" stroke="#0969da" stroke-width="1.8"/>
+    <text x="690" y="432" font-size="13" font-weight="600" fill="#0969da" text-anchor="middle">Encoder (position)</text>
+    <text x="690" y="449" font-size="11.5" fill="#57606a" text-anchor="middle">Encoder (posição)</text>
+
+    <!-- taps into the sensors -->
+    <path d="M460,333 H572" fill="none" stroke="#0969da" stroke-width="2.2"/>
+    <path d="M580,333 l-9,-5 v10 z" fill="#0969da"/>
+    <path d="M460,435 H572" fill="none" stroke="#0969da" stroke-width="2.2"/>
+    <path d="M580,435 l-9,-5 v10 z" fill="#0969da"/>
+
+    <!-- feedback bus back into the FOC -->
+    <path d="M800,435 H860 V231 H468" fill="none" stroke="#0969da" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M800,333 H860" fill="none" stroke="#0969da" stroke-width="2.2"/>
+    <circle cx="860" cy="333" r="4" fill="#0969da"/>
+    <path d="M460,231 l9,-5 v10 z" fill="#0969da"/>
+    <text x="852" y="278" font-size="12" font-weight="600" fill="#0969da" text-anchor="end">feedback</text>
+    <text x="852" y="293" font-size="11" fill="#57606a" text-anchor="end">realimentação</text>
+
+    <text x="690" y="500" font-size="11.5" fill="#57606a" text-anchor="middle">Thousands of corrections per second — that is what</text>
+    <text x="690" y="516" font-size="11.5" fill="#57606a" text-anchor="middle">makes the force feel solid instead of notchy.</text>
+    <text x="690" y="536" font-size="11.5" fill="#57606a" text-anchor="middle">Milhares de correções por segundo — é isso que faz a</text>
+    <text x="690" y="552" font-size="11.5" fill="#57606a" text-anchor="middle">força ser firme em vez de granulada.</text>
+
+    <!-- ============ REGEN PANEL ============ -->
+    <rect x="16" y="600" width="908" height="122" rx="10" fill="#ffffff" stroke="#d8dde3" stroke-width="1.5"/>
+    <text x="32" y="624" font-size="13" font-weight="700" fill="#1b1f24">Turn the wheel yourself and the motor becomes a generator · Gire o volante e o motor vira gerador</text>
+
+    <rect x="120" y="644" width="190" height="48" rx="6" fill="#ffffff" stroke="#cf222e" stroke-width="1.8"/>
+    <text x="215" y="665" font-size="12.5" font-weight="600" fill="#cf222e" text-anchor="middle">Regen energy</text>
+    <text x="215" y="681" font-size="11" fill="#57606a" text-anchor="middle">Energia de regeneração</text>
+
+    <path d="M310,668 H358" fill="none" stroke="#cf222e" stroke-width="2.2"/>
+    <path d="M366,668 l-9,-5 v10 z" fill="#cf222e"/>
+
+    <rect x="366" y="644" width="190" height="48" rx="6" fill="#ffffff" stroke="#cf222e" stroke-width="1.8"/>
+    <text x="461" y="665" font-size="12.5" font-weight="600" fill="#cf222e" text-anchor="middle">DC bus</text>
+    <text x="461" y="681" font-size="11" fill="#57606a" text-anchor="middle">Barramento DC</text>
+
+    <path d="M556,668 H604" fill="none" stroke="#cf222e" stroke-width="2.2"/>
+    <path d="M612,668 l-9,-5 v10 z" fill="#cf222e"/>
+
+    <rect x="612" y="644" width="190" height="48" rx="6" fill="#ffffff" stroke="#cf222e" stroke-width="1.8"/>
+    <text x="707" y="665" font-size="12.5" font-weight="600" fill="#cf222e" text-anchor="middle">Brake resistor</text>
+    <text x="707" y="681" font-size="11" fill="#57606a" text-anchor="middle">Resistor de freio</text>
+
+    <text x="24" y="746" font-size="11" fill="#57606a">Without somewhere to dump that energy the bus voltage climbs until the board trips. · Sem para onde mandar essa energia, a tensão do barramento sobe até a placa desarmar.</text>
+  </g>
+</svg>

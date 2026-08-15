@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 600" width="940" height="600" role="img" aria-label="Contactor wiring: an STM32 GPIO drives a transistor that energises the contactor coil, with a flyback diode across it; the contactor's three poles sit in series with the motor phases and open when the coil is de-energised.">
+  <rect x="0" y="0" width="940" height="600" fill="#ffffff"/>
+  <g font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+
+    <text x="24" y="28" font-size="17" font-weight="700" fill="#1b1f24">Phase contactor / Contator de fases</text>
+    <text x="24" y="47" font-size="12.5" fill="#57606a">Isolates the motor from the board when nothing is driving it · Isola o motor da placa quando nada está acionando</text>
+
+    <!-- ============ PANEL A — control ============ -->
+    <rect x="16" y="60" width="908" height="184" rx="10" fill="#ffffff" stroke="#d8dde3" stroke-width="1.5"/>
+    <text x="32" y="86" font-size="13" font-weight="700" fill="#1b1f24">Control path · Caminho de controle</text>
+
+    <rect x="36" y="106" width="210" height="52" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="141" y="128" font-size="12.5" font-weight="600" fill="#1b1f24" text-anchor="middle">STM32 GPIO</text>
+    <text x="141" y="145" font-size="10.5" fill="#57606a" text-anchor="middle">kOdrivePinContactor · HIGH = close</text>
+
+    <path d="M246,132 H282" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M290,132 l-9,-5 v10 z" fill="#24292f"/>
+
+    <rect x="298" y="106" width="160" height="52" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="378" y="128" font-size="12.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Transistor / MOSFET</text>
+    <text x="378" y="145" font-size="10.5" fill="#57606a" text-anchor="middle">driver da bobina</text>
+
+    <path d="M458,132 H494" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M502,132 l-9,-5 v10 z" fill="#24292f"/>
+
+    <rect x="510" y="106" width="190" height="52" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="605" y="128" font-size="12.5" font-weight="600" fill="#1b1f24" text-anchor="middle">Contactor coil</text>
+    <text x="605" y="145" font-size="10.5" fill="#57606a" text-anchor="middle">Bobina do contator</text>
+
+    <path d="M700,132 H736" fill="none" stroke="#cf222e" stroke-width="2.2"/>
+    <path d="M744,132 l-9,-5 v10 z" fill="#cf222e"/>
+
+    <rect x="752" y="106" width="152" height="52" rx="6" fill="#ffffff" stroke="#cf222e" stroke-width="1.8"/>
+    <text x="828" y="128" font-size="12.5" font-weight="600" fill="#cf222e" text-anchor="middle">Coil supply (+)</text>
+    <text x="828" y="145" font-size="10.5" fill="#57606a" text-anchor="middle">Alimentação (+)</text>
+
+    <!-- flyback diode across the coil -->
+    <path d="M540,158 V190 H592" fill="none" stroke="#0969da" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M592,180 v20 l20,-10 z" fill="#0969da"/>
+    <path d="M614,179 V201" fill="none" stroke="#0969da" stroke-width="2.6"/>
+    <path d="M614,190 H670 V158" fill="none" stroke="#0969da" stroke-width="2.2" stroke-linejoin="round"/>
+    <text x="690" y="188" font-size="12" font-weight="700" fill="#0969da">Flyback diode · Diodo de roda livre</text>
+    <text x="690" y="203" font-size="11" fill="#57606a">cathode to (+) · catodo no (+)</text>
+    <text x="690" y="222" font-size="11" fill="#57606a">absorbs the kick when the coil lets go</text>
+    <text x="690" y="236" font-size="11" fill="#57606a">absorve o coice quando a bobina solta</text>
+
+    <!-- ============ PANEL B — power ============ -->
+    <rect x="16" y="260" width="908" height="270" rx="10" fill="#ffffff" stroke="#d8dde3" stroke-width="1.5"/>
+    <text x="32" y="286" font-size="13" font-weight="700" fill="#1b1f24">Power path · Caminho de potência</text>
+    <text x="32" y="303" font-size="11.5" fill="#57606a">Three poles in series with the motor phases · Três polos em série com as fases do motor</text>
+
+    <rect x="340" y="322" width="280" height="150" rx="6" fill="#ffffff" stroke="#24292f" stroke-width="1.8"/>
+    <text x="480" y="346" font-size="13" font-weight="700" fill="#1b1f24" text-anchor="middle">3-POLE CONTACTOR</text>
+    <text x="480" y="362" font-size="11.5" fill="#57606a" text-anchor="middle">CONTATOR DE 3 POLOS</text>
+
+    <!-- three ganged switches -->
+    <path d="M170,390 H430" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M530,390 H790" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <circle cx="430" cy="390" r="3.5" fill="#24292f"/><circle cx="530" cy="390" r="3.5" fill="#24292f"/>
+    <path d="M430,390 L522,372" fill="none" stroke="#24292f" stroke-width="2.4"/>
+
+    <path d="M170,420 H430" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M530,420 H790" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <circle cx="430" cy="420" r="3.5" fill="#24292f"/><circle cx="530" cy="420" r="3.5" fill="#24292f"/>
+    <path d="M430,420 L522,402" fill="none" stroke="#24292f" stroke-width="2.4"/>
+
+    <path d="M170,450 H430" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <path d="M530,450 H790" fill="none" stroke="#24292f" stroke-width="2.2"/>
+    <circle cx="430" cy="450" r="3.5" fill="#24292f"/><circle cx="530" cy="450" r="3.5" fill="#24292f"/>
+    <path d="M430,450 L522,432" fill="none" stroke="#24292f" stroke-width="2.4"/>
+
+    <!-- mechanical linkage -->
+    <path d="M476,381 V441" fill="none" stroke="#0969da" stroke-width="2" stroke-dasharray="5 4"/>
+    <text x="486" y="414" font-size="10.5" fill="#0969da">ganged</text>
+
+    <text x="164" y="394" font-size="12" fill="#1b1f24" text-anchor="end">Phase A · Fase A</text>
+    <text x="164" y="424" font-size="12" fill="#1b1f24" text-anchor="end">Phase B · Fase B</text>
+    <text x="164" y="454" font-size="12" fill="#1b1f24" text-anchor="end">Phase C · Fase C</text>
+    <text x="164" y="366" font-size="11" font-weight="600" fill="#57606a" text-anchor="end">from the board · da placa</text>
+
+    <text x="796" y="394" font-size="12" fill="#1b1f24">Motor A</text>
+    <text x="796" y="424" font-size="12" fill="#1b1f24">Motor B</text>
+    <text x="796" y="454" font-size="12" fill="#1b1f24">Motor C</text>
+    <text x="796" y="366" font-size="11" font-weight="600" fill="#57606a">to the motor · para o motor</text>
+
+    <text x="480" y="500" font-size="11.5" fill="#57606a" text-anchor="middle">Closed while the coil is energised — that is, while the board is driving. Open otherwise.</text>
+    <text x="480" y="516" font-size="11.5" fill="#57606a" text-anchor="middle">Fechado com a bobina energizada — ou seja, com a placa acionando. Aberto no resto do tempo.</text>
+
+    <text x="24" y="558" font-size="11" fill="#57606a">Break at least two phases, ideally all three: opening only one does NOT isolate — the back-EMF between the other two still reaches the bus through the diode bridge.</text>
+    <text x="24" y="574" font-size="11" fill="#57606a">Abra pelo menos duas fases, idealmente as três: abrir só uma NÃO isola — a back-EMF entre as outras duas ainda chega ao barramento pela ponte de diodos.</text>
+  </g>
+</svg>
