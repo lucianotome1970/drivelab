@@ -45,6 +45,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Todo o app publicado — inclui o hardware-profile.json que o criador colocou na PublishDir (fica ao lado
 ; do .exe em Program Files\DriveLab, e o app auto-carrega no start). NÃO inclua um advanced.flag aqui.
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+; Pacote de driver do modo de atualizacao (ver [Run] e driver\LEIAME.md). Vai para uma subpasta
+; propria porque o INF referencia os coinstaladores por caminho relativo (amd64\...), e o pnputil
+; le o INF de onde ele estiver.
+Source: "driver\*"; DestDir: "{app}\driver"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -52,19 +56,31 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 ; ---------------------------------------------------------------------------------------------
-; O DRIVER DO MODO DFU NAO E INSTALADO AQUI — e uma etapa manual, com o Zadig.
+; DRIVER DO MODO DE ATUALIZACAO — automatizado desde 14/08/2026. O Zadig sai do caminho.
 ;
 ; POR QUE PRECISA DE DRIVER: o bootloader do STM32 e gravado na ROM da ST e nao declara WCID, entao
 ; o Windows nao escolhe driver sozinho. Sem ele a placa entra em DFU e aparece com ERRO CODIGO 28
 ; ("nenhum driver"), e a atualizacao para ali. Diagnosticado na bancada em 2026-08-10.
 ;
-; POR QUE NAO AUTOMATIZAMOS: a automacao exigia o 'wdi-simple.exe', e o libwdi NAO o distribui —
-; a release publica so o Zadig. O binario que existia aqui foi compilado a mao uma vez e nunca
-; entrou no repositorio; como a linha era protegida por Check: FileExists, ela simplesmente NUNCA
-; RODOU e nunca reclamou. Um passo que finge existir e pior que um passo assumidamente manual.
+; POR QUE AGORA DA, E ANTES NAO DAVA: a tentativa anterior queria gerar o pacote de driver NA
+; MAQUINA DE QUEM INSTALA, o que exigia o 'wdi-simple.exe' — que o libwdi nao distribui pronto e
+; obrigaria a compilar a biblioteca dentro do nosso build. Mas gerar em tempo real so faz sentido
+; para o Zadig, que nao sabe de antemao qual dispositivo o usuario vai escolher. NOS SABEMOS: e
+; sempre 0483:DF11. Entao o pacote e gerado UMA VEZ, entra no repositorio (installer\windows\driver)
+; e aqui so resta instala-lo com o pnputil, que ja vem no Windows.
 ;
-; Retomar a automacao significa compilar o libwdi dentro do build. Enquanto isso nao se justificar,
-; o caminho e o Zadig, documentado em docs/firmware-update-windows.md.
+; A confianca no certificado e TEMPORARIA: o script adiciona, instala e remove. Ver o LEIAME.md
+; naquela pasta para a procedencia, as licencas e por que isto e seguro.
 ;
+; A placa NAO precisa estar conectada: sem ela, o driver fica no DriverStore e o Windows o aplica
+; sozinho no dia em que ela aparecer.
+;
+; runascurrentuser porque o instalador ja roda elevado; -WindowStyle Hidden para nao piscar um
+; console preto no meio da instalacao. Falhar aqui NAO aborta a instalacao do app — quem so quer
+; ajustar a base nao depende deste passo, e o caminho manual continua documentado.
+Filename: "powershell.exe"; \
+  Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\driver\instalar-driver.ps1"" -Silencioso"; \
+  StatusMsg: "Preparando o modo de atualizacao da placa..."; \
+  Flags: runascurrentuser waituntilterminated skipifdoesntexist
 ; O 'dfu-util', que e quem de fato grava, VAI no pacote (ver build-installer.ps1, etapa 4b).
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent

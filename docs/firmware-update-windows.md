@@ -40,25 +40,43 @@ nosso firmware, que ainda não está lá. Então o modo de atualização é acio
 
 ### O driver
 
-**Esta é uma etapa manual, feita uma vez por computador.** O instalador **não** registra o driver —
-automatizar isso exigia um utilitário que o projeto do driver não distribui, e a versão anterior
-deste documento prometia uma automação que na prática nunca rodava.
+**O instalador do DriveLab cuida disso.** Você não precisa fazer nada — nem baixar o Zadig, nem
+escolher dispositivo em lista nenhuma. A placa não precisa nem estar ligada na hora: o driver fica
+guardado e o Windows o usa sozinho no dia em que ela aparecer em modo de atualização.
 
-Sem o driver, o Windows enumera a placa em DFU mas marca com **erro código 28** ("nenhum driver
-instalado") — o app vê o dispositivo e não consegue falar com ele.
+<details>
+<summary>Por que um driver é preciso, e o que o instalador faz</summary>
 
-1. baixe o **Zadig** em <https://zadig.akeo.ie/> (não precisa instalar, é um `.exe` só)
-2. deixe a placa **em modo DFU** — clique em Enviar no app, ou use a chave SW1 e faça power-cycle
-3. rode o Zadig **como administrador**
-4. menu **Options → List All Devices**
-5. selecione **`STM32 BOOTLOADER`** na lista — confira que o USB ID mostra **`0483 DF11`**
-6. escolha o driver **WinUSB** e clique em **Install Driver**
+O modo de atualização vem gravado na ROM da ST e não pode ser mudado por nós. Ele não declara os
+descritores que fariam o Windows escolher um driver sozinho, então a placa aparece com **erro
+código 28** ("nenhum driver instalado") — o app vê o dispositivo e não consegue falar com ele.
 
-> ⚠️ **Selecione exatamente esse dispositivo.** O Zadig troca o driver do item que estiver
-> selecionado; apontar para outro (o ST-Link, um teclado, um mouse) deixa aquele dispositivo sem
-> funcionar até você reverter pelo Gerenciador de Dispositivos.
+O driver em si é o **WinUSB**, que já vem no Windows e é assinado pela Microsoft. O que faltava era
+um arquivo dizendo "o dispositivo `0483:DF11` usa aquele driver que você já tem". O instalador
+registra esse arquivo e pronto.
 
-Feito isso, o Windows passa a reconhecer a placa em DFU e o app grava direto.
+Ele também **confia no certificado, instala, e retira a confiança** em seguida: o Windows só precisa
+confiar no instante da instalação, e nada nosso fica marcado como confiável na sua máquina depois.
+Detalhes de procedência e licença em `installer/windows/driver/LEIAME.md`.
+
+</details>
+
+#### Se você compila o projeto e não usa o instalador
+
+Rode uma vez, como administrador, a partir da pasta do projeto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File installer\windows\driver\instalar-driver.ps1
+```
+
+O caminho manual pelo [Zadig](https://zadig.akeo.ie/) continua funcionando (**Options → List All
+Devices**, selecionar `STM32 BOOTLOADER` com USB ID `0483 DF11`, driver **WinUSB**), mas só é
+necessário se o passo acima falhar.
+
+> ⚠️ Se for de Zadig, **selecione exatamente esse dispositivo.** Ele troca o driver do item que
+> estiver selecionado; apontar para outro (o ST-Link, um teclado, um mouse) deixa aquele dispositivo
+> sem funcionar até você reverter pelo Gerenciador de Dispositivos. É justamente esse risco que o
+> instalador elimina.
 
 ### O `dfu-util`
 
@@ -89,7 +107,7 @@ acompanha as releases do DriveLab. Projeto: <https://dfu-util.sourceforge.net/>.
 | sintoma | o que é |
 |---|---|
 | o app diz que a placa não entrou em DFU sozinha | pode ter entrado: veja no Gerenciador de Dispositivos se existe **STM32 BOOTLOADER**. Se existir com erro, falta o driver (acima) |
-| **STM32 BOOTLOADER** com erro código 28 | driver não instalado — rode o Zadig |
+| **STM32 BOOTLOADER** com erro código 28 | o driver não entrou. Rode `instalar-driver.ps1` (pasta `driver`, ao lado do app) como administrador |
 | a placa some e não volta | power-cycle. A placa detecta que veio de um DFU e reinicia no firmware normal |
 | nada acontece ao clicar em Enviar | o `dfu-util` não foi encontrado — veja a ordem de busca acima |
 
@@ -128,23 +146,42 @@ on the board yet. So update mode is triggered **on the board itself**.
 
 ### The driver
 
-**This is a manual step, done once per computer.** The installer does **not** register the driver —
-automating it required a utility the driver project doesn't distribute, and an earlier version of
-this document promised an automation that in practice never ran.
+**The DriveLab installer takes care of it.** Nothing for you to do — no Zadig, no picking a device
+from a list. The board doesn't even need to be plugged in at the time: the driver is stored and
+Windows applies it by itself the day the board shows up in update mode.
 
-Without the driver Windows enumerates the board in DFU but flags **error code 28** ("no driver
+<details>
+<summary>Why a driver is needed at all, and what the installer does</summary>
+
+Update mode lives in ST's ROM and cannot be changed by us. It doesn't declare the descriptors that
+would let Windows pick a driver on its own, so the board shows up with **error code 28** ("no driver
 installed") — the app sees the device and cannot talk to it.
 
-1. get **Zadig** from <https://zadig.akeo.ie/> (single `.exe`, no install needed)
-2. put the board **in DFU mode** — click Send in the app, or use the SW1 switch plus a power cycle
-3. run Zadig **as administrator**
-4. **Options → List All Devices**
-5. select **`STM32 BOOTLOADER`** — check that the USB ID reads **`0483 DF11`**
-6. choose the **WinUSB** driver and click **Install Driver**
+The driver itself is **WinUSB**, which ships with Windows and is signed by Microsoft. What was
+missing is a file saying "device `0483:DF11` uses that driver you already have". The installer
+registers that file, and that's it.
 
-> ⚠️ **Select exactly that device.** Zadig replaces the driver of whatever is selected; pointing it
-> at something else (the ST-Link, a keyboard, a mouse) will break that device until you roll it back
-> from Device Manager.
+It also **trusts the certificate, installs, and removes the trust** right after: Windows only needs
+to trust it at install time, and nothing of ours stays marked as trusted on your machine afterwards.
+Provenance and licensing details in `installer/windows/driver/LEIAME.md`.
+
+</details>
+
+#### If you build the project and don't use the installer
+
+Run once, as administrator, from the project folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File installer\windows\driver\instalar-driver.ps1
+```
+
+The manual [Zadig](https://zadig.akeo.ie/) route still works (**Options → List All Devices**, select
+`STM32 BOOTLOADER` with USB ID `0483 DF11`, **WinUSB** driver), but is only needed if the step above
+fails.
+
+> ⚠️ If you do use Zadig, **select exactly that device.** It replaces the driver of whatever is
+> selected; pointing it at something else (the ST-Link, a keyboard, a mouse) will break that device
+> until you roll it back from Device Manager. That risk is precisely what the installer removes.
 
 ### `dfu-util`
 
@@ -169,7 +206,7 @@ is attached to DriveLab releases. Project: <https://dfu-util.sourceforge.net/>.
 | symptom | what it means |
 |---|---|
 | app says the board didn't enter DFU by itself | it may have: check Device Manager for **STM32 BOOTLOADER**. If it's there with an error, the driver is missing |
-| **STM32 BOOTLOADER** with error code 28 | driver not installed — run Zadig |
+| **STM32 BOOTLOADER** with error code 28 | the driver did not take. Run `instalar-driver.ps1` (the `driver` folder next to the app) as administrator |
 | board disappears and doesn't come back | power cycle. It detects it came from DFU and reboots into normal firmware |
 | nothing happens on Send | `dfu-util` wasn't found — see the search order above |
 
