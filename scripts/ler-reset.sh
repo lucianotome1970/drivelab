@@ -86,6 +86,10 @@ case $(d "$step") in
   9) onde="TELEMETRIA: a0_service (canal do app)";;
  10) onde="TELEMETRIA: hid_send_joystick (antes do TinyUSB)";;
  11) onde="TELEMETRIA: DENTRO do tud_hid_report — mutex do endpoint do TinyUSB";;
+ 12) onde="a0_service: tud_hid_ready()";;
+ 13) onde="a0_service: enviando a RESPOSTA DE LEITURA (0x16) — dentro do TinyUSB";;
+ 14) onde="a0_service: montando a telemetria (nosso codigo, sem USB)";;
+ 15) onde="a0_service: enviando a TELEMETRIA (0x21) — dentro do TinyUSB";;
   *) onde="trecho $step";;
 esac
 

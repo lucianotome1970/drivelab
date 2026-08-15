@@ -499,6 +499,7 @@ static void a0_build_state(uint8_t* p) {
 // ---------------------------------------------------------------------------
 extern "C" int a0_service(uint32_t nowMs) {
     if (!s_inited) a0_init();
+    blackbox_step(BB_STEP_A0_READY);
     if (!tud_hid_ready()) return 0;
 
     // 0) ANTI-STARVATION: a leitura tem prioridade sobre a telemetria (abaixo), mas prioridade
@@ -528,6 +529,7 @@ extern "C" int a0_service(uint32_t nowMs) {
         else if (s_type[id] == T_U32)   put_u32(&p[3], (uint32_t)src_i[id]);
         else if (s_type[id] == T_U16 || s_type[id] == T_I16) put_i16(&p[3], (int16_t)src_i[id]);
         else                            p[3] = (uint8_t)(src_i[id] & 0xFF);
+        blackbox_step(BB_STEP_A0_LEITURA);
         if (tud_hid_report(A0_RID_SETVALUE, p, A0_PAYLOAD)) { s_pending_read = 0xFF; s_pending_is_default = 0; return 1; }
         return 0;   // EP ocupou entre o ready() e o report — re-tenta no próximo loop
     }
@@ -535,7 +537,9 @@ extern "C" int a0_service(uint32_t nowMs) {
     // 2) telemetria DeviceState (0x21) a ~50Hz (na sobra)
     if ((uint32_t)(nowMs - s_last_state_ms) >= 20) {
         uint8_t p[A0_PAYLOAD];
+        blackbox_step(BB_STEP_A0_MONTA);
         a0_build_state(p);
+        blackbox_step(BB_STEP_A0_TELEMETRIA);
         if (tud_hid_report(A0_RID_STATE, p, A0_PAYLOAD)) { s_last_state_ms = nowMs; return 1; }
     }
     return 0;

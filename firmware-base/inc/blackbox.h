@@ -118,6 +118,17 @@ enum {
     BB_STEP_TLM_A0        = 9,   // a0_service (canal do app)
     BB_STEP_TLM_HID       = 10,  // hid_send_joystick, antes de qualquer chamada ao TinyUSB
     BB_STEP_TLM_HID_XFER  = 11,  // dentro do tud_hid_report — e aqui que o mutex e tomado
+    // Sub-passos DENTRO do a0_service. Em 15/08/2026 os contadores do USB provaram que a pilha
+    // estava VIVA (tarefa e interrupcao rodando aos milhares) enquanto o laco de FFB estava preso
+    // aqui — ou seja, quem bloqueou foi so quem pediu, e nao a pilha inteira. Isso e a assinatura
+    // de uma espera de mutex: o TinyUSB toma o do endpoint com OSAL_TIMEOUT_WAIT_FOREVER, e quem
+    // fica esperando e a tarefa que chamou, sozinha.
+    //
+    // "Dentro do a0_service" ainda sao quatro chamadas. Estes passos dizem QUAL.
+    BB_STEP_A0_READY      = 12,  // tud_hid_ready()
+    BB_STEP_A0_LEITURA    = 13,  // tud_hid_report da resposta 0x16 (leitura de setting)
+    BB_STEP_A0_MONTA      = 14,  // a0_build_state — nosso codigo, sem USB
+    BB_STEP_A0_TELEMETRIA = 15,  // tud_hid_report da telemetria 0x21
 };
 
 typedef struct {
