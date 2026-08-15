@@ -91,16 +91,55 @@ static const char* string_desc_arr[] = {
     (const char[]){0x09, 0x04},   // 0: en-US
     "DriveLab",                   // 1: Manufacturer
     "DriveLab Base",              // 2: Product
-    "0001",                       // 3: Serial
+    "0001",                       // 3: Serial — SUBSTITUIDO em tempo de execucao pelo ID do MCU
+                                  //    (ver drvlab_serial_do_mcu). Fica aqui so como reserva para
+                                  //    o caso improvavel de o ID vir zerado.
     "DriveLab Base CDC",          // 4: CDC interface
     "DriveLab Base FFB"           // 5: HID interface
 };
 static uint16_t desc_str_buf[32];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NUMERO DE SERIE = ID UNICO DO MCU.
+//
+// O STM32F4 traz um identificador de 96 bits gravado em silicio na fabrica, em 0x1FFF7A10. Usa-lo
+// como numero de serie da um valor ESTAVEL para a mesma placa e DIFERENTE entre placas.
+//
+// ⚠️ POR QUE "DIFERENTE ENTRE PLACAS" IMPORTA: o serial anterior era "0001", igual em todo mundo.
+// Estavel ele ja era — entao trocar NAO conserta identidade instavel no jogo, e nao foi por isso
+// que fizemos. O ganho e outro: com serial repetido, duas bases no mesmo PC colidem, e o Windows
+// nao consegue guardar ajuste por placa. Com o ID do MCU, cada uma tem a sua identidade.
+//
+// ⚠️ EFEITO COLATERAL CONHECIDO: para o Windows isto e um dispositivo NOVO na primeira vez. Quem
+// ja tinha a base mapeada num jogo pode precisar remapear uma vez. Acontece so na troca.
+// ─────────────────────────────────────────────────────────────────────────────
+#define DRVLAB_MCU_UID_ADDR 0x1FFF7A10u
+
+static const char* drvlab_serial_do_mcu(void) {
+    static char serial[25];
+    static int  pronto = 0;
+    if (!pronto) {
+        const uint32_t* uid = (const uint32_t*)DRVLAB_MCU_UID_ADDR;
+        const uint32_t w[3] = { uid[0], uid[1], uid[2] };
+        // ID zerado nao existe em silicio bom; se acontecer, e sinal de leitura errada — devolvemos
+        // NULL e o chamador cai na string de reserva em vez de anunciar "000000000000".
+        if ((w[0] | w[1] | w[2]) == 0u) return NULL;
+        static const char hex[] = "0123456789ABCDEF";
+        int k = 0;
+        for (int i = 0; i < 3; i++)
+            for (int nib = 7; nib >= 0; nib--)
+                serial[k++] = hex[(w[i] >> (nib * 4)) & 0xFu];
+        serial[24] = 0;
+        pronto = 1;
+    }
+    return serial;
+}
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     (void)langid;
     if (index == 0) { desc_str_buf[0] = (TUSB_DESC_STRING << 8) | 4; desc_str_buf[1] = 0x0409; return desc_str_buf; }
     if (index >= sizeof(string_desc_arr)/sizeof(string_desc_arr[0])) return NULL;
     const char* str = string_desc_arr[index];
+    if (index == 3) { const char* s = drvlab_serial_do_mcu(); if (s) str = s; }
     size_t chars = strlen(str); if (chars > 31) chars = 31;
     desc_str_buf[0] = (TUSB_DESC_STRING << 8) | (2*chars + 2);
     for (size_t i = 0; i < chars; i++) desc_str_buf[1+i] = (uint16_t)str[i];
