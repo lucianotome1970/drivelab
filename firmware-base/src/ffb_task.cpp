@@ -591,7 +591,22 @@ static void ffb_thread(void*) {
             // Primeiro arme do boot: onde o volante está AGORA vira o centro. Sem isto o batente
             // nasce onde a contagem crua do encoder por acaso estiver — foi o que travou o motor
             // em -10 Nm / 18 A parado na bancada de 2026-08-07. Ver inc/wheel_center.h.
-            if (!wheel_center_is_set()) wheel_center_capture();
+            //
+            // ⚠️ "ARMADO" NÃO BASTA: TEM DE SER MALHA FECHADA (estado 8). O ODrive ARMA o motor
+            // durante a busca de índice e durante a calibração de offset — é assim que ele gira o
+            // rotor em malha aberta. Capturar no primeiro `is_armed_` fixa o zero ANTES dessas
+            // etapas, e depois o motor ainda gira: a busca do índice para onde o Z aparecer, e a
+            // varredura de calibração percorre uma volta inteira. O volante termina longe do ponto
+            // onde o zero foi fixado.
+            //
+            // Foi o que a bancada relatou em 15/08/2026: "ao calibrar, sempre volta em 360-362° e
+            // não em zero". O número entrega a causa — 360° é exatamente a varredura de UMA VOLTA
+            // que passamos a usar no mesmo dia. Antes disso a varredura era 0,53 volta e o erro
+            // existia igual, só que menor e por isso despercebido.
+            //
+            // O centro tem de ser o lugar onde o volante FICA quando a base termina de se preparar,
+            // e esse instante é a entrada em malha fechada — nenhum outro.
+            if (!wheel_center_is_set() && g_axis_dbg[1] == 8) wheel_center_capture();
             const float pos = wheel_center_pos_turns();          // turns RELATIVOS ao centro
             const float vel = motor_link_get_vel_estimate();  // turns/s (derivada: o zero não a afeta)
 

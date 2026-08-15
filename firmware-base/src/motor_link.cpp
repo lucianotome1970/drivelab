@@ -381,8 +381,24 @@ extern "C" void motor_link_newboard_bringup(void) {
     //
     // Um teste que não executa o caminho sob suspeita não é evidência de nada. Confirmado na placa
     // depois: index_found_=0, use_index=0.
-    axes[0].encoder_.config_.use_index               = true;
-    axes[0].encoder_.config_.find_idx_on_lockin_only = true;
+    // 🔴 DESLIGADO EM 15/08/2026, LOGO DEPOIS DE LIGAR — e a razão é boa.
+    //
+    // A busca de índice GIRA o motor até o Z aparecer, e onde ele para vira o centro. O volante
+    // passou a parar numa orientação DIFERENTE a cada boot: quem deixa o aro reto antes de ligar
+    // encontra o aro torto depois, e o centro muda de lugar toda vez.
+    //
+    // ⚠️ E o índice NÃO era quem estava entregando o ganho. Mudamos duas coisas no mesmo teste, e a
+    // que derrubou a dispersão do offset de 57° para 14,5° elétricos foi a VARREDURA de uma volta
+    // inteira (ver calib_scan_distance). O índice apenas ancora a contagem — e com
+    // encoder.pre_calibrated=false ele nem reusa offset nenhum: `enc_index_cb` faz is_ready_=false e
+    // a base recalibra do zero de qualquer forma. Ganho zero, custo alto.
+    //
+    // PARA RELIGAR COM PROVEITO, na ordem: (1) offset salvo em NVM, (2) pre_calibrated=true, e
+    // (3) o centro guardado RELATIVO ao Z — que é o que torna o aro reto reprodutível entre boots,
+    // do jeito que a implementação de referência faz com posOffsetFromIndex. Sem as três, o índice
+    // só acrescenta um giro que atrapalha.
+    axes[0].encoder_.config_.use_index               = false;
+    axes[0].encoder_.config_.find_idx_on_lockin_only = false;
 
     // ─── histórico, para o teste de 08/08 não ser refeito às cegas ───────────────────────────────
     // TESTE 2026-08-08 — índice DESLIGADO para isolar a assimetria POR ORDEM. O sintoma: o batente
@@ -451,7 +467,7 @@ extern "C" void motor_link_newboard_bringup(void) {
     // Referência que o ODrive não tem e a implementação de referência tem: timeout de 10 s, busca
     // com METADE da corrente, corte de corrente incondicional ao sair e erro registrado sem travar
     // o boot. Se a causa for brown-out, é esse desenho que devemos portar.
-    axes[0].config_.startup_encoder_index_search        = true;
+    axes[0].config_.startup_encoder_index_search        = false;
     axes[0].config_.startup_encoder_offset_calibration   = true;  // 2º: offset, agora ancorado no índice
     axes[0].config_.startup_closed_loop_control          = true;  // 3º: arma
     // Sim racing: sem clamp de velocidade cortando torque (girar na mão sem OVERSPEED)
