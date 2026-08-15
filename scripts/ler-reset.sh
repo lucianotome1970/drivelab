@@ -30,6 +30,7 @@ CSR=$(a g_bb_reset_csr)
 B=$(printf '0x%x' $(( $(a g_bb_boots) + 4 )))
 S=$(a g_bb_trace_prev_step); L=$(a g_bb_trace_prev_last); T=$(a g_bb_trace_prev_tick)
 V=$(a g_bb_trace_prev_vbus_mv); I=$(a g_bb_trace_prev_iq_ma); P=$(a g_bb_trace_prev_pos_mrad)
+UT=$(a g_bb_trace_prev_usb_task); UI=$(a g_bb_trace_prev_usb_irq)
 F=$(a g_bb_fault)
 
 out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -f target/stm32f4x.cfg \
@@ -37,6 +38,7 @@ out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -
   -c "echo D:[read_memory $R 32 1]:[read_memory $B 32 1]:[read_memory $S 32 1]:[read_memory $L 32 1]:[read_memory $T 32 1]" \
   -c "echo S:[read_memory $CSR 32 1]" \
   -c "echo C:[read_memory $V 32 1]:[read_memory $I 32 1]:[read_memory $P 32 1]" \
+  -c "echo U:[read_memory $UT 32 1]:[read_memory $UI 32 1]" \
   -c "echo E:[read_memory $F 32 7]" \
   -c "shutdown" 2>&1)
 linha=$(echo "$out" | grep -oE '^D:.*')
@@ -125,6 +127,24 @@ else
             a = (i<0) ? -i : i
             if (a > 8000) print "  -> corrente ALTA: o transiente eletrico entra como suspeito"
             else          print "  -> corrente baixa: nao foi pico de consumo. Olhe o USB"
+        }'
+    fi
+
+    # A PILHA USB no instante do travamento. Estes contadores vivem na .noinit justamente para
+    # sobreviver ao reset — variavel comum zera no boot e a medicao se perde, que foi o que
+    # aconteceu na primeira versao deles.
+    usb=$(echo "$out" | grep -oE '^U:.*')
+    if [ -n "$usb" ]; then
+        IFS=':' read -r _ utask uirq <<< "$usb"
+        echo
+        echo "A PILHA USB quando o laco parou:"
+        printf "  tarefa do TinyUSB : %d voltas\n"   "$(d "$utask")"
+        printf "  interrupcao do USB: %d entradas\n" "$(d "$uirq")"
+        awk -v t="$(d "$utask")" -v i="$(d "$uirq")" 'BEGIN{
+            if (t==0 && i==0)      print "  -> os DOIS zerados: o USB nunca subiu neste boot"
+            else if (i>0 && t==0)  print "  -> interrupcao viva, TAREFA parada: travou na tarefa (mutex/espera)"
+            else if (i==0 && t>0)  print "  -> tarefa viva, INTERRUPCAO parada: o host parou de falar"
+            else                   print "  -> os dois vivos: a pilha nao travou; o problema e outro"
         }'
     fi
 fi

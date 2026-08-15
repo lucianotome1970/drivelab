@@ -16,6 +16,7 @@
 #include <cmsis_os.h>
 #include "stm32f4xx_hal.h"
 #include "tusb.h"
+#include "blackbox.h"   // contadores em .noinit (sobrevivem ao reset)
 extern "C" {
 #include "usbd_def.h"
 #include "usbd_cdc.h"
@@ -51,13 +52,14 @@ static struct { uint8_t* buf; uint16_t size; uint8_t ep; volatile bool active; }
 // COMO LER, com o USB morto: se `irq` sobe e `task` está parado, a tarefa travou. Se os dois estão
 // parados, é a interrupção. Se os dois sobem e mesmo assim não enumera, o problema é de protocolo,
 // não de travamento.
-volatile uint32_t g_usb_task_ticks = 0;   // voltas da tarefa do TinyUSB
-volatile uint32_t g_usb_irq_ticks  = 0;   // entradas na interrupção do USB
+// ⚠️ Os contadores vivem no g_bb_trace (.noinit), NAO em variaveis proprias. Eu os criei soltos, a
+// base reiniciou pelo watchdog, e no boot seguinte estavam ZERADOS — variavel comum e zerada pelo
+// startup. Perdi exatamente a medicao que existia para decidir a hipotese. Ver blackbox.h.
 
 // Task: roda tud_task + drena o CDC RX no buffer armado
 static void usb_tusb_task(void*) {
     for (;;) {
-        g_usb_task_ticks++;
+        g_bb_trace.usb_task_ticks++;
         tud_task();
         if (s_rx.active && tud_cdc_available() > 0) {
             uint32_t n = tud_cdc_available();
@@ -122,7 +124,7 @@ extern "C" void MX_USB_DEVICE_Init(void) {
     osThreadCreate(osThread(tusbTask), NULL);
 }
 
-extern "C" void OTG_FS_IRQHandler(void) { g_usb_irq_ticks++; tud_int_handler(0); }
+extern "C" void OTG_FS_IRQHandler(void) { g_bb_trace.usb_irq_ticks++; tud_int_handler(0); }
 
 // Callbacks do TinyUSB → eventos do ODrive
 extern "C" void tud_mount_cb(void)   { osMessagePut(usb_event_queue, 1, 0); }

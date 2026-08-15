@@ -94,7 +94,11 @@ typedef struct {
 //
 // ⚠️ Sobrevive a reset, NÃO a queda de energia (é RAM comum). Depois de tirar da tomada, o valor
 // não vale nada — por isso o magic.
-#define BB_TRACE_MAGIC 0x0B007ACEu   // "BOOT TRACE"
+// ⚠️ MUDA quando o layout do BlackBoxTrace muda (era ...7ACE). O magic nao valida so "ha rastro":
+// valida "estes bytes sao do formato que este codigo espera". Sem trocar, o primeiro boot depois
+// da gravacao leria o rastro do firmware ANTIGO com o layout NOVO — e os campos novos sairiam de
+// lixo, que e pior que nao ter rastro porque parece dado.
+#define BB_TRACE_MAGIC 0x0B007AD0u   // "BOOT TRACE"
 
 // Trechos do laço de FFB. Ordem = ordem de execução, para o número sozinho já situar.
 enum {
@@ -129,6 +133,18 @@ typedef struct {
     int32_t  vbus_mv;    // tensao do barramento
     int32_t  iq_ma;      // corrente do motor
     int32_t  pos_mrad;   // posicao do volante (extremo = perto do batente)
+    // SINAIS DE VIDA DA PILHA USB. Moram AQUI, e nao em variaveis proprias, por um motivo que
+    // custou uma ocorrencia inteira: variavel comum ZERA no boot. Eu os criei soltos, a base
+    // reiniciou, e no boot seguinte estavam em zero — justamente a medicao que existia para decidir
+    // a hipotese. Na .noinit eles sobrevivem ao reset, e blackbox_init fotografa o valor do boot
+    // anterior antes de o novo comecar a contar.
+    //
+    // COMO LER, depois de um reinicio (ver os campos prev_ abaixo):
+    //   irq subindo, task parado  -> travou na TAREFA (mutex/espera)
+    //   os dois parados           -> travou na INTERRUPCAO, ou o host parou de falar
+    //   os dois subindo           -> a pilha estava viva; o problema e outro
+    uint32_t usb_task_ticks;  // voltas da tarefa do TinyUSB
+    uint32_t usb_irq_ticks;   // entradas na interrupcao do USB
 } BlackBoxTrace;
 
 extern BlackBoxTrace g_bb_trace;
@@ -142,6 +158,8 @@ extern volatile uint32_t g_bb_trace_prev_tick;
 extern volatile int32_t  g_bb_trace_prev_vbus_mv;
 extern volatile int32_t  g_bb_trace_prev_iq_ma;
 extern volatile int32_t  g_bb_trace_prev_pos_mrad;
+extern volatile uint32_t g_bb_trace_prev_usb_task;
+extern volatile uint32_t g_bb_trace_prev_usb_irq;
 
 /// Anota as condicoes eletricas/mecanicas do tick atual. Chamada UMA vez por volta do laco — tres
 /// escritas em RAM, sem custo mensuravel a 1 kHz.
