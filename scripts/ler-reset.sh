@@ -24,19 +24,24 @@ GDB=$(find "$HOME/.platformio/packages" -name "arm-none-eabi-gdb.exe" 2>/dev/nul
 
 # Enderecos mudam A CADA BUILD: derivar sempre, nunca cravar.
 a(){ "$GDB" -q -batch "$ELF" -ex "print &$1" 2>/dev/null | grep -oE '0x[0-9a-f]{6,}' | head -1; }
-R=$(a g_bb_reset_reason); B=$(a g_bb_boots)
+R=$(a g_bb_reset_reason)
+# +4: o primeiro campo do BlackBoxBoots e o magic; o contador de boots vem logo depois.
+B=$(printf '0x%x' $(( $(a g_bb_boots) + 4 )))
 S=$(a g_bb_trace_prev_step); L=$(a g_bb_trace_prev_last); T=$(a g_bb_trace_prev_tick)
 F=$(a g_bb_fault)
 
 out=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -f target/stm32f4x.cfg \
   -c "init" \
-  -c "echo D:[read_memory $R 32 1]:[read_memory $B 32 2]:[read_memory $S 32 1]:[read_memory $L 32 1]:[read_memory $T 32 1]" \
+  -c "echo D:[read_memory $R 32 1]:[read_memory $B 32 1]:[read_memory $S 32 1]:[read_memory $L 32 1]:[read_memory $T 32 1]" \
   -c "echo E:[read_memory $F 32 5]" \
   -c "shutdown" 2>&1)
 linha=$(echo "$out" | grep -oE '^D:.*')
 [ -n "$linha" ] || { echo "SWD nao respondeu — o ST-Link esta na USB?"; exit 1; }
 
-IFS=':' read -r _ razao boots_magic boots step last tick <<< "$linha"
+# Cada read_memory devolve UM valor de proposito: pedindo dois, eles vem separados por ESPACO
+# dentro do mesmo campo, e o split por ':' os deixa grudados — foi assim que os numeros sairam
+# trocados na primeira versao deste script.
+IFS=':' read -r _ razao boots step last tick <<< "$linha"
 d(){ printf "%d" "$1"; }
 
 case $(d "$razao") in

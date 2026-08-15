@@ -15,6 +15,7 @@ uint32_t motor_link_axis_error(void);   // AxisError bitfield
 uint32_t motor_link_motor_error(void);  // MotorError bitfield
 uint32_t motor_link_encoder_error(void);// EncoderError bitfield
 uint32_t motor_link_controller_error(void); // ControllerError — o PORQUÊ do axis CONTROLLER_FAILED
+uint32_t motor_link_odrv_error(void);       // ODriveError GLOBAL — todo trip de BARRAMENTO está aqui
 float    motor_link_get_mech_power(void);   // potência mecânica filtrada (W) — entrada do spinout
 float    motor_link_get_elec_power(void);   // potência elétrica filtrada (W) — entrada do spinout
 float    motor_link_get_vbus(void);      // tensão do bus (V)

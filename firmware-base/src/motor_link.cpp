@@ -55,6 +55,12 @@ extern "C" uint32_t motor_link_controller_error(void) {
     return (uint32_t)axes[0].controller_.error_;
 }
 
+// O erro GLOBAL, que não é o do eixo. Tudo que é do BARRAMENTO — sobretensão, subtensão, excesso de
+// corrente de regeneração — mora aqui, e não em nenhum dos campos acima. Foi por isso que os trips
+// de tensão passaram tanto tempo sendo confundidos com "teto de torque": olhávamos o eixo, que
+// dizia zero, enquanto a causa estava neste campo.
+extern "C" uint32_t motor_link_odrv_error(void) { return (uint32_t)odrv.error_; }
+
 // As duas potências filtradas que alimentam a detecção de spinout do ODrive. Guardá-las no instante
 // da falha é o que confirma (ou descarta) a hipótese do spinout sem precisar adivinhar: se no
 // momento do desarme a mecânica estiver abaixo do limiar negativo e a elétrica acima do positivo,
@@ -366,6 +372,25 @@ extern "C" void motor_link_newboard_bringup(void) {
     axes[0].config_.startup_closed_loop_control          = true;  // 3º: arma
     // Sim racing: sem clamp de velocidade cortando torque (girar na mão sem OVERSPEED)
     axes[0].controller_.config_.enable_vel_limit         = false;
+    // ...e o ERRO de overspeed, que a linha acima NÃO desliga. Descoberto em 14/08/2026: desligar o
+    // clamp tira o corte de torque, mas o ODrive continua comparando a velocidade com o MESMO
+    // `vel_limit` que acabamos de mandar ignorar, e desarma na hora se passar de vel_limit ×
+    // vel_limit_tolerance. Com os defaults isso dava 5,0 × 1,2 = 6 voltas/s — dentro do que este
+    // motor alcança nesta fonte, e o desarme vinha como um TRANCO, porque o torque cai a zero no
+    // meio do movimento. Foi assim que o teste de regeneração derrubou a base com o volante
+    // desacoplado: sem o aro a inércia é mínima e a velocidade sobe em picos perfeitamente normais.
+    //
+    // POR QUE ISTO NÃO É "DESLIGAR UMA PROTEÇÃO": a proteção contra o volante girar sozinho é NOSSA
+    // (ver kOverspeedTurnsS em ffb_task.cpp) e é mais bem pensada — exige 5 voltas/s SUSTENTADAS por
+    // 150 ms, então ignora o transiente inofensivo e pega o disparo de verdade. A do ODrive dispara
+    // num pico instantâneo, sem persistência nenhuma. Subindo o teto dela para muito além do que a
+    // mecânica alcança, ela fica como último recurso absoluto e a nossa age primeiro, que é a ordem
+    // certa. O `if` do ODrive continua ativo — o outro ramo dele detecta estimativa de velocidade
+    // inválida, e essa checagem queremos manter.
+    //
+    // ⚠️ Só mexe no disparo do erro: `enable_torque_mode_vel_limit` está desligado e o clamp também,
+    // então `vel_limit` não entra em nenhuma conta de torque. Conferido campo a campo antes de mudar.
+    axes[0].controller_.config_.vel_limit                = 25.0f;   // erro só acima de 30 voltas/s
     // BRAKE RESISTOR (chopper) — config funcional para placas classe ODESC: dissipa a regen que
     // estourava dc_bus_overvoltage_trip_level (a queda de FFB na chicane). Antes ficava DESLIGADO (contorno
     // do não-arme); agora o clear_errors (delegado a odrv.clear_errors, fix 046c421) RE-ARMA o brake no

@@ -67,16 +67,29 @@ volatile int32_t g_bus_autoscaled = 0;
 // axis_err=CONTROLLER_FAILED. O "porquê" mora em controller_.error_ — e quando fomos ler, já
 // estava ZERADO: o auto-arme roda clear_errors() 68 ms depois e apaga tudo. Ficamos com "o
 // controlador falhou" e três candidatos possíveis (SPINOUT_DETECTED, INVALID_ESTIMATE, OVERSPEED)
-// sem meio de distinguir. Aqui guardamos o estado ANTES do clear, e só a PRIMEIRA vez: as falhas
-// seguintes costumam ser eco da primeira, e sobrescrever perderia justamente a original.
+// sem meio de distinguir. Aqui guardamos o estado ANTES do clear.
+//
+// ⚠️ GUARDAR "A PRIMEIRA" NÃO FUNCIONOU, e vale registrar por quê: este trecho roda toda vez que o
+// eixo é encontrado em IDLE com o motor habilitado — e a primeira vez SEMPRE é o arme normal do
+// boot, quando o motor ainda nem calibrou e todos os erros são zero. A fotografia ficava congelada
+// nesse retrato vazio e nenhuma falha real depois dela era registrada. Em 14/08/2026 o volante deu
+// um tranco e desarmou no teste de regeneração, e o diagnóstico só sabia dizer "5 falhas, todas com
+// erro zero" — que era o boot contado cinco vezes.
+//
+// Agora fotografamos a ÚLTIMA falha COM erro. "Última" e não "primeira" porque, quando alguém vai
+// ler, o que interessa é o desarme que acabou de acontecer; e "com erro" porque é isso que separa
+// um desarme de verdade das tentativas de arme rotineiras. Quem conta as duas coisas são dois
+// contadores separados, e não um só que misturava as duas.
 //
 // As duas potências importam tanto quanto o código de erro: se no instante da falha a mecânica
 // estiver bem negativa e a elétrica positiva, foi a detecção de spinout do ODrive — que num volante
 // FFB dispara em condição NORMAL de uso (segurar o volante contra a força é exatamente "frear
 // consumindo corrente"), e aí o conserto é afrouxar/desligar o detector, não caçar bug.
-volatile int32_t g_fail_dbg[8] = {0};
-// [0]ocorrências [1]controller_err [2]axis_err [3]motor_err [4]enc_err
+volatile int32_t g_fail_dbg[10] = {0};
+// [0]tentativas de arme (inclui as rotineiras) [1]controller_err [2]axis_err [3]motor_err [4]enc_err
 // [5]mech_power*1000 (W) [6]elec_power*1000 (W) [7]vbus*1000 (V)
+// [8]odrv_err GLOBAL — onde moram os trips de barramento, invisíveis nos campos do eixo
+// [9]desarmes COM erro: o contador que de fato conta problema
 
 // ============================================================================================
 // GUARDA DE COERÊNCIA DO ÂNGULO ELÉTRICO
@@ -136,11 +149,35 @@ volatile int32_t g_guard_bad_ms  = 0;   // quanto tempo incoerente agora (0 = sa
 // LIMIAR: um piloto gira talvez 2-3 voltas/s em pico numa correção rápida. Um runaway com 10 Nm
 // passa disso e continua acelerando. 5 voltas/s deixa margem confortável para o uso e pega o
 // disparo bem antes de ele ficar perigoso. A persistência evita disparar num tranco isolado.
-static constexpr float    kOverspeedTurnsS = 5.0f;   // ~1800 °/s — bem acima de qualquer giro humano
-static constexpr uint16_t kOverspeedMs     = 150;    // sustentado, não pico
-volatile int32_t g_overspeed_trip     = 0;   // 1 = disparou
+//
+// ⚠️ RECALIBRADA EM 14/08/2026, depois de ela derrubar a base três vezes num dia. Os limiares
+// antigos (5,0 voltas/s por 150 ms) estavam errados nas DUAS pontas, e vale registrar como:
+//
+//   ALTA DEMAIS para o caso que a criou. Aquele runaway foram 34 voltas em 25 s — 1,36 voltas/s.
+//   A guarda nunca teria disparado nele. Quem de fato pega um volante girando sozinho é a guarda
+//   de CURSO EXCEDIDO, porque um runaway sai do curso seja rápido ou devagar, e ela age 45° depois.
+//
+//   BAIXA DEMAIS para o uso legítimo. Com Kt 0,48 e o barramento em 27 V, a back-EMF limita este
+//   motor a algo perto de 8-9 voltas/s: 5,0 fica DENTRO da faixa que ele alcança sempre que a carga
+//   é leve. Os três desarmes pousaram em 5,12, 5,92 e 5,12 — todos logo acima do limiar, que é a
+//   assinatura de estar medindo o teto do motor e não uma anomalia.
+//
+// 7,0 voltas/s é quase o teto físico: com o aro montado não se chega lá, e sem ele só com força
+// alta de propósito. 250 ms exige que a condição se mantenha, não que ocorra.
+static constexpr float    kOverspeedTurnsS = 7.0f;   // ~2500 °/s — perto do teto físico do motor
+static constexpr uint16_t kOverspeedMs     = 250;    // sustentado, não pico
+// REPETIÇÃO, NÃO OCORRÊNCIA. Desarmar e travar o auto-arme no primeiro disparo era pior que o
+// problema: em pista, uma batida que girasse o volante rápido tiraria a força e ela SÓ voltaria com
+// power-cycle — no meio de uma corrida. Um disparo isolado agora deixa o auto-arme religar (que é
+// rápido: s_cal_locked garante uma calibração por boot, então a religada custa milissegundos, não
+// os ~5 s de uma cal). O que trava de vez é a REPETIÇÃO — um runaway de verdade não some sozinho,
+// volta assim que o motor rearma, e três vezes em 10 s é o padrão que uma batida não produz.
+static constexpr uint8_t  kOverspeedMaxRepeats = 3;
+static constexpr uint32_t kOverspeedWindowMs   = 10000;
+volatile int32_t g_overspeed_trip     = 0;   // 1 = TRAVADO (não re-arma mais) — é o que a telemetria mostra
 volatile int32_t g_overspeed_vel_mts  = 0;   // velocidade no disparo (milli-turns/s) — a prova
 volatile int32_t g_overspeed_bad_ms   = 0;   // há quanto tempo acima do limiar (0 = normal)
+volatile int32_t g_overspeed_trips    = 0;   // disparos neste boot, travando ou não
 
 // ============================================================================================
 // GUARDA DE CURSO EXCEDIDO — ver inc/overtravel_guard.h para o porque e a maquina de estados.
@@ -300,15 +337,29 @@ static void ffb_thread(void*) {
         // GUARDA DE SOBREVELOCIDADE — vem ANTES de tudo: é a proteção que não pode falhar.
         // Só observa a velocidade; não corta torque, não limita nada enquanto o giro for humano.
         if (g_axis_dbg[0] && !g_overspeed_trip) {
-            static uint16_t s_fast_ms = 0;
+            static uint16_t s_fast_ms      = 0;
+            static uint32_t s_last_trip_ms = 0;
+            static uint8_t  s_repeats      = 0;
             const float vel = fabsf(motor_link_get_vel_estimate());   // turns/s
             if (vel > kOverspeedTurnsS) {
                 if (++s_fast_ms >= kOverspeedMs) {
                     g_overspeed_vel_mts = (int32_t)(vel * 1000.0f);   // a prova, ANTES de desarmar
-                    g_overspeed_trip    = 1;
-                    g_arm_gate          = 0;      // não re-armar: a causa continua lá
+                    g_overspeed_trips++;
+
+                    // Disparos ESPAÇADOS não somam: dois sustos numa sessão longa são duas batidas,
+                    // não um defeito. Só a rajada dentro da janela conta como causa que não passou.
+                    // (int32_t) na diferença = seguro no wrap do contador de 1 kHz.
+                    if (g_overspeed_trips > 1 &&
+                        (int32_t)(n - s_last_trip_ms) > (int32_t)kOverspeedWindowMs) s_repeats = 0;
+                    s_last_trip_ms = n;
+
+                    if (++s_repeats >= kOverspeedMaxRepeats) {
+                        g_overspeed_trip = 1;     // travado: a telemetria acusa e ninguém re-arma
+                        g_arm_gate       = 0;     // a causa continua lá, parar de insistir
+                    }
                     motor_link_set_input_torque(0.0f);
                     motor_link_request_idle();
+                    s_fast_ms = 0;                // o próximo disparo tem de se sustentar de novo
                 }
             } else {
                 s_fast_ms = 0;
@@ -407,14 +458,20 @@ static void ffb_thread(void*) {
                     // (int32_t) na diferença = seguro no wrap do contador de 1 kHz
                     if ((int32_t)(n - s_next_try) >= 0 && s_arm_attempts < 300) {
                         // ANTES do clear: fotografa a falha, senão ela se perde (ver g_fail_dbg).
-                        if (g_fail_dbg[0] == 0) {
-                            g_fail_dbg[1] = (int32_t)motor_link_controller_error();
+                        // Só quando há erro de verdade — o arme rotineiro do boot chega aqui com
+                        // tudo zerado e sobrescreveria o retrato do desarme que interessa.
+                        const int32_t ctrl_err = (int32_t)motor_link_controller_error();
+                        const int32_t odrv_err = (int32_t)motor_link_odrv_error();
+                        if ((ctrl_err | odrv_err | g_axis_dbg[2] | g_axis_dbg[3] | g_axis_dbg[4]) != 0) {
+                            g_fail_dbg[1] = ctrl_err;
                             g_fail_dbg[2] = g_axis_dbg[2];   // axis_err
                             g_fail_dbg[3] = g_axis_dbg[3];   // motor_err
                             g_fail_dbg[4] = g_axis_dbg[4];   // enc_err
                             g_fail_dbg[5] = (int32_t)(motor_link_get_mech_power() * 1000.0f);
                             g_fail_dbg[6] = (int32_t)(motor_link_get_elec_power() * 1000.0f);
                             g_fail_dbg[7] = (int32_t)(motor_link_get_vbus() * 1000.0f);
+                            g_fail_dbg[8] = odrv_err;
+                            g_fail_dbg[9]++;
                         }
                         g_fail_dbg[0]++;
                         motor_link_clear_errors();      // limpa erros + RE-ARMA o brake resistor
