@@ -209,6 +209,14 @@ extern "C" void motor_link_apply_hw_profile(int board_variant, int bus_nominal_v
 // BRING-UP de PLACA NOVA: calibra o NOSSO motor do zero (a NVM de fábrica é de outro motor). Seta a
 // geometria (pole_pairs=15 do hoverboard, cpr=4000 do E6B2 1000 PPR ×4, incremental), corrente de cal
 // SEGURA (10A, não os 30 do perfil) e limite modesto (falha-seguro). Faz cal completa (mede R/L → "apito")
+/// Uma volta MECÂNICA inteira, em radianos elétricos. Derivado dos pares de polos e não cravado:
+/// o mesmo binário roda em motores diferentes, e "uma volta" só significa a mesma coisa em radianos
+/// elétricos depois de multiplicar pelos pares. Ver o porquê no bringup (calib_scan_distance).
+static float drvlab_calib_scan_distance(void) {
+    const int pp = axes[0].motor_.config_.pole_pairs;
+    return 2.0f * (float)M_PI * (float)(pp > 0 ? pp : 1);
+}
+
 // + offset do encoder + arma no fim. Brake desligado. Roda 1x na placa nova pra testar o DRV limpo.
 extern "C" void motor_link_newboard_bringup(void) {
     // MOTOR — geometria + R/L do NOSSO hoverboard (medidos na placa antiga: 0,20Ω/0,35mH; batem com o
@@ -341,20 +349,47 @@ extern "C" void motor_link_newboard_bringup(void) {
     // em todo boot, e a corrente de lock-in deixa de ser crítica (era por isso que oscilávamos
     // entre 3, 6, 8 e 10 A sem achar um valor bom — nenhum era, o método é que era frágil).
     //
-    // find_idx_on_lockin_only=false: escuta SEMPRE, não só durante a varredura. Custa uma
-    // interrupção por volta e permite validar o Z girando à mão, sem energizar o motor.
-    // ⚠️ TESTE 2026-08-08 — ÍNDICE DESLIGADO para isolar a assimetria POR ORDEM.
-    // O sintoma da bancada: o batente do PRIMEIRO lado visitado segura; o do SEGUNDO falha — e o
-    // lado que falha TROCA conforme por onde se começa. Isso não é posição fixa, é algo que muda de
-    // estado ao percorrer o curso. A reancoragem contínua pelo índice (que liguei hoje) é candidata:
-    // cada passagem pelo Z faz set_circular_count(0), reancorando a FASE ELÉTRICA, e o Z fica num
-    // ponto físico único — cruza-se indo para um lado, não para o outro. Se o índice não coincidir
-    // com o offset calibrado, a fase SALTA ao cruzar, e o extremo seguinte fica errado.
-    // Desligado: volta ao comportamento anterior (offset só do lock-in, sem reancoragem).
-    // Se a assimetria por ordem SUMIR → era a reancoragem (introduzida por mim hoje).
-    // Se PERSISTIR → o offset já nasce ruim da calibração, e o alvo é o método de alinhamento.
-    axes[0].encoder_.config_.use_index               = false;
-    axes[0].encoder_.config_.find_idx_on_lockin_only = false;
+    // ⚠️ 2026-08-15 — O ÍNDICE VOLTA, MAS NO MODO CERTO. O teste de 08/08 (histórico logo abaixo)
+    // desligou o índice INTEIRO para investigar a assimetria por ordem de visita. Ele mediu a
+    // configuração errada: o problema não era USAR o índice, era o MODO como o usávamos.
+    //
+    // Tínhamos find_idx_on_lockin_only=FALSE, que no ODrive significa escutar o Z o tempo todo e
+    // reancorar a fase a CADA passagem (set_idx_subscribe: `use_index && !find_idx_on_lockin_only`
+    // → subscribe permanente). A implementação de referência faz o oposto: acha o índice UMA vez, no
+    // boot, e DESLIGA a escuta na hora — "Found the index. disable flag". E carrega um aviso no
+    // próprio código dizendo que mudar de direção pode invalidar o offset de fase por causa da
+    // LARGURA do pulso de índice. É exatamente o nosso sintoma: cruzar o Z indo e voltando não dá o
+    // mesmo ponto, e o extremo seguinte fica errado.
+    //
+    // find_idx_on_lockin_only=TRUE nos dá o mesmo comportamento: o ODrive inscreve só durante a
+    // busca (override_enable) e desinscreve depois. Uma âncora por boot, sem reancoragem contínua.
+    //
+    // O QUE SE ESPERA GANHAR: o zero elétrico deixa de vir de um lock-in que assenta no detente de
+    // cogging mais próximo — a raiz do offset variar a cada partida (medido: 63° elétricos entre
+    // dois boots). O índice é uma marca FÍSICA: ancorado nele, o offset é o mesmo sempre.
+    //
+    // O QUE ISTO **NÃO** RESOLVE: o desalinhamento mecânico do ímã. Medimos 65° elétricos de erro no
+    // pior ponto da volta (15/08), e nenhuma âncora conserta isso — são problemas independentes.
+    //
+    // ⚠️ SE A ASSIMETRIA POR ORDEM VOLTAR, o suspeito é este bloco, e o passo é voltar
+    // find_idx_on_lockin_only para false ANTES de mexer em qualquer outra coisa.
+    // ⚠️ AS DUAS FLAGS SÃO NECESSÁRIAS PARA A BUSCA ACONTECER, e isso custou um teste inteiro em
+    // 15/08/2026: reverti use_index e religuei só startup_encoder_index_search, achando que bastava.
+    // A base bootou perfeita — e não porque o problema tivesse sumido, mas porque a busca foi PULADA:
+    //
+    //     if (config_.startup_encoder_index_search && encoder_.config_.use_index)   // axis.cpp:463
+    //
+    // Um teste que não executa o caminho sob suspeita não é evidência de nada. Confirmado na placa
+    // depois: index_found_=0, use_index=0.
+    axes[0].encoder_.config_.use_index               = true;
+    axes[0].encoder_.config_.find_idx_on_lockin_only = true;
+
+    // ─── histórico, para o teste de 08/08 não ser refeito às cegas ───────────────────────────────
+    // TESTE 2026-08-08 — índice DESLIGADO para isolar a assimetria POR ORDEM. O sintoma: o batente
+    // do PRIMEIRO lado visitado segura; o do SEGUNDO falha — e o lado que falha TROCA conforme por
+    // onde se começa. A reancoragem contínua era a candidata, e era mesmo: cada passagem pelo Z
+    // fazia set_circular_count(0) num ponto físico único, cruzado indo para um lado e não para o
+    // outro. O erro foi a conclusão — desligamos o índice inteiro em vez do modo contínuo.
     // 🔴 use_index_offset = FALSE — NÃO deixar o índice mexer na POSIÇÃO do volante.
     //
     // Com ele true (default do ODrive), enc_index_cb chama set_linear_count(index_offset * cpr) a
@@ -373,9 +408,50 @@ extern "C" void motor_link_newboard_bringup(void) {
     // referência de volante e não pode ser reescrita por ninguém depois do set-center.
     axes[0].encoder_.config_.use_index_offset        = false;
     axes[0].encoder_.config_.pre_calibrated          = false;  // 1ª vez ainda mede o offset
+
+    // ⚠️ A VARREDURA PRECISA COBRIR UMA VOLTA MECÂNICA INTEIRA. O default do ODrive é 16π rad
+    // elétricos, que neste motor de 15 pares dá apenas **0,53 volta** — e é ISSO que fazia o offset
+    // mudar a cada partida.
+    //
+    // A calibração já promedia bem: varre nos DOIS sentidos e soma o encoder a cada milissegundo,
+    // o que cancela atrito e cogging. O que ela NÃO cancela é o erro de ímã descentrado, porque ele
+    // tem período de UMA VOLTA — promediar meia volta captura um pedaço diferente da senoide
+    // conforme onde o volante estava quando ligou, e o offset sai diferente.
+    //
+    // Os números fecham (medidos em 15/08/2026): excentricidade de ±2,90° mecânicos = ±43,5°
+    // elétricos, e a variação observada entre dois boots foi de 57° elétricos. Não são dois
+    // problemas — a variação do offset É a excentricidade sendo amostrada em pedaços diferentes.
+    //
+    // Cobrindo a volta inteira, a média passa pelo ciclo completo do erro e ele se cancela. É o
+    // mesmo princípio que faz o teste de excentricidade exigir 0,75 volta para responder.
+    //
+    // CUSTO: a calibração fica ~1,9× mais longa (a varredura é 30π em vez de 16π). É o preço de um
+    // zero elétrico que não muda entre partidas.
+    axes[0].encoder_.config_.calib_scan_distance     = drvlab_calib_scan_distance();
     // STARTUP — sem apito (R/L já medidos). Procura o ÍNDICE, calibra o offset ancorado nele, arma.
     axes[0].config_.startup_motor_calibration            = false; // sem apito (R/L medidos, não estimados)
-    axes[0].config_.startup_encoder_index_search        = false; // TESTE: sem busca de indice (ver acima)
+    // Busca o índice ANTES de calibrar o offset — a ordem importa: o offset tem de ser medido já
+    // ancorado no Z, senão ancoramos depois num zero que veio do lock-in e não ganhamos nada.
+    //
+    // 🔬 LIGADO DE PROPÓSITO — TESTE PARA LER A CAUSA DO RESET (15/08/2026).
+    //
+    // Este passo pôs a base em ciclo de reset. Duas hipóteses explicam o sintoma ("gira e reinicia
+    // logo em seguida") e não dá para escolher entre elas por raciocínio:
+    //   · WATCHDOG (IWDG, 2 s): quem alimenta é o laço de FFB; se a busca o prende, reinicia.
+    //   · BROWN-OUT: run_index_search usa calibration_lockin — 10 A e finish_distance de 628 rad
+    //     elétricos = 6,7 VOLTAS mecânicas a 0,42 volta/s, ou seja até ~16 s sob 10 A se o Z não
+    //     aparecer. É muito mais tempo sob corrente que a calibração de offset (~1,7 volta).
+    //
+    // A base já sabe qual foi: o blackbox grava a causa lendo as flags do CSR. Este teste existe
+    // para LER, não para funcionar — espera-se que a base volte a ciclar.
+    //
+    // ⚠️ NÃO DESLIGUE A BASE DA TOMADA antes de ler: o rastro é .noinit, sobrevive ao reset e MORRE
+    // na queda de energia. Ler é `scripts/ler-reset.sh` com o ST-Link plugado DEPOIS do ciclo.
+    //
+    // Referência que o ODrive não tem e a implementação de referência tem: timeout de 10 s, busca
+    // com METADE da corrente, corte de corrente incondicional ao sair e erro registrado sem travar
+    // o boot. Se a causa for brown-out, é esse desenho que devemos portar.
+    axes[0].config_.startup_encoder_index_search        = true;
     axes[0].config_.startup_encoder_offset_calibration   = true;  // 2º: offset, agora ancorado no índice
     axes[0].config_.startup_closed_loop_control          = true;  // 3º: arma
     // Sim racing: sem clamp de velocidade cortando torque (girar na mão sem OVERSPEED)
@@ -888,7 +964,7 @@ extern "C" int motor_link_start_encoder_test(void) {
 /// Devolve a varredura ao tamanho de produção. Chamar quando o teste terminar — senão TODA
 /// calibração seguinte passa a levar 30 s, e o usuário paga o preço do teste sem tê-lo pedido.
 extern "C" void motor_link_end_encoder_test(void) {
-    axes[0].encoder_.config_.calib_scan_distance = 16.0f * (float)M_PI;   // padrao do ODrive
+    axes[0].encoder_.config_.calib_scan_distance = drvlab_calib_scan_distance();
 
     // DEVOLVE O ALINHAMENTO. Sem isto o teste vira um recalibrador disfarcado de medidor: mede
     // certo e deixa o motor com um offset que ninguem pediu. Um diagnostico nao pode piorar o que
