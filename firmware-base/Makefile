@@ -122,6 +122,7 @@ CPP_SOURCES_LOCAL = \
   src/ffb_report.cpp \
   src/motor_link.cpp \
   src/blackbox.cpp \
+  src/encoder_eccentricity.cpp \
   src/wheel_center.cpp \
   src/watchdog.cpp \
   src/usb_tinyusb_glue.cpp \

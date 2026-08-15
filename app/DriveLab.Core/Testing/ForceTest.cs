@@ -530,5 +530,6 @@ public static class ForceTests
         new ImpactTest(),
         new RegenTest(),
         new OvertravelTest(),
+        new EncoderTest(),
     };
 }

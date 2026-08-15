@@ -251,10 +251,18 @@ extern "C" void motor_link_newboard_bringup(void) {
     // R/L, e é a medição de INDUTÂNCIA que dispara o OCP do DRV8301 (L baixa → ΔI=V·Δt/L explode), não a
     // corrente de lock-in. Com pre_calibrated=true (acima) a medição de R/L é pulada, que é exatamente a
     // configuração de referência que roda 8A. Se o DRV_FAULT voltar no boot, ESTE é o primeiro a reverter.
-    // CORRENTE DE LOCK-IN — 6 A → 10 A (2026-08-08, depois de PROVAR que não há índice).
+    // CORRENTE DE LOCK-IN — 6 A → 10 A (2026-08-08).
     //
-    // Sem o canal Z ligado (medido na bancada: 3,03 voltas com use_index=1 e index_found ficou 0),
-    // o zero elétrico é achado por LOCK-IN a cada boot: aplica-se corrente numa fase conhecida e
+    // ⚠️ ESTE COMENTÁRIO DIZIA "depois de PROVAR que não há índice", e isso é FALSO. O canal Z está
+    // ligado e funciona: o índice foi detectado após 0,64 volta girando o volante à mão (ver o bloco
+    // do use_index mais abaixo). A "prova" era a medição de 3,03 voltas com index_found=0, que o
+    // próprio arquivo declara INVÁLIDA logo adiante — o motor estava desconectado e o encoder, sem
+    // alimentação, não gerava pulso nenhum. Um comentário errado sobrevive a quem o escreveu: este
+    // ficou meses afirmando que a placa não tem Z, e voltou a induzir essa conclusão em 15/08/2026.
+    //
+    // O que segue valendo é a CONSEQUÊNCIA, porque hoje o índice está desligado por opção (o teste
+    // de 08/08, ver abaixo) e não por ausência: com use_index=false o zero elétrico é achado por
+    // LOCK-IN a cada boot — aplica-se corrente numa fase conhecida e
     // assume-se que o rotor parou exatamente ali. No hoverboard o cogging é forte, e o rotor assenta
     // no detente magnético mais próximo em vez do ponto elétrico real. Esse erro vira o offset.
     //
@@ -824,4 +832,72 @@ extern "C" int motor_link_apply_thermal_settings(void) {
 // (HW_VERSION_MAJOR/MINOR no Makefile). O gate esta em ODrive::enter_dfu_mode().
 extern "C" void motor_link_enter_dfu(void) {
     odrv.enter_dfu_mode();   // nao retorna (NVIC_SystemReset)
+}
+
+// ============================================================================================
+// TESTE DO ENCODER — a varredura da calibração, porém longa o bastante para MEDIR
+// ============================================================================================
+// POR QUE ESTE TESTE EXISTE: a calibração normal varre 16π rad elétricos, que com 15 pares de polos
+// dá 0,27 VOLTA mecânica. O erro de ímã descentrado tem período de UMA volta — ajustar a senoide a
+// um quarto do ciclo é mal condicionado, e o número que sai parece medição sem ser (medido em
+// 15/08/2026: reportou "0,17° de amplitude" com resíduo 5× maior, ou seja, nada).
+//
+// A CORREÇÃO: alongar a varredura para pouco mais de uma volta, SÓ durante o teste. Tudo o mais é
+// idêntico à calibração — mesmo estado do ODrive, mesma malha aberta, mesma coleta.
+//
+// ⚠️ POR QUE REUSAR O ESTADO DO ODRIVE, E NÃO COMANDAR O MOTOR POR FORA: tentamos a segunda opção em
+// 15/08/2026 e ela TRAVOU A BASE. O `wait_for_control_iteration()` espera um evento do laço de
+// controle que só existe no contexto do eixo; chamado do laço de FFB, nunca retorna. Pedir o estado
+// e deixar o ODrive executá-lo no lugar certo é mais simples e não tem esse risco.
+//
+// ⚠️ DEMORA, E ISSO TEM CONSEQUÊNCIA: a varredura é ida e volta a 2π rad/s elétricos, então uma
+// volta mecânica leva ~15 s por sentido, ~30 s no total. A thread do eixo tem prioridade MAIOR que
+// a do nosso laço de FFB, que é quem fala USB — e uma calibração de 35 s já derrubou o dispositivo
+// no Windows antes. O teste avisa e o app deve esperar; se a conexão cair, ela volta sozinha.
+// O alinhamento ANTES do teste. A varredura recalcula o offset, e uma varredura longa contra o
+// cogging do hoverboard pode terminar com um valor PIOR que o de partida — foi o que suspeitamos ter
+// disparado o motor a 12 voltas/s em 15/08/2026. Guardar e devolver torna o teste NAO-DESTRUTIVO:
+// ele mede e deixa a base exatamente como encontrou.
+static float   s_ecc_offset_float = 0.0f;
+static int32_t s_ecc_offset       = 0;
+static int32_t s_ecc_direction    = 0;
+static bool    s_ecc_ready        = false;
+static bool    s_ecc_salvo        = false;
+
+extern "C" int motor_link_start_encoder_test(void) {
+    if (axes[0].motor_.is_armed_) return 0;              // com o motor armado, nao: seriam dois donos
+    if (!axes[0].motor_.is_calibrated_)  return 0;       // a varredura de offset exige R/L medidos
+    // Sem um alinhamento valido para devolver, o teste deixaria a base pior do que achou.
+    if (!axes[0].encoder_.is_ready_) return 0;
+
+    s_ecc_offset_float = axes[0].encoder_.config_.phase_offset_float;
+    s_ecc_offset       = axes[0].encoder_.config_.phase_offset;
+    s_ecc_direction    = axes[0].encoder_.config_.direction;
+    s_ecc_ready        = axes[0].encoder_.is_ready_;
+    s_ecc_salvo        = true;
+
+    // Pouco mais de uma volta: a margem garante que a senoide feche o ciclo mesmo com folga
+    // mecanica, e o custo de 10% a mais de tempo e irrelevante perto de nao poder concluir.
+    const float uma_volta_elec = 2.0f * (float)M_PI * (float)axes[0].motor_.config_.pole_pairs;
+    axes[0].encoder_.config_.calib_scan_distance = uma_volta_elec * 1.1f;
+
+    axes[0].requested_state_ = Axis::AXIS_STATE_ENCODER_OFFSET_CALIBRATION;
+    return 1;
+}
+
+/// Devolve a varredura ao tamanho de produção. Chamar quando o teste terminar — senão TODA
+/// calibração seguinte passa a levar 30 s, e o usuário paga o preço do teste sem tê-lo pedido.
+extern "C" void motor_link_end_encoder_test(void) {
+    axes[0].encoder_.config_.calib_scan_distance = 16.0f * (float)M_PI;   // padrao do ODrive
+
+    // DEVOLVE O ALINHAMENTO. Sem isto o teste vira um recalibrador disfarcado de medidor: mede
+    // certo e deixa o motor com um offset que ninguem pediu. Um diagnostico nao pode piorar o que
+    // veio examinar.
+    if (s_ecc_salvo) {
+        axes[0].encoder_.config_.phase_offset_float = s_ecc_offset_float;
+        axes[0].encoder_.config_.phase_offset       = s_ecc_offset;
+        axes[0].encoder_.config_.direction          = s_ecc_direction;
+        axes[0].encoder_.is_ready_                  = s_ecc_ready;
+        s_ecc_salvo = false;
+    }
 }

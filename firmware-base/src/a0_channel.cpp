@@ -18,6 +18,8 @@
 #include "settings_store.h"   // (de)serialização pura do blob de settings (magic+versão+CRC)
 #include "settings_flash.h"   // I/O de flash da região FFB_NVM (setor 1 @0x08004000)
 #include "brake_meter.h"      // contadores do brake chopper (energia, acionamentos, pico)
+#include "blackbox.h"         // rastro fino: qual chamada prendeu o laço
+#include "encoder_eccentricity.h"  // resultado do teste do encoder na telemetria
 #include "peak_tracker.h"     // picos de corrente do monitor
 #include "wheel_center.h"     // zero unico do volante (ResetCenter escreve nele)
 #include "bringup_lock.h"     // trava "Ativar motor" volta a zero quando o firmware muda
@@ -58,7 +60,8 @@ enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_FLOAT = 4, T_U32 = 5 };
 
 // BaseCommand (DriveLab.Core.Settings.BaseCommand)
 enum { CMD_REBOOT = 1, CMD_SAVE = 2, CMD_RESET_CENTER = 3, CMD_DFU = 4, CMD_CALIBRATE = 5,
-       CMD_SET_FORCE_ENABLED = 6, CMD_CAL_COGGING = 7, CMD_BRAKE_BENCH = 8, CMD_BRAKE_AUTO = 9 };
+       CMD_SET_FORCE_ENABLED = 6, CMD_CAL_COGGING = 7, CMD_BRAKE_BENCH = 8, CMD_BRAKE_AUTO = 9,
+       CMD_TEST_ENCODER = 10 };
 
 // 48 = 45 settings + motor_enable (45) + encoder_interface (46) + build_id (47). Adicionar campo
 // aqui NAO apaga mais os ajustes salvos: unpackSettings migra blob de firmware antigo (menos
@@ -179,6 +182,7 @@ static uint32_t s_last_state_ms = 0;
 static bool    s_inited = false;
 static bool    s_save_requested = false;
 static bool    s_reboot_requested = false;
+static bool    s_enc_test_requested = false;   // CMD_TEST_ENCODER
 static bool    s_dfu_requested = false;      // CMD_DFU: o ffb_task desarma e salta pro bootloader   // CMD_REBOOT: o ffb_task desarma e reseta o MCU  // CMD_SAVE pediu persistir → o ffb_task grava com motor IDLE
 
 static inline uint16_t rd_u16(const uint8_t* p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
@@ -305,6 +309,8 @@ extern "C" float a0_get_setting_f(uint8_t id) {
 }
 
 extern "C" bool a0_reboot_pending(void) { return s_reboot_requested; }
+extern "C" bool a0_enc_test_pending(void) { return s_enc_test_requested; }
+extern "C" void a0_enc_test_clear(void)   { s_enc_test_requested = false; }
 extern "C" bool a0_dfu_pending(void)    { return s_dfu_requested; }
 
 // Pedido de save pendente? O ffb_task consulta e grava SÓ com o motor IDLE (a flash congela a CPU).
@@ -370,6 +376,10 @@ extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len) {
                 // Entrar em DFU pelo app (atualizar firmware sem ST-Link e sem jumper).
                 // Deferido como o reboot: o motor precisa estar DESARMADO antes do reset.
                 case CMD_DFU: s_dfu_requested = true; break;
+                // TESTE DO ENCODER (ver encoder_eccentricity.h). Deferido para o laço como o save:
+                // ele precisa alongar a varredura e pedir o estado de calibração ao ODrive, o que
+                // não se faz de dentro do callback do USB.
+                case CMD_TEST_ENCODER: s_enc_test_requested = true; break;
                 // CMD_CALIBRATE: TODO (trabalho no loop, não aqui)
                 default: break;
             }
@@ -491,6 +501,18 @@ static void a0_build_state(uint8_t* p) {
     // acumulado da sessao em p[30] — mas seguem uteis por SWD para entender uma sessao ruim.
     p[37] = g_clip_peak_game;                              // ClippingPeakGame (sessao)
     p[38] = g_clip_peak_base;                              // ClippingPeakBase (sessao)
+
+    // TESTE DO ENCODER — o que a varredura mediu (ver encoder_eccentricity.h). Fica na telemetria
+    // e nao numa resposta propria porque o app precisa VER o resultado aparecer quando o teste
+    // termina, sem ficar perguntando.
+    p[39] = (uint8_t)(g_ecc.valido ? 1 : 0);
+    // Cobertura em centesimos de volta. E ELA que diz se o numero abaixo vale: excentricidade tem
+    // periodo de uma volta, e abaixo de 0,75 a medicao nao se sustenta.
+    p[40] = (uint8_t)(g_ecc.cobertura_milivolta / 10 > 255 ? 255 : g_ecc.cobertura_milivolta / 10);
+    put_i16(&p[41], (int16_t)g_ecc.amplitude_cdeg);        // excentricidade, centesimos de grau
+    put_i16(&p[43], (int16_t)g_ecc.residuo_cdeg);          // o que a senoide nao explica
+    put_i16(&p[45], (int16_t)(g_ecc.fase_cdeg / 10));      // onde o erro e maximo, decimos de grau
+    p[47] = (uint8_t)motor_link_motor_pole_pairs();        // o app converte grau mecanico -> eletrico
 }
 
 // ---------------------------------------------------------------------------

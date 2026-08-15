@@ -73,6 +73,15 @@ public sealed class BaseState
     public byte ClippingPeakGame { get; set; }
     public byte ClippingPeakBase { get; set; }
 
+    /// <summary>Resultado da última varredura do teste de encoder. Aqui são só os graus MECÂNICOS
+    /// crus que o firmware mediu; quem os traduz em perda de força e calor é EncoderHealth.</summary>
+    public bool EncoderTestValido { get; set; }
+    public double EncoderCoberturaVolta { get; set; }
+    public double EncoderExcentricidadeGraus { get; set; }
+    public double EncoderResiduoGraus { get; set; }
+    public double EncoderFaseGraus { get; set; }
+    public byte EncoderPolePairs { get; set; }
+
     /// <summary>Pico de clipping do jogo na sessão, em 0..100%.</summary>
     public int ClippingPeakGamePercent => (int)System.Math.Round(ClippingPeakGame / 255.0 * 100);
 
@@ -150,5 +159,13 @@ public sealed class BaseState
         ClippingBase = src.Length > 36 ? src[36] : (byte)0,
         ClippingPeakGame = src.Length > 37 ? src[37] : (byte)0,
         ClippingPeakBase = src.Length > 38 ? src[38] : (byte)0,
+        // TESTE DO ENCODER. Firmware antigo manda zero, e zero em EncoderTestValido significa
+        // "ainda não medi" — que é o estado correto de uma placa que nunca rodou o teste.
+        EncoderTestValido = src.Length > 39 && src[39] != 0,
+        EncoderCoberturaVolta = src.Length > 40 ? src[40] / 100.0 : 0,
+        EncoderExcentricidadeGraus = src.Length > 42 ? BinaryPrimitives.ReadInt16LittleEndian(src[41..43]) / 100.0 : 0,
+        EncoderResiduoGraus = src.Length > 44 ? BinaryPrimitives.ReadInt16LittleEndian(src[43..45]) / 100.0 : 0,
+        EncoderFaseGraus = src.Length > 46 ? BinaryPrimitives.ReadInt16LittleEndian(src[45..47]) / 10.0 : 0,
+        EncoderPolePairs = src.Length > 47 ? src[47] : (byte)0,
     };
 }

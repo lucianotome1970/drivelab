@@ -64,6 +64,13 @@ int motor_link_apply_encoder_settings(void);
 /// Chamar DEPOIS do relax_calibration. Devolve 1 se o número de pares mudou (calibração invalidada).
 int motor_link_apply_motor_settings(void);
 int motor_link_apply_thermal_settings(void);
+
+/// TESTE DO ENCODER: roda a varredura da calibração alongada para UMA VOLTA, que é o mínimo para
+/// medir excentricidade (ver encoder_eccentricity.h). Devolve 0 se não pôde iniciar (motor armado
+/// ou sem calibração de motor). ⚠️ Leva ~30 s e o USB pode cair no meio — é teste, não uso normal.
+int  motor_link_start_encoder_test(void);
+/// Devolve a varredura ao tamanho de produção. Obrigatório depois do teste.
+void motor_link_end_encoder_test(void);
 }
 
 #endif

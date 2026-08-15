@@ -2,6 +2,7 @@
 #include "odrive_main.h"
 #include <Drivers/STM32/stm32_system.h>
 #include <bitset>
+#include "encoder_eccentricity.h"   // DriveLab: mede o ima fora de centro DURANTE esta varredura
 
 Encoder::Encoder(TIM_HandleTypeDef* timer, Stm32Gpio index_gpio,
                  Stm32Gpio hallA_gpio, Stm32Gpio hallB_gpio, Stm32Gpio hallC_gpio,
@@ -458,6 +459,7 @@ bool Encoder::run_offset_calibration() {
     int32_t init_enc_val = shadow_count_;
     uint32_t num_steps = 0;
     int64_t encvaluesum = 0;
+    ecc_reset();   // DriveLab: comeca a colher a excentricidade desta varredura
 
     CRITICAL_SECTION() {
         axis_->open_loop_controller_.target_vel_ = config_.calib_scan_omega;
@@ -471,6 +473,18 @@ bool Encoder::run_offset_calibration() {
             break;
         }
         encvaluesum += shadow_count_;
+        // DriveLab: guarda o par (regua, leitura) para medir o ima fora de centro. A regua e a fase
+        // eletrica comandada — o rotor esta onde o campo manda, entao qualquer curvatura na relacao
+        // e erro de LEITURA. Subamostrado para caber em 128 pontos sem alongar a calibracao.
+        if (g_ecc_intervalo_ms > 0 && (num_steps % (uint32_t)g_ecc_intervalo_ms) == 0u
+            && g_ecc_n < ECC_MAX_AMOSTRAS) {
+            const auto d = axis_->open_loop_controller_.total_distance_.any();
+            if (d.has_value()) {
+                g_ecc_dist_mrad[g_ecc_n] = (int32_t)(d.value() * 1000.0f);
+                g_ecc_count[g_ecc_n]     = shadow_count_;
+                g_ecc_n++;
+            }
+        }
         num_steps++;
         osDelay(1);
     }

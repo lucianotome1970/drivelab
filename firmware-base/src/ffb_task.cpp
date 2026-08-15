@@ -17,6 +17,7 @@
 #include "overtravel_guard.h"      // o volante nao pode estar alem do curso (guarda por POSICAO)
 #include "wheel_center.h"         // o zero do volante (batente nasce centrado) — ver o header
 #include "watchdog.h"             // a base reinicia sozinha em vez de congelar — ver o header
+#include "encoder_eccentricity.h"  // "o ima esta torto, e por quantos graus" — ver o header
 extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
 
 // Definido em ffb_hid.cpp: joystick (direção pro jogo).
@@ -32,6 +33,8 @@ extern "C" int32_t a0_get_setting(uint8_t id);  // valor atual de um setting (gu
 // ser acusado de órfão — "aparece na tela, é salvo e não faz nada" — sendo que o firmware o lê aqui.
 // Verificador que acusa falso perde a autoridade de acusar verdadeiro.
 enum { SET_OVERTRAVEL_ACTION = 57 };
+extern "C" bool a0_enc_test_pending(void);   // CMD_TEST_ENCODER: mede o encoder contra o motor
+extern "C" void a0_enc_test_clear(void);
 extern "C" bool a0_save_pending(void);       // CMD_SAVE pediu persistir os settings na FFB_NVM?
 extern "C" bool a0_commit_save(void);        // empacota + grava na flash (chamar SÓ com motor IDLE)
 
@@ -409,6 +412,37 @@ static void ffb_thread(void*) {
         // contra uma falha persistente vira churn arma/desarma (medimos ~140 Hz por SWD), que o
         // usuário sente como "tec". O contador só zera quando o motor SUSTENTA o arme por 1 s —
         // assim uma recuperação real limpa o histórico, mas um ciclo de falha não se disfarça.
+        // TESTE DO ENCODER pedido pelo app (CMD_TEST_ENCODER). Roda a varredura da calibração
+        // alongada para uma volta — é o mínimo para medir excentricidade. Deferido para cá porque
+        // precisa do motor desarmado e de pedir estado ao ODrive; nada disso se faz no callback USB.
+        {
+            static uint8_t s_enc_test_fase = 0;   // 0=parado 1=pediu, esperando entrar 2=rodando
+            // ⚠️ O teste RECALIBRA para medir — a varredura sobrescreve o alinhamento eletrico.
+            // Em 15/08/2026 isso o deixou desligado por um tempo: o motor armou depois dele com o
+            // angulo errado e disparou a 12,46 voltas/s (pego pela guarda de sobrevelocidade).
+            // Depois descobrimos um fio do encoder solto, que sozinho explica aquele disparo — mas
+            // o defeito de desenho era real de qualquer forma.
+            //
+            // Agora motor_link_start/end_encoder_test SALVAM e DEVOLVEM o offset: o teste mede e
+            // deixa a base como encontrou. Um diagnostico nao pode piorar o que veio examinar.
+            if (s_enc_test_fase == 0 && a0_enc_test_pending()) {
+                a0_enc_test_clear();
+                if (!g_axis_dbg[0]) {             // só com o motor desarmado
+                    g_arm_gate = 0;               // o auto-arme não pode brigar pelo estado
+                    if (motor_link_start_encoder_test()) s_enc_test_fase = 1;
+                }
+            } else if (s_enc_test_fase == 1) {
+                if (g_axis_dbg[1] == 7) s_enc_test_fase = 2;          // entrou na varredura
+            } else if (s_enc_test_fase == 2) {
+                if (g_axis_dbg[1] != 7) {                             // terminou (ou abortou)
+                    motor_link_end_encoder_test();                    // varredura volta ao normal
+                    ecc_analisar(motor_link_enc_cpr(), motor_link_motor_pole_pairs());
+                    s_enc_test_fase = 0;
+                    g_arm_gate = 1;
+                }
+            }
+        }
+
         blackbox_step(BB_STEP_ARME);
         {
             static uint32_t s_cal_ticks    = 0;
@@ -428,6 +462,10 @@ static void ffb_thread(void*) {
                 motor_link_lock_calibration();
                 s_cal_locked  = true;
                 g_cal_locked  = 1;      // legível por SWD
+                // A varredura acabou de medir o encoder contra o motor. Analisar AQUI, uma vez por
+                // boot: é matemática pura sobre dados já colhidos — não toca no motor, no controle
+                // nem no USB. Diz se o ímã está fora de centro, e por quantos graus.
+                ecc_analisar(motor_link_enc_cpr(), motor_link_motor_pole_pairs());
             }
 
             if (in_cal) {

@@ -19,8 +19,10 @@
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DriveLab.Core.Diagnostics;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
+using DriveLab.Core.Transport;
 using DriveLab.Core.Testing;
 using DriveLab.Studio.Services;
 using L = DriveLab.Studio.Localization.LocalizationManager;
@@ -192,13 +194,25 @@ public sealed partial class ForceTestViewModel : ViewModelBase
         // emergência, guarda de coerência, desarme por erro — e continuar mandando força para uma
         // base desarmada é, na melhor das hipóteses, medir nada; na pior, voltar a aplicar torque
         // no instante em que ela rearmar.
-        if (!ForceEnabled) _cancelamento?.Cancel();
+        // ⚠️ Só para os testes que APLICAM força. O de encoder exige o motor desarmado — quem
+        // manda nele é a base —, e cancelar por "força desligada" o mataria no berço. PicoDeForca
+        // é o critério certo porque descreve exatamente isso: um teste que não pede força não tem
+        // o que perder quando ela cai.
+        if (!ForceEnabled && EmExecucao?.Teste.PicoDeForca > 0) _cancelamento?.Cancel();
     }
 
     [RelayCommand]
     private async Task RodarAsync(ForceTestItemViewModel item)
     {
         if (EmExecucao is not null) return;
+
+        // O teste de encoder não manda força nenhuma: quem gira o motor é a base. Ele tem execução
+        // própria logo abaixo — inclusive com a exigência OPOSTA à dos outros quanto ao motor.
+        if (item.Teste is EncoderTest)
+        {
+            await RodarTesteEncoderAsync(item);
+            return;
+        }
 
         if (!IsConnected)
         {
@@ -282,6 +296,99 @@ public sealed partial class ForceTestViewModel : ViewModelBase
         }
 
         item.Aplicar(item.Teste.Avaliar(amostras));
+    }
+
+    /// <summary>Dispara a medição de alinhamento do encoder e espera a base devolvê-la.
+    ///
+    /// <para>⚠️ ESTE TESTE PEDE O MOTOR DESLIGADO — o contrário de todos os outros. Ele gira o motor
+    /// em malha aberta, e malha aberta com o controle armado põe dois donos no mesmo motor. O
+    /// firmware recusa nesse caso; avisamos antes para a pessoa não ver um teste que "não faz nada".</para>
+    ///
+    /// <para>COMO SABEMOS QUE O RESULTADO É NOVO: a base zera a medição ao começar a varredura, e só
+    /// aceitamos um resultado válido DEPOIS de ter visto esse zero. Sem isso, uma base que já mediu
+    /// antes devolveria o resultado velho no mesmo instante do clique — e ele pareceria novo.</para></summary>
+    private async Task RodarTesteEncoderAsync(ForceTestItemViewModel item)
+    {
+        if (!IsConnected)
+        {
+            Aviso = "Conecte a base antes de testar.";
+            return;
+        }
+        if (ForceEnabled)
+        {
+            Aviso = "Desligue \"Ativar motor\" antes deste teste: quem gira o motor aqui é a base.";
+            return;
+        }
+
+        Aviso = null;
+        EmExecucao = item;
+        item.Rodando = true;
+        item.Progresso = 0;
+        _cancelamento = new CancellationTokenSource();
+        var ct = _cancelamento.Token;
+
+        // Se a base JÁ está com uma medição válida na telemetria, ela é de antes deste clique.
+        var viuZerar = _ultimoEstado?.EncoderTestValido != true;
+        BaseState? medicao = null;
+
+        try
+        {
+            await _session.SendCommandAsync(BaseCommand.TestEncoder);
+            _relogio.Reiniciar();
+
+            while (_relogio.DecorridoS < item.Teste.DuracaoS && !ct.IsCancellationRequested)
+            {
+                if (_ultimoEstado is { } e)
+                {
+                    if (!viuZerar)
+                    {
+                        if (!e.EncoderTestValido) viuZerar = true;
+                    }
+                    else if (e.EncoderTestValido)
+                    {
+                        medicao = e;
+                        break;
+                    }
+                }
+
+                // A barra é ESTIMATIVA: a varredura leva ~30 s, mas quem decide o fim é a base.
+                // Travamos em 95% para não mostrar "100%" a um teste que ainda está rodando.
+                item.Progresso = Math.Min(0.95, _relogio.DecorridoS / 30.0);
+                await _relogio.EsperarAsync(100, ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Abortado: cai no veredito de "sem medição" abaixo.
+        }
+        finally
+        {
+            item.Rodando = false;
+            item.Progresso = 0;
+            EmExecucao = null;
+            _cancelamento?.Dispose();
+            _cancelamento = null;
+        }
+
+        if (medicao is null)
+        {
+            item.Aplicar(new ForceTestResult(false, "A base não devolveu a medição", new[]
+            {
+                "A varredura não terminou dentro do tempo. As causas mais comuns:",
+                "  • o motor não está energizado (a fonte precisa estar ligada, não só o USB)",
+                "  • o motor ainda não foi calibrado — calibre antes de medir o alinhamento",
+                "  • firmware antigo na base, que ainda não tem este teste",
+            }));
+            return;
+        }
+
+        item.Aplicar(EncoderHealth.Avaliar(new EncoderMeasurement(
+            Valido: medicao.EncoderTestValido,
+            CoberturaVolta: medicao.EncoderCoberturaVolta,
+            ExcentricidadeGraus: medicao.EncoderExcentricidadeGraus,
+            ResiduoGraus: medicao.EncoderResiduoGraus,
+            FaseGraus: medicao.EncoderFaseGraus,
+            PolePairs: medicao.EncoderPolePairs)));
     }
 
     [RelayCommand(CanExecute = nameof(PodeParar))]

@@ -26,4 +26,9 @@ public enum BaseCommand : byte
 
     /// <summary>Bancada: arma o brake chopper em modo AUTOMÁTICO (controlador dirige o duty pela tensão do bus; cmd 9). Enviado por tools/a0_cmd.py.</summary>
     BrakeAuto = 9,
+
+    /// <summary>Mede o alinhamento do encoder: gira o motor uma volta em malha aberta e compara o que
+    /// o encoder leu com onde o rotor de fato estava. Não altera a calibração — o offset é salvo antes
+    /// e devolvido ao terminar. Exige motor energizado e desarmado. Ver encoder_eccentricity.h.</summary>
+    TestEncoder = 10,
 }
