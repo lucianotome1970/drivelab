@@ -34,7 +34,7 @@ Stack: RP2040 + **arduino-pico** (Earle Philhower's core) + **Adafruit_TinyUSB**
 | Brake | `A1` = `GP27` |
 | Throttle | `A2` = `GP28` |
 
-**Load cell (HX711)** — one amplifier per pedal:
+**Load cell + HX711** — selected as `HX711` in the app. One module per pedal:
 
 | Pedal | DT | SCK |
 |---|---|---|
@@ -42,7 +42,7 @@ Stack: RP2040 + **arduino-pico** (Earle Philhower's core) + **Adafruit_TinyUSB**
 | Brake | `GP4` | `GP5` |
 | Throttle | `GP6` | `GP7` |
 
-**Analog load cell (instrumentation amplifier)** — the amplifier's output goes into the same pin as a potentiometer, so the ADC table above applies. Two things surprise everyone arriving from the HX711: an instrumentation amplifier **does not excite the cell** (the excitation wires go straight to `3V3` and `GND`, and only the signal pair enters the module), and it runs at **3.3 V, never 5 V** — RP2040 pins are not 5 V tolerant and the amplifier drives one of them directly.
+**Load cell + instrumentation amplifier** (INA333 / CJMCU-333) — selected as `Amp` in the app. The amplifier's output goes into the same pin as a potentiometer, so the ADC table above applies. Two things surprise everyone arriving from the HX711: an instrumentation amplifier **does not excite the cell** (the excitation wires go straight to `3V3` and `GND`, and only the signal pair enters the module), and it runs at **3.3 V, never 5 V** — RP2040 pins are not 5 V tolerant and the amplifier drives one of them directly.
 
 You can wire this path with **no extra parts at all** and see the axis move today. The wiring diagram, the handful of components that go between the boards, which of them you can skip and what each one buys you are all in **[docs/pedal-wiring.md](../docs/pedal-wiring.md)**.
 
@@ -126,7 +126,7 @@ Stack: RP2040 + **arduino-pico** (core do Earle Philhower) + **Adafruit_TinyUSB*
 | Freio | `A1` = `GP27` |
 | Acelerador | `A2` = `GP28` |
 
-**Célula de carga (HX711)** — um amplificador por pedal:
+**Célula de carga + HX711** — selecionado como `HX711` no app. Um módulo por pedal:
 
 | Pedal | DT | SCK |
 |---|---|---|
@@ -134,7 +134,7 @@ Stack: RP2040 + **arduino-pico** (core do Earle Philhower) + **Adafruit_TinyUSB*
 | Freio | `GP4` | `GP5` |
 | Acelerador | `GP6` | `GP7` |
 
-**Célula de carga analógica (amplificador de instrumentação)** — a saída do amplificador entra no mesmo pino do potenciômetro, então vale a tabela do ADC acima. Duas coisas surpreendem todo mundo que chega do HX711: o amplificador de instrumentação **não alimenta a célula** (os fios de excitação vão direto no `3V3` e no `GND`, e só o par de sinal entra no módulo), e ele trabalha em **3,3 V, nunca 5 V** — os pinos do RP2040 não toleram 5 V e o amplificador vai direto num deles.
+**Célula de carga + amplificador de instrumentação** (INA333 / CJMCU-333) — selecionado como `Amp` no app. A saída do amplificador entra no mesmo pino do potenciômetro, então vale a tabela do ADC acima. Duas coisas surpreendem todo mundo que chega do HX711: o amplificador de instrumentação **não alimenta a célula** (os fios de excitação vão direto no `3V3` e no `GND`, e só o par de sinal entra no módulo), e ele trabalha em **3,3 V, nunca 5 V** — os pinos do RP2040 não toleram 5 V e o amplificador vai direto num deles.
 
 Esse caminho pode ser ligado **sem nenhuma peça extra** e já dá para ver o eixo se mexer hoje. O diagrama de ligação, as poucas peças que vão entre as placas, quais delas dá para pular e o que cada uma compra estão em **[docs/pedal-wiring.md](../docs/pedal-wiring.md)**.
 

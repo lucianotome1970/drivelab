@@ -18,12 +18,12 @@ The board reads one sensor per pedal, and the firmware picks how to read it by `
 (the `Pot | Hall | HX711 | Amp` chips in DriveLab Studio). Only two of the four need parts between
 the sensor and the board.
 
-| Sensor | Chip in the app | Enters through | Parts in between |
+| Sensor | In the app | Enters through | Parts in between |
 |---|---|---|---|
 | Potentiometer | `Pot` | ADC pin | none |
 | Analog Hall | `Hall` | ADC pin | none |
 | Load cell + HX711 | `HX711` | two digital pins | none — the module does everything |
-| Load cell + instrumentation amp | `Amp` | ADC pin | **an RC filter, and usually a REF divider** |
+| Load cell + instrumentation amp (INA333) | `Amp` | ADC pin | **an RC filter, and usually a REF divider** |
 
 The ADC pins are the only four on the board that read voltage:
 
@@ -39,7 +39,7 @@ four pins that can measure voltage.
 
 ---
 
-### Path A — load cell + instrumentation amplifier
+### Path A — load cell + instrumentation amplifier (INA333 / CJMCU-333)
 
 This is the path worth taking on the **brake**, where response speed matters. Recommended for the
 brake; pot or Hall is enough for clutch and throttle, which measure travel and not force.
@@ -204,12 +204,12 @@ A placa lê um sensor por pedal, e o firmware escolhe **como** ler pelo `sensor_
 `Pot | Hall | HX711 | Amp` no DriveLab Studio). Só dois dos quatro precisam de peças entre o sensor
 e a placa.
 
-| Sensor | Chip no app | Entra por | Peças no meio |
+| Sensor | No app | Entra por | Peças no meio |
 |---|---|---|---|
 | Potenciômetro | `Pot` | pino do ADC | nenhuma |
 | Hall analógico | `Hall` | pino do ADC | nenhuma |
 | Célula + HX711 | `HX711` | dois pinos digitais | nenhuma — o módulo faz tudo |
-| Célula + amplificador de instrumentação | `Amp` | pino do ADC | **um filtro RC, e em geral um divisor no REF** |
+| Célula + amplificador de instrumentação (INA333) | `Amp` | pino do ADC | **um filtro RC, e em geral um divisor no REF** |
 
 Os pinos do ADC são os únicos quatro da placa que leem tensão:
 
@@ -225,7 +225,7 @@ quatro pinos que sabem medir tensão.
 
 ---
 
-### Caminho A — célula de carga + amplificador de instrumentação
+### Caminho A — célula de carga + amplificador de instrumentação (INA333 / CJMCU-333)
 
 É o caminho que vale a pena no **freio**, onde a velocidade de resposta importa. Recomendado para o
 freio; para embreagem e acelerador, potenciômetro ou Hall bastam — eles medem curso, não força.
