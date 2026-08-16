@@ -229,6 +229,9 @@ static void a0_apply_settings(void) {
     // lado — se armar no boot com pole_pairs/CPR/variante errados, o motor esquenta ou dispara.
     // Nasce em 0: a base sobe DESARMADA, o usuario confere os campos de hardware e so entao ativa.
     // Se der errado, desativa e a base desarma na hora (nao depende de reboot nem de tirar da tomada).
+    // Religar a permissão é o REARME: destrava a guarda de curso e limpa os erros, senão o campo
+    // voltaria a 1 e o motor continuaria parado — que é exatamente a confusão que isto resolve.
+    if (s_ival[45] != 0 && g_motor_enable == 0) s_rearm_requested = true;
     g_motor_enable = (int32_t)s_ival[45];
 }
 
@@ -317,6 +320,20 @@ extern "C" bool a0_reboot_pending(void) { return s_reboot_requested; }
 extern "C" bool a0_enc_test_pending(void) { return s_enc_test_requested; }
 extern "C" void a0_enc_test_clear(void)   { s_enc_test_requested = false; }
 extern "C" bool a0_rearm_pending(void)    { return s_rearm_requested; }
+
+// ⚠️ A PROTEÇÃO RETIRA A PERMISSÃO, em vez de deixar o campo ligado sobre um motor parado.
+//
+// Antes, quando a guarda de curso travava, "Permitir armar o motor" continuava em 1 e o motor ficava
+// desarmado — e quem olhava a tela não tinha o que ligar para voltar a ter força. Zerando o campo, a
+// saída passa a ser a óbvia: o usuário vê 0, liga de novo, e ligar É o rearme (ver a0_apply_settings).
+//
+// Semanticamente também fecha melhor: a permissão não foi retirada por quem usa, foi retirada PELA
+// BASE, e o campo passa a contar essa história em vez de mentir que está tudo liberado.
+extern "C" void a0_revoke_motor_enable(void) {
+    if (s_ival[45] == 0) return;
+    s_ival[45] = 0;
+    g_motor_enable = 0;
+}
 extern "C" void a0_rearm_clear(void)      { s_rearm_requested = false; }
 extern "C" bool a0_dfu_pending(void)    { return s_dfu_requested; }
 
@@ -325,10 +342,25 @@ extern "C" bool a0_save_pending(void) { return s_save_requested; }
 
 // Empacota os settings atuais e grava na FFB_NVM. Chamado pelo ffb_task SÓ com o motor IDLE. Limpa o
 // pedido em qualquer caso (sucesso ou falha de flash) p/ não travar. Retorna true se gravou.
+// ⚠️ CONTADOR DE GRAVAÇÕES CONCLUÍDAS — sobe UMA vez por gravação que de fato foi para a flash.
+//
+// Existe porque "Salvar" era um pedido sem resposta. A gravação exige o motor PARADO (ela congela a
+// CPU por ~250 ms, e fazer isso com as fases energizadas é pior), então numa base que está tentando
+// calibrar sem parar o momento pode nunca chegar — e se a placa reinicia antes, o valor volta ao que
+// estava gravado. Do lado de quem usa: "salvei, reiniciei, perdeu". Foi o que aconteceu na bancada em
+// 15/08/2026, e a conclusão natural (e errada) foi "o app não salva".
+//
+// Com o contador na telemetria, o app espera ele subir e diz o que aconteceu. Um "Salvar" que não
+// confirma é pior que um que falha avisando.
+volatile uint32_t g_save_count = 0;
+
+extern "C" uint32_t a0_get_save_count(void) { return g_save_count; }
+
 extern "C" bool a0_commit_save(void) {
     static uint8_t blob[drivelab::settingsBlobSize(A0_NUM_SETTINGS)];
     size_t n = drivelab::packSettings(s_ival, s_fval, (uint16_t)A0_NUM_SETTINGS, blob, sizeof(blob));
     bool ok = (n > 0) && settings_flash_write(blob, n);
+    if (ok) g_save_count++;   // só conta o que FOI para a flash — o app confirma por este número
     s_save_requested = false;
     return ok;
 }
@@ -521,6 +553,11 @@ static void a0_build_state(uint8_t* p) {
     put_i16(&p[43], (int16_t)g_ecc.residuo_cdeg);          // o que a senoide nao explica
     put_i16(&p[45], (int16_t)(g_ecc.fase_cdeg / 10));      // onde o erro e maximo, decimos de grau
     p[47] = (uint8_t)motor_link_motor_pole_pairs();        // o app converte grau mecanico -> eletrico
+
+    // Gravações concluídas desde o boot. O app guarda o valor ao pedir "Salvar" e espera este numero
+    // subir: se subiu, gravou mesmo; se nao subiu no prazo, a base nao conseguiu parar o motor e o
+    // ajuste vive so na RAM ate o proximo reset. Um byte basta — o que importa e a MUDANCA.
+    p[48] = (uint8_t)(g_save_count & 0xFFu);
 }
 
 // ---------------------------------------------------------------------------

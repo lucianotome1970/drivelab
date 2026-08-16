@@ -38,6 +38,7 @@ extern "C" bool a0_enc_test_pending(void);   // CMD_TEST_ENCODER: mede o encoder
 extern "C" void a0_enc_test_clear(void);
 extern "C" bool a0_rearm_pending(void);      // CMD_REARM: destravar a guarda e armar
 extern "C" void a0_rearm_clear(void);
+extern "C" void a0_revoke_motor_enable(void);  // a proteção retira a permissão (ver a0_channel)
 extern "C" bool a0_save_pending(void);       // CMD_SAVE pediu persistir os settings na FFB_NVM?
 extern "C" bool a0_commit_save(void);        // empacota + grava na flash (chamar SÓ com motor IDLE)
 
@@ -683,6 +684,10 @@ static void ffb_thread(void*) {
                 if (s_overtravel.state == OT_ST_LOCKED) {
                     g_arm_gate = 0;
                     motor_link_request_idle();
+                    // Retira a permissão para a tela mostrar 0 e oferecer o caminho de volta: quem
+                    // usa liga de novo, e ligar rearma. Sem isto o campo ficava em 1 sobre um motor
+                    // parado, e não havia o que ligar.
+                    a0_revoke_motor_enable();
                 } else if (ota == OT_ACT_DISARM) {
                     // Modo re-armar: a guarda devolve o controle sozinha quando o volante voltar ao
                     // curso e parar, então aqui só desarmamos — sem mexer no gate.

@@ -28,7 +28,6 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MotorArmado))]
     [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
-    [NotifyPropertyChangedFor(nameof(PodeRearmar))]
     [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _isConnected;
 
@@ -46,26 +45,11 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MotorArmado))]
     [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
-    [NotifyPropertyChangedFor(nameof(PodeRearmar))]
     [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _forceEnabled;
 
     public bool MotorArmado    => IsConnected && ForceEnabled;
     public bool MotorDesarmado => IsConnected && !ForceEnabled;
-
-    /// <summary>A permissão está ligada e o motor NÃO está armado — ou seja, algo o desarmou e ele
-    /// não volta sozinho. É o único estado em que oferecer "Armar agora" faz sentido.
-    ///
-    /// <para>Sem isto, quem chegava aqui via o botão de permissão já ligado e não tinha o que ligar:
-    /// a tela oferecia a configuração certa e nenhuma ação. Ver o commit do rótulo "Permitir armar".</para></summary>
-    public bool PodeRearmar => IsConnected && !ForceEnabled && PermissaoLigada;
-
-    /// <summary>Cópia local do setting de permissão (BaseSettingId.MotorEnable), lida da base. Sem
-    /// ela não dá para distinguir "desarmado porque você desligou" de "desarmado apesar de ligado" —
-    /// e só o segundo caso pede o botão.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PodeRearmar))]
-    private bool _permissaoLigada;
 
     public string EstadoTooltip =>
         !IsConnected  ? L.Get("BaseState_Offline")
@@ -95,8 +79,6 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
             _loading = true;
             var value = await _session.ReadSettingAsync(BaseSettingId.TotalStrength);
             TotalStrength = (int)value.AsDouble;
-            var perm = await _session.ReadSettingAsync(BaseSettingId.MotorEnable);
-            PermissaoLigada = perm.AsDouble != 0;
         }
         catch
         {
@@ -108,15 +90,6 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
         }
     }
 
-    /// <summary>Rearma por pedido explícito de quem usa. Só existe caminho para cá quando a
-    /// permissão está ligada e o motor está desarmado — ver PodeRearmar.
-    ///
-    /// <para>⚠️ Isto passa por cima de uma proteção que decidiu travar. A tela avisa o que aconteceu
-    /// ANTES de oferecer o botão; aqui só enviamos.</para></summary>
-    [RelayCommand]
-    private Task RearmarAsync() =>
-        _session.IsConnected ? _session.SendCommandAsync(BaseCommand.Rearm) : Task.CompletedTask;
-
     private void OnDisconnected(object? sender, EventArgs e)
     {
         IsConnected = false;
@@ -127,9 +100,6 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
 
     private void OnSettingChanged(object? sender, SettingChangedEventArgs e)
     {
-        // A permissão pode ser mexida na aba Hardware; sem acompanhar aqui, o botão de rearmar
-        // ficaria decidindo por um valor lido uma vez, na conexão.
-        if (e.Id == BaseSettingId.MotorEnable) { PermissaoLigada = e.Value.AsDouble != 0; return; }
         if (e.Id != BaseSettingId.TotalStrength)
             return;
         _loading = true;
