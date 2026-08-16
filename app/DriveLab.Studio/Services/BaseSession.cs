@@ -77,8 +77,20 @@ public sealed class BaseSession : IDisposable
     public Task SendDirectControlAsync(BaseDirectControl control) => _transport.SendDirectControlAsync(control);
     public Task SendCommandAsync(BaseCommand command, byte arg = 0) => _transport.SendCommandAsync(command, arg);
 
-    private void OnTransportState(object? sender, BaseState state) =>
+    /// <summary>Última telemetria recebida, ou null antes da primeira. Guardada aqui porque há
+    /// perguntas pontuais — "a base já confirmou a gravação?" — que não justificam cada tela assinar
+    /// o evento e manter cópia própria só para consultar um campo.
+    ///
+    /// <para>Escrita no thread do transporte e lida na UI. É uma referência a um objeto imutável na
+    /// prática (o parser cria um novo a cada telemetria), então a leitura pega um estado inteiro e
+    /// coerente — nunca metade de um e metade de outro.</para></summary>
+    public BaseState? UltimoEstado { get; private set; }
+
+    private void OnTransportState(object? sender, BaseState state)
+    {
+        UltimoEstado = state;
         _dispatcher.Post(() => StateReceived?.Invoke(this, state));
+    }
 
     public void Dispose()
     {

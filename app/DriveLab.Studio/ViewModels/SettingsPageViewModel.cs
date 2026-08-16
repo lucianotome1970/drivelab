@@ -97,9 +97,50 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
             if (field.IsModified)
                 await field.WriteAsync();
 
+        // ⚠️ ESPERAR A CONFIRMAÇÃO, e não presumir que gravou.
+        //
+        // A base só escreve na memória permanente com o MOTOR PARADO — a escrita congela a CPU por
+        // ~250 ms, e fazer isso com as fases energizadas é pior. Numa base que está tentando calibrar
+        // sem parar, esse momento pode nunca chegar; e se ela reinicia antes, o ajuste volta ao que
+        // estava gravado. Antes o app dizia "gravou na flash" logo depois de MANDAR o comando, e a
+        // pessoa reiniciava e encontrava o valor velho: da tela, isso é indistinguível de "o app não
+        // salva". Aconteceu na bancada em 15/08/2026 e custou meia hora de caça a um bug que não
+        // existia no salvamento.
+        //
+        // O firmware conta as gravações CONCLUÍDAS e manda o número na telemetria. Aqui guardamos o
+        // valor antes e esperamos ele mudar — é a diferença entre pedir e confirmar.
+        var antes = _session.UltimoEstado?.SaveCount;
         await _session.SendCommandAsync(BaseCommand.SaveSettings);
-        IsDirty = false; // gravou na flash: firmware == app
+
+        MensagemDeSalvar = null;
+        var gravou = await EsperarGravacaoAsync(antes);
+        IsDirty = !gravou;
+        MensagemDeSalvar = gravou ? L.Get("Settings_Saved") : L.Get("Settings_SaveBusy");
     }
+
+    /// <summary>Espera o contador de gravações da base mudar. Devolve false se não mudar a tempo —
+    /// nesse caso o ajuste está na base mas NÃO na memória permanente, e some no próximo reinício.
+    ///
+    /// <para>O prazo é generoso de propósito: a base pode precisar desarmar o motor antes, e desarmar
+    /// leva tempo. Curto demais acusaria falha numa gravação que ia acontecer.</para></summary>
+    private async Task<bool> EsperarGravacaoAsync(byte? antes)
+    {
+        // Firmware antigo não manda o contador (fica em 0 sempre). Sem base de comparação, não dá
+        // para confirmar nada — e mentir "salvo" é o que estamos consertando. Só não bloqueamos: o
+        // comando foi enviado, e nesse caso o comportamento volta a ser o de antes.
+        if (antes is null) return true;
+
+        for (var i = 0; i < 60; i++)          // 60 × 100 ms = 6 s
+        {
+            await Task.Delay(100);
+            var agora = _session.UltimoEstado?.SaveCount;
+            if (agora is not null && agora != antes) return true;
+        }
+        return false;
+    }
+
+    /// <summary>O que dizer depois de "Salvar" — vazio enquanto ninguém salvou nada nesta sessão.</summary>
+    [ObservableProperty] private string? _mensagemDeSalvar;
 
     private bool CanSave() => IsConnected && IsDirty;
 

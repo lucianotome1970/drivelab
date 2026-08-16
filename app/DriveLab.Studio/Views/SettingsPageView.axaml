@@ -35,6 +35,17 @@
                 </StackPanel>
             </Grid>
 
+            <!-- RESULTADO DO SALVAR. Um "Salvar" que não responde é pior que um que falha avisando:
+                 a gravação exige o motor parado, e numa base presa tentando calibrar ela pode nunca
+                 acontecer — o ajuste vale na sessão e some no reinício. Sem esta linha, isso é
+                 indistinguível de "o app não salva" (bancada, 15/08/2026). -->
+            <Border Grid.Row="0" VerticalAlignment="Bottom" Margin="0,0,0,-14"
+                    IsVisible="{Binding MensagemDeSalvar, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Background="#22FFFFFF" CornerRadius="6" Padding="12,8">
+                <TextBlock Text="{Binding MensagemDeSalvar}" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{DynamicResource DlText}" />
+            </Border>
+
             <TabControl Grid.Row="1" ItemsSource="{Binding Tabs}">
                 <TabControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:PageTab">

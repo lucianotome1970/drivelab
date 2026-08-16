@@ -82,6 +82,14 @@ public sealed class BaseState
     public double EncoderFaseGraus { get; set; }
     public byte EncoderPolePairs { get; set; }
 
+    /// <summary>Gravações concluídas na memória permanente desde o boot da base. Só sobe quando os
+    /// ajustes de fato foram para a flash.
+    ///
+    /// <para>É o que permite CONFIRMAR um "Salvar": a gravação exige o motor parado, e numa base que
+    /// está tentando calibrar sem parar ela pode nunca acontecer. Sem este número o app dizia
+    /// "Salvar" e não sabia se salvou — o ajuste sumia no reinício e parecia bug do app.</para></summary>
+    public byte SaveCount { get; set; }
+
     /// <summary>Pico de clipping do jogo na sessão, em 0..100%.</summary>
     public int ClippingPeakGamePercent => (int)System.Math.Round(ClippingPeakGame / 255.0 * 100);
 
@@ -167,5 +175,6 @@ public sealed class BaseState
         EncoderResiduoGraus = src.Length > 44 ? BinaryPrimitives.ReadInt16LittleEndian(src[43..45]) / 100.0 : 0,
         EncoderFaseGraus = src.Length > 46 ? BinaryPrimitives.ReadInt16LittleEndian(src[45..47]) / 10.0 : 0,
         EncoderPolePairs = src.Length > 47 ? src[47] : (byte)0,
+        SaveCount = src.Length > 48 ? src[48] : (byte)0,
     };
 }
