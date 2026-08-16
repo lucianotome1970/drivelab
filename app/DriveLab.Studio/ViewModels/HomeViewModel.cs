@@ -5,6 +5,9 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System;
+using DriveLab.Studio.Services;
+
 namespace DriveLab.Studio.ViewModels;
 
 /// <summary>
@@ -17,6 +20,40 @@ public sealed class HomeViewModel : ViewModelBase
     public BaseViewModel? Base { get; }
     public PedalsViewModel Pedals { get; }
     public HandbrakeViewModel? Handbrake { get; }
+
+    // ── PREFERÊNCIAS DO APP ─────────────────────────────────────────────────────────────────────
+    // Ficam à vista, e não escondidas num menu, porque descrevem comportamento que a pessoa PRECISA
+    // saber: o app inicia sozinho e continua vivo depois que a janela fecha. Software que faz isso
+    // sem dizer é o que dá má fama a quem escuta teclado — e o Studio escuta, para os atalhos.
+
+    /// <summary>Abrir o Studio junto com o Windows. Escreve na chave Run do usuário na hora, para o
+    /// efeito ser imediato em vez de valer só no próximo boot.</summary>
+    public bool IniciarComWindows
+    {
+        get => App.Preferencias.IniciarComWindows;
+        set
+        {
+            if (App.Preferencias.IniciarComWindows == value) return;
+            App.Preferencias.IniciarComWindows = value;
+            App.Preferencias.Save();
+            if (OperatingSystem.IsWindows()) WindowsStartup.Aplicar(value);
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Fechar a janela deixa o app na bandeja. Desligado, o X encerra — e os atalhos de
+    /// centralizar param junto, porque é o Studio quem os escuta.</summary>
+    public bool ManterNaBandeja
+    {
+        get => App.Preferencias.ManterNaBandeja;
+        set
+        {
+            if (App.Preferencias.ManterNaBandeja == value) return;
+            App.Preferencias.ManterNaBandeja = value;
+            App.Preferencias.Save();
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>Navegação por clique no card (key do módulo → página). Ligada pelo CompositionRoot,
     /// que é quem conhece a lista de páginas e a janela principal.</summary>

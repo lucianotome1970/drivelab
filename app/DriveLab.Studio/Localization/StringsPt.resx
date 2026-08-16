@@ -365,4 +365,10 @@ Esta curva vale DEPOIS da linearidade e ANTES dos limites de torque e de corrent
   <data name="Settings_SaveBusy" xml:space="preserve"><value>A base não confirmou a gravação. Os ajustes estão VALENDO, mas só na memória: eles se perdem ao reiniciar. Isso acontece quando o motor nunca para — uma base presa tentando calibrar, por exemplo. Resolva o que a está impedindo e salve de novo.</value></data>
   <data name="Base_Rearm" xml:space="preserve"><value>Armar o motor</value></data>
   <data name="Base_RearmWhy" xml:space="preserve"><value>O motor está desligado. Se uma proteção o parou — a guarda de curso, por exemplo, quando o volante passa do fim do giro —, ele não volta sozinho. Armar destrava a proteção, limpa os erros e volta a aplicar força na hora. Confira se o volante está dentro do curso antes de fazer isso.</value></data>
+  <data name="Tray_Open" xml:space="preserve"><value>Abrir o DriveLab</value></data>
+  <data name="Tray_Quit" xml:space="preserve"><value>Sair</value></data>
+  <data name="Home_App" xml:space="preserve"><value>Aplicativo</value></data>
+  <data name="Home_AppWhy" xml:space="preserve"><value>Os atalhos de centralizar — uma tecla, um botão do aro — quem lê é o próprio DriveLab. Com ele fechado ninguém está escutando e eles param de funcionar. É por isso que ele continua na bandeja depois que você fecha a janela.</value></data>
+  <data name="Home_StartWithWindows" xml:space="preserve"><value>Iniciar com o Windows</value></data>
+  <data name="Home_KeepInTray" xml:space="preserve"><value>Continuar na bandeja quando eu fechar a janela</value></data>
 </root>
