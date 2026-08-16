@@ -86,8 +86,26 @@
                     <TextBlock Text="&#x1F3AE;" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
 
-                <!-- Separador antes da ação de sair -->
+                <!-- Separador antes das ações do aplicativo (preferências e sair) -->
                 <Border Height="1" Width="28" Background="{DynamicResource DlBorder}" Margin="0,4" />
+
+                <!-- Preferências do APLICATIVO — janela própria, e não um cartão no painel: o painel
+                     é dos dispositivos, e caixas de seleção no meio deles viram puxadinho. -->
+                <Button Classes="nav" ToolTip.Tip="{loc:Translate Prefs_Title}" Click="OpenPrefs_Click">
+                    <Viewbox Width="22" Height="22">
+                        <Canvas Width="20" Height="20">
+                            <!-- engrenagem: anel + dentes + furo central -->
+                            <Path Fill="{DynamicResource DlMuted}"
+                                  Data="M8.6,1 h2.8 l0.4,2.2 a6.6,6.6 0 0 1 1.7,1 l2.1,-0.8 1.4,2.4 -1.7,1.4
+                                        a6.6,6.6 0 0 1 0,2 l1.7,1.4 -1.4,2.4 -2.1,-0.8 a6.6,6.6 0 0 1 -1.7,1
+                                        l-0.4,2.2 h-2.8 l-0.4,-2.2 a6.6,6.6 0 0 1 -1.7,-1 l-2.1,0.8 -1.4,-2.4
+                                        1.7,-1.4 a6.6,6.6 0 0 1 0,-2 l-1.7,-1.4 1.4,-2.4 2.1,0.8
+                                        a6.6,6.6 0 0 1 1.7,-1 z" />
+                            <Ellipse Canvas.Left="7" Canvas.Top="7" Width="6" Height="6"
+                                     Fill="{DynamicResource DlCard}" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
 
                 <!-- Sair do app: bandeira de chegada (quadriculada), desenho vetorial -->
                 <Button Classes="nav" ToolTip.Tip="{loc:Translate Nav_Quit}" Click="CloseApp_Click">

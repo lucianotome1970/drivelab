@@ -116,25 +116,6 @@
                     </Border>
                 </StackPanel>
             </Border>
-            <!-- PREFERÊNCIAS DO APP — à vista, e não escondidas num menu. Elas descrevem
-                 comportamento que quem usa PRECISA saber: o app inicia sozinho e continua vivo
-                 depois que a janela fecha. É o que faz os atalhos de centralizar funcionarem, e é
-                 também o que um programa mal-intencionado faria calado. Dizer é o que separa os
-                 dois. -->
-            <Border Width="420" Margin="0,0,16,16" Classes="card">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="{loc:Translate Home_App}" Classes="h2" />
-                    <TextBlock Text="{loc:Translate Home_AppWhy}" TextWrapping="Wrap" FontSize="12"
-                               LineHeight="18" Opacity="0.75" Foreground="{DynamicResource DlText}" />
-                    <CheckBox IsChecked="{Binding IniciarComWindows}"
-                              Content="{loc:Translate Home_StartWithWindows}"
-                              Foreground="{DynamicResource DlText}" />
-                    <CheckBox IsChecked="{Binding ManterNaBandeja}"
-                              Content="{loc:Translate Home_KeepInTray}"
-                              Foreground="{DynamicResource DlText}" />
-                </StackPanel>
-            </Border>
-
         </WrapPanel>
     </ScrollViewer>
 </UserControl>

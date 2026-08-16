@@ -60,6 +60,15 @@ public partial class MainWindow : Window
             Close();
     }
 
+    private void OpenPrefs_Click(object? sender, RoutedEventArgs e)
+    {
+        // Compartilha o DataContext da Home: as preferências já moram no HomeViewModel, e duplicar
+        // as propriedades num VM só para a janela seria manter dois donos do mesmo estado.
+        if (DataContext is not MainWindowViewModel vm) return;
+        var home = vm.Pages.Count > 0 ? vm.Pages[0].Page : null;
+        new PreferencesWindow { DataContext = home }.ShowDialog(this);
+    }
+
     private void OpenTest_Click(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm)
