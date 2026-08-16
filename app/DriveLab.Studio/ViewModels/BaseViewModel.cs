@@ -28,6 +28,7 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MotorArmado))]
     [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
+    [NotifyPropertyChangedFor(nameof(PodeRearmar))]
     [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _isConnected;
 
@@ -45,11 +46,22 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MotorArmado))]
     [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
+    [NotifyPropertyChangedFor(nameof(PodeRearmar))]
     [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _forceEnabled;
 
     public bool MotorArmado    => IsConnected && ForceEnabled;
     public bool MotorDesarmado => IsConnected && !ForceEnabled;
+
+    /// <summary>A base está conectada e o motor NÃO está armado — ou seja, algo o parou e ele não
+    /// volta sozinho. É o único estado em que oferecer "armar" faz sentido.
+    ///
+    /// <para>⚠️ ISTO PRECISA VIVER NO PAINEL, e não só na aba Hardware. O campo "Permitir armar o
+    /// motor" fica na aba de hardware, que só aparece no modo criador — quando a proteção retira a
+    /// permissão, o usuário comum não tem NADA para ligar e a base fica desarmada para sempre. Foi
+    /// exatamente o buraco que a bancada apontou em 15/08/2026, depois de eu ter removido este botão
+    /// achando que o campo bastava.</para></summary>
+    public bool PodeRearmar => IsConnected && !ForceEnabled;
 
     public string EstadoTooltip =>
         !IsConnected  ? L.Get("BaseState_Offline")
@@ -88,6 +100,20 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
         {
             _loading = false;
         }
+    }
+
+    /// <summary>Devolve a permissão e rearma. ESCREVE o campo em vez de mandar só o comando: é a
+    /// permissão que a proteção retirou, então é ela que precisa voltar — e o firmware trata o
+    /// religar como rearme (destrava a guarda e limpa os erros).
+    ///
+    /// <para>Escrever o setting mantém as duas telas contando a mesma história: quem tem a aba
+    /// Hardware vê o campo voltar a 1, e quem não tem usa este botão. Um comando solto rearmaria com
+    /// o campo em 0, e a aba Hardware passaria a mentir.</para></summary>
+    [RelayCommand]
+    private async Task RearmarAsync()
+    {
+        if (!_session.IsConnected) return;
+        await _session.WriteSettingAsync(BaseSettingId.MotorEnable, new SettingValue(SettingType.UInt8, 1));
     }
 
     private void OnDisconnected(object? sender, EventArgs e)
