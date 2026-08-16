@@ -39,7 +39,7 @@
                             <Ellipse Width="22" Height="22" Fill="#3327C93F" IsVisible="{Binding MotorArmado}" />
                             <Ellipse Width="12" Height="12" Fill="#27C93F"   IsVisible="{Binding MotorArmado}" />
                             <Ellipse Width="12" Height="12" Fill="#D63A3A"   IsVisible="{Binding MotorDesarmado}" />
-                            <Ellipse Width="12" Height="12" Fill="#5A5A5A"   IsVisible="{Binding !IsConnected}" />
+                            <Ellipse Width="12" Height="12" Fill="#5A5A5A"   IsVisible="{Binding EstadoDesconhecido}" />
                         </Grid>
                     </Grid>
                     <Image Source="avares://DriveLab.Studio/Assets/base.png" Width="360" Stretch="Uniform"

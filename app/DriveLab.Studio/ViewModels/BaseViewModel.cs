@@ -29,6 +29,7 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     [NotifyPropertyChangedFor(nameof(MotorArmado))]
     [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
     [NotifyPropertyChangedFor(nameof(PodeRearmar))]
+    [NotifyPropertyChangedFor(nameof(EstadoDesconhecido))]
     [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _isConnected;
 
@@ -47,6 +48,7 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     [NotifyPropertyChangedFor(nameof(MotorArmado))]
     [NotifyPropertyChangedFor(nameof(MotorDesarmado))]
     [NotifyPropertyChangedFor(nameof(PodeRearmar))]
+    [NotifyPropertyChangedFor(nameof(EstadoDesconhecido))]
     [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _forceEnabled;
 
@@ -65,6 +67,16 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     // honesto: em ambos os casos o app não tem como saber o que a base está fazendo.
     public bool MotorArmado    => IsConnected && TelemetriaRecente && ForceEnabled;
     public bool MotorDesarmado => IsConnected && TelemetriaRecente && !ForceEnabled;
+
+    /// <summary>Cinza: não há base, OU há e não se sabe o que ela está fazendo. São situações
+    /// diferentes e a mesma resposta honesta — "não sei".
+    ///
+    /// <para>⚠️ ESTE É O TERCEIRO ESTADO E ELE PRECISA COBRIR TODO O RESTO. Quando os dois primeiros
+    /// ganharam a exigência de telemetria recente, este continuou só com "sem base" — e sobrou um
+    /// caso sem desenho nenhum: base conectada, telemetria ausente. A bolinha simplesmente SUMIA da
+    /// tela (bancada, 16/08/2026). Indicador que desaparece é pior que indicador errado: quem olha
+    /// não sabe se está tudo bem ou se a tela quebrou.</para></summary>
+    public bool EstadoDesconhecido => !IsConnected || !TelemetriaRecente;
 
     /// <summary>Chegou telemetria nos últimos segundos. Três segundos é folgado: ela chega a cada
     /// 40 ms, então setenta e cinco pacotes perdidos seguidos já valem como silêncio.</summary>
@@ -107,6 +119,7 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
             OnPropertyChanged(nameof(TelemetriaRecente));
             OnPropertyChanged(nameof(MotorArmado));
             OnPropertyChanged(nameof(MotorDesarmado));
+            OnPropertyChanged(nameof(EstadoDesconhecido));
             OnPropertyChanged(nameof(PodeRearmar));
             OnPropertyChanged(nameof(EstadoTooltip));
         };
