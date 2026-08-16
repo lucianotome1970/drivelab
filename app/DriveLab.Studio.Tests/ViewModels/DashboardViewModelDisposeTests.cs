@@ -22,11 +22,12 @@ public class DashboardViewModelDisposeTests
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
         var vm = new DashboardViewModel(session);
 
-        transport.Emit(new BaseState { AngleDeciDeg = 100 });
+        // O ângulo vem do relatório do jogo; é dele que a assinatura precisa ser desfeita.
+        transport.EmitirAngulo(10.0);
         Assert.Equal(10.0, vm.AngleDegrees);
 
         vm.Dispose();
-        transport.Emit(new BaseState { AngleDeciDeg = 2000 });
+        transport.EmitirAngulo(200.0);
         Assert.Equal(10.0, vm.AngleDegrees); // unchanged after dispose
     }
 }

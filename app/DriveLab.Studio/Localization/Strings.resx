@@ -368,8 +368,11 @@ This curve applies AFTER linearity and BEFORE the torque and current limits — 
   <data name="Base_RearmWhy" xml:space="preserve"><value>The motor is off. If a protection stopped it — the travel guard, for instance, when the wheel goes past the end of its range — it does not come back on its own. Arming releases the protection, clears the errors and applies force straight away. Check that the wheel is inside its range before you do it.</value></data>
   <data name="Tray_Open" xml:space="preserve"><value>Open DriveLab</value></data>
   <data name="Tray_Quit" xml:space="preserve"><value>Quit</value></data>
-  <data name="Home_App" xml:space="preserve"><value>Application</value></data>
-  <data name="Home_AppWhy" xml:space="preserve"><value>The centring shortcuts — a key, a button on the rim — are read by DriveLab itself. With it closed nobody is listening and they stop working. That is why it keeps running in the tray after you close the window.</value></data>
   <data name="Home_StartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
   <data name="Home_KeepInTray" xml:space="preserve"><value>Keep running in the tray when I close the window</value></data>
+  <data name="Prefs_Title" xml:space="preserve"><value>Preferences</value></data>
+  <data name="Prefs_StartHint" xml:space="preserve"><value>Opens DriveLab when you sign in to Windows.</value></data>
+  <data name="Prefs_TrayHint" xml:space="preserve"><value>Closing the window leaves DriveLab in the tray, so the centring shortcuts — a key, a button on the rim — keep working. Off, the X quits and they stop with it.</value></data>
+  <data name="Prefs_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="BaseState_Unknown" xml:space="preserve"><value>No reading from the wheelbase — it may be armed or not; the app cannot tell</value></data>
 </root>
