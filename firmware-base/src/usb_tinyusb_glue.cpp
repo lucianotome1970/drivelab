@@ -163,6 +163,15 @@ DrvlabIrqBits g_bb_irq_bits __attribute__((section(".noinit")));
 /// retrato de ate 1 s antes do travamento, que e exatamente o que queremos ler depois.
 extern "C" void drvlab_irq_janela(uint32_t irq_total) {
     if (g_bb_irq_bits.magic != DRVLAB_IRQBITS_MAGIC) return;   // ainda nao inicializado pela ISR
+    // ⚠️ O CONTADOR DE IRQ ZERA A CADA BOOT e a marca da janela NAO — ela vive em .noinit e
+    // sobrevive ao reset. No primeiro calculo depois de um reinicio isso vira `0 - (valor grande)`,
+    // estoura o unsigned e grava um pico de 4,29 bilhoes/s. Foi o que aconteceu em 15/08/2026: o
+    // relatorio anunciou "TEMPESTADE confirmada" com um numero que so podia ser lixo. Instrumento
+    // que mente e pior que instrumento nenhum — ele foi consultado justamente para decidir.
+    if (irq_total < g_bb_irq_bits.irq_anterior) {
+        g_bb_irq_bits.irq_anterior = irq_total;   // recomeca a janela; esta amostra nao vale
+        return;
+    }
     const uint32_t taxa = irq_total - g_bb_irq_bits.irq_anterior;
     g_bb_irq_bits.irq_anterior = irq_total;
     g_bb_irq_bits.taxa_atual = taxa;
