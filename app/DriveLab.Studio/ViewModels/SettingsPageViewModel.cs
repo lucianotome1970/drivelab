@@ -93,50 +93,65 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
         // (SettingFieldViewModel.OnValueChanged) — o usuário monta o ajuste inteiro na tela e só aqui
         // ele vai para a placa, de uma vez. Evita reconfigurar a base ao vivo com o motor armado e a
         // rajada de writes de quando se arrasta um slider.
+        var enviados = new List<SettingFieldViewModel>();
         foreach (var field in AllFields())
             if (field.IsModified)
+            {
                 await field.WriteAsync();
+                enviados.Add(field);   // só estes precisam ser conferidos depois
+            }
 
-        // ⚠️ ESPERAR A CONFIRMAÇÃO, e não presumir que gravou.
+        // ⚠️ VERIFICAR O QUE FICOU GRAVADO, e não acreditar num aviso.
         //
-        // A base só escreve na memória permanente com o MOTOR PARADO — a escrita congela a CPU por
-        // ~250 ms, e fazer isso com as fases energizadas é pior. Numa base que está tentando calibrar
-        // sem parar, esse momento pode nunca chegar; e se ela reinicia antes, o ajuste volta ao que
-        // estava gravado. Antes o app dizia "gravou na flash" logo depois de MANDAR o comando, e a
-        // pessoa reiniciava e encontrava o valor velho: da tela, isso é indistinguível de "o app não
-        // salva". Aconteceu na bancada em 15/08/2026 e custou meia hora de caça a um bug que não
-        // existia no salvamento.
+        // A primeira versão disto perguntava à base "gravou?" por um contador na telemetria. Frágil
+        // dos dois lados: a telemetria é justamente o caminho onde o firmware trava, e um contador só
+        // diz que ALGO aconteceu — não QUE valor ficou lá. Se um campo não fosse enviado, o contador
+        // subiria igual e o app diria "salvo" sobre um ajuste que não foi.
         //
-        // O firmware conta as gravações CONCLUÍDAS e manda o número na telemetria. Aqui guardamos o
-        // valor antes e esperamos ele mudar — é a diferença entre pedir e confirmar.
-        var antes = _session.UltimoEstado?.SaveCount;
+        // Agora o app relê os campos da memória permanente e compara com o que mandou. Se ler 4096,
+        // gravou 4096: não há o que interpretar. E se este caminho falhar, ele falha VISIVELMENTE (a
+        // leitura não volta) em vez de mentir — falhar avisando é aceitável, mentir não é.
+        //
+        // A gravação exige o motor PARADO (ela congela a CPU por ~250 ms), então numa base presa
+        // tentando calibrar ela pode não acontecer. É exatamente esse o caso que precisa ser dito.
         await _session.SendCommandAsync(BaseCommand.SaveSettings);
 
         MensagemDeSalvar = null;
-        var gravou = await EsperarGravacaoAsync(antes);
-        IsDirty = !gravou;
-        MensagemDeSalvar = gravou ? L.Get("Settings_Saved") : L.Get("Settings_SaveBusy");
+        var naoGravou = await ConferirGravacaoAsync(enviados);
+        IsDirty = naoGravou.Count > 0;
+        MensagemDeSalvar = naoGravou.Count == 0 ? L.Get("Settings_Saved") : L.Get("Settings_SaveBusy");
     }
 
-    /// <summary>Espera o contador de gravações da base mudar. Devolve false se não mudar a tempo —
-    /// nesse caso o ajuste está na base mas NÃO na memória permanente, e some no próximo reinício.
+    /// <summary>Relê da memória permanente os campos que acabaram de ser enviados e devolve os que
+    /// NÃO bateram. Lista vazia = gravou tudo.
     ///
-    /// <para>O prazo é generoso de propósito: a base pode precisar desarmar o motor antes, e desarmar
-    /// leva tempo. Curto demais acusaria falha numa gravação que ia acontecer.</para></summary>
-    private async Task<bool> EsperarGravacaoAsync(byte? antes)
+    /// <para>Tenta por alguns segundos antes de desistir: a base precisa parar o motor para gravar, e
+    /// parar leva tempo. Desistir cedo acusaria falha numa gravação que ia acontecer.</para></summary>
+    private async Task<List<SettingFieldViewModel>> ConferirGravacaoAsync(List<SettingFieldViewModel> enviados)
     {
-        // Firmware antigo não manda o contador (fica em 0 sempre). Sem base de comparação, não dá
-        // para confirmar nada — e mentir "salvo" é o que estamos consertando. Só não bloqueamos: o
-        // comando foi enviado, e nesse caso o comportamento volta a ser o de antes.
-        if (antes is null) return true;
-
-        for (var i = 0; i < 60; i++)          // 60 × 100 ms = 6 s
+        var pendentes = new List<SettingFieldViewModel>(enviados);
+        for (var tentativa = 0; tentativa < 6 && pendentes.Count > 0; tentativa++)
         {
-            await Task.Delay(100);
-            var agora = _session.UltimoEstado?.SaveCount;
-            if (agora is not null && agora != antes) return true;
+            await Task.Delay(500);
+            var restam = new List<SettingFieldViewModel>();
+            foreach (var campo in pendentes)
+            {
+                try
+                {
+                    var gravado = await _session.ReadSettingSavedAsync(campo.SettingId);
+                    // Comparação numérica: o valor volta pelo mesmo tipo com que foi escrito, e a
+                    // tolerância cobre o ida-e-volta de float sem deixar passar diferença real.
+                    if (Math.Abs(gravado.AsDouble - campo.Value) > 0.001) restam.Add(campo);
+                }
+                catch
+                {
+                    // Leitura não voltou: não dá para afirmar que gravou. Fica pendente e tenta de novo.
+                    restam.Add(campo);
+                }
+            }
+            pendentes = restam;
         }
-        return false;
+        return pendentes;
     }
 
     /// <summary>O que dizer depois de "Salvar" — vazio enquanto ninguém salvou nada nesta sessão.</summary>

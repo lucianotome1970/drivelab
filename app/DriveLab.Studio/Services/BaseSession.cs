@@ -26,9 +26,14 @@ public sealed class BaseSession : IDisposable
         _transport = transport;
         _dispatcher = dispatcher;
         _transport.StateReceived += OnTransportState;
+        _transport.WheelAngleReceived += (_, graus) => _dispatcher.Post(() => WheelAngleReceived?.Invoke(this, graus));
     }
 
     public event EventHandler<BaseState>? StateReceived;
+
+    /// <summary>Ângulo do volante vindo do relatório que vai para o JOGO — 1 kHz, contra os 25 Hz da
+    /// telemetria. É o que move o desenho na tela.</summary>
+    public event EventHandler<double>? WheelAngleReceived;
     public event EventHandler? Connected;
     public event EventHandler? Disconnected;
 
@@ -74,6 +79,10 @@ public sealed class BaseSession : IDisposable
     /// <summary>Valor de FÁBRICA do ajuste, perguntado à base. Consulta pura: nada muda na placa
     /// até o Salvar.</summary>
     public Task<SettingValue> ReadSettingDefaultAsync(BaseSettingId id) => _transport.ReadSettingDefaultAsync(id);
+
+    /// <summary>Valor GRAVADO na memória permanente — o que sobrevive a reiniciar. É por ele que o
+    /// "Salvar" confere se gravou mesmo.</summary>
+    public Task<SettingValue> ReadSettingSavedAsync(BaseSettingId id) => _transport.ReadSettingSavedAsync(id);
     public Task SendDirectControlAsync(BaseDirectControl control) => _transport.SendDirectControlAsync(control);
     public Task SendCommandAsync(BaseCommand command, byte arg = 0) => _transport.SendCommandAsync(command, arg);
 

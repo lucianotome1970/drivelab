@@ -17,6 +17,10 @@ public sealed class FakeBaseTransport : IBaseTransport
     public bool IsConnected { get; private set; } = true;
     public FirmwareVersion FirmwareVersion { get; } = new(0, 1, 0, 0);
     public event EventHandler<BaseState>? StateReceived;
+    /// <summary>Ângulo vindo do relatório do jogo. Os testes disparam com
+    /// <c>EmitirAngulo</c> para exercitar quem depende dele sem precisar de base.</summary>
+    public event EventHandler<double>? WheelAngleReceived;
+    public void EmitirAngulo(double graus) => WheelAngleReceived?.Invoke(this, graus);
 
     public (BaseCommand cmd, byte arg)? LastCommand { get; private set; }
 
@@ -25,6 +29,7 @@ public sealed class FakeBaseTransport : IBaseTransport
     public Task WriteSettingAsync(BaseSettingId id, SettingValue value) => Task.CompletedTask;
     public Task<SettingValue> ReadSettingAsync(BaseSettingId id) => Task.FromResult(new SettingValue(SettingType.UInt16, 0));
     public Task<SettingValue> ReadSettingDefaultAsync(BaseSettingId id) => Task.FromResult(new SettingValue(SettingType.UInt16, 0));
+    public Task<SettingValue> ReadSettingSavedAsync(BaseSettingId id) => Task.FromResult(new SettingValue(SettingType.UInt16, 0));
     public Task SendDirectControlAsync(BaseDirectControl control) => Task.CompletedTask;
     public Task SendCommandAsync(BaseCommand command, byte arg = 0) { LastCommand = (command, arg); return Task.CompletedTask; }
 

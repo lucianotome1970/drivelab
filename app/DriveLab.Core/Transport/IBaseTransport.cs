@@ -40,6 +40,22 @@ public interface IBaseTransport
     /// recém-gravada, e os dois pareceriam ser o padrão. Perguntando à base, a resposta é uma só.</para>
     /// </summary>
     Task<SettingValue> ReadSettingDefaultAsync(BaseSettingId id);
+
+    /// <summary>Valor GRAVADO na memória permanente — o que a base vai usar no próximo boot.
+    /// Diferente de <see cref="ReadSettingAsync"/>, que devolve o valor EM USO: os dois divergem
+    /// entre mexer num ajuste e salvá-lo, e é essa diferença que o "Salvar" precisa verificar.</summary>
+    Task<SettingValue> ReadSettingSavedAsync(BaseSettingId id);
+
+    /// <summary>Ângulo do volante, em graus, vindo do relatório que a base manda para o JOGO — mil
+    /// vezes por segundo. É a mesma informação que o jogo usa para desenhar a direção.
+    ///
+    /// <para>Existe separado de <see cref="StateReceived"/> porque a telemetria chega a 25 Hz e serve
+    /// a outra coisa: temperatura, corrente, estado. Para o desenho do volante, quarenta amostras a
+    /// mais por segundo é a diferença entre precisar interpolar e simplesmente mostrar.</para>
+    ///
+    /// <para>⚠️ Satura em ±540° (o alcance do eixo). Com o curso em 900° sobra folga; acima de 1080°
+    /// no total, o desenho para nos extremos enquanto o volante real continua.</para></summary>
+    event EventHandler<double>? WheelAngleReceived;
     Task SendDirectControlAsync(BaseDirectControl control);
     Task SendCommandAsync(BaseCommand command, byte arg = 0);
 }

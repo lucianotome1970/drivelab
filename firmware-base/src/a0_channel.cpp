@@ -53,6 +53,7 @@ extern "C" volatile int32_t g_motor_enable;
 #define A0_RID_SETWRITE 0x14   // OUT grava setting [fieldId, idx, type, valor]
 #define A0_RID_SETREAD  0x15   // OUT pede leitura [fieldId, idx]
 #define A0_RID_DEFREAD  0x17   // OUT pede o PADRAO do campo [fieldId] -> responde 0x16
+#define A0_RID_NVMREAD  0x18   // OUT pede o valor GRAVADO na flash [fieldId] -> responde 0x16
 #define A0_PAYLOAD      63     // ReportConstants.ReportSize
 
 // SettingType (DriveLab.Core.Settings.SettingType)
@@ -181,7 +182,8 @@ static void a0_load_defaults(void) {
 // (o offset de centro saiu daqui para wheel_center.cpp — era um zero paralelo ao do FFB)
 static bool    s_force_enabled = true;
 static uint8_t s_pending_read = 0xFF;
-static uint8_t s_pending_is_default = 0;   // 1 = o pedido foi 0x17 (padrao), nao 0x15 (atual)     // fieldId pendente de resposta 0x16 (0xFF = nenhum)
+// 0 = valor EM USO (0x15) · 1 = valor de FABRICA (0x17) · 2 = valor GRAVADO na flash (0x18)
+static uint8_t s_pending_is_default = 0;     // fieldId pendente de resposta 0x16 (0xFF = nenhum)
 static uint32_t s_last_state_ms = 0;
 static bool    s_inited = false;
 static bool    s_save_requested = false;
@@ -396,6 +398,12 @@ extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len) {
         case A0_RID_SETREAD:               // wire: [0x15, FieldId, Index] → responde 0x16 no a0_service
             if (len >= 2 && buf[1] < A0_NUM_SETTINGS) { s_pending_read = buf[1]; s_pending_is_default = 0; }
             break;
+        // ⚠️ LER O QUE ESTA GRAVADO — a diferenca entre acreditar e verificar. O "Salvar" precisa
+        // dizer se gravou, e um contador so diz que ALGO aconteceu, nao QUE valor ficou la. Pior:
+        // aquele contador ia na telemetria, que e justamente o caminho onde o firmware trava.
+        case A0_RID_NVMREAD:               // wire: [0x18, FieldId] → responde 0x16 com o GRAVADO
+            if (len >= 2 && buf[1] < A0_NUM_SETTINGS) { s_pending_read = buf[1]; s_pending_is_default = 2; }
+            break;
         case A0_RID_DEFREAD:               // wire: [0x17, FieldId] → responde 0x16 com o PADRAO
             // Consulta pura: NAO altera s_ival/s_fval. O app mostra o padrao na tela e so o Salvar
             // (que grava campo a campo pelo 0x14) muda alguma coisa na placa.
@@ -554,9 +562,10 @@ static void a0_build_state(uint8_t* p) {
     put_i16(&p[45], (int16_t)(g_ecc.fase_cdeg / 10));      // onde o erro e maximo, decimos de grau
     p[47] = (uint8_t)motor_link_motor_pole_pairs();        // o app converte grau mecanico -> eletrico
 
-    // Gravações concluídas desde o boot. O app guarda o valor ao pedir "Salvar" e espera este numero
-    // subir: se subiu, gravou mesmo; se nao subiu no prazo, a base nao conseguiu parar o motor e o
-    // ajuste vive so na RAM ate o proximo reset. Um byte basta — o que importa e a MUDANCA.
+    // Gravacoes concluidas desde o boot. O app NAO usa mais isto para confirmar um "Salvar" — ele
+    // rele o valor da memoria permanente e compara, porque um contador so diz que ALGO aconteceu, e
+    // ia justamente pela telemetria, que e o caminho que trava. Fica como diagnostico por SWD: e o
+    // numero que separa "nao gravou" de "gravou outra coisa".
     p[48] = (uint8_t)(g_save_count & 0xFFu);
 }
 
@@ -564,6 +573,12 @@ static void a0_build_state(uint8_t* p) {
 // Envio no laço (a0_service): PRIORIDADE resposta 0x16 > telemetria 0x21. Gated por ready().
 // nowMs: relógio em ms. Retorna true se enviou algo (o chamador pode dar prioridade ao joystick).
 // ---------------------------------------------------------------------------
+// Chave de EXPERIMENTO: 1 desliga o envio da telemetria (0x21), sem mexer em mais nada. Serviu para
+// isolar o travamento — 8,7 h sem um reinício com ela ligada, contra 5 reinícios em 10 h com a
+// telemetria ativa, ambas com a base ociosa. Fica em 0 (comportamento normal); quem for repetir o
+// teste liga por SWD, ou grava um binário com 1 para ele sobreviver a reset e queda de energia.
+volatile int32_t g_telemetria_off = 0;
+
 extern "C" int a0_service(uint32_t nowMs) {
     if (!s_inited) a0_init();
     blackbox_step(BB_STEP_A0_READY);
@@ -578,20 +593,48 @@ extern "C" int a0_service(uint32_t nowMs) {
     // Regra: passou de 40 ms sem telemetria, ela fura a fila UMA vez. A leitura perde um ciclo de
     // 4 ms — imperceptível para quem carrega uma aba — e o desenho nunca congela.
     //
-    // POR QUE 40 E NÃO 100 (medido na bancada em 2026-08-10): com 100 ms, girando o volante rápido
-    // — ~1000 °/s, medido na mesma captura — o ângulo pulava até 100° de uma amostra para a outra.
-    // O app trata salto acima de 90° como "assume direto", para não varrer a tela em Center ou
-    // reconexão; então o desenho SALTAVA. Com 40 ms o pior caso vira ~40°, abaixo do limiar, e a
-    // interpolação cobre o resto. A folga entre os dois números é o que evita o salto.
-    const int telemetria_atrasada = (uint32_t)(nowMs - s_last_state_ms) >= 40;
+    // ⚠️ 40 ms VIRARAM 200: o motivo dos 40 deixou de existir.
+    //
+    // Eles existiam pelo DESENHO DO VOLANTE. O registro anterior: "com 100 ms, girando o volante a
+    // ~1000 °/s, o ângulo pulava até 100° de uma amostra para a outra; o app trata salto acima de 90°
+    // como 'assume direto', e o desenho SALTAVA". Era verdade — enquanto o ângulo viesse daqui.
+    //
+    // Agora o app lê a direção do relatório que já vai para o JOGO, a 1 kHz, pelo mesmo endpoint e
+    // sem custo nenhum: aquele relatório é enviado de qualquer forma. Sobrou para a telemetria o que
+    // ela sempre foi — dados de painel: temperatura, corrente, tensão, clipping. Nada disso precisa
+    // de vinte e cinco amostras por segundo.
+    //
+    // E o ganho não é economia de banda: é REDUZIR A EXPOSIÇÃO. Todos os travamentos que capturamos
+    // pararam no envio deste relatório, e a base ficou 8,7 horas sem travar quando ele foi desligado.
+    // Cinco envios por segundo em vez de vinte e cinco é um quinto das oportunidades de tropeçar,
+    // enquanto a causa não é encontrada.
+    const int telemetria_atrasada = (uint32_t)(nowMs - s_last_state_ms) >= 200;
 
     // 1) resposta deferida de leitura (0x16) tem prioridade
     if (s_pending_read != 0xFF && !telemetria_atrasada) {
         const uint8_t id = s_pending_read;
         uint8_t p[A0_PAYLOAD]; memset(p, 0, sizeof(p));
         p[0] = id; p[1] = 0; p[2] = s_type[id];
-        const int32_t* src_i = s_pending_is_default ? s_idef : s_ival;
-        const float*   src_f = s_pending_is_default ? s_fdef : s_fval;
+        // O blob da flash e desempacotado NA HORA, e nao guardado numa copia em RAM: copia
+        // envelheceria, e o app "verificaria" contra um retrato velho — concluindo que gravou quando
+        // nao gravou, que e o erro que esta leitura existe para impedir.
+        static int32_t nvm_i[A0_NUM_SETTINGS];
+        static float   nvm_f[A0_NUM_SETTINGS];
+        const int32_t* src_i;
+        const float*   src_f;
+        if (s_pending_is_default == 2) {
+            static uint8_t blob[drivelab::settingsBlobSize(A0_NUM_SETTINGS)];
+            const size_t got = settings_flash_read(blob, sizeof(blob));
+            // Blob invalido (flash apagada, CRC ruim) cai nos defaults — que e o que a base usaria
+            // num boot agora. A resposta continua sendo "o que esta gravado vale isto".
+            memcpy(nvm_i, s_idef, sizeof(nvm_i));
+            memcpy(nvm_f, s_fdef, sizeof(nvm_f));
+            drivelab::unpackSettings(blob, got, nvm_i, nvm_f, (uint16_t)A0_NUM_SETTINGS);
+            src_i = nvm_i; src_f = nvm_f;
+        } else {
+            src_i = s_pending_is_default ? s_idef : s_ival;
+            src_f = s_pending_is_default ? s_fdef : s_fval;
+        }
         if (s_type[id] == T_FLOAT)      memcpy(&p[3], &src_f[id], 4);
         else if (s_type[id] == T_U32)   put_u32(&p[3], (uint32_t)src_i[id]);
         else if (s_type[id] == T_U16 || s_type[id] == T_I16) put_i16(&p[3], (int16_t)src_i[id]);
@@ -607,6 +650,7 @@ extern "C" int a0_service(uint32_t nowMs) {
         blackbox_step(BB_STEP_A0_MONTA);
         a0_build_state(p);
         blackbox_step(BB_STEP_A0_TELEMETRIA);
+        if (g_telemetria_off) { s_last_state_ms = nowMs; return 1; }
         if (tud_hid_report(A0_RID_STATE, p, A0_PAYLOAD)) { s_last_state_ms = nowMs; return 1; }
     }
     return 0;

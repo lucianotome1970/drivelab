@@ -27,6 +27,10 @@ public sealed class SimulatorBaseTransport : IBaseTransport
 
     public event EventHandler<BaseState>? StateReceived;
 
+    /// <summary>O simulador não tem relatório de jogo; quem move o desenho é a telemetria dele.
+    /// Declarado para satisfazer o contrato — sem base real não há 1 kHz para entregar.</summary>
+    public event EventHandler<double>? WheelAngleReceived;
+
     public Task ConnectAsync(CancellationToken ct = default)
     {
         lock (_sync)
@@ -78,6 +82,11 @@ public sealed class SimulatorBaseTransport : IBaseTransport
             ? new SettingValue(SettingType.UInt8, 0)
             : new SettingValue(descritor.Type, descritor.Default));
     }
+
+    /// <summary>Valor "gravado". O simulador não tem memória permanente, então devolve o valor em
+    /// uso — e com isso o Salvar do app se comporta como numa base que gravou tudo, que é o
+    /// resultado certo para quem está só experimentando a interface sem placa.</summary>
+    public Task<SettingValue> ReadSettingSavedAsync(BaseSettingId id) => ReadSettingAsync(id);
 
     public Task SendDirectControlAsync(BaseDirectControl control)
     {

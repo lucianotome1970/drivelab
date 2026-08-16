@@ -10,6 +10,7 @@ using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
 using DriveLab.Studio.ViewModels;
 using Xunit;
+using L = DriveLab.Studio.Localization.LocalizationManager;
 
 namespace DriveLab.Studio.Tests.ViewModels;
 
@@ -41,6 +42,59 @@ public class SettingsPageViewModelTests
         Assert.False(page.IsDirty);                       // firmware == app
         Assert.False(page.SaveCommand.CanExecute(null));
         page.Dispose();
+    }
+
+    // ── O "Salvar" VERIFICA o que ficou gravado ────────────────────────────────────────────
+    //
+    // Gravar na memória permanente exige o motor PARADO (a escrita congela a CPU por ~250 ms), então
+    // numa base presa tentando calibrar ela pode simplesmente não acontecer. Antes o app dizia
+    // "gravou na flash" logo depois de MANDAR o comando, e a pessoa reiniciava e encontrava o valor
+    // velho — da tela, indistinguível de "o app não salva". Aconteceu na bancada em 15/08/2026 e com
+    // o primeiro tester.
+
+    [Fact]
+    public async Task Save_Confirma_Quando_A_Memoria_Permanente_Bate()
+    {
+        var (page, group) = Make();
+        await group.LoadAsync();
+        group.Fields[0].Value = 42;
+
+        await page.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(page.IsDirty);                        // gravou: app == memória permanente
+        Assert.Equal(L.Get("Settings_Saved"), page.MensagemDeSalvar);
+        page.Dispose();
+    }
+
+    [Fact]
+    public async Task Save_Avisa_Quando_Nao_Chegou_A_Gravar()
+    {
+        var (page, group, transporte) = MakeComTransporte();
+        await group.LoadAsync();
+        group.Fields[0].Value = 42;
+
+        // A memória permanente continua com o valor ANTIGO — é o que acontece quando o motor não
+        // para a tempo e a gravação não chega a rodar.
+        transporte.SavedToReturn = new SettingValue(SettingType.UInt8, 7);
+
+        await page.SaveCommand.ExecuteAsync(null);
+
+        // ⚠️ CONTINUA "sujo" de propósito: o ajuste está VALENDO na base, mas não sobrevive a
+        // reiniciar. Limpar a pendência aqui faria a tela dizer que está tudo salvo sobre um valor
+        // que vai sumir — exatamente a mentira que este trabalho remove.
+        Assert.True(page.IsDirty);
+        Assert.Equal(L.Get("Settings_SaveBusy"), page.MensagemDeSalvar);
+        page.Dispose();
+    }
+
+    private static (SettingsPageViewModel, SettingsGroupViewModel, FakeTransport) MakeComTransporte()
+    {
+        var t = new FakeTransport();
+        t.ConnectAsync().GetAwaiter().GetResult();
+        var s = new BaseSession(t, new ImmediateUiDispatcher());
+        var group = new SettingsGroupViewModel(s, "Básico", new[] { BaseSettingId.TotalStrength });
+        var page = new SettingsPageViewModel(s, "Base", new[] { new PageTab("Básico", group) });
+        return (page, group, t);
     }
 
     // ── "Padrão" pergunta à BASE, não usa o padrão do app ──────────────────────────────────

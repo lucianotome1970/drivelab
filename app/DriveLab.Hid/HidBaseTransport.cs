@@ -5,6 +5,7 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System.Buffers.Binary;
 using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Core.Transport;
@@ -43,6 +44,7 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
     public FirmwareVersion FirmwareVersion { get; private set; }
 
     public event EventHandler<BaseState>? StateReceived;
+    public event EventHandler<double>? WheelAngleReceived;
 
     /// <summary>Usage page (HID) do canal vendor A0 da base.</summary>
     public const int A0UsagePage = 0xFF00;
@@ -126,7 +128,12 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
     public Task<SettingValue> ReadSettingDefaultAsync(BaseSettingId id) =>
         RequestValueAsync(id, BaseReportIds.SettingDefaultRequest, DefaultReadTimeout);
 
-    // As duas leituras — valor atual (0x15) e valor de fábrica (0x17) — pedem por reports
+    /// <summary>Valor GRAVADO na memória permanente (report 0x18). Consulta pura, e o que permite o
+    /// "Salvar" verificar o que ficou gravado em vez de confiar num aviso.</summary>
+    public Task<SettingValue> ReadSettingSavedAsync(BaseSettingId id) =>
+        RequestValueAsync(id, BaseReportIds.SettingNvmRequest, DefaultReadTimeout);
+
+    // As TRÊS leituras — valor atual (0x15), de fábrica (0x17) e gravado (0x18) — pedem por reports
     // diferentes e são respondidas pelo MESMO 0x16, com o mesmo id de campo. Nada na resposta
     // diz qual pergunta ela responde, então elas NÃO podem estar em voo ao mesmo tempo: a
     // primeira a chegar seria entregue a quem perguntou primeiro, e o valor de fábrica poderia
@@ -161,12 +168,29 @@ public sealed class HidBaseTransport : IBaseTransport, IDisposable
 
     private void OnReport(object? sender, byte[] wire)
     {
-        if (wire.Length < 1 + ReportConstants.ReportSize)
-            return;
+        if (wire.Length < 2) return;
 
         try
         {
             var reportId = wire[0];
+
+            // ⚠️ O RELATÓRIO DO JOGO É MENOR QUE OS OUTROS (25 bytes contra 64), e por isso ele era
+            // descartado antes mesmo de alguém olhar o id — a checagem de tamanho exigia o maior de
+            // todos. A direção que o jogo usa passava pelo app mil vezes por segundo e ia para o lixo.
+            //
+            // Cada tipo tem o seu tamanho mínimo agora. Ler daqui dá a posição a 1 kHz, contra os
+            // 25 Hz da telemetria, e sem custo: o relatório já é enviado.
+            if (reportId == BaseReportIds.Joystick)
+            {
+                // buttons[8] + axes[8] × int16; o eixo 0 é a direção, em ±32767 sobre ±1,5 volta.
+                const int offsetEixoX = 1 + 8;
+                if (wire.Length < offsetEixoX + 2) return;
+                var bruto = BinaryPrimitives.ReadInt16LittleEndian(wire.AsSpan(offsetEixoX, 2));
+                WheelAngleReceived?.Invoke(this, bruto / 32767.0 * 1.5 * 360.0);
+                return;
+            }
+
+            if (wire.Length < 1 + ReportConstants.ReportSize) return;
             var payload = wire.AsSpan(1, ReportConstants.ReportSize);
 
             if (reportId == BaseReportIds.DeviceState)

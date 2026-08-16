@@ -17,6 +17,10 @@ public sealed class FakeTransport : IBaseTransport
     public bool IsConnected { get; private set; }
     public FirmwareVersion FirmwareVersion { get; } = new(0, 1, 0, 0);
     public event EventHandler<BaseState>? StateReceived;
+    /// <summary>Ângulo vindo do relatório do jogo. Os testes disparam com
+    /// <c>EmitirAngulo</c> para exercitar quem depende dele sem precisar de base.</summary>
+    public event EventHandler<double>? WheelAngleReceived;
+    public void EmitirAngulo(double graus) => WheelAngleReceived?.Invoke(this, graus);
 
     public int ConnectCalls { get; private set; }
     public int DisconnectCalls { get; private set; }
@@ -51,6 +55,18 @@ public sealed class FakeTransport : IBaseTransport
     {
         LastDefaultAsked = id;
         return Task.FromResult(DefaultToReturn);
+    }
+
+    /// <summary>O que a "memória permanente" devolve. Começa igual ao valor em uso — base que grava
+    /// tudo. Os testes de verificação do Salvar mexem aqui para simular a gravação que NÃO aconteceu,
+    /// que é o caso interessante.</summary>
+    public SettingValue? SavedToReturn { get; set; }
+    public BaseSettingId? LastSavedAsked { get; private set; }
+
+    public Task<SettingValue> ReadSettingSavedAsync(BaseSettingId id)
+    {
+        LastSavedAsked = id;
+        return Task.FromResult(SavedToReturn ?? LastWrite?.value ?? new SettingValue(SettingType.UInt8, 0));
     }
 
     public Task SendDirectControlAsync(BaseDirectControl control)
