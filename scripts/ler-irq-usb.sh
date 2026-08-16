@@ -36,7 +36,7 @@ linha=$(echo "$out" | grep -oE '^M:.*')
 
 read -r -a v <<< "${linha#M:}"
 magic=$((${v[0]}))
-if [ "$magic" -ne $((0x1B175A20)) ]; then   # deixar o shell converter: transcrever o magic em decimal a mao ja custou uma leitura falsa
+if [ "$magic" -ne $((0x1B175A21)) ]; then   # deixar o shell converter: transcrever o magic em decimal a mao ja custou uma leitura falsa
     echo "contadores ainda nao inicializados (a base bootou agora?)"
     exit 0
 fi

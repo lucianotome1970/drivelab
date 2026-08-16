@@ -143,7 +143,7 @@ extern "C" void MX_USB_DEVICE_Init(void) {
 // e zera quando a energia cai. Magic separado do BlackBoxTrace de proposito, para nao repetir o
 // erro de mudar layout compartilhado e ler lixo com cara de medicao.
 // ─────────────────────────────────────────────────────────────────────────────
-#define DRVLAB_IRQBITS_MAGIC 0x1B175A20u   // +1 a cada mudanca de layout (ver blackbox.h)
+#define DRVLAB_IRQBITS_MAGIC 0x1B175A21u   // +1 a cada mudanca de layout (ver blackbox.h)
 
 struct DrvlabIrqBits {
     uint32_t magic;
@@ -152,9 +152,10 @@ struct DrvlabIrqBits {
     // mostrou 2.792 IRQ/s de media em 206 s — perto do normal —, enquanto outro, que durou 35 s,
     // mostrou 23.020/s. Um surto de dois segundos some numa media de tres minutos, e e o surto que
     // derruba o laco. Estes campos guardam a taxa INSTANTANEA e o PIOR valor ja visto.
-    uint32_t taxa_atual;   // IRQ/s na ultima janela de 1 s
+    uint32_t taxa_atual;   // IRQ/s na ultima janela
     uint32_t taxa_maxima;  // maior IRQ/s desde que a base foi ligada na tomada
     uint32_t irq_anterior; // marca da janela anterior (uso interno)
+    uint32_t ms_anterior;  // instante da janela anterior, em ms REAIS (uso interno)
 };
 DrvlabIrqBits g_bb_irq_bits __attribute__((section(".noinit")));
 
@@ -163,6 +164,19 @@ DrvlabIrqBits g_bb_irq_bits __attribute__((section(".noinit")));
 /// retrato de ate 1 s antes do travamento, que e exatamente o que queremos ler depois.
 extern "C" void drvlab_irq_janela(uint32_t irq_total) {
     if (g_bb_irq_bits.magic != DRVLAB_IRQBITS_MAGIC) return;   // ainda nao inicializado pela ISR
+
+    // ⚠️ A JANELA E MEDIDA EM TEMPO REAL, NAO EM VOLTAS DO LACO. Parece a mesma coisa — o laco roda
+    // a 1 kHz, entao mil voltas "sao" um segundo —, e nao e: quando o laco TRAVA, as mil voltas
+    // passam a cobrir dez segundos de tempo real, e o delta de interrupcoes desse periodo inteiro e
+    // dividido por um segundo imaginario. A taxa sai inflada exatamente no caso que a medicao existe
+    // para investigar.
+    //
+    // Foi o que aconteceu em 16/08/2026: o relatorio marcou 362.083 IRQ/s de pico, numero impossivel
+    // para um USB full-speed. Dividindo pelo tempo de verdade, o pico volta ao que e.
+    const uint32_t agora_ms = HAL_GetTick();
+    const uint32_t dt_ms    = agora_ms - g_bb_irq_bits.ms_anterior;
+    g_bb_irq_bits.ms_anterior = agora_ms;
+    if (dt_ms == 0 || dt_ms > 60000u) return;   // primeira janela, ou intervalo absurdo: nao mede
     // ⚠️ O CONTADOR DE IRQ ZERA A CADA BOOT e a marca da janela NAO — ela vive em .noinit e
     // sobrevive ao reset. No primeiro calculo depois de um reinicio isso vira `0 - (valor grande)`,
     // estoura o unsigned e grava um pico de 4,29 bilhoes/s. Foi o que aconteceu em 15/08/2026: o
@@ -172,8 +186,9 @@ extern "C" void drvlab_irq_janela(uint32_t irq_total) {
         g_bb_irq_bits.irq_anterior = irq_total;   // recomeca a janela; esta amostra nao vale
         return;
     }
-    const uint32_t taxa = irq_total - g_bb_irq_bits.irq_anterior;
+    const uint32_t delta = irq_total - g_bb_irq_bits.irq_anterior;
     g_bb_irq_bits.irq_anterior = irq_total;
+    const uint32_t taxa = (uint32_t)(((uint64_t)delta * 1000u) / dt_ms);   // por SEGUNDO de verdade
     g_bb_irq_bits.taxa_atual = taxa;
     if (taxa > g_bb_irq_bits.taxa_maxima) g_bb_irq_bits.taxa_maxima = taxa;
 }
@@ -182,7 +197,8 @@ static inline void irqbits_conta(void) {
     if (g_bb_irq_bits.magic != DRVLAB_IRQBITS_MAGIC) {
         g_bb_irq_bits.magic = DRVLAB_IRQBITS_MAGIC;
         for (int i = 0; i < 32; ++i) g_bb_irq_bits.bit[i] = 0;
-        g_bb_irq_bits.taxa_atual = g_bb_irq_bits.taxa_maxima = g_bb_irq_bits.irq_anterior = 0;
+        g_bb_irq_bits.taxa_atual = g_bb_irq_bits.taxa_maxima = 0;
+        g_bb_irq_bits.irq_anterior = g_bb_irq_bits.ms_anterior = 0;
     }
     USB_OTG_GlobalTypeDef *U = (USB_OTG_GlobalTypeDef *)USB_OTG_FS_PERIPH_BASE;
     uint32_t act = U->GINTSTS & U->GINTMSK;   // so o que esta ATIVO E habilitado
