@@ -36,14 +36,21 @@
 
             <!-- Presets (explicit buttons — robust, no item-template command binding) -->
             <TextBlock Text="{loc:Translate Wheel_MaxAngle}" Classes="muted" />
-            <WrapPanel>
-                <Button Classes="chip" Content="360"  Command="{Binding SetMaxAngleCommand}" CommandParameter="360"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=360}" />
-                <Button Classes="chip" Content="540"  Command="{Binding SetMaxAngleCommand}" CommandParameter="540"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=540}" />
-                <Button Classes="chip" Content="720"  Command="{Binding SetMaxAngleCommand}" CommandParameter="720"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=720}" />
-                <Button Classes="chip" Content="900"  Command="{Binding SetMaxAngleCommand}" CommandParameter="900"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=900}" />
-                <Button Classes="chip" Content="1080" Command="{Binding SetMaxAngleCommand}" CommandParameter="1080" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1080}" />
-                <Button Classes="chip" Content="1440" Command="{Binding SetMaxAngleCommand}" CommandParameter="1440" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1440}" />
-            </WrapPanel>
+            <!-- Os cinco valores ocupam a largura do card, em colunas iguais: são opções de uma
+                 mesma escolha, e alinhá-las com o mesmo peso mostra isso melhor do que uma fileira
+                 encolhida à esquerda com espaço sobrando à direita. -->
+            <UniformGrid Columns="5">
+                <Button Classes="chip" Content="360"  Margin="0,0,6,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding SetMaxAngleCommand}" CommandParameter="360"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=360}" />
+                <Button Classes="chip" Content="540"  Margin="0,0,6,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding SetMaxAngleCommand}" CommandParameter="540"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=540}" />
+                <Button Classes="chip" Content="720"  Margin="0,0,6,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding SetMaxAngleCommand}" CommandParameter="720"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=720}" />
+                <Button Classes="chip" Content="900"  Margin="0,0,6,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding SetMaxAngleCommand}" CommandParameter="900"  Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=900}" />
+                <Button Classes="chip" Content="1080" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding SetMaxAngleCommand}" CommandParameter="1080" Classes.selected="{Binding MotionRange, Converter={StaticResource IntEquals}, ConverterParameter=1080}" />
+            </UniformGrid>
 
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Classes="accent" Content="{loc:Translate Center}" Command="{Binding CenterCommand}" />

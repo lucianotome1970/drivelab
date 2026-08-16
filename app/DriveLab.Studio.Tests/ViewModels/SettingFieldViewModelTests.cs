@@ -30,7 +30,7 @@ public class SettingFieldViewModelTests
         var vm = New(out _);
         Assert.Equal(LocalizationManager.Get("Setting_MotionRange"), vm.DisplayName);
         Assert.Equal(90, vm.Min);
-        Assert.Equal(2000, vm.Max);
+        Assert.Equal(1080, vm.Max);   // teto do protocolo — ver BaseSettingsSchema
         Assert.Equal(900, vm.Value);
     }
 
@@ -120,7 +120,7 @@ public class SettingFieldViewModelTests
     {
         var vm = New(out _);
         Assert.True(vm.HasPresets);
-        Assert.Equal(new[] { 360, 540, 720, 900, 1080, 1440 }, vm.Presets);
+        Assert.Equal(new[] { 360, 540, 720, 900, 1080 }, vm.Presets);   // 1440 nao cabe no eixo
     }
 
     [Fact]

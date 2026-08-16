@@ -14,7 +14,11 @@ public static class SettingPresets
 {
     private static readonly Dictionary<BaseSettingId, int[]> Map = new()
     {
-        [BaseSettingId.MotionRange] = new[] { 360, 540, 720, 900, 1080, 1440 },
+        // ⚠️ PARA EM 1080, e o limite é do PROTOCOLO, não de gosto: o eixo que vai para o jogo
+        // representa ±540° (±32767 sobre 1,5 volta). Num curso de 1440 o volante passaria do que o
+        // relatório consegue dizer, e o jogo veria o eixo travado no extremo enquanto o aro continua
+        // girando — pior que não ter a opção.
+        [BaseSettingId.MotionRange] = new[] { 360, 540, 720, 900, 1080 },
         [BaseSettingId.TotalStrength] = new[] { 30, 50, 70, 100 },
         [BaseSettingId.MaxTorqueLimit] = new[] { 50, 80, 100 },
         [BaseSettingId.SoftStopStrength] = new[] { 0, 50, 80, 100 },

@@ -25,7 +25,9 @@ public class BaseSettingsSchemaTests
         var descriptor = BaseSettingsSchema.Get(BaseSettingId.MotionRange);
         Assert.Equal(SettingType.UInt16, descriptor.Type);
         Assert.Equal(90, descriptor.Min);
-        Assert.Equal(2000, descriptor.Max);
+        // Teto do PROTOCOLO: o eixo que vai para o jogo representa ±540° (1080 no total). Acima
+        // disso o volante passa do que o relatório consegue dizer e o jogo vê o eixo travado.
+        Assert.Equal(1080, descriptor.Max);
         Assert.Equal(900, descriptor.Default);
         Assert.Equal(SettingTab.Basic, descriptor.Tab);
     }

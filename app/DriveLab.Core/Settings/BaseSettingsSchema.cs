@@ -11,7 +11,11 @@ public static class BaseSettingsSchema
 {
     public static IReadOnlyList<SettingDescriptor> All { get; } = new List<SettingDescriptor>
     {
-        new(BaseSettingId.MotionRange, "motion_range", "Ângulo total de giro", SettingType.UInt16, 90, 2000, "°", SettingTab.Basic, 900,
+        // ⚠️ O TETO É 1080 POR LIMITE DO PROTOCOLO. O eixo que vai para o jogo representa ±540°
+        // (±32767 sobre 1,5 volta); acima disso o volante passa do que o relatório consegue dizer e o
+        // jogo vê o eixo travado no extremo enquanto o aro continua girando. Aceitar 1440 no campo
+        // seria oferecer um ajuste que a base não tem como cumprir.
+        new(BaseSettingId.MotionRange, "motion_range", "Ângulo total de giro", SettingType.UInt16, 90, 1080, "°", SettingTab.Basic, 900,
             "Quantos graus o volante gira de um batente ao outro. Cada categoria pede um valor: fórmula perto de 400°, GT perto de 900°."),
         new(BaseSettingId.SoftStopRange, "soft_stop_range", "Range do batente", SettingType.UInt8, 0, 30, "°", SettingTab.Basic, 8,
             "Onde o batente por software começa a agir, antes do fim do curso. Dá um aviso progressivo em vez de uma parede."),
