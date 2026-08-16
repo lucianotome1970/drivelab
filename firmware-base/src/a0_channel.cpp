@@ -608,7 +608,7 @@ extern "C" int a0_service(uint32_t nowMs) {
     // pararam no envio deste relatório, e a base ficou 8,7 horas sem travar quando ele foi desligado.
     // Cinco envios por segundo em vez de vinte e cinco é um quinto das oportunidades de tropeçar,
     // enquanto a causa não é encontrada.
-    const int telemetria_atrasada = (uint32_t)(nowMs - s_last_state_ms) >= 200;
+    const int telemetria_atrasada = (uint32_t)(nowMs - s_last_state_ms) >= 40;
 
     // 1) resposta deferida de leitura (0x16) tem prioridade
     if (s_pending_read != 0xFF && !telemetria_atrasada) {

@@ -106,7 +106,6 @@ public partial class DashboardViewModel : ViewModelBase
         _rim = rim;
         _centerHotkey = centerHotkey;
         _session.StateReceived += OnState;
-        _session.WheelAngleReceived += OnWheelAngle;
         _session.Connected += OnConnected;
         _session.Disconnected += OnDisconnected;
         _session.SettingChanged += OnSettingChanged;
@@ -187,7 +186,6 @@ public partial class DashboardViewModel : ViewModelBase
     public override void Dispose()
     {
         _session.StateReceived -= OnState;
-        _session.WheelAngleReceived -= OnWheelAngle;
         _session.Connected -= OnConnected;
         _session.Disconnected -= OnDisconnected;
         _session.SettingChanged -= OnSettingChanged;
@@ -228,54 +226,73 @@ public partial class DashboardViewModel : ViewModelBase
             MotionRange = (int)e.Value.AsDouble;
     }
 
-    /// <summary>Ângulo vindo do relatório do JOGO, a 1 kHz. É esta a fonte do desenho.
-    ///
-    /// <para>Antes o desenho seguia a telemetria, a 25 Hz, e precisava de interpolação para não ficar
-    /// aos saltos — com toda a complicação de detectar se a animação está viva. A mesma informação já
-    /// passava pelo app quarenta vezes mais rápido, no relatório que a base manda para o jogo, e era
-    /// descartada.</para>
-    ///
-    /// <para>⚠️ SATURA EM ±540°, que é o alcance do eixo. Com o curso em 900° sobra folga; acima de
-    /// 1080° no total o desenho para nos extremos enquanto o volante real continua. Quem precisar de
-    /// curso maior volta a depender da telemetria para os extremos.</para></summary>
-    private void OnWheelAngle(object? sender, double graus)
-    {
-        _ultimoAnguloDoJogo = DateTime.UtcNow;
-        _targetAngle = graus;
-        AngleDegrees = graus;   // 1 kHz não precisa de interpolação: já chega mais rápido que a tela
-        _hasAngle = true;
-    }
-
-    /// <summary>Quando chegou o último ângulo pelo relatório do jogo. Null = nunca chegou.</summary>
-    private DateTime? _ultimoAnguloDoJogo;
-
-    /// <summary>A fonte rápida está viva? Meio segundo de silêncio já é muito para algo que chega
-    /// mil vezes por segundo — e é curto o bastante para a reserva assumir sem ninguém notar.</summary>
-    private bool AnguloDoJogoVivo =>
-        _ultimoAnguloDoJogo is { } t && (DateTime.UtcNow - t) < TimeSpan.FromSeconds(0.5);
-
     private void OnState(object? sender, BaseState state)
     {
-        // ⚠️ A TELEMETRIA NÃO MEXE MAIS NO ÂNGULO. Ele vem do relatório que a base manda para o JOGO,
-        // a 1 kHz — quarenta vezes mais rápido e pelo caminho que não trava.
-        //
-        // Isso libera a telemetria a ser LENTA, que é o ganho de verdade. Os 40 ms dela existiam por
-        // causa deste desenho: o firmware registra que com 100 ms o ângulo pulava até 100° entre
-        // amostras e a tela saltava. Sem essa obrigação, ela cai para uma taxa de painel — temperatura
-        // e corrente não mudam mil vezes por segundo — e a pressão sobre o endpoint cai junto.
+        _targetAngle = state.AngleDeciDeg / 10.0;
+
+        // A interpolação SÓ vale se alguém estiver avançando os quadros. Se o relógio da view não
+        // estiver rodando, interpolar vira congelar: o ângulo ficaria parado até o alvo se afastar
+        // mais que o limiar e então saltar — foi o "congela e pula" visto na bancada. Contamos as
+        // amostras desde o último quadro: passou de 4 (~80 ms a 50 Hz) sem ninguém animar, o
+        // desenho passa a seguir a base DIRETO. Pior caso vira o comportamento antigo, nunca pior.
+        _samplesSinceFrame++;
+        var animacaoViva = _samplesSinceFrame <= 4;
+
+        if (!_hasAngle || !animacaoViva || Math.Abs(_targetAngle - AngleDegrees) > AngleJumpThreshold)
+        {
+            AngleDegrees = _targetAngle;
+            _hasAngle = true;
+        }
         PositionPercent = state.Position / 100.0;
         IsConnected = _session.IsConnected;
     }
 
-    /// <summary>Ângulo do volante, em graus, vindo do relatório do jogo.</summary>
+    /// <summary>Último ângulo recebido da base. O exibido persegue este valor a cada quadro.</summary>
     private double _targetAngle;
-    private bool _hasAngle;
+    private bool _hasAngle;   // primeira amostra assume direto (sem animar desde o zero)
+    private int _samplesSinceFrame;   // amostras recebidas desde o último quadro animado
 
-    /// <summary>Existia para a view avançar a interpolação a cada quadro. Não interpolamos mais — a
-    /// 1 kHz o valor já chega mais rápido do que a tela desenha —, mas a view continua chamando, e
-    /// tirar o método de lá é mudança em outra camada. Fica sem efeito e documentado, em vez de
-    /// deixar a view chamando algo que sumiu.</summary>
-    public void TickAngleAnimation(double dtSeconds) { _ = dtSeconds; }
+    /// <summary>
+    /// Constante de tempo da interpolação do ângulo, em segundos.
+    ///
+    /// POR QUE INTERPOLAR: a base manda a posição a ~60 Hz (medido: mediana 12 ms, máximo 24), e o
+    /// desenho ficava parado entre uma amostra e outra e depois pulava — a 1000 °/s são até 24° de
+    /// salto, que é o "perde o passo e volta vários graus à frente" relatado na bancada. Subir a
+    /// taxa no firmware resolveria pouco e cara: o canal do app só tem 1 janela a cada 4 ms, e as
+    /// janelas saem do endpoint do JOYSTICK, que é o que o jogo lê.
+    ///
+    /// Interpolando, a suavidade passa a depender da taxa de TELA e não da taxa de dados. O custo é
+    /// um atraso visual da ordem desta constante — 25 ms é imperceptível para o olho e muito menor
+    /// que o salto que ele elimina. Não afeta o FFB nem o que o jogo recebe: é só o desenho.
+    /// </summary>
+    private const double AngleSmoothingTau = 0.025;
+
+    /// <summary>Acima disto o ângulo assume direto em vez de animar: centralizar ou reconectar deve
+    /// ser instantâneo, não uma varredura preguiçosa pela tela.</summary>
+    private const double AngleJumpThreshold = 90.0;
+
+    /// <summary>
+    /// Avança a interpolação do ângulo em <paramref name="dtSeconds"/>. Chamado uma vez por quadro
+    /// pela view (ou pelos testes, sem timer). Aproximação exponencial: independe da taxa de quadros,
+    /// então 60 ou 144 fps dão a mesma sensação.
+    /// </summary>
+    public void TickAngleAnimation(double dtSeconds)
+    {
+        _samplesSinceFrame = 0;   // alguém está animando: a interpolação pode valer
+
+        if (!_hasAngle || dtSeconds <= 0)
+            return;
+
+        var diff = _targetAngle - AngleDegrees;
+        if (Math.Abs(diff) < 0.01)
+        {
+            AngleDegrees = _targetAngle;   // fecha exato (sem sobra de float tremendo no desenho)
+            return;
+        }
+
+        var alpha = 1.0 - Math.Exp(-dtSeconds / AngleSmoothingTau);
+        AngleDegrees += diff * alpha;
+    }
 
     [RelayCommand(CanExecute = nameof(IsConnected))]
     private Task CenterAsync()

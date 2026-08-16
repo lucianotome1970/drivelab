@@ -25,13 +25,12 @@ public class DashboardViewModelTests
     }
 
     [Fact]
-    public void Telemetry_Updates_PositionPercent()
+    public void Telemetry_Updates_AngleDegrees_And_PositionPercent()
     {
-        // O ÂNGULO não vem mais daqui — vem do relatório do jogo, a 1 kHz. A telemetria continua
-        // trazendo o resto (posição em %, temperaturas, correntes), agora a 5 por segundo.
         var vm = New(out var transport);
         transport.Emit(new BaseState { AngleDeciDeg = 2700, Position = 5000 });
 
+        Assert.Equal(270.0, vm.AngleDegrees, precision: 3);   // 2700 deci-deg = 270°
         Assert.Equal(50.0, vm.PositionPercent, precision: 3);  // 5000/10000 = 50%
     }
 
@@ -125,50 +124,97 @@ public class DashboardViewModelTests
         Assert.Equal(900, vm.MotionRange);
     }
 
-    // ---- o ângulo vem do relatório do JOGO, não da telemetria ----
-    //
-    // A telemetria chega a 5 por segundo e serve a dados de painel — temperatura, corrente, estado.
-    // O ângulo vem do relatório que a base já manda para o jogo, mil vezes por segundo, pelo mesmo
-    // endpoint e sem custo nenhum: ele é enviado de qualquer forma. Não há mais interpolação porque
-    // não há mais o que suavizar — o valor chega mais rápido do que a tela desenha.
-    //
-    // Isso é o que permitiu a telemetria ficar lenta, e é aí que está o ganho: todos os travamentos
-    // capturados pararam no envio dela, e a base passou 8,7 horas sem travar com ela desligada.
+    // ---- interpolação do ângulo (o desenho não pode saltar entre amostras) ----
 
     [Fact]
-    public void Angulo_Vem_Do_Relatorio_Do_Jogo()
+    public void First_Angle_Sample_Is_Assumed_Immediately()
     {
         var vm = New(out var transport);
+        transport.Emit(new BaseState { AngleDeciDeg = 2700, Position = 0 });
 
-        transport.EmitirAngulo(270.0);
-
-        Assert.Equal(270.0, vm.AngleDegrees, precision: 3);
+        Assert.Equal(270.0, vm.AngleDegrees, precision: 3);   // sem animar desde o zero
     }
 
     [Fact]
-    public void Angulo_Acompanha_Sem_Interpolar()
+    public void Small_Change_Is_Interpolated_Not_Jumped()
     {
         var vm = New(out var transport);
+        transport.Emit(new BaseState { AngleDeciDeg = 0, Position = 0 });
+        transport.Emit(new BaseState { AngleDeciDeg = 300, Position = 0 });  // +30°
 
-        transport.EmitirAngulo(0.0);
-        transport.EmitirAngulo(30.0);
+        Assert.Equal(0.0, vm.AngleDegrees, precision: 3);     // ainda não moveu: sem quadro, sem avanço
 
-        // Sem meio-termo: a 1 kHz a próxima amostra chega antes do próximo quadro da tela, então
-        // interpolar só atrasaria o desenho em relação ao volante real.
+        vm.TickAngleAnimation(0.008);                          // um quadro de ~120 Hz
+        Assert.True(vm.AngleDegrees > 0.0);                    // andou em direção ao alvo
+        Assert.True(vm.AngleDegrees < 30.0);                   // mas NÃO saltou
+    }
+
+    [Fact]
+    public void Interpolation_Converges_To_Target()
+    {
+        var vm = New(out var transport);
+        transport.Emit(new BaseState { AngleDeciDeg = 0, Position = 0 });
+        transport.Emit(new BaseState { AngleDeciDeg = 300, Position = 0 });
+
+        for (var i = 0; i < 100; i++)   // ~0,8 s de quadros
+            vm.TickAngleAnimation(0.008);
+
         Assert.Equal(30.0, vm.AngleDegrees, precision: 3);
     }
 
     [Fact]
-    public void Telemetria_Nao_Mexe_No_Angulo_Quando_O_Relatorio_Do_Jogo_Esta_Chegando()
+    public void Big_Jump_Is_Assumed_Immediately()
     {
-        // ⚠️ As duas fontes carregam a MESMA grandeza. Se ambas escrevessem, a de 5 Hz puxaria o
-        // desenho para trás cinco vezes por segundo — um solavanco visível a cada amostra.
         var vm = New(out var transport);
+        transport.Emit(new BaseState { AngleDeciDeg = 0, Position = 0 });
+        transport.Emit(new BaseState { AngleDeciDeg = 4500, Position = 0 });  // +450° (ex.: Center)
 
-        transport.EmitirAngulo(90.0);
-        transport.Emit(new BaseState { AngleDeciDeg = 0, Position = 0 });   // telemetria diz outra coisa
+        Assert.Equal(450.0, vm.AngleDegrees, precision: 3);   // instantâneo, não varre a tela
+    }
 
-        Assert.Equal(90.0, vm.AngleDegrees, precision: 3);
+    [Fact]
+    public void Long_Frame_Gap_Does_Not_Overshoot()
+    {
+        var vm = New(out var transport);
+        transport.Emit(new BaseState { AngleDeciDeg = 0, Position = 0 });
+        transport.Emit(new BaseState { AngleDeciDeg = 300, Position = 0 });
+
+        vm.TickAngleAnimation(5.0);   // quadro absurdamente longo
+
+        Assert.Equal(30.0, vm.AngleDegrees, precision: 3);   // chega no alvo, nunca passa dele
+    }
+
+    [Fact]
+    public void Without_Frames_Angle_Follows_Base_Directly_Instead_Of_Freezing()
+    {
+        // Se ninguém avança os quadros (relógio da view parado), interpolar viraria CONGELAR: o
+        // desenho ficaria preso até o alvo passar do limiar e então saltaria. Foi o sintoma da
+        // bancada em 2026-08-10. Sem quadros, o ângulo tem de seguir a base direto.
+        var vm = New(out var transport);
+        transport.Emit(new BaseState { AngleDeciDeg = 0, Position = 0 });
+
+        // várias amostras seguidas SEM nenhum TickAngleAnimation
+        for (var i = 1; i <= 10; i++)
+            transport.Emit(new BaseState { AngleDeciDeg = (short)(i * 50), Position = 0 });  // +5° por amostra
+
+        Assert.Equal(50.0, vm.AngleDegrees, precision: 3);   // acompanhou, não congelou em 0
+    }
+
+    [Fact]
+    public void With_Frames_Interpolation_Stays_Active()
+    {
+        // O contrário: com quadros chegando, a interpolação continua valendo (não vira passa-direto).
+        var vm = New(out var transport);
+        transport.Emit(new BaseState { AngleDeciDeg = 0, Position = 0 });
+
+        for (var i = 0; i < 3; i++)
+        {
+            vm.TickAngleAnimation(0.008);
+            transport.Emit(new BaseState { AngleDeciDeg = 300, Position = 0 });
+        }
+
+        Assert.True(vm.AngleDegrees > 0.0);    // andou
+        Assert.True(vm.AngleDegrees < 30.0);   // mas ainda perseguindo — não assumiu direto
     }
 
     // ---- o ângulo exibido não pode ser "-0°" ----
@@ -185,15 +231,15 @@ public class DashboardViewModelTests
     }
 
     [Theory]
-    [InlineData(0.0, "0°")]
-    [InlineData(-0.4, "0°")]    // -0,4 → zero, sem sinal
-    [InlineData(0.4, "0°")]     // +0,4 → zero
-    [InlineData(-5.6, "-6°")]   // arredonda e MANTÉM o sinal quando é negativo de verdade
-    [InlineData(270.0, "270°")]
-    public void Angle_Text_Formats_Correctly(double graus, string esperado)
+    [InlineData(0, "0°")]
+    [InlineData(-4, "0°")]     // -0,4 → zero, sem sinal
+    [InlineData(4, "0°")]      // +0,4 → zero
+    [InlineData(-56, "-6°")]   // -5,6 → arredonda e MANTÉM o sinal quando é negativo de verdade
+    [InlineData(2700, "270°")]
+    public void Angle_Text_Formats_Correctly(short deciDeg, string esperado)
     {
         var vm = New(out var transport);
-        transport.EmitirAngulo(graus);
+        transport.Emit(new BaseState { AngleDeciDeg = deciDeg, Position = 0 });
         Assert.Equal(esperado, vm.AngleText);
     }
 }
