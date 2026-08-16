@@ -50,8 +50,28 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     [NotifyPropertyChangedFor(nameof(EstadoTooltip))]
     private bool _forceEnabled;
 
-    public bool MotorArmado    => IsConnected && ForceEnabled;
-    public bool MotorDesarmado => IsConnected && !ForceEnabled;
+    // ⚠️ TRÊS ESTADOS + "NÃO SEI", e o último não é preciosismo.
+    //
+    // O estado do motor vem da TELEMETRIA. Se ela para de chegar — base travada, cabo, ou o
+    // experimento que a desliga —, o campo ForceEnabled fica no último valor recebido ou em false, e
+    // a tela passa a AFIRMAR "desarmada" sobre uma base que pode estar armada e aplicando força. É a
+    // informação errada exatamente onde ela importa para a segurança.
+    //
+    // Descoberto em 16/08/2026, com a telemetria desligada de propósito: a base estava armada, em
+    // malha fechada e sem erro nenhum, e o app dizia que estava desarmada. O resto da tela já trata
+    // isso direito — os campos mostram "—" quando não sabem; a bolinha é que afirmava.
+    //
+    // Agora ela só afirma com telemetria RECENTE. Sem ela, mostra o mesmo cinza de "sem base", que é
+    // honesto: em ambos os casos o app não tem como saber o que a base está fazendo.
+    public bool MotorArmado    => IsConnected && TelemetriaRecente && ForceEnabled;
+    public bool MotorDesarmado => IsConnected && TelemetriaRecente && !ForceEnabled;
+
+    /// <summary>Chegou telemetria nos últimos segundos. Três segundos é folgado: ela chega a cada
+    /// 40 ms, então setenta e cinco pacotes perdidos seguidos já valem como silêncio.</summary>
+    public bool TelemetriaRecente =>
+        _ultimaTelemetria is { } t && (DateTime.UtcNow - t) < TimeSpan.FromSeconds(3);
+
+    private DateTime? _ultimaTelemetria;
 
     /// <summary>A base está conectada e o motor NÃO está armado — ou seja, algo o parou e ele não
     /// volta sozinho. É o único estado em que oferecer "armar" faz sentido.
@@ -61,10 +81,13 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
     /// permissão, o usuário comum não tem NADA para ligar e a base fica desarmada para sempre. Foi
     /// exatamente o buraco que a bancada apontou em 15/08/2026, depois de eu ter removido este botão
     /// achando que o campo bastava.</para></summary>
-    public bool PodeRearmar => IsConnected && !ForceEnabled;
+    // Sem saber o estado, não oferecemos "armar": o botão apareceria numa base que já está armada, e
+    // apertá-lo mandaria um comando desnecessário para quem está no meio de uma volta.
+    public bool PodeRearmar => IsConnected && TelemetriaRecente && !ForceEnabled;
 
     public string EstadoTooltip =>
-        !IsConnected  ? L.Get("BaseState_Offline")
+        !IsConnected            ? L.Get("BaseState_Offline")
+        : !TelemetriaRecente    ? L.Get("BaseState_Unknown")
         : ForceEnabled ? L.Get("BaseState_Armed")
                        : L.Get("BaseState_Disarmed");
 
@@ -75,7 +98,18 @@ public partial class BaseViewModel : ViewModelBase, IPendingWrite
         _session.Disconnected += OnDisconnected;
         _session.SettingChanged += OnSettingChanged;
         // O estado do motor só existe na telemetria — nenhum evento de conexão o informa.
-        _session.StateReceived += (_, estado) => ForceEnabled = estado.Flags.HasFlag(BaseFlags.ForceEnabled);
+        _session.StateReceived += (_, estado) =>
+        {
+            _ultimaTelemetria = DateTime.UtcNow;
+            ForceEnabled = estado.Flags.HasFlag(BaseFlags.ForceEnabled);
+            // Mesmo que o valor não mude, o RELÓGIO mudou: sem avisar, a bolinha ficaria cinza para
+            // sempre numa base parada e armada, que não gera mudança de flag nenhuma.
+            OnPropertyChanged(nameof(TelemetriaRecente));
+            OnPropertyChanged(nameof(MotorArmado));
+            OnPropertyChanged(nameof(MotorDesarmado));
+            OnPropertyChanged(nameof(PodeRearmar));
+            OnPropertyChanged(nameof(EstadoTooltip));
+        };
         IsConnected = _session.IsConnected;
         // Já conectado ao criar o card → o Connected não dispara mais; lê a força da placa agora.
         if (IsConnected)
