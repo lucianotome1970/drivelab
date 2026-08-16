@@ -61,7 +61,11 @@ enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_FLOAT = 4, T_U32 = 5 };
 // BaseCommand (DriveLab.Core.Settings.BaseCommand)
 enum { CMD_REBOOT = 1, CMD_SAVE = 2, CMD_RESET_CENTER = 3, CMD_DFU = 4, CMD_CALIBRATE = 5,
        CMD_SET_FORCE_ENABLED = 6, CMD_CAL_COGGING = 7, CMD_BRAKE_BENCH = 8, CMD_BRAKE_AUTO = 9,
-       CMD_TEST_ENCODER = 10 };
+       CMD_TEST_ENCODER = 10,
+       // Rearmar por ação EXPLÍCITA de quem usa: destrava a guarda de curso, limpa os erros e
+       // pede malha fechada. Existe porque a guarda travada só zerava no boot — quem está
+       // jogando não tem como ir até a fonte. Ver o tratamento no ffb_task.
+       CMD_REARM = 11 };
 
 // 48 = 45 settings + motor_enable (45) + encoder_interface (46) + build_id (47). Adicionar campo
 // aqui NAO apaga mais os ajustes salvos: unpackSettings migra blob de firmware antigo (menos
@@ -183,6 +187,7 @@ static bool    s_inited = false;
 static bool    s_save_requested = false;
 static bool    s_reboot_requested = false;
 static bool    s_enc_test_requested = false;   // CMD_TEST_ENCODER
+static bool    s_rearm_requested    = false;   // CMD_REARM
 static bool    s_dfu_requested = false;      // CMD_DFU: o ffb_task desarma e salta pro bootloader   // CMD_REBOOT: o ffb_task desarma e reseta o MCU  // CMD_SAVE pediu persistir → o ffb_task grava com motor IDLE
 
 static inline uint16_t rd_u16(const uint8_t* p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
@@ -311,6 +316,8 @@ extern "C" float a0_get_setting_f(uint8_t id) {
 extern "C" bool a0_reboot_pending(void) { return s_reboot_requested; }
 extern "C" bool a0_enc_test_pending(void) { return s_enc_test_requested; }
 extern "C" void a0_enc_test_clear(void)   { s_enc_test_requested = false; }
+extern "C" bool a0_rearm_pending(void)    { return s_rearm_requested; }
+extern "C" void a0_rearm_clear(void)      { s_rearm_requested = false; }
 extern "C" bool a0_dfu_pending(void)    { return s_dfu_requested; }
 
 // Pedido de save pendente? O ffb_task consulta e grava SÓ com o motor IDLE (a flash congela a CPU).
@@ -380,6 +387,7 @@ extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len) {
                 // ele precisa alongar a varredura e pedir o estado de calibração ao ODrive, o que
                 // não se faz de dentro do callback do USB.
                 case CMD_TEST_ENCODER: s_enc_test_requested = true; break;
+                case CMD_REARM:        s_rearm_requested    = true; break;
                 // CMD_CALIBRATE: TODO (trabalho no loop, não aqui)
                 default: break;
             }

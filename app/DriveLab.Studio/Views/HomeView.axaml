@@ -49,6 +49,24 @@
                         <TextBlock Grid.Column="1" Text="{Binding TotalStrength, StringFormat={}{0:0}%}" Foreground="{DynamicResource DlMuted}" />
                     </Grid>
                     <Slider Minimum="0" Maximum="100" Value="{Binding TotalStrength}" IsEnabled="{Binding IsConnected}" />
+
+                    <!-- REARMAR — só aparece quando a permissão está ligada e o motor NÃO está
+                         armado, ou seja, algo o desarmou e ele não volta sozinho.
+
+                         ⚠️ O AVISO VEM ANTES DO BOTÃO, e de propósito. Quem chega aqui está passando
+                         por cima de uma proteção que decidiu travar; um botão "Armar" mudo faria
+                         parecer rotina. E sem este bloco a tela ficava sem saída: a permissão já
+                         estava ligada, então não havia o que ligar para voltar a ter força. -->
+                    <Border IsVisible="{Binding PodeRearmar}" Background="#22FF9800" CornerRadius="6"
+                            Padding="12,10" BorderBrush="#FFB74D" BorderThickness="3,0,0,0">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="{loc:Translate Base_RearmWhy}" TextWrapping="Wrap"
+                                       FontSize="12" LineHeight="18"
+                                       Foreground="{DynamicResource DlText}" />
+                            <Button Content="{loc:Translate Base_Rearm}" Command="{Binding RearmarCommand}"
+                                    HorizontalAlignment="Left" Padding="18,6" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </Border>
 

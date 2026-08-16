@@ -36,6 +36,8 @@ extern "C" int32_t a0_get_setting(uint8_t id);  // valor atual de um setting (gu
 enum { SET_OVERTRAVEL_ACTION = 57 };
 extern "C" bool a0_enc_test_pending(void);   // CMD_TEST_ENCODER: mede o encoder contra o motor
 extern "C" void a0_enc_test_clear(void);
+extern "C" bool a0_rearm_pending(void);      // CMD_REARM: destravar a guarda e armar
+extern "C" void a0_rearm_clear(void);
 extern "C" bool a0_save_pending(void);       // CMD_SAVE pediu persistir os settings na FFB_NVM?
 extern "C" bool a0_commit_save(void);        // empacota + grava na flash (chamar SÓ com motor IDLE)
 
@@ -279,6 +281,23 @@ static void ffb_thread(void*) {
             } else {
                 motor_link_enter_dfu();               // não retorna
             }
+        }
+
+        // REARMAR POR PEDIDO EXPLÍCITO. A guarda de curso, quando trava, só zerava no boot — quem
+        // está jogando teria de ir até a fonte desligar a base. Este comando existe para dar a saída
+        // pela tela, e ele é DELIBERADAMENTE explícito: quem o aciona está passando por cima de uma
+        // proteção que decidiu travar, e o app avisa isso antes de enviar.
+        //
+        // Ordem importa: destravar a guarda ANTES de liberar o gate. Ao contrário, o auto-arme
+        // armaria o motor com a guarda ainda travada — que é exatamente o estado ruim que estamos
+        // consertando (armado, sem força, sem erro em lugar nenhum).
+        if (a0_rearm_pending()) {
+            a0_rearm_clear();
+            overtravel_init(&s_overtravel);   // volta a NORMAL: zera estado, disparos e re-armes
+            s_overtravel_ready = 1;
+            g_overtravel_trip = 0;
+            motor_link_clear_errors();
+            g_arm_gate = 1;
         }
 
         if (a0_reboot_pending()) {
@@ -645,10 +664,28 @@ static void ffb_thread(void*) {
             } else {   // DISARM ou HOLD
                 g_overtravel_trip = 1;
                 motor_link_set_input_torque(0.0f);
-                if (ota == OT_ACT_DISARM) {
-                    // Trava o auto-arme SÓ quando a guarda decidiu travar. No modo re-armar ela
-                    // mesma devolve o controle assim que o volante voltar ao curso e parar.
-                    if (s_overtravel.state == OT_ST_LOCKED) g_arm_gate = 0;
+
+                // ⚠️ GUARDA TRAVADA E MOTOR ARMADO NÃO PODEM COEXISTIR.
+                //
+                // Antes, o gate era zerado UMA vez, no tick do DISARM. Bastava alguém religá-lo
+                // depois — o auto-arme com backoff, o fim de um teste de encoder, um clear_errors —
+                // para o motor voltar a armar por cima de uma guarda que continua travada. Aí a base
+                // fica ARMADA e a guarda devolve torque zero em todo tick: parece pronta e não faz
+                // nada, sem erro em lugar nenhum.
+                //
+                // Foi medido na bancada em 15/08/2026: state=LOCKED, motor armado, malha fechada,
+                // erro 0x0, e "sem força, zero" — nem o teste de mola respondia. O pior estado
+                // possível é o que parece bom.
+                //
+                // Zerar a cada tick é idempotente e não depende de detectar transição: enquanto a
+                // guarda estiver travada, ninguém consegue armar. Desarmada e travada é honesto —
+                // a tela mostra desarmado, e quem olha sabe que precisa reiniciar a base.
+                if (s_overtravel.state == OT_ST_LOCKED) {
+                    g_arm_gate = 0;
+                    motor_link_request_idle();
+                } else if (ota == OT_ACT_DISARM) {
+                    // Modo re-armar: a guarda devolve o controle sozinha quando o volante voltar ao
+                    // curso e parar, então aqui só desarmamos — sem mexer no gate.
                     motor_link_request_idle();
                 }
             }

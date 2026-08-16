@@ -31,4 +31,13 @@ public enum BaseCommand : byte
     /// o encoder leu com onde o rotor de fato estava. Não altera a calibração — o offset é salvo antes
     /// e devolvido ao terminar. Exige motor energizado e desarmado. Ver encoder_eccentricity.h.</summary>
     TestEncoder = 10,
+
+    /// <summary>Rearma por pedido explícito: destrava a guarda de curso, limpa os erros e pede malha
+    /// fechada. Existe porque a guarda travada só zerava no boot — quem está jogando teria de ir até
+    /// a fonte desligar a base.
+    ///
+    /// <para>⚠️ Quem envia isto está passando por cima de uma proteção que decidiu travar. A tela
+    /// precisa dizer o que aconteceu antes de oferecer o botão, e não apresentá-lo como um "armar"
+    /// qualquer.</para></summary>
+    Rearm = 11,
 }
