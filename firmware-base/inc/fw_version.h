@@ -31,6 +31,6 @@
 // andava para 0.2.3. Numero de firmware "proprio" e o que produziu a divergencia; nao existe mais.
 #define DRVLAB_FW_VER_MAJOR  0u
 #define DRVLAB_FW_VER_MINOR  2u
-#define DRVLAB_FW_VER_PATCH  5u
+#define DRVLAB_FW_VER_PATCH  7u
 
 #endif // DRIVELAB_FW_VERSION_H
