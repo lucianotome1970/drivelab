@@ -319,7 +319,34 @@ extern "C" void motor_link_newboard_bringup(void) {
     // é quem envia os relatórios USB. 35 s sem o laço ter vez = o Windows derruba o dispositivo. O
     // firmware seguia vivo (uwTick subindo), só não tinha janela para falar. 2π mantém a folga que o
     // rotor precisa para acompanhar a varredura, com metade do tempo.
-    axes[0].encoder_.config_.calib_scan_omega       = 6.28318531f;  // 2π: 2× mais lenta que o default (era π = 4×, longa demais)
+    // ⚠️ VOLTOU PARA 4π EM 15/08/2026, e o motivo NÃO é pressa: aos 2π a calibração passou a levar
+    // 30 s, contra os 35 s que já derrubaram o USB uma vez (ver o aviso acima). Cinco segundos de
+    // margem não é margem — e a thread do eixo tem prioridade MAIOR que a do laço que fala com o
+    // host, então cada segundo a mais é um segundo em que o Windows não é atendido.
+    //
+    // O que dobrou o tempo hoje foi a COBERTURA (meia volta → volta inteira), e é ela que entrega a
+    // consistência do offset. A lentidão não entrega nada sozinha: 2π foi escolhido quando a
+    // varredura era curta e o rotor precisava de tempo para acompanhar ponto a ponto. Com a volta
+    // inteira, a média passa por muito mais pontos e é robusta por construção.
+    //
+    //   uma volta a 2π = 30 s   (perigoso)
+    //   uma volta a 4π = 15 s   (menos que os 16 s de ANTES de hoje, com o dobro da cobertura)
+    //
+    // CRITÉRIO DE ACEITE, medido em três power-cycles: a dispersão do offset entre boots tem de
+    // ficar em torno dos 14,5° elétricos obtidos a 2π. Se piorar, o passo seguinte é 3π (20 s) —
+    // não voltar para meia volta, que era a causa original.
+    // 🔴 REVERTIDO PARA 2π EM 15/08/2026, MINUTOS DEPOIS DE SUBIR PARA 4π. Com 4π a base NUNCA
+    // armou e NUNCA calibrou, e o SWD parou de conectar (adaptador enxergando 3,27 V e "unable to
+    // connect") — assinatura de núcleo em reset contínuo. Recuperada por DFU.
+    //
+    // A lição não é sobre o valor: 4π pode até ser viável. É sobre o método. Eu subi a velocidade,
+    // gravei, gerei o INSTALADOR e escrevi no próprio commit que ainda não estava validado — em vez
+    // de rodar os três power-cycles que eu mesmo tinha definido como critério. O teste existia, era
+    // barato, e eu o pulei por pressa.
+    //
+    // Para tentar de novo: 3π (20 s) é o próximo passo sensato, UM valor por vez, com os três boots
+    // antes de qualquer outra coisa — e nunca dentro de um pacote que vai para outra placa.
+    axes[0].encoder_.config_.calib_scan_omega       = 6.28318531f;  // 2π: validado, ~30 s
     axes[0].encoder_.config_.calib_range            = 0.05f;        // era 0,02 — margem p/ cogging
     // ══ ÍNDICE DO ENCODER (canal Z) — VALIDADO NA BANCADA 2026-08-08 ═══════════════════════════
     //

@@ -105,7 +105,19 @@ public static class EncoderCatalog
         // volante andaria uma fracao de grau por volta inteira.
         (Mt6701,  EncoderTech.Abz) => 0,
         (Mt6701,  EncoderTech.Ssi) => 16384,   // 14 bits, sem multiplicação
-        (Mt6835,  EncoderTech.Abz) => 16384,   // 4096 PPR × 4 (programável)
+        // O MT6835 em ABZ também NÃO tem valor único, e pelo mesmo motivo do MT6701: o módulo é
+        // vendido em variantes com a saída AB já gravada de fábrica — o manual do fabricante lista
+        // **AB-8192, AB-10000 e AB-16384**, e o número faz parte do que se escolhe na compra.
+        //
+        // Estava 16384 CONTAGENS aqui (lido como 4096 pulsos × 4), o que era errado de duas
+        // maneiras ao mesmo tempo: fixava uma variante que pode não ser a da pessoa, e ainda por
+        // cima interpretava o número da etiqueta como contagens quando ele é de PULSOS. Num módulo
+        // AB-16384 o valor certo são 65.536 contagens — quatro vezes o que estava aqui. O efeito de
+        // errar é o volante andar uma fração do que deveria por volta.
+        //
+        // Zero significa "a pessoa digita", e o campo mostra pulsos: quem tem o AB-16384 escreve
+        // 16384 e o firmware guarda 65.536.
+        (Mt6835,  EncoderTech.Abz) => 0,
         (Mt6835,  EncoderTech.Spi) => 2097152, // 21 bits (cabe: o campo é u32)
         (As5047p, EncoderTech.Abz) => 4000,    // 1000 PPR × 4 (programável)
         (As5047p, EncoderTech.Spi) => 16384,   // 14 bits

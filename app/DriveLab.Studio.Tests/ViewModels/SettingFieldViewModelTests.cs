@@ -389,8 +389,13 @@ public class SettingFieldViewModelTests
 
     // Em ABZ a resolucao dos magneticos e PROGRAMAVEL no chip, entao continua editavel — quem
     // reprogramou o sensor precisa poder corrigir.
+    //
+    // ⚠️ E no MT6835 ela nao pode nem ter TETO por modelo: o modulo e vendido em variantes com a
+    // saida AB gravada de fabrica (o manual lista AB-8192, AB-10000 e AB-16384), entao qualquer teto
+    // cravado impediria alguem de digitar a resolucao do modulo que comprou. Foi o que aconteceu na
+    // bancada em 15/08/2026 — o campo parava em 4096 pulsos e o modulo era AB-16384.
     [Fact]
-    public void Resolucao_Em_Abz_Continua_Editavel_Mas_Limitada_Ao_Sensor()
+    public void Resolucao_Em_Abz_Continua_Editavel_E_Sem_Teto_De_Modelo_No_Mt6835()
     {
         var transport = new FakeTransport();
         var session = new BaseSession(transport, new ImmediateUiDispatcher());
@@ -399,7 +404,9 @@ public class SettingFieldViewModelTests
         cpr.ApplyEncoderTech(EncoderTech.Abz, EncoderCatalog.Mt6835);
 
         Assert.False(cpr.IsValueLocked);
-        Assert.Equal(4096, cpr.DisplayMax);   // 16384 contagens / 4 = 4096 pulsos
+        // Sem valor de fabrica, o limite passa a ser o do campo (u32), e o AB-16384 cabe com folga.
+        Assert.True(cpr.DisplayMax >= 16384,
+                    $"o campo precisa aceitar 16384 pulsos (AB-16384), mas para em {cpr.DisplayMax}");
     }
 
     [Fact]
