@@ -1,7 +1,7 @@
 // ============================================================================
 //  DriveLab
-//  test_overtravel_guard.c — A guarda de curso excedido: freia, e só desarma
-//  quando o freio não é obedecido.
+//  test_overtravel_guard.c — A guarda de curso excedido: empurra de volta, e só
+//  desarma quando o volante FOGE da mola (acelerando e se afastando).
 //  Autor: Luciano Tomé <lucianotome1970@gmail.com>
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
@@ -17,6 +17,16 @@ static void ok(const char* nome, int cond) {
 
 // Curso de 900°: meia-volta de cada lado = 450° = 7,854 rad.
 static const float kDor = 7.853982f;
+
+// Leva a guarda ate o desarme pelo UNICO caminho que ainda desarma: fuga (rapido E se afastando).
+// Existe porque varios testes precisam do estado pos-desarme, e a receita antiga ("dispara, para,
+// desarma") deixou de valer -- parar fora do curso agora e segurado, nao desarmado.
+static void fugir_ate_desarmar(OvertravelState* s, const OvertravelCfg* c, float fora, float dor) {
+    overtravel_update(s, c, fora, dor, 40.0f, 1);
+    OvertravelAction a = OT_ACT_RECENTER;
+    for (int i = 0; i < 2000 && a == OT_ACT_RECENTER; ++i)
+        a = overtravel_update(s, c, fora + i * 0.04f, dor, 40.0f, 1);
+}
 
 int main(void) {
     printf("== test_overtravel_guard.c\n");
@@ -38,39 +48,87 @@ int main(void) {
            overtravel_update(&s, &c, kDor * 0.9f, kDor, 30.0f, 1) == OT_ACT_NORMAL);
     }
 
-    // ---- dispara alem da margem, e freia ANTES de desarmar ---------------------------------
+    // ---- dispara alem da margem, e a acao e EMPURRAR de volta ------------------------------
     {
         OvertravelState s; overtravel_init(&s);
         OvertravelCfg c = overtravel_default_cfg();
 
         const float fora = kDor + 0.85f;   // ~49° alem
         ok("46 graus alem dispara",
-           overtravel_update(&s, &c, fora, kDor, 10.0f, 1) == OT_ACT_BRAKE);
-        ok("a primeira acao e FREIAR, nao desarmar", s.state == OT_ST_BRAKING);
+           overtravel_update(&s, &c, fora, kDor, 10.0f, 1) == OT_ACT_RECENTER);
+        ok("a acao e EMPURRAR DE VOLTA, nao desarmar", s.state == OT_ST_RECENTER);
         ok("guarda a prova da posicao", s.last_pos_mrad > 0);
         ok("guarda a prova da velocidade", s.last_vel_mrad_s == 10000);
 
-        // Ainda girando: segue freando enquanto houver janela.
-        ok("segue freando", overtravel_update(&s, &c, fora, kDor, 9.0f, 1) == OT_ACT_BRAKE);
+        // Ainda girando: segue empurrando, sem relogio nenhum correndo contra ele.
+        ok("segue empurrando", overtravel_update(&s, &c, fora, kDor, 9.0f, 1) == OT_ACT_RECENTER);
     }
 
-    // ---- o freio OBEDECE: desarma, e no modo LOCK trava -----------------------------------
+    // ---- O CASO QUE MUDOU: parar fora do curso NAO desarma mais ---------------------------
+    //
+    // Este bloco testava o contrario -- "parou => desarma". Era a decisao errada pelo custo: numa
+    // corrida, passar do fim do curso e voltar e um susto; ficar sem base e o fim da sessao. E o
+    // volante passava do curso por um defeito que nao era desta guarda (a parede era engolida pela
+    // forca do jogo), entao ela desarmava punindo o sintoma de outro.
     {
         OvertravelState s; overtravel_init(&s);
         OvertravelCfg c = overtravel_default_cfg();   // mode = LOCK
         const float fora = kDor + 0.85f;
 
         overtravel_update(&s, &c, fora, kDor, 10.0f, 1);          // dispara
-        ok("parou => desarma",
-           overtravel_update(&s, &c, fora, kDor, 0.1f, 1) == OT_ACT_DISARM);
-        ok("modo LOCK trava", s.state == OT_ST_LOCKED);
-        ok("registra que fomos nos", s.disarmed_by_us == 1);
-        // Mesmo voltando ao centro e parado, nao volta sozinho.
-        ok("travado nao re-arma nem no centro",
-           overtravel_update(&s, &c, 0.0f, kDor, 0.0f, 1) == OT_ACT_HOLD);
+        ok("parou fora do curso: SEGURA, nao desarma",
+           overtravel_update(&s, &c, fora, kDor, 0.1f, 1) == OT_ACT_RECENTER);
+        ok("motor continua armado", s.state == OT_ST_RECENTER);
+        ok("ninguem desarmou", s.disarmed_by_us == 0);
+
+        // Segurado la fora por 2 s inteiros: continua empurrando, nao desiste.
+        OvertravelAction a = OT_ACT_RECENTER;
+        for (int i = 0; i < 2000 && a == OT_ACT_RECENTER; ++i)
+            a = overtravel_update(&s, &c, fora, kDor, 0.1f, 1);
+        ok("2 s segurado la fora e ainda empurrando", a == OT_ACT_RECENTER);
+
+        // E quando a mola traz de volta: devolve o controle na hora, sem re-arme (nunca desarmou).
+        ok("voltou ao curso => devolve o controle",
+           overtravel_update(&s, &c, kDor * 0.9f, kDor, -2.0f, 1) == OT_ACT_NORMAL);
+        ok("volta ao normal", s.state == OT_ST_NORMAL);
+        ok("nao contou re-arme, porque nao houve desarme", s.trips == 0);
+        ok("mas o disparo foi registrado", s.disparos == 1);
     }
 
-    // ---- o freio NAO e obedecido: trava mesmo no modo re-armar -----------------------------
+    // ---- empurrar FIRME com a mao tambem nao desarma ---------------------------------------
+    //
+    // O cenario que desligava a base: a janela antiga era de 150 ms, e bastava seguir girando o aro
+    // contra o batente para ela expirar. Agora velocidade sozinha nao basta -- tem de vir junto de
+    // distancia crescente, e por 400 ms.
+    {
+        OvertravelState s; overtravel_init(&s);
+        OvertravelCfg c = overtravel_default_cfg();
+        const float fora = kDor + 0.85f;
+
+        overtravel_update(&s, &c, fora, kDor, 5.0f, 1);
+        OvertravelAction a = OT_ACT_RECENTER;
+        for (int i = 0; i < 1000 && a == OT_ACT_RECENTER; ++i)
+            a = overtravel_update(&s, &c, fora, kDor, 5.0f, 1);   // rapido, mas SEM ganhar distancia
+        ok("veloz e parado no lugar nao e fuga", a == OT_ACT_RECENTER);
+    }
+
+    // ---- afastar-se DEVAGAR (a mao vencendo a mola no braco) tambem nao desarma ------------
+    {
+        OvertravelState s; overtravel_init(&s);
+        OvertravelCfg c = overtravel_default_cfg();
+        const float fora = kDor + 0.85f;
+
+        overtravel_update(&s, &c, fora, kDor, 2.0f, 1);
+        OvertravelAction a = OT_ACT_RECENTER;
+        for (int i = 0; i < 1000 && a == OT_ACT_RECENTER; ++i)
+            a = overtravel_update(&s, &c, fora + i * 0.005f, kDor, 2.0f, 1);   // longe, mas devagar
+        ok("afastar devagar nao e fuga", a == OT_ACT_RECENTER);
+    }
+
+    // ---- FUGA: o unico caminho que ainda desarma -------------------------------------------
+    //
+    // Motor girando sozinho: rapido E ganhando distancia apesar da mola. Nenhum braco faz as duas
+    // coisas ao mesmo tempo contra o motor -- por isso e este o criterio, e nao "nao parou a tempo".
     {
         OvertravelState s; overtravel_init(&s);
         OvertravelCfg c = overtravel_default_cfg();
@@ -78,12 +136,33 @@ int main(void) {
         const float fora = kDor + 0.85f;
 
         overtravel_update(&s, &c, fora, kDor, 40.0f, 1);          // dispara
-        OvertravelAction a = OT_ACT_BRAKE;
-        for (int i = 0; i < 200 && a == OT_ACT_BRAKE; ++i)
-            a = overtravel_update(&s, &c, fora + i * 0.01f, kDor, 40.0f, 1);   // nao desacelera
+        OvertravelAction a = OT_ACT_RECENTER;
+        for (int i = 0; i < 2000 && a == OT_ACT_RECENTER; ++i)
+            a = overtravel_update(&s, &c, fora + i * 0.04f, kDor, 40.0f, 1);   // acelerado, fugindo
 
-        ok("freio ignorado => desarma", a == OT_ACT_DISARM);
+        ok("fuga => desarma", a == OT_ACT_DISARM);
         ok("...e TRAVA, ignorando o modo re-armar", s.state == OT_ST_LOCKED);
+        ok("registra que fomos nos", s.disarmed_by_us == 1);
+    }
+
+    // ---- fuga INTERROMPIDA nao soma: o relogio zera ----------------------------------------
+    //
+    // Uma sequencia de sustos nao e uma fuga. Se o relogio acumulasse entre eles, a base desarmaria
+    // por soma de eventos inocentes espalhados no tempo.
+    {
+        OvertravelState s; overtravel_init(&s);
+        OvertravelCfg c = overtravel_default_cfg();
+        const float fora = kDor + 0.85f;
+
+        overtravel_update(&s, &c, fora, kDor, 40.0f, 1);
+        OvertravelAction a = OT_ACT_RECENTER;
+        for (int r = 0; r < 10 && a == OT_ACT_RECENTER; ++r) {
+            for (int i = 0; i < 300 && a == OT_ACT_RECENTER; ++i)      // 300 ms de fuga (< 400)
+                a = overtravel_update(&s, &c, fora + 1.5f + i * 0.04f, kDor, 40.0f, 1);
+            a = overtravel_update(&s, &c, fora, kDor, 0.1f, 1);        // ...e a fuga cessa
+        }
+        ok("fuga interrompida nao acumula", a == OT_ACT_RECENTER);
+        ok("relogio zerado", s.fuga_ticks == 0);
     }
 
     // ---- modo re-armar: volta so DENTRO do curso e PARADO ----------------------------------
@@ -93,8 +172,7 @@ int main(void) {
         c.mode = (uint8_t)OT_MODE_REARM;
         const float fora = kDor + 0.85f;
 
-        overtravel_update(&s, &c, fora, kDor, 10.0f, 1);                       // dispara
-        overtravel_update(&s, &c, fora, kDor, 0.1f, 1);                        // freia e desarma
+        fugir_ate_desarmar(&s, &c, fora, kDor);
         ok("modo re-armar fica esperando", s.state == OT_ST_OUT);
 
         ok("ainda fora do curso: nao re-arma",
@@ -121,8 +199,7 @@ int main(void) {
         c.mode = (uint8_t)OT_MODE_LOCK;
         const float fora = kDor + 0.85f;
 
-        overtravel_update(&s, &c, fora, kDor, 10.0f, 1);   // dispara
-        overtravel_update(&s, &c, fora, kDor, 0.1f, 1);    // freia e desarma
+        fugir_ate_desarmar(&s, &c, fora, kDor);
 
         ok("modo travar vai direto para LOCKED", s.state == OT_ST_LOCKED);
         ok("no modo travar NAO ha re-arme para contar", s.trips == 0);
@@ -135,8 +212,7 @@ int main(void) {
         OvertravelCfg c = overtravel_default_cfg();
         c.mode = (uint8_t)OT_MODE_REARM;
 
-        overtravel_update(&s, &c, kDor + 0.85f, kDor, 10.0f, 1);
-        overtravel_update(&s, &c, kDor + 0.85f, kDor, 0.1f, 1);   // desarmou
+        fugir_ate_desarmar(&s, &c, kDor + 0.85f, kDor);           // desarmou
 
         // Voltou para 30° alem do fim: ja saiu da margem de 45°, mas AINDA nao voltou ao curso.
         ok("sair da margem nao basta",
@@ -154,8 +230,7 @@ int main(void) {
         const float fora = kDor + 0.85f;
 
         for (int i = 0; i < 3; ++i) {
-            overtravel_update(&s, &c, fora, kDor, 10.0f, 1);   // dispara
-            overtravel_update(&s, &c, fora, kDor, 0.1f, 1);    // freia, desarma
+            fugir_ate_desarmar(&s, &c, fora, kDor);
             overtravel_update(&s, &c, 0.0f, kDor, 0.0f, 1);    // volta ao curso, parado
         }
         ok("no terceiro disparo trava", s.state == OT_ST_LOCKED);
@@ -168,7 +243,7 @@ int main(void) {
         OvertravelState s; overtravel_init(&s);
         OvertravelCfg c = overtravel_default_cfg();
         ok("dispara tambem girando para o outro lado",
-           overtravel_update(&s, &c, -(kDor + 0.85f), kDor, -10.0f, 1) == OT_ACT_BRAKE);
+           overtravel_update(&s, &c, -(kDor + 0.85f), kDor, -10.0f, 1) == OT_ACT_RECENTER);
     }
 
     // ---- curso pequeno (formula, 360°): a margem nao pode engolir o curso ------------------
@@ -180,7 +255,7 @@ int main(void) {
         ok("no batente do formula nao dispara",
            overtravel_update(&s, &c, dorF1, dorF1, 0.0f, 1) == OT_ACT_NORMAL);
         ok("46 graus alem do batente do formula dispara",
-           overtravel_update(&s, &c, dorF1 + 0.81f, dorF1, 5.0f, 1) == OT_ACT_BRAKE);
+           overtravel_update(&s, &c, dorF1 + 0.81f, dorF1, 5.0f, 1) == OT_ACT_RECENTER);
     }
 
     printf(falhas ? "\nFALHAS: %d\n" : "\nTUDO OK\n", falhas);

@@ -197,8 +197,13 @@ static uint8_t         s_overtravel_ready = 0;
 // Freio do disparo: amortecimento puro, proporcional a velocidade. Teto BAIXO de proposito — o
 // objetivo e parar sem tranco, nao construir outra parede. 0,6 Nm por rad/s satura em 5 Nm perto
 // de 8 rad/s, que ja e giro de disparo.
-static constexpr float kOtBrakeNmPerRadS = 0.6f;
-static constexpr float kOtBrakeMaxNm     = 5.0f;
+// A guarda de curso EMPURRA DE VOLTA: mola de retorno + amortecimento, com a força do jogo fora.
+// A mola é firme de propósito (25 Nm/rad ⇒ 12 Nm aos 27° além do fim), porque aqui ela não disputa
+// o teto com ninguém — o jogo já foi cortado. O amortecimento existe só para o volante não voltar
+// batendo. O teto de 12 Nm é o que o motor entrega sem virar forno num empurrão longo.
+static constexpr float kOtSpringNmPerRad = 25.0f;
+static constexpr float kOtDampNmPerRadS  = 0.6f;
+static constexpr float kOtRecenterMaxNm  = 12.0f;
 volatile int32_t g_overtravel_trip    = 0;   // 1 = disparou (legivel por SWD)
 volatile int32_t g_overtravel_pos_mrad = 0;  // posicao no disparo — a prova
 volatile int32_t g_overtravel_trips   = 0;   // RE-ARMES neste boot (é o que max_trips limita)
@@ -654,13 +659,21 @@ static void ffb_thread(void*) {
 
             if (ota == OT_ACT_NORMAL) {
                 motor_link_set_input_torque(ffb_model_compute_torque(pos, vel));
-            } else if (ota == OT_ACT_BRAKE) {
-                // Amortecimento puro: nada do jogo entra. Zera o estado transitório junto, senão o
-                // limitador de variação atrapalharia o próprio freio.
+            } else if (ota == OT_ACT_RECENTER) {
+                // PASSOU DO CURSO: o motor continua trabalhando, e trabalha a favor. Nada do jogo
+                // entra; no lugar dele vai uma mola que puxa para dentro do curso mais um pouco de
+                // amortecimento. Zera o estado transitório junto, senão o limitador de variação
+                // seguraria a própria mola.
+                //
+                // A mola mede a partir do FIM DO CURSO, não do centro: o que interessa é quanto
+                // passou. Medida do centro, ela somaria o curso inteiro e sairia saturada já no
+                // primeiro tick, devolvendo o volante com tranco.
                 ffb_model_reset_transient();
-                float t = -kOtBrakeNmPerRadS * velRad;
-                if (t >  kOtBrakeMaxNm) t =  kOtBrakeMaxNm;
-                if (t < -kOtBrakeMaxNm) t = -kOtBrakeMaxNm;
+                const float dorHalf = ffb_model_dor_half_rad();
+                const float excesso = (posRad > 0.0f) ? (posRad - dorHalf) : (posRad + dorHalf);
+                float t = -kOtSpringNmPerRad * excesso - kOtDampNmPerRadS * velRad;
+                if (t >  kOtRecenterMaxNm) t =  kOtRecenterMaxNm;
+                if (t < -kOtRecenterMaxNm) t = -kOtRecenterMaxNm;
                 motor_link_set_input_torque(t);
             } else {   // DISARM ou HOLD
                 g_overtravel_trip = 1;
