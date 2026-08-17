@@ -41,8 +41,8 @@ static EndstopConfig s_ec = { /*rangeRad*/1.4f * k2Pi,  // batente por SW ~±1.4
                               // O muro nasce junto do curso inicial: deixar em 0 até a primeira
                               // adoção significaria um boot inteiro sem fim de curso duro se os
                               // settings demorassem a chegar. Reescrito por applyEndstopRange.
-                              /*wallRad*/1.4f * k2Pi, /*wallStiffnessNm*/600.0f,
-                              /*wallDampingNmPerRadPerSec*/3.0f };
+                              /*wallRad*/1.4f * k2Pi, /*wallStiffnessNm*/0.0f,
+                              /*wallDampingNmPerRadPerSec*/0.0f };
 
 // FERRAMENTA DE BANCADA — batente desligado. 0 = desligada (uso normal), 1 = sem fim de curso.
 //
@@ -127,8 +127,20 @@ volatile int32_t g_dor_pending_mdeg = 0;      // diagnóstico por SWD: faixa esp
 // parar. A rigidez é ordens de grandeza maior que a da rampa de propósito: com 600 Nm/rad, o teto de
 // torque é alcançado com 1,4° de invasão, então o volante encosta e para em vez de continuar. Não
 // deixa o batente áspero porque quem chega no muro já atravessou a rampa macia e chegou devagar.
-static constexpr float kWallStiffnessNm = 600.0f;   // Nm por rad além do fim do curso
-static constexpr float kWallDampingNm   = 3.0f;     // Nm/(rad/s), só na entrada
+// ⚠️ MURO DESLIGADO (0) — 600 Nm/rad fez o motor REPICAR na bancada, 16/08/2026.
+//
+// A simulação previu ~20 inversões e a bancada entregou o motor batendo como se estivesse quebrado.
+// O que a simulação não tinha: o ERRO DO ENCODER. Este ímã está com ±2,93° de excentricidade
+// medidos, e a 600 Nm/rad esses 2,93° viram ±30 Nm de comando oscilando sozinhos — a parede passa a
+// perseguir o erro de leitura, não a posição do volante. Toda rigidez alta esbarra nisso, e é a
+// mesma raiz do repique que já tínhamos visto ao subir o ganho do batente.
+//
+// O que segura o volante NÃO é a rigidez: é o desvanecimento da força do jogo na zona do batente
+// (ffb_math.h), que continua ativo — ele não fecha malha nenhuma, só deixa de somar, então não tem
+// como oscilar. O muro fica em zero até a correção do encoder por tabela permitir rigidez alta com
+// leitura confiável.
+static constexpr float kWallStiffnessNm = 0.0f;     // Nm por rad além do fim do curso (0 = sem muro)
+static constexpr float kWallDampingNm   = 0.0f;     // Nm/(rad/s), só na entrada
 
 static void applyEndstopRange(void) {
     const float r = s_dorHalfRad - s_softStopRangeRad;
