@@ -643,8 +643,27 @@ static void ffb_thread(void*) {
             // A ação escolhida pelo usuário (travar ou re-armar) é lida a cada tick: mudar o
             // ajuste no app passa a valer sem reiniciar.
             if (!s_overtravel_ready) { overtravel_init(&s_overtravel);
-                                       s_overtravel_cfg = overtravel_default_cfg();
                                        s_overtravel_ready = 1; }
+            // ⚠️ A CONFIGURAÇÃO É REAPLICADA TODO TICK, e não uma vez na inicialização.
+            //
+            // Ela morava dentro do `if (!s_overtravel_ready)` acima — e o re-arme por pedido
+            // explícito (o botão de religar a força) marca `s_overtravel_ready = 1` depois de chamar
+            // `overtravel_init`, sem carregar config nenhuma. Como aquele caminho roda no laço de
+            // cima, ANTES deste bloco (que só executa com o motor armado), bastava religar a força
+            // uma vez para a guarda passar o boot inteiro com a configuração ZERADA.
+            //
+            // E zerada ela é pior que desligada: margem 0 faz disparar exatamente no fim do curso em
+            // vez de 45° além, "parado" 0 faz o volante nunca contar como parado, e janela 0 desarma
+            // no primeiro tick. Na prática, encostar no batente desligava e travava a base. Medido
+            // na bancada em 16/08/2026: dois desarmes seguidos a 449,9° com o curso em 450°, e a
+            // config lida por SWD toda em zero. Era também por isso que a parede "não segurava" —
+            // ela age nos últimos 4° do curso, e empurrá-la desligava o motor: o volante ficava
+            // solto na mão de quem estava girando.
+            //
+            // Reaplicar 24 bytes a 1 kHz é idempotente e não depende de ordem nenhuma. É a mesma
+            // escolha já feita para o gate e para o estado transitório neste arquivo, pela mesma
+            // razão: detecção de borda erra quando o estado muda por um caminho que ninguém lembrou.
+            s_overtravel_cfg = overtravel_default_cfg();
             s_overtravel_cfg.mode = (uint8_t)(a0_get_setting(SET_OVERTRAVEL_ACTION) != 0
                                               ? OT_MODE_REARM : OT_MODE_LOCK);
 
