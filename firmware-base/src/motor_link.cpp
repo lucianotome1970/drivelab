@@ -518,6 +518,19 @@ extern "C" void motor_link_newboard_bringup(void) {
     // ⚠️ Só mexe no disparo do erro: `enable_torque_mode_vel_limit` está desligado e o clamp também,
     // então `vel_limit` não entra em nenhuma conta de torque. Conferido campo a campo antes de mudar.
     axes[0].controller_.config_.vel_limit                = 25.0f;   // erro só acima de 30 voltas/s
+
+    // ⚠️ FORÇADO NO BOOT, e não deixado no default da struct: o ODrive carrega a configuração da NVM
+    // DELE, então um valor gravado numa sessão anterior prevalece sobre o que está no código. Mudar
+    // só o default seria mudar algo que a placa pode nunca ler — foi assim que outros ajustes deste
+    // projeto pareceram "não ter efeito".
+    //
+    // O detector dispara quando o eixo FREIA (mecânica negativa) e o motor CONSOME (elétrica
+    // positiva) ao mesmo tempo. Num carro isso denuncia encoder com offset errado; num volante de
+    // FFB é o que acontece toda vez que alguém segura o aro contra a força. Depois de corrigir o Kt
+    // (0,55 → 0,397 medido), a corrente subiu 41% e o limiar de 50 W passou a ser cruzado na
+    // primeira curva forte — a base desarmou em pista com SPINOUT_DETECTED.
+    axes[0].controller_.config_.spinout_electrical_power_threshold =  150.0f;
+    axes[0].controller_.config_.spinout_mechanical_power_threshold = -150.0f;
     // BRAKE RESISTOR (chopper) — config funcional para placas classe ODESC: dissipa a regen que
     // estourava dc_bus_overvoltage_trip_level (a queda de FFB na chicane). Antes ficava DESLIGADO (contorno
     // do não-arme); agora o clear_errors (delegado a odrv.clear_errors, fix 046c421) RE-ARMA o brake no

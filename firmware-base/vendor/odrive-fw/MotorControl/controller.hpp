@@ -55,8 +55,24 @@ public:
         // Bandwidth mantido no stock (20 rad/s) — só os thresholds foram subidos.
         float mechanical_power_bandwidth = 20.0f; // [rad/s] filter cutoff for mechanical power (stock)
         float electrical_power_bandwidth = 20.0f; // [rad/s] filter cutoff for electrical power (stock)
-        float spinout_electrical_power_threshold =  50.0f; // [W] (era 10.0 stock) — só dispara em sustained high power
-        float spinout_mechanical_power_threshold = -50.0f; // [W] (era -10.0 stock) — só dispara em sustained high regen
+        // ⚠️ 50 → 150 W EM 16/08/2026, e o motivo importa mais que o número.
+        //
+        // A condição do detector é "mecânica NEGATIVA e elétrica POSITIVA ao mesmo tempo": o eixo
+        // freia enquanto o motor consome. Num carro elétrico isso denuncia offset de encoder errado.
+        // Num volante de FFB e' o que acontece TODA vez que alguem segura o aro contra a forca — que
+        // e' o uso normal numa curva forte.
+        //
+        // O que mudou: corrigimos o Kt de 0,55 (catalogo) para 0,397 (medido neste motor). Para o
+        // mesmo torque a base passou a mandar 41% mais corrente, e a potencia eletrica subiu junto.
+        // O limiar de 50 W, que ja vinha afrouxado dos 10 W de fabrica, passou a ser cruzado na
+        // primeira curva forte: a base desarmou em pista com SPINOUT_DETECTED (bancada 16/08/2026).
+        //
+        // ⚠️ NAO DESLIGAMOS o detector, e a razao e concreta: ele existe para pegar offset de encoder
+        // errado, e o nosso encoder esta com o ima 2,93 graus fora de centro. Numa calibracao ruim de
+        // verdade, ele e' a unica coisa entre o erro e o motor disparando. Afrouxar cobre o uso
+        // normal; desligar tiraria a rede justamente onde ela pode ser precisa.
+        float spinout_electrical_power_threshold =  150.0f; // [W] (10 stock, 50 antes do Kt medido)
+        float spinout_mechanical_power_threshold = -150.0f; // [W] (-10 stock, -50 antes do Kt medido)
 
         // custom setters
         Controller* parent;
