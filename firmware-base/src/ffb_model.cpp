@@ -37,7 +37,12 @@ static EffectConfig s_ef = { /*springNmPerRad*/0.0f,      // SEM centragem sempr
                              /*damperNmPerRadPerSec*/0.03f, // damper leve de estabilidade (não é mola)
                              /*frictionNm*/0.0f };
 static EndstopConfig s_ec = { /*rangeRad*/1.4f * k2Pi,  // batente por SW ~±1.4 volta (antes do fundo de escala do eixo)
-                              /*stiffnessNm*/8.0f, /*dampingNmPerRadPerSec*/0.05f };
+                              /*stiffnessNm*/8.0f, /*dampingNmPerRadPerSec*/0.05f,
+                              // O muro nasce junto do curso inicial: deixar em 0 até a primeira
+                              // adoção significaria um boot inteiro sem fim de curso duro se os
+                              // settings demorassem a chegar. Reescrito por applyEndstopRange.
+                              /*wallRad*/1.4f * k2Pi, /*wallStiffnessNm*/600.0f,
+                              /*wallDampingNmPerRadPerSec*/3.0f };
 
 // FERRAMENTA DE BANCADA — batente desligado. 0 = desligada (uso normal), 1 = sem fim de curso.
 //
@@ -118,9 +123,19 @@ static float    s_softStopRangeRad = 0.0f;          // quanto ANTES do fim do cu
 static float    s_pendingDorHalfRad = 0.0f;   // 0 = nada pendente
 volatile int32_t g_dor_pending_mdeg = 0;      // diagnóstico por SWD: faixa esperando em milideg (0 = nenhuma)
 
+// O MURO fica no fim do curso configurado — 450° num curso de 900°, e é ali que o volante tem de
+// parar. A rigidez é ordens de grandeza maior que a da rampa de propósito: com 600 Nm/rad, o teto de
+// torque é alcançado com 1,4° de invasão, então o volante encosta e para em vez de continuar. Não
+// deixa o batente áspero porque quem chega no muro já atravessou a rampa macia e chegou devagar.
+static constexpr float kWallStiffnessNm = 600.0f;   // Nm por rad além do fim do curso
+static constexpr float kWallDampingNm   = 3.0f;     // Nm/(rad/s), só na entrada
+
 static void applyEndstopRange(void) {
     const float r = s_dorHalfRad - s_softStopRangeRad;
     s_ec.rangeRad = (r > 0.1f) ? r : 0.1f;   // nunca colapsa o curso a zero
+    s_ec.wallRad                    = s_dorHalfRad;
+    s_ec.wallStiffnessNm            = kWallStiffnessNm;
+    s_ec.wallDampingNmPerRadPerSec  = kWallDampingNm;
 }
 // --- Medidor de CLIPPING ---------------------------------------------------------------------
 // Clipping = o jogo pediu mais força do que a base consegue expressar. Dali pra frente o DETALHE
