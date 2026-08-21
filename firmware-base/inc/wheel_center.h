@@ -62,6 +62,11 @@ void  wheel_center_capture(void);
 // deve usar. Antes de o centro ser adotado, devolve a contagem crua (offset 0).
 float wheel_center_pos_turns(void);
 
+/// Sentido do volante (setting 9). +1 = como esta ligado, -1 = invertido. Inverte o que o mundo VE
+/// — forca, eixo do jogo e telemetria —, NUNCA a relacao encoder/motor da FOC (mexer nela com o
+/// motor calibrado faz o torque sair no sentido errado). Ver o comentario longo no .cpp.
+void wheel_center_set_direction(int dir);
+
 // O zero em si (voltas de contagem crua) — diagnostico e telemetria.
 float wheel_center_offset_turns(void);
 

@@ -126,18 +126,6 @@ struct EndstopConfig {
     float rangeRad             = 4.71238898f; ///< meia-faixa (ex.: ±270° = 4,712 rad)
     float stiffnessNm          = 3.0f;        ///< Nm por rad de invasão além da faixa (a "parede")
     float dampingNmPerRadPerSec = 0.0f;       ///< amortecimento no batente: absorve a energia → não quica
-    /// ⚠️ O MURO — o fim do curso de verdade, e o que faz o volante PARAR em 450° em vez de ir a 459°.
-    ///
-    /// A rampa acima (de rangeRad até aqui) existe para a aproximação não ser um soco: ela é macia de
-    /// propósito. Só que macia ela também é vencível — a 10 Nm/rad, empurrar 9° custa 1,6 Nm, e
-    /// qualquer braço passa. O batente virava uma sugestão.
-    ///
-    /// As bases de referência param redondo no curso configurado, e é isso que se espera de um fim de
-    /// curso: a rampa amortece a chegada, o muro não deixa passar. Rigidez alta aqui não deixa o
-    /// batente áspero, porque quem chega já passou pela rampa.
-    float wallRad              = 0.0f;        ///< fim do curso (DOR/2). 0 = sem muro
-    float wallStiffnessNm      = 0.0f;        ///< Nm por rad ALÉM do fim do curso — bem maior que a rampa
-    float wallDampingNmPerRadPerSec = 0.0f;   ///< amortecimento do muro, só na ENTRADA (ver endstopDamping)
 };
 
 inline float clampf(float v, float lo, float hi) {
@@ -151,38 +139,19 @@ inline float forceToTorque(int32_t hostForce, const ForceConfig& c) {
     return clampf(nm, -c.torqueLimitNm, c.torqueLimitNm);
 }
 
-/// Soft-stop em DOIS estágios: a rampa macia (da faixa até o fim do curso) para a chegada não ser um
-/// soco, e o MURO (além do fim do curso) para o volante não passar. Dentro da faixa = 0.
+/// Soft-stop (mola): dentro da faixa = 0; além dela, torque proporcional à invasão (sinal contrário).
 inline float endstopTorque(float positionRad, const EndstopConfig& e) {
-    float t = 0.0f;
-    if (positionRad >  e.rangeRad)      t = -(positionRad - e.rangeRad) * e.stiffnessNm;
-    else if (positionRad < -e.rangeRad) t = -(positionRad + e.rangeRad) * e.stiffnessNm;
-    // O muro SOMA à rampa, e não a substitui: a força cresce de forma contínua ao cruzar o fim do
-    // curso. Substituir criaria um degrau de torque exatamente no ponto de maior velocidade.
-    if (e.wallRad > 0.0f) {
-        if (positionRad >  e.wallRad)      t -= (positionRad - e.wallRad) * e.wallStiffnessNm;
-        else if (positionRad < -e.wallRad) t -= (positionRad + e.wallRad) * e.wallStiffnessNm;
-    }
-    return t;
+    if (positionRad >  e.rangeRad) return -(positionRad - e.rangeRad) * e.stiffnessNm;
+    if (positionRad < -e.rangeRad) return -(positionRad + e.rangeRad) * e.stiffnessNm;
+    return 0.0f;
 }
 
 /// Amortecimento de fim de curso: SÓ na região do batente, opõe a velocidade (−D·ω). Absorve a
 /// energia do impacto → o volante encosta e assenta em vez de quicar. 0 dentro da faixa.
 inline float endstopDamping(float positionRad, float velRadPerSec, const EndstopConfig& e) {
-    float t = 0.0f;
     if (positionRad > e.rangeRad || positionRad < -e.rangeRad)
-        t = -e.dampingNmPerRadPerSec * velRadPerSec;
-    // ⚠️ O AMORTECIMENTO DO MURO AGE SÓ NA ENTRADA — quando o volante está AFUNDANDO nele.
-    //
-    // Amortecer nos dois sentidos é o que produz o repique que já vimos na bancada: na volta, o
-    // amortecimento freia a saída, a mola continua empurrando, e os dois brigam num ponto onde a
-    // soma já está saturada no teto. Freando só quem entra, o volante encosta, para, e sai limpo.
-    if (e.wallRad > 0.0f && e.wallDampingNmPerRadPerSec > 0.0f) {
-        const bool afundando = (positionRad >  e.wallRad && velRadPerSec > 0.0f) ||
-                               (positionRad < -e.wallRad && velRadPerSec < 0.0f);
-        if (afundando) t -= e.wallDampingNmPerRadPerSec * velRadPerSec;
-    }
-    return t;
+        return -e.dampingNmPerRadPerSec * velRadPerSec;
+    return 0.0f;
 }
 
 /// Corte de segurança por sobrecorrente: true se qualquer fase excede ±limitA.
@@ -249,37 +218,7 @@ inline float computeTorqueRaw(float hostForce, float positionRad, float velRadPe
     t += springTorque(positionRad, ef.springNmPerRad);                  // efeitos always-on (encoder)
     t += damperTorque(velRadPerSec, ef.damperNmPerRadPerSec);
     t += frictionTorque(velRadPerSec, ef.frictionNm, kFrictionSmoothVel);   // Coulomb suave (sem chatter no zero)
-
-    // ⚠️ ALÉM DO FIM DO CURSO, O JOGO NÃO AJUDA A FURAR A PAREDE.
-    //
-    // Este é o motivo estrutural de o batente ser vencível, e nenhuma rigidez conserta sozinha: a
-    // parede e a força do jogo eram somadas e depois cortadas pelo MESMO teto. Numa curva pesada o
-    // jogo já pede o teto inteiro, então a parede entrava com o que sobrava — nada — e o volante
-    // passava. Quanto mais forte a curva, mais fraco o fim de curso: exatamente ao contrário.
-    //
-    // A parcela que empurra para FORA DESVANECE ao longo da rampa: inteira na entrada dela, zero no
-    // fim do curso. A que empurra para DENTRO passa sempre — voltar nunca é bloqueado.
-    //
-    // ⚠️ DESVANECER, e não cortar no fim do curso. Cortar seco foi a primeira versão, e a simulação
-    // da chegada reprovou: o jogo desliga ao cruzar a linha e religa ao voltar um décimo de grau,
-    // 917 inversões em 4 s — o volante trepidaria na parede. Com a atenuação contínua caem para ~20,
-    // que é o assentamento, e não vibração. Uma descontinuidade de 15 Nm dentro de uma malha de
-    // 1 kHz não tem como não virar chatter.
-    //
-    // As implementações de referência resolvem o mesmo problema reservando uma fatia fixa do teto
-    // para o batente; atenuar só a componente que fura chega no mesmo lugar sem cobrar força do jogo
-    // no resto do curso, que é onde se dirige.
-    if (ec.wallRad > 0.0f) {
-        const float zona = ec.wallRad - ec.rangeRad;
-        const float absPos = positionRad < 0.0f ? -positionRad : positionRad;
-        // Sem zona de rampa (soft-stop range = 0) não há o que desvanecer: vira liga-desliga no fim
-        // do curso mesmo. Dividir por zero aqui produziria inf/NaN e levaria o NaN até o motor.
-        float fator = (zona > 1e-4f) ? (ec.wallRad - absPos) / zona : (absPos >= ec.wallRad ? 0.0f : 1.0f);
-        fator = clampf(fator, 0.0f, 1.0f);
-        if ((positionRad > 0.0f && t > 0.0f) || (positionRad < 0.0f && t < 0.0f)) t *= fator;
-    }
-
-    t += endstopTorque(positionRad, ec);                                // fim de curso (rampa + muro)
+    t += endstopTorque(positionRad, ec);                                // fim de curso (mola)
     t += endstopDamping(positionRad, velRadPerSec, ec);                 // + amortecimento (não quica)
     return t;                                                           // SEM teto (para medir clipping)
 }
