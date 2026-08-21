@@ -11,10 +11,11 @@ namespace DriveLab.Core.Protocol;
 public static class BaseDeviceIdentity
 {
     public const int VendorId = 0x1209;
-    // Identidade NOVA (era 0x0001). Trocar o produto foi o unico jeito de o Windows tratar a base
-    // como aparelho inedito: ele guarda o que aprendeu por fabricante+produto+serie e nao rele as
-    // descricoes de quem julga ja conhecer. Precisa casar com usb_descriptors.c do firmware — se as
-    // duas pontas divergirem, o app simplesmente nao acha a base.
-    public const int ProductId = 0x0010;
+    // Precisa casar com USB_PID em firmware-base/src/usb_descriptors.c — se as duas pontas
+    // divergirem, o app simplesmente nao acha a base. Em 20/08/2026 os dois foram para 0x0010
+    // enquanto cacavamos os travamentos de USB (identidade nova = Windows sem cache antigo);
+    // terminado o teste, voltaram juntos para 0x0001, porque a identidade nova obrigava a
+    // remapear o volante em todos os jogos.
+    public const int ProductId = 0x0001;
     public const byte ProtocolVersion = 1;
 }

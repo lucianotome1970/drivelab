@@ -13,22 +13,25 @@
 
 // Identidade NOSSA (VID pid.codes 0x1209, = firmware-base → DriveLab Studio reconhece).
 // ============================================================================================
-// IDENTIDADE DA BASE — trocar o PRODUTO faz o PC tratar a base como aparelho inedito
+// IDENTIDADE DA BASE — a troca de PRODUTO foi TESTE, e o teste terminou
 // ============================================================================================
-// O nome nao basta: o Windows guarda o que aprendeu indexado por FABRICANTE + PRODUTO + numero de
-// serie, e nem chega a reler as descricoes de um aparelho que ele julga ja conhecer. Foi por isso
-// que trocar so o nome nao mudou nada na tela (20/08/2026).
+// Em 20/08/2026 trocamos o produto (0x0001 -> 0x0010, "DriveLab Base" -> "DriveLab DD") para tirar
+// o PC do caminho enquanto cacavamos os travamentos de USB: o Windows guarda o que aprendeu
+// indexado por FABRICANTE + PRODUTO + numero de serie, e nem chega a reler as descricoes de um
+// aparelho que ele julga ja conhecer — trocar so o nome nao mudou nada na tela. Com produto novo,
+// tudo nascia limpo e nenhuma das dezenas de identidades daquele dia voltava a assombrar.
 //
-// Trocando o PRODUTO, tudo nasce limpo: cadastro do dispositivo, nome, e — o que importa aqui — os
-// identificadores que o DirectInput entrega aos jogos. Nenhum resto de configuracao antiga e
-// reaproveitado, e nenhuma das dezenas de identidades que esta base teve hoje volta a assombrar.
+// Terminado o teste, VOLTAMOS a identidade original: o preco de manter a nova era todo jogo pedir
+// para remapear o volante, e isso e caro demais para pagar por um andaime.
 //
-// PRECO: todo jogo vai pedir para remapear o volante, porque para ele e outro aparelho.
+// SE PRECISAR REPETIR: mude o PRODUTO, nao o nome — e lembre de mover o app junto
+// (DriveLab.Core/Protocol/BaseDeviceIdentity.cs). Se as duas pontas divergirem, o Studio deixa de
+// encontrar a base.
 //
 // O numero de serie continua vindo do identificador do processador (ver drvlab_serial_do_mcu), o
 // que mantem a base distinguivel de outra igual na mesma maquina.
 #define USB_VID   0x1209
-#define USB_PID   0x0010   // era 0x0001 — identidade nova, sem heranca
+#define USB_PID   0x0001
 #define USB_BCD   0x0100
 
 static const tusb_desc_device_t desc_device = {
@@ -129,7 +132,7 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index) { (void)index; re
 static const char* string_desc_arr[] = {
     (const char[]){0x09, 0x04},   // 0: en-US
     "DriveLab",                   // 1: Manufacturer
-    "DriveLab DD",                // 2: Product — nome novo junto da identidade nova
+    "DriveLab Base",              // 2: Product
     "0001",                       // 3: Serial — SUBSTITUIDO em tempo de execucao pelo ID do MCU
                                   //    (ver drvlab_serial_do_mcu). Fica aqui so como reserva para
                                   //    o caso improvavel de o ID vir zerado.

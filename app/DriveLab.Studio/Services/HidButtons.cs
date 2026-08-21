@@ -43,7 +43,7 @@ public static class HidButtons
         return true;
     }
 
-    /// <summary>A BASE (VID 0x1209 / PID 0x0010) NUNCA pode ser escutada por esta fonte.
+    /// <summary>A BASE (VID 0x1209 / PID 0x0001) NUNCA pode ser escutada por esta fonte.
     ///
     /// Ela é um game controller com botões, então passava no <see cref="ShouldListen"/> e era aberta
     /// aqui — enquanto a BaseSession já a mantém aberta para o FFB. Dois handles disputando o mesmo
