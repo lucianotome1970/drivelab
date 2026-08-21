@@ -1,0 +1,508 @@
+{
+  "_comentario": "Contrato dos settings gravados nas placas. NAO editar a mao — use scripts/check-schema-freeze.py --freeze e commite junto.",
+  "schema_version": 1,
+  "aposentados": {
+    "12": "CurrentP — o ODrive deriva os ganhos do motor e da banda (ver CurrentBandwidthHz)",
+    "13": "CurrentI — idem"
+  },
+  "internos": {
+    "47": "build_id — identificacao do firmware, so leitura"
+  },
+  "settings": {
+    "0": {
+      "nome": "MotionRange",
+      "chave": "motion_range",
+      "tipo": "UInt16",
+      "min": 90.0,
+      "max": 1080.0,
+      "unidade": "°",
+      "default": "900"
+    },
+    "1": {
+      "nome": "SoftStopRange",
+      "chave": "soft_stop_range",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 30.0,
+      "unidade": "°",
+      "default": "8"
+    },
+    "2": {
+      "nome": "SoftStopStrength",
+      "chave": "soft_stop_strength",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "70"
+    },
+    "3": {
+      "nome": "TotalStrength",
+      "chave": "total_strength",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "4": {
+      "nome": "SpringStrength",
+      "chave": "spring_strength",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "5"
+    },
+    "5": {
+      "nome": "DamperStrength",
+      "chave": "damper_strength",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "0"
+    },
+    "6": {
+      "nome": "StaticDamping",
+      "chave": "static_damping",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "5"
+    },
+    "7": {
+      "nome": "MaxTorqueLimit",
+      "chave": "max_torque_limit",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "80"
+    },
+    "8": {
+      "nome": "ForceDirection",
+      "chave": "force_direction",
+      "tipo": "Int8",
+      "min": -1.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "1"
+    },
+    "9": {
+      "nome": "EncoderDirection",
+      "chave": "encoder_direction",
+      "tipo": "Int8",
+      "min": -1.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "1"
+    },
+    "10": {
+      "nome": "EncoderCpr",
+      "chave": "encoder_cpr",
+      "tipo": "UInt32",
+      "min": 100.0,
+      "max": 2097152.0,
+      "unidade": "contagens",
+      "default": "4000"
+    },
+    "11": {
+      "nome": "PolePairs",
+      "chave": "pole_pairs",
+      "tipo": "UInt8",
+      "min": 1.0,
+      "max": 50.0,
+      "unidade": "",
+      "default": "15"
+    },
+    "14": {
+      "nome": "CalibrationCurrent",
+      "chave": "calibration_current",
+      "tipo": "UInt8",
+      "min": 1.0,
+      "max": 30.0,
+      "unidade": "A",
+      "default": "5"
+    },
+    "15": {
+      "nome": "PositionSmoothing",
+      "chave": "position_smoothing",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "0"
+    },
+    "16": {
+      "nome": "PowerLimit",
+      "chave": "power_limit",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "17": {
+      "nome": "BrakingLimit",
+      "chave": "braking_limit",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "18": {
+      "nome": "EncoderType",
+      "chave": "encoder_type",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 4.0,
+      "unidade": "",
+      "default": "EncoderCatalog.E6b2"
+    },
+    "19": {
+      "nome": "ReconstructionSteps",
+      "chave": "reconstruction_steps",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 32.0,
+      "unidade": "",
+      "default": "0"
+    },
+    "20": {
+      "nome": "ReconstructionLpf",
+      "chave": "reconstruction_lpf",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "0"
+    },
+    "21": {
+      "nome": "OutputFilterHz",
+      "chave": "output_filter_hz",
+      "tipo": "UInt16",
+      "min": 0.0,
+      "max": 2000.0,
+      "unidade": "Hz",
+      "default": "0"
+    },
+    "22": {
+      "nome": "OscGuardEnable",
+      "chave": "osc_guard_enable",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "0"
+    },
+    "23": {
+      "nome": "EndstopDamping",
+      "chave": "endstop_damping",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "35"
+    },
+    "24": {
+      "nome": "Linearity",
+      "chave": "linearity",
+      "tipo": "UInt8",
+      "min": 50.0,
+      "max": 200.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "25": {
+      "nome": "CoggingEnable",
+      "chave": "cogging_enable",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "0"
+    },
+    "26": {
+      "nome": "SlewRate",
+      "chave": "slew_rate",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "0"
+    },
+    "27": {
+      "nome": "BusNominalV",
+      "chave": "bus_nominal_v",
+      "tipo": "UInt8",
+      "min": 12.0,
+      "max": 56.0,
+      "unidade": "V",
+      "default": "56"
+    },
+    "28": {
+      "nome": "FfbCurve0",
+      "chave": "ffb_curve_0",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "0"
+    },
+    "29": {
+      "nome": "FfbCurve1",
+      "chave": "ffb_curve_1",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "10"
+    },
+    "30": {
+      "nome": "FfbCurve2",
+      "chave": "ffb_curve_2",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "20"
+    },
+    "31": {
+      "nome": "FfbCurve3",
+      "chave": "ffb_curve_3",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "30"
+    },
+    "32": {
+      "nome": "FfbCurve4",
+      "chave": "ffb_curve_4",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "40"
+    },
+    "33": {
+      "nome": "BoardVariant",
+      "chave": "board_variant",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "1"
+    },
+    "34": {
+      "nome": "TorqueConstant",
+      "chave": "torque_constant",
+      "tipo": "Float",
+      "min": 0.0,
+      "max": 2.0,
+      "unidade": "Nm/A",
+      "default": "0.55"
+    },
+    "35": {
+      "nome": "ThermalContinuousPct",
+      "chave": "thermal_continuous_pct",
+      "tipo": "UInt8",
+      "min": 30.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "36": {
+      "nome": "ThermalPeakSeconds",
+      "chave": "thermal_peak_seconds",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 60.0,
+      "unidade": "s",
+      "default": "0"
+    },
+    "37": {
+      "nome": "FetTempLimitC",
+      "chave": "fet_temp_limit_c",
+      "tipo": "UInt8",
+      "min": 50.0,
+      "max": 110.0,
+      "unidade": "°C",
+      "default": "85"
+    },
+    "38": {
+      "nome": "MotorTempLimitC",
+      "chave": "motor_temp_limit_c",
+      "tipo": "UInt8",
+      "min": 60.0,
+      "max": 125.0,
+      "unidade": "°C",
+      "default": "100"
+    },
+    "39": {
+      "nome": "SpringGain",
+      "chave": "spring_gain",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 200.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "40": {
+      "nome": "DamperGain",
+      "chave": "damper_gain",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 200.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "41": {
+      "nome": "FrictionGain",
+      "chave": "friction_gain",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 200.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "42": {
+      "nome": "InertiaGain",
+      "chave": "inertia_gain",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 200.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "43": {
+      "nome": "SoftPowerEnable",
+      "chave": "soft_power_enable",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "0"
+    },
+    "44": {
+      "nome": "PowerButtonEnable",
+      "chave": "power_button_enable",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "0"
+    },
+    "45": {
+      "nome": "MotorEnable",
+      "chave": "motor_enable",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "0"
+    },
+    "46": {
+      "nome": "EncoderInterface",
+      "chave": "encoder_interface",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 2.0,
+      "unidade": "",
+      "default": "0"
+    },
+    "48": {
+      "nome": "CurrentLim",
+      "chave": "current_lim",
+      "tipo": "UInt8",
+      "min": 5.0,
+      "max": 40.0,
+      "unidade": "A",
+      "default": "25"
+    },
+    "49": {
+      "nome": "FfbCurve5",
+      "chave": "ffb_curve_5",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "50"
+    },
+    "50": {
+      "nome": "FfbCurve6",
+      "chave": "ffb_curve_6",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "60"
+    },
+    "51": {
+      "nome": "FfbCurve7",
+      "chave": "ffb_curve_7",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "70"
+    },
+    "52": {
+      "nome": "FfbCurve8",
+      "chave": "ffb_curve_8",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "80"
+    },
+    "53": {
+      "nome": "FfbCurve9",
+      "chave": "ffb_curve_9",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "90"
+    },
+    "54": {
+      "nome": "FfbCurve10",
+      "chave": "ffb_curve_10",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 100.0,
+      "unidade": "%",
+      "default": "100"
+    },
+    "55": {
+      "nome": "CurrentBandwidthHz",
+      "chave": "current_bandwidth_hz",
+      "tipo": "UInt16",
+      "min": 50.0,
+      "max": 2000.0,
+      "unidade": "Hz",
+      "default": "200"
+    },
+    "56": {
+      "nome": "BrakeResistanceOhm",
+      "chave": "brake_resistance_ohm",
+      "tipo": "Float",
+      "min": 0.5,
+      "max": 50.0,
+      "unidade": "Ω",
+      "default": "2.0"
+    },
+    "57": {
+      "nome": "OvertravelAction",
+      "chave": "overtravel_action",
+      "tipo": "UInt8",
+      "min": 0.0,
+      "max": 1.0,
+      "unidade": "",
+      "default": "0"
+    }
+  }
+}

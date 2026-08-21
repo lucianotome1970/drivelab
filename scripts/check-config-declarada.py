@@ -94,10 +94,6 @@ HERDADOS = {
     "inverter_temp_limit_upper": (NAO_SE_APLICA, "campo MORTO no v0.5.6; ver acima"),
 
     # --- SAIDAS da calibracao, nao entradas -------------------------------
-    "phase_offset":       (SAIDA_CALIB, "resultado da calibracao de offset"),
-    "phase_offset_float": (SAIDA_CALIB, "resultado da calibracao de offset"),
-    "direction":          (SAIDA_CALIB, "o ODrive determina no arme; 0 = ainda nao calibrado"),
-
     # --- MEDIDO na bancada ------------------------------------------------
     "R_wL_FF_enable": (MEDIDO, "desligado. Ligado e conferido por leitura na bancada em 14/08 e "
                                "NAO mudou o ruido — mantido no padrao"),
@@ -124,8 +120,6 @@ HERDADOS = {
                                 "tambem nunca foi exercitado de proposito"),
     "dc_calib_tau": (A_VERIFICAR, "0,2 s. Constante do zero do sensor de corrente. Mexer no caminho "
                                   "do ADC ja custou uma sessao (18 A com o volante parado)"),
-    "calib_scan_distance": (A_VERIFICAR, "16π rad eletricos. Ajustamos a VELOCIDADE "
-                                         "(calib_scan_omega) e a tolerancia (calib_range), nao esta"),
     "enable_phase_interpolation": (A_VERIFICAR, "ligado. Interpola posicao entre contagens pela "
                                                 "velocidade; deve ser o que tira o degrau em giro "
                                                 "lento, mas nao foi testado desligado"),
@@ -187,12 +181,6 @@ HERDADOS = {
     "mechanical_power_bandwidth": (A_VERIFICAR, "20 rad/s, o padrao. Filtro da potencia que "
                                                 "alimenta a deteccao de spinout"),
     "electrical_power_bandwidth": (A_VERIFICAR, "20 rad/s, o padrao; par do de cima"),
-    "spinout_electrical_power_threshold": (A_VERIFICAR, "50 W (stock 10), subido no vendor por "
-                                                        "leitura. Num volante FFB segurar contra a "
-                                                        "forca e frear consumindo corrente — a "
-                                                        "condicao NORMAL que dispara spinout. "
-                                                        "Nunca exercitamos o limiar de proposito"),
-    "spinout_mechanical_power_threshold": (A_VERIFICAR, "-50 W (stock -10); par do de cima"),
 }
 
 PROCEDENCIAS = (NAO_SE_APLICA, SAIDA_CALIB, MEDIDO, PENDENTE, EDITADO_VENDOR, A_VERIFICAR)
