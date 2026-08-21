@@ -1,6 +1,7 @@
 // firmware-base — ponte ODrive. ÚNICO arquivo que inclui odrive_main.h (isola o
 // class Axis do ODrive). API extern "C" plana pro nosso ffb_task. Autor: Luciano Tomé — MIT.
 #include "motor_link.h"
+#include "nvm_kv.h"   // guarda a calibracao entre boots — ver motor_link_calibracao_*
 #include "encoder_config.h"   // traducao settings -> encoder (host-testada)
 #include "motor_config.h"     // traducao settings -> motor (host-testada)
 #include "thermal_config.h"   // traducao settings -> limites termicos (host-testada)
@@ -21,6 +22,56 @@
 // para o eixo do jogo, para a telemetria e para as guardas. Inverter num so deixaria a velocidade
 // discordando da posicao — e velocidade com sinal errado e anti-amortecimento, que ja nos custou
 // caro no laco de corrente.
+// ============================================================================================
+// A CALIBRAÇÃO É FEITA UMA VEZ, NÃO A CADA BOOT
+// ============================================================================================
+// Até aqui, toda partida refazia a varredura completa: o volante dava uma volta inteira de ida e
+// outra de volta antes de a base ficar pronta. Nenhum firmware maduro faz isso — a referência que
+// estudamos manda, no próprio manual de instalação, rodar a calibração UMA vez, marcar
+// `pre_calibrated` e desligar a calibração de boot.
+//
+// O que nos prendia era não ter onde guardar o resultado: a configuração do encoder é reescrita a
+// cada boot por este arquivo, então o offset medido morria junto. Com a persistência por chave isso
+// deixou de ser verdade.
+//
+// E há a parte específica de encoder INCREMENTAL: ele começa a contar do zero onde estiver, então
+// um offset guardado só vale se houver uma referência física para reancorar. Essa referência é o
+// canal Z (o índice), que dá um pulso por volta. Com ele, o boot vira "gira até o índice" — uma
+// fração de volta — em vez de duas voltas inteiras.
+//
+// As chaves ficam acima de 0xFF00, fora do espaço dos ajustes do app: isto é resultado de medição,
+// não preferência de quem usa, e não deve aparecer como campo editável.
+enum { KV_CAL_MARCA = 0xFF10u, KV_CAL_PHASE = 0xFF11u, KV_CAL_INDEX = 0xFF12u, KV_CAL_CPR = 0xFF13u };
+static constexpr uint32_t kCalVersao = 1u;
+
+// A calibração guardada só vale para o MESMO encoder. Guardamos o CPR junto e conferimos: trocar de
+// encoder (ou corrigir o número de pulsos) invalida o offset, e usar o antigo aplicaria torque no
+// ângulo errado — exatamente a falha que este projeto passou noites perseguindo.
+static bool motor_link_cal_guardada_vale(int32_t cpr_atual) {
+    uint32_t marca = 0, cpr = 0;
+    if (!nvm_kv_read(KV_CAL_MARCA, &marca) || marca != kCalVersao) return false;
+    if (!nvm_kv_read(KV_CAL_CPR, &cpr)) return false;
+    return (int32_t)cpr == cpr_atual;
+}
+
+extern "C" int motor_link_calibracao_guardar(void) {
+    const int32_t cpr = axes[0].encoder_.config_.cpr;
+    if (cpr <= 0 || !axes[0].encoder_.is_ready_) return 0;
+    uint32_t ph = 0, ix = 0;
+    memcpy(&ph, &axes[0].encoder_.config_.phase_offset, 4);
+    memcpy(&ix, &axes[0].encoder_.config_.index_offset, 4);
+    nvm_kv_write(KV_CAL_PHASE, ph);
+    nvm_kv_write(KV_CAL_INDEX, ix);
+    nvm_kv_write(KV_CAL_CPR,   (uint32_t)cpr);
+    nvm_kv_write(KV_CAL_MARCA, kCalVersao);
+    return 1;
+}
+
+// 1 = este boot REAPROVEITOU a calibração guardada (não girou para descobrir nada).
+// Legível por SWD e pela telemetria: é a diferença entre "a base subiu pronta" e
+// "a base teve de se redescobrir", e explica sozinho por que uma partida demorou mais.
+volatile int32_t g_cal_reaproveitada = 0;
+
 static float s_pos_sign = 1.0f;
 
 extern "C" float motor_link_get_pos_turns(void) {
@@ -494,8 +545,58 @@ extern "C" void motor_link_newboard_bringup(void) {
     // Referência que o ODrive não tem e a implementação de referência tem: timeout de 10 s, busca
     // com METADE da corrente, corte de corrente incondicional ao sair e erro registrado sem travar
     // o boot. Se a causa for brown-out, é esse desenho que devemos portar.
-    axes[0].config_.startup_encoder_index_search        = false;
-    axes[0].config_.startup_encoder_offset_calibration   = true;  // 2º: offset, agora ancorado no índice
+    // ⚠️ A DECISÃO QUE TIRA AS DUAS VOLTAS DE CADA PARTIDA.
+    //
+    // Com calibração guardada E válida para este encoder, o boot não precisa descobrir nada: aplica
+    // o offset salvo e apenas REANCORA a contagem no índice — o volante gira uma fração de volta até
+    // o pulso do Z e para. Sem calibração guardada (primeira instalação, troca de encoder, mudança
+    // no número de pulsos), faz a varredura completa uma vez e guarda o resultado no fim.
+    //
+    // A busca de índice é limitada de propósito. O padrão do controlador percorre 6,7 voltas
+    // mecânicas a 10 A antes de desistir — até 16 segundos com o motor energizado, e foi isso que
+    // pôs a base em ciclo de reset em 15/08/2026. Uma volta e meia com metade da corrente é
+    // suficiente para qualquer encoder que tenha índice, e se ele não aparecer nesse espaço é
+    // porque o fio não está lá: melhor falhar rápido do que cozinhar o motor procurando.
+    axes[0].config_.calibration_lockin.current         = 5.0f;    // metade do padrão
+    axes[0].config_.calibration_lockin.finish_distance = 2.0f * (float)M_PI * 15.0f * 1.5f;  // 1,5 volta
+
+    // ⚠️ SEM ÍNDICE, NÃO HÁ COMO REAPROVEITAR — e insistir deixa a base inutilizável.
+    //
+    // Medido em 19/08/2026, no primeiro boot com a calibração persistente: erro 0x20 do encoder
+    // (índice não encontrado) e OITO desarmes seguidos. A busca limitada fez seu papel — falhou em
+    // 1,5 volta com metade da corrente, em vez de rodar 6,7 voltas a 10 A —, mas a base não armava.
+    //
+    // A conclusão é sobre o hardware, não sobre o código: o Z não está chegando ao pino. Enquanto
+    // não chegar, um encoder incremental NÃO tem referência física, e um offset guardado apontaria
+    // para um zero elétrico que não existe mais — pior que recalibrar, porque aplicaria torque no
+    // ângulo errado com o motor armado.
+    //
+    // Então: enquanto o índice não for detectável, calibra a cada boot (as duas voltas), que é
+    // lento mas correto. O caminho para eliminá-las sem Z é o alinhamento por corrente que o
+    // FFBeast usa — energizar um ângulo fixo e ler onde o rotor assenta —, que move o volante
+    // poucos graus e não depende de fio nenhum.
+    const bool tem_indice = false;   // ligar quando o Z estiver comprovadamente chegando
+
+    if (tem_indice && motor_link_cal_guardada_vale(axes[0].encoder_.config_.cpr)) {
+        uint32_t ph = 0, ix = 0;
+        nvm_kv_read(KV_CAL_PHASE, &ph);
+        nvm_kv_read(KV_CAL_INDEX, &ix);
+        memcpy(&axes[0].encoder_.config_.phase_offset, &ph, 4);
+        memcpy(&axes[0].encoder_.config_.index_offset, &ix, 4);
+        axes[0].encoder_.config_.use_index                 = true;
+        axes[0].encoder_.config_.pre_calibrated            = true;
+        axes[0].config_.startup_encoder_index_search       = true;   // só reancora
+        axes[0].config_.startup_encoder_offset_calibration = false;  // e NÃO varre de novo
+        g_cal_reaproveitada = 1;
+    } else {
+        // Sem índice utilizável: varredura completa, como antes. Nada de buscar um Z que não vem —
+        // é isso que trava o boot.
+        axes[0].encoder_.config_.use_index                 = false;
+        axes[0].encoder_.config_.pre_calibrated            = false;
+        axes[0].config_.startup_encoder_index_search       = false;
+        axes[0].config_.startup_encoder_offset_calibration = true;
+        g_cal_reaproveitada = 0;
+    }
     axes[0].config_.startup_closed_loop_control          = true;  // 3º: arma
     // Sim racing: sem clamp de velocidade cortando torque (girar na mão sem OVERSPEED)
     axes[0].controller_.config_.enable_vel_limit         = false;

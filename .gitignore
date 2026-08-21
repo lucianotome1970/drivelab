@@ -29,3 +29,6 @@ release-artifacts/
 
 # .git do repositorio antigo, guardado localmente — NUNCA rastrear
 .git-legado-local/
+
+# Configuração local do editor (contém caminhos absolutos da máquina)
+.vscode/

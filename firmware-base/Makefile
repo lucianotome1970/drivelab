@@ -127,7 +127,8 @@ CPP_SOURCES_LOCAL = \
   src/watchdog.cpp \
   src/usb_tinyusb_glue.cpp \
   src/ffb_diag_stub.cpp \
-  src/settings_flash.cpp
+  src/settings_flash.cpp \
+  src/nvm_kv.cpp
 
 ASM_SOURCES_LOCAL =
 

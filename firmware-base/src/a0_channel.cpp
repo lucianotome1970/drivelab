@@ -16,7 +16,8 @@
 #include "ffb_model.h"
 #include "fw_version.h"       // fonte ÚNICA da versão — o carimbo do .bin lê o mesmo header
 #include "settings_store.h"   // (de)serialização pura do blob de settings (magic+versão+CRC)
-#include "settings_flash.h"   // I/O de flash da região FFB_NVM (setor 1 @0x08004000)
+#include "settings_flash.h"   // blob ANTIGO — só para migrar o que já estava salvo
+#include "nvm_kv.h"           // persistência por chave/valor: grava só o que mudou
 #include "brake_meter.h"      // contadores do brake chopper (energia, acionamentos, pico)
 #include "blackbox.h"         // rastro fino: qual chamada prendeu o laço
 #include "encoder_eccentricity.h"  // resultado do teste do encoder na telemetria
@@ -55,6 +56,11 @@ extern "C" volatile int32_t g_motor_enable;
 #define A0_RID_DEFREAD  0x17   // OUT pede o PADRAO do campo [fieldId] -> responde 0x16
 #define A0_RID_NVMREAD  0x18   // OUT pede o valor GRAVADO na flash [fieldId] -> responde 0x16
 #define A0_PAYLOAD      63     // ReportConstants.ReportSize
+// ⚠️ O CANAL DO APP TEM INTERFACE PRÓPRIA (instância 1). Enquanto era uma só, telemetria, leituras
+// e o relatório do jogo disputavam o mesmo endpoint e precisavam de uma regra de prioridade — que
+// foi a origem de uma sucessão de bugs (o painel congelando, o "Salvar" acusando campos gravados).
+// Aqui a disputa deixou de existir: falamos no nosso canal, o jogo no dele.
+#define A0_HID_ITF      0   // interface unica — o canal do app divide o endpoint com o jogo
 
 // SettingType (DriveLab.Core.Settings.SettingType)
 enum { T_U8 = 0, T_I8 = 1, T_U16 = 2, T_I16 = 3, T_FLOAT = 4, T_U32 = 5 };
@@ -105,6 +111,32 @@ static const uint8_t s_type[A0_NUM_SETTINGS] = {
 // Valor de cada campo: inteiro em s_ival (u8/i8/u16/i16) OU float em s_fval (T_FLOAT).
 static int32_t s_ival[A0_NUM_SETTINGS];
 static float   s_fval[A0_NUM_SETTINGS];
+
+// ============================================================================================
+// PERSISTÊNCIA: UMA CHAVE POR AJUSTE
+// ============================================================================================
+// A chave de cada ajuste é o próprio id dele (0..57), que já é estável e conhecido dos dois
+// lados. Ids acima de 0xFF00 ficam reservados para uso interno deste módulo — não há ajuste
+// lá em cima e nunca haverá, porque o protocolo carrega o id num byte.
+static constexpr uint16_t kKvMarca  = 0xFF01u;  // "esta página já foi escrita por este firmware"
+static constexpr uint32_t kKvVersao = 1u;
+
+// O valor de um ajuste cabe sempre em 32 bits: inteiro como está, float pelos seus bits. Guardar
+// os BITS do float (e não convertê-lo) é o que faz 0,397 voltar exatamente 0,397.
+static uint32_t a0_campo_u32(uint8_t id) {
+    if (s_type[id] == T_FLOAT) { uint32_t b = 0; memcpy(&b, &s_fval[id], 4); return b; }
+    return (uint32_t)s_ival[id];
+}
+static void a0_u32_campo(uint8_t id, uint32_t v) {
+    if (s_type[id] == T_FLOAT) memcpy(&s_fval[id], &v, 4);
+    else                       s_ival[id] = (int32_t)v;
+}
+
+// 1 = a página encheu e o "Salvar" ficou pela metade. O laço de 1 kHz compacta quando o motor
+// estiver parado e o pedido segue pendente — ver ffb_task. Não é erro: é manutenção.
+static bool s_precisa_compactar = false;
+extern "C" int  a0_precisa_compactar(void) { return s_precisa_compactar ? 1 : 0; }
+extern "C" void a0_compactou(void)         { s_precisa_compactar = false; }
 
 // Defaults em escopo de arquivo para poderem ser CONSULTADOS (0x17) sem alterar valor nenhum:
 // o app pergunta "qual e o padrao deste campo?" e mostra na tela; nada muda na placa ate salvar.
@@ -185,6 +217,10 @@ static uint8_t s_pending_read = 0xFF;
 // 0 = valor EM USO (0x15) · 1 = valor de FABRICA (0x17) · 2 = valor GRAVADO na flash (0x18)
 static uint8_t s_pending_is_default = 0;     // fieldId pendente de resposta 0x16 (0xFF = nenhum)
 static uint32_t s_last_state_ms = 0;
+// Ha quanto tempo uma resposta de leitura espera a vez dela. Sem isto a telemetria podia furar a
+// fila da leitura indefinidamente — ver o bloco da fome em a0_service.
+static uint8_t  s_read_esperando = 0;
+static uint32_t s_read_desde_ms  = 0;
 static bool    s_inited = false;
 static bool    s_save_requested = false;
 static bool    s_reboot_requested = false;
@@ -202,7 +238,21 @@ static inline int16_t clip_i16(float v) { return v > 32767.0f ? 32767 : (v < -32
 static inline int8_t clip_i8(float v) { return v > 127.0f ? 127 : (v < -127.0f ? -127 : (int8_t)v); }
 
 // Aplica os settings que afetam o FFB no ffb_model (os demais ficam guardados p/ read-back).
-static void a0_apply_settings(void) {
+// `no_boot` separa DUAS naturezas de ajuste, e a separação é de segurança, não de organização.
+//
+// Os de FEEL (força, batente, curva, filtros) valem NA HORA: é assim que se ajusta um volante —
+// mexeu, sentiu. Eles só alteram contas do laço de FFB e não podem derrubar nada.
+//
+// Os de HARDWARE (variante da placa, tensão da fonte) NÃO. Eles redefinem a escala com que a base lê
+// o barramento e os limites em que ela se protege; aplicá-los com o motor armado já derrubou a base
+// nesta bancada, e a pessoa que está digitando o número ainda nem terminou de digitar — um "24" a
+// caminho de "240" vale como 24 por um instante. Passam a valer no PRÓXIMO BOOT, junto do resto da
+// configuração de hardware (pares de polos, Kt e limite de corrente já eram assim: ffb_task chama
+// motor_link_apply_motor_settings uma única vez, no início).
+//
+// Ou seja: a aba Hardware é um formulário que você preenche, salva e reinicia. As outras abas são
+// controles que respondem enquanto você mexe.
+static void a0_apply_settings(bool no_boot) {
     ffb_model_set_config(
         (float)s_ival[3],    // total_strength %  (força)
         (float)s_ival[7],    // max_torque_limit %
@@ -226,13 +276,17 @@ static void a0_apply_settings(void) {
     // PERFIL DE HARDWARE (Placa + Fonte) → deriva divider + trips (mesma lógica espelhada no app).
     //   board_variant(33): 0=placa 24V · 1=placa 56V (default)   ·   bus_nominal_v(27): tensão da fonte [V]
     //   amperagem: 0 (sem campo dedicado ainda; power_limit(16) é "%", não A) → dc_max = follow-up.
-    motor_link_apply_hw_profile((int)s_ival[33], (int)s_ival[27], 0);
+    if (no_boot) motor_link_apply_hw_profile((int)s_ival[33], (int)s_ival[27], 0);
     // ATIVAR MOTOR (id 45): trava de bring-up. Firmware novo nao sabe que hardware esta do outro
     // lado — se armar no boot com pole_pairs/CPR/variante errados, o motor esquenta ou dispara.
     // Nasce em 0: a base sobe DESARMADA, o usuario confere os campos de hardware e so entao ativa.
     // Se der errado, desativa e a base desarma na hora (nao depende de reboot nem de tirar da tomada).
     // Religar a permissão é o REARME: destrava a guarda de curso e limpa os erros, senão o campo
     // voltaria a 1 e o motor continuaria parado — que é exatamente a confusão que isto resolve.
+    // SENTIDO DO VOLANTE (setting 9). Vale ao vivo: quem descobre que o volante gira ao contrario
+    // muda o campo e sente na hora, sem reiniciar. So inverte o que o mundo ve — nunca a FOC.
+    wheel_center_set_direction((int)s_ival[9]);
+
     if (s_ival[45] != 0 && g_motor_enable == 0) s_rearm_requested = true;
     g_motor_enable = (int32_t)s_ival[45];
 }
@@ -242,10 +296,38 @@ static void a0_init(void) {
     // Sobrepõe os defaults com o que estiver salvo na FFB_NVM (blob válido: magic+versão+CRC). Blob
     // inválido/apagado (flash 0xFF ou reflash) → unpackSettings retorna false SEM tocar os arrays → defaults.
     {
+        // ⚠️ A ORDEM AQUI É O QUE SALVA A CONFIGURAÇÃO DE QUEM ATUALIZA O FIRMWARE.
+        //
+        // O blob antigo mora no MESMO setor que a persistência nova usa como primeira página, e
+        // nvm_kv_init() apaga essa página quando não reconhece nada válido nela — que é
+        // exatamente o caso no primeiro boot depois desta mudança. Por isso o blob é lido para a
+        // RAM ANTES: primeiro salvamos o passado, só então deixamos o novo mecanismo arrumar a
+        // casa. Invertida, esta ordem apagaria os ajustes de todo mundo, uma única vez, sem
+        // deixar rastro de que existiram.
         static uint8_t blob[drivelab::settingsBlobSize(A0_NUM_SETTINGS)];
-        size_t got = settings_flash_read(blob, sizeof(blob));
+        const size_t got = settings_flash_read(blob, sizeof(blob));
         const uint16_t campos_gravados = drivelab::settingsBlobFieldCount(blob, got);
-        drivelab::unpackSettings(blob, got, s_ival, s_fval, (uint16_t)A0_NUM_SETTINGS);
+        const bool tinha_blob = (campos_gravados > 0);
+        if (tinha_blob) drivelab::unpackSettings(blob, got, s_ival, s_fval, (uint16_t)A0_NUM_SETTINGS);
+
+        nvm_kv_init();
+
+        uint32_t marca = 0;
+        if (nvm_kv_read(kKvMarca, &marca)) {
+            // Já existe configuração no formato novo: ela manda, campo a campo. O que nunca foi
+            // gravado simplesmente não está lá, e fica com o padrão — que é o comportamento certo
+            // para um ajuste que a pessoa nunca tocou.
+            for (uint8_t id = 0; id < A0_NUM_SETTINGS; ++id) {
+                uint32_t v = 0;
+                if (nvm_kv_read(id, &v)) a0_u32_campo(id, v);
+            }
+        } else if (tinha_blob) {
+            // Primeira vez com o formato novo e havia ajustes salvos: copia tudo para lá agora,
+            // de uma vez, para que a próxima leitura já venha do mecanismo novo. Se algo falhar,
+            // não há prejuízo — os valores já estão na RAM e o blob antigo continua intacto.
+            for (uint8_t id = 0; id < A0_NUM_SETTINGS; ++id) nvm_kv_write(id, a0_campo_u32(id));
+            nvm_kv_write(kKvMarca, kKvVersao);
+        }
 
         // CURVA DE FORÇA: 5 pontos → 11. Os cinco ids antigos (28-32) foram mantidos, mas a grade
         // de X mudou de 25 em 25% para 10 em 10% — o valor gravado pensando em "50% da entrada"
@@ -281,7 +363,7 @@ static void a0_init(void) {
         if (d.relocked) s_save_requested = true;
     }
 
-    a0_apply_settings();
+    a0_apply_settings(/*no_boot=*/true);   // no boot vale tudo, hardware incluso
     s_inited = true;
 }
 
@@ -358,13 +440,44 @@ volatile uint32_t g_save_count = 0;
 
 extern "C" uint32_t a0_get_save_count(void) { return g_save_count; }
 
+
+
 extern "C" bool a0_commit_save(void) {
-    static uint8_t blob[drivelab::settingsBlobSize(A0_NUM_SETTINGS)];
-    size_t n = drivelab::packSettings(s_ival, s_fval, (uint16_t)A0_NUM_SETTINGS, blob, sizeof(blob));
-    bool ok = (n > 0) && settings_flash_write(blob, n);
-    if (ok) g_save_count++;   // só conta o que FOI para a flash — o app confirma por este número
+    // ⚠️ GRAVA CAMPO A CAMPO, E SÓ O QUE MUDOU.
+    //
+    // O modelo anterior empacotava os 58 ajustes, APAGAVA o setor e reescrevia tudo. Apagar
+    // congela o processador por ~250 ms, e daí vinha toda a fragilidade: precisava do motor
+    // parado, não acontecia numa base ocupada, e gravava o conteúdo da MEMÓRIA — se um ajuste
+    // se perdesse no caminho do USB, o valor velho ia para a flash com o contador subindo
+    // igual. Foi assim que um encoder de 2500 pulsos ficou gravado como 1000 três vezes
+    // seguidas, com o app dizendo que tinha salvo (bancada, 18/08/2026).
+    //
+    // Agora cada ajuste é uma chave. Escrever é acrescentar 8 bytes; ajuste que não mudou não
+    // gasta nada; cada escrita é conferida lendo de volta. Nada disso apaga flash, então o
+    // motor pode estar armado — e "Salvar" deixa de depender de um momento que talvez nunca
+    // chegue.
+    nvm_kv_balanco_zerar();
+    s_precisa_compactar = false;
+
+    for (uint8_t id = 0; id < A0_NUM_SETTINGS; ++id) {
+        const NvmKvResultado r = nvm_kv_write(id, a0_campo_u32(id));
+        if (r == NVM_KV_CHEIO) {
+            // A página encheu no meio. NÃO é falha e o pedido NÃO se perde: sinalizamos que
+            // é preciso compactar (o único passo que apaga flash, e portanto o único que quer
+            // o motor parado) e o laço tenta de novo depois. O que já foi escrito continua
+            // válido — a leitura sempre pega a última ocorrência de cada chave.
+            s_precisa_compactar = true;
+            return false;
+        }
+    }
+    nvm_kv_write(kKvMarca, kKvVersao);
+
+    const NvmKvBalanco b = nvm_kv_balanco();
+    if (b.erros > 0) return false;      // pedido segue pendente: o laço tenta na próxima volta
+
+    g_save_count++;                     // só conta o que de fato foi para a flash
     s_save_requested = false;
-    return ok;
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -392,7 +505,7 @@ extern "C" void a0_handle_out(const uint8_t* buf, uint16_t len) {
                 case T_FLOAT: if (len >= 8) memcpy(&s_fval[id], &buf[4], 4); break;
                 default: break;
             }
-            a0_apply_settings();
+            a0_apply_settings(/*no_boot=*/false);   // ao vivo: feel sim, hardware não
             break;
         }
         case A0_RID_SETREAD:               // wire: [0x15, FieldId, Index] → responde 0x16 no a0_service
@@ -567,6 +680,26 @@ static void a0_build_state(uint8_t* p) {
     // ia justamente pela telemetria, que e o caminho que trava. Fica como diagnostico por SWD: e o
     // numero que separa "nao gravou" de "gravou outra coisa".
     p[48] = (uint8_t)(g_save_count & 0xFFu);
+
+    // ⚠️ O BALANÇO DO ÚLTIMO "SALVAR" — o que substituiu o app adivinhando.
+    //
+    // Antes, o app tinha de reler campo a campo e deduzir o que havia acontecido, e mesmo assim
+    // não sabia distinguir "não gravou" de "não consegui conferir". Agora a base diz, porque ela
+    // é quem sabe: quantas chaves foram escritas de fato, quantas já estavam com o valor certo
+    // (e por isso nem foram tocadas) e quantas a flash recusou.
+    //
+    // "Iguais" não é enfeite: é a prova de que salvar duas vezes seguidas não gasta flash, e é o
+    // número que explica um Salvar instantâneo sem nenhuma escrita.
+    {
+        const NvmKvBalanco b = nvm_kv_balanco();
+        put_u16(&p[49], b.gravadas);
+        put_u16(&p[51], b.iguais);
+        put_u16(&p[53], b.erros);
+        // Quanto ainda cabe antes da compactação (a única operação que ainda pede motor parado).
+        // Saturado em 65535 porque o que importa é "está perto de encher?", não o número exato.
+        const uint32_t livre = nvm_kv_espaco_livre();
+        put_u16(&p[55], (uint16_t)(livre > 0xFFFFu ? 0xFFFFu : livre));
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -582,7 +715,7 @@ volatile int32_t g_telemetria_off = 0;
 extern "C" int a0_service(uint32_t nowMs) {
     if (!s_inited) a0_init();
     blackbox_step(BB_STEP_A0_READY);
-    if (!tud_hid_ready()) return 0;
+    if (!tud_hid_n_ready(A0_HID_ITF)) return 0;
 
     // 0) ANTI-STARVATION: a leitura tem prioridade sobre a telemetria (abaixo), mas prioridade
     // absoluta virou fome. O app lê os ~48 campos UM A UM ao abrir/reconectar, e cada leitura ocupa
@@ -610,8 +743,36 @@ extern "C" int a0_service(uint32_t nowMs) {
     // enquanto a causa não é encontrada.
     const int telemetria_atrasada = (uint32_t)(nowMs - s_last_state_ms) >= 40;
 
-    // 1) resposta deferida de leitura (0x16) tem prioridade
-    if (s_pending_read != 0xFF && !telemetria_atrasada) {
+    // ============================================================================================
+    // QUEM FALA AGORA: REVEZAMENTO, NÃO PRIORIDADE
+    // ============================================================================================
+    // Este ponto já teve três regras diferentes, e cada uma criou o bug que a seguinte tentou
+    // consertar. A leitura tinha prioridade absoluta e matava a telemetria de fome (o desenho do
+    // volante congelava 1,2 s). Aí a telemetria passou a furar a fila quando atrasava — e a leitura
+    // ficou esperando para sempre, porque quem julga se a telemetria está atrasada é ela mesma; o
+    // "Salvar" acusou três campos como não conferidos com a base parada e a gravação já feita.
+    // Depois a leitura ganhou o direito de furar de volta, e passamos a ter duas regras se vigiando.
+    //
+    // O erro é anterior aos números: prioridade entre dois produtores do MESMO canal precisa que
+    // alguém decida quem é mais importante, e essa decisão nunca é estável — muda com a carga, com
+    // o app aberto, com o jogo rodando. A implementação de referência que o usuário trouxe
+    // (19/08/2026) não tem essa disputa: ela publica UM relatório e pronto.
+    //
+    // Aqui fica o revezamento: cada um manda na sua vez. Não há como um caminho ficar preso atrás do
+    // outro, porque não há mais "atrás" — há alternância. A leitura ainda anda na frente quando a
+    // telemetria não tem nada novo a dizer (ela só fala a cada 20 ms), então carregar uma aba
+    // continua rápido; e a telemetria nunca perde a vez, então o painel não congela.
+    //
+    // Custo de uma vez perdida: 1 ms. Não existe caso em que isso se note.
+    static uint8_t s_vez_da_leitura = 1;
+    const bool tem_leitura    = (s_pending_read != 0xFF);
+    const bool tem_telemetria = ((uint32_t)(nowMs - s_last_state_ms) >= 20u);
+    // Só reveza quando os DOIS querem falar; com um só, ele fala sempre.
+    const bool leitura_agora  = tem_leitura && (!tem_telemetria || s_vez_da_leitura);
+    if (tem_leitura && tem_telemetria) s_vez_da_leitura = (uint8_t)!s_vez_da_leitura;
+
+    // 1) resposta deferida de leitura (0x16), quando for a vez dela
+    if (leitura_agora) {
         const uint8_t id = s_pending_read;
         uint8_t p[A0_PAYLOAD]; memset(p, 0, sizeof(p));
         p[0] = id; p[1] = 0; p[2] = s_type[id];
@@ -623,13 +784,17 @@ extern "C" int a0_service(uint32_t nowMs) {
         const int32_t* src_i;
         const float*   src_f;
         if (s_pending_is_default == 2) {
-            static uint8_t blob[drivelab::settingsBlobSize(A0_NUM_SETTINGS)];
-            const size_t got = settings_flash_read(blob, sizeof(blob));
-            // Blob invalido (flash apagada, CRC ruim) cai nos defaults — que e o que a base usaria
-            // num boot agora. A resposta continua sendo "o que esta gravado vale isto".
+            // O que está GRAVADO vem da persistência por chave/valor. Campo que nunca foi salvo
+            // responde o PADRÃO — é o que a base usaria num boot agora, e é a resposta honesta a
+            // "o que está guardado aqui?".
             memcpy(nvm_i, s_idef, sizeof(nvm_i));
             memcpy(nvm_f, s_fdef, sizeof(nvm_f));
-            drivelab::unpackSettings(blob, got, nvm_i, nvm_f, (uint16_t)A0_NUM_SETTINGS);
+            for (uint8_t k = 0; k < A0_NUM_SETTINGS; ++k) {
+                uint32_t v = 0;
+                if (!nvm_kv_read(k, &v)) continue;
+                if (s_type[k] == T_FLOAT) memcpy(&nvm_f[k], &v, 4);
+                else                      nvm_i[k] = (int32_t)v;
+            }
             src_i = nvm_i; src_f = nvm_f;
         } else {
             src_i = s_pending_is_default ? s_idef : s_ival;
@@ -640,18 +805,18 @@ extern "C" int a0_service(uint32_t nowMs) {
         else if (s_type[id] == T_U16 || s_type[id] == T_I16) put_i16(&p[3], (int16_t)src_i[id]);
         else                            p[3] = (uint8_t)(src_i[id] & 0xFF);
         blackbox_step(BB_STEP_A0_LEITURA);
-        if (tud_hid_report(A0_RID_SETVALUE, p, A0_PAYLOAD)) { s_pending_read = 0xFF; s_pending_is_default = 0; return 1; }
+        if (tud_hid_n_report(A0_HID_ITF, A0_RID_SETVALUE, p, A0_PAYLOAD)) { s_pending_read = 0xFF; s_pending_is_default = 0; return 1; }
         return 0;   // EP ocupou entre o ready() e o report — re-tenta no próximo loop
     }
 
-    // 2) telemetria DeviceState (0x21) a ~50Hz (na sobra)
-    if ((uint32_t)(nowMs - s_last_state_ms) >= 20) {
+    // 2) telemetria DeviceState (0x21) — na vez dela
+    if (tem_telemetria) {
         uint8_t p[A0_PAYLOAD];
         blackbox_step(BB_STEP_A0_MONTA);
         a0_build_state(p);
         blackbox_step(BB_STEP_A0_TELEMETRIA);
         if (g_telemetria_off) { s_last_state_ms = nowMs; return 1; }
-        if (tud_hid_report(A0_RID_STATE, p, A0_PAYLOAD)) { s_last_state_ms = nowMs; return 1; }
+        if (tud_hid_n_report(A0_HID_ITF, A0_RID_STATE, p, A0_PAYLOAD)) { s_last_state_ms = nowMs; return 1; }
     }
     return 0;
 }
