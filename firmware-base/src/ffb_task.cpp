@@ -17,7 +17,11 @@
 #include "overtravel_guard.h"      // o volante nao pode estar alem do curso (guarda por POSICAO)
 #include "wheel_center.h"         // o zero do volante (batente nasce centrado) — ver o header
 #include "watchdog.h"             // a base reinicia sozinha em vez de congelar — ver o header
-#include "nvm_kv.h"               // compactação da persistência (único passo que apaga flash)
+#include "nvm_kv.h"
+// Chaves do rastro do ultimo travamento. Acima de 0xFF00, fora do espaco dos ajustes do app:
+// isto e evidencia de defeito, nao preferencia de quem usa, e nao deve aparecer como campo.
+enum { KV_TRAVOU_PASSO = 0xFF20u, KV_TRAVOU_ANTES = 0xFF21u,
+       KV_TRAVOU_VOLTAS = 0xFF22u, KV_TRAVOU_USB = 0xFF23u };               // compactação da persistência (único passo que apaga flash)
 #include "encoder_eccentricity.h"  // "o ima esta torto, e por quantos graus" — ver o header
 extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
 
@@ -250,9 +254,40 @@ static void ffb_thread(void*) {
     // reiniciar a base logo ao ligar — que seria a pior estreia possível para uma proteção.
     watchdog_init();
 
+    // ============================================================================================
+    // O TRAVAMENTO NAO PODE APAGAR A PROPRIA EVIDENCIA
+    // ============================================================================================
+    // Quando o firmware trava, o cao-de-guarda reinicia a base e a caixa-preta guarda onde o laco
+    // estava. So que ela mora numa area que sobrevive ao RESET, e nao a DESLIGAR — e quando a base
+    // trava, a reacao natural de quem esta na bancada e justamente desligar. Resultado: nas tres
+    // vezes que fomos ler o ponto do travamento (20 e 21/08/2026) ele ja tinha sido apagado, e a
+    // unica coisa que sobrava era "reiniciou por cao-de-guarda", que nao diz onde.
+    //
+    // Aqui, no primeiro laco depois de um reinicio POR TRAVAMENTO, copiamos o rastro para a memoria
+    // permanente. Grava uma vez por travamento, quatro chaves, sem apagar setor nenhum — e a
+    // evidencia passa a sobreviver a tirar da tomada.
+    // ⚠️ NAO GRAVAR AQUI: a memoria permanente ainda nao subiu neste ponto (quem a inicializa e o
+    // canal do app, no primeiro atendimento dentro do laco). Gravar antes disso falha em silencio —
+    // foi o que aconteceu na primeira tentativa, e o travamento seguinte veio sem rastro de novo.
+    // A gravacao acontece dentro do laco, algumas voltas adiante. Ver `travamento_por_gravar`.
+    uint32_t travamento_por_gravar =
+        (g_bb_reset_reason == BB_RESET_IWDG || g_bb_reset_reason == BB_RESET_WWDG) ? 1u : 0u;
+
     for (;;) {
         blackbox_step(BB_STEP_INICIO);
         ffb_model_advance_clock(1);                     // relógio do modelo (1 ms/tick)
+
+        // O RASTRO DO TRAVAMENTO VAI PARA A MEMORIA PERMANENTE — uma vez, e so depois que ela subiu.
+        // Ele mora numa area que sobrevive ao reset mas nao a DESLIGAR, e desligar e a primeira
+        // reacao de quem esta na bancada com a base travada: nas tres primeiras vezes a evidencia
+        // ja tinha sido apagada quando fomos ler. Aqui ela passa a sobreviver a tirar da tomada.
+        if (travamento_por_gravar && n > 200u) {
+            travamento_por_gravar = 0;
+            nvm_kv_write(KV_TRAVOU_PASSO,  g_bb_trace_prev_step);
+            nvm_kv_write(KV_TRAVOU_ANTES,  g_bb_trace_prev_last);
+            nvm_kv_write(KV_TRAVOU_VOLTAS, g_bb_trace_prev_tick);
+            nvm_kv_write(KV_TRAVOU_USB,    g_bb_trace_prev_usb_irq);
+        }
 
         // Diagnóstico do eixo (só leitura por SWD)
         g_axis_dbg[0] = motor_link_motor_is_armed();
