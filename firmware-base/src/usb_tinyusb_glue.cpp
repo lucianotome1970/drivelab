@@ -81,8 +81,20 @@ static void usb_tusb_task(void*) {
 // descarta: sem porta serial, não há para onde mandar, e fingir sucesso é melhor que fazer o
 // chamador travar esperando um canal que não existe mais.
 extern "C" uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len, uint8_t endpoint_pair) {
-    (void)Buf; (void)Len;
-    if (endpoint_pair == ODRIVE_IN_EP) osMessagePut(usb_event_queue, 4, 0);
+    (void)Buf; (void)Len; (void)endpoint_pair;
+    // ⚠️ RESPONDER "ENVIADO" E AVISAR "CONCLUIDO" CRIA UM LACO SEM FIM.
+    //
+    // O controlador de origem escreve, espera o aviso de conclusao e escreve de novo. Enquanto
+    // existia a porta serial, esse aviso so chegava quando o PC drenava o canal — e era isso que
+    // dava o ritmo. Sem a porta, confirmar na hora fazia o ciclo girar livre: escreve, concluido,
+    // escreve, concluido, sem parar. A thread dele passava a monopolizar o processador e a tarefa
+    // da pilha USB ficava sem rodar; o PC pedia os textos do dispositivo, ninguem respondia, e ele
+    // desabilitava a porta depois de oito tentativas de cinco segundos. O jogo travava no meio
+    // disso (bancada, 21/08/2026 — visto na captura do barramento).
+    //
+    // Agora respondemos "enviado" e NAO avisamos conclusao. A escrita fica pendente do lado dele,
+    // e a proxima tentativa e recusada por ele mesmo — o fluxo para sozinho, que e o certo quando o
+    // canal nao existe. Nada trava esperando, e ninguem gira em falso.
     return USBD_OK;
 }
 
