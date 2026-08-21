@@ -37,12 +37,7 @@ static EffectConfig s_ef = { /*springNmPerRad*/0.0f,      // SEM centragem sempr
                              /*damperNmPerRadPerSec*/0.03f, // damper leve de estabilidade (não é mola)
                              /*frictionNm*/0.0f };
 static EndstopConfig s_ec = { /*rangeRad*/1.4f * k2Pi,  // batente por SW ~±1.4 volta (antes do fundo de escala do eixo)
-                              /*stiffnessNm*/8.0f, /*dampingNmPerRadPerSec*/0.05f,
-                              // O muro nasce junto do curso inicial: deixar em 0 até a primeira
-                              // adoção significaria um boot inteiro sem fim de curso duro se os
-                              // settings demorassem a chegar. Reescrito por applyEndstopRange.
-                              /*wallRad*/1.4f * k2Pi, /*wallStiffnessNm*/0.0f,
-                              /*wallDampingNmPerRadPerSec*/0.0f };
+                              /*stiffnessNm*/8.0f, /*dampingNmPerRadPerSec*/0.05f };
 
 // FERRAMENTA DE BANCADA — batente desligado. 0 = desligada (uso normal), 1 = sem fim de curso.
 //
@@ -139,15 +134,10 @@ volatile int32_t g_dor_pending_mdeg = 0;      // diagnóstico por SWD: faixa esp
 // (ffb_math.h), que continua ativo — ele não fecha malha nenhuma, só deixa de somar, então não tem
 // como oscilar. O muro fica em zero até a correção do encoder por tabela permitir rigidez alta com
 // leitura confiável.
-static constexpr float kWallStiffnessNm = 0.0f;     // Nm por rad além do fim do curso (0 = sem muro)
-static constexpr float kWallDampingNm   = 0.0f;     // Nm/(rad/s), só na entrada
 
 static void applyEndstopRange(void) {
     const float r = s_dorHalfRad - s_softStopRangeRad;
     s_ec.rangeRad = (r > 0.1f) ? r : 0.1f;   // nunca colapsa o curso a zero
-    s_ec.wallRad                    = s_dorHalfRad;
-    s_ec.wallStiffnessNm            = kWallStiffnessNm;
-    s_ec.wallDampingNmPerRadPerSec  = kWallDampingNm;
 }
 // --- Medidor de CLIPPING ---------------------------------------------------------------------
 // Clipping = o jogo pediu mais força do que a base consegue expressar. Dali pra frente o DETALHE
@@ -561,6 +551,8 @@ extern "C" void ffb_model_reset_clipping(void) {
 extern "C" uint8_t ffb_model_create_effect(void) { return s_effects.allocateBlock(); }
 extern "C" int     ffb_model_used_blocks(void)   { return s_effects.usedBlocks(); }
 extern "C" int     ffb_model_max_blocks(void)    { return kEffectSlots; }
+// Ha efeito montado e valendo? E o que o relatorio de estado chama de "efeito tocando".
+extern "C" bool    ffb_model_algum_efeito_tocando(void) { return s_effects.usedBlocks() > 0; }
 extern "C" void    ffb_model_set_device_gain(uint8_t g) { s_deviceGain = g; }
 
 extern "C" void ffb_model_handle_out(const uint8_t* buf, uint16_t len) {

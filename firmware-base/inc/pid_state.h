@@ -17,20 +17,29 @@
 
 #include <cstdint>
 
-// Layout confirmado contra include/ffb_hid_descriptor.h (bloco 0x85,0x02):
-//   bit0 = Device Paused              (usage 0x9F)
-//   bit1 = Actuators Enabled          (usage 0xA0)
-//   bit2 = Safety Switch              (usage 0xA4)
-//   bit3 = Actuator Override Switch   (usage 0xA6)
-//   bit4 = Actuator Power             (usage 0x94)
+// ⚠️ OS BITS SAO IDENTIFICADOS PELO CODIGO DO PROTOCOLO, NAO PELA ORDEM QUE IMAGINAMOS.
+//
+// O descritor declara, nesta ordem: 0x9F, 0xA0, 0xA4, 0xA6, 0x94. Pela tabela do protocolo:
+//   bit0 = 0x9F  Device Paused          (dispositivo pausado)
+//   bit1 = 0xA0  Actuators Enabled      (atuadores habilitados)
+//   bit2 = 0xA4  Safety Switch          (chave de seguranca)
+//   bit3 = 0xA6  ACTUATOR POWER         (atuadores COM ENERGIA)
+//   bit4 = 0x94  EFFECT PLAYING         (efeito tocando)
 //   bits5-7 = padding constante (0)
+//
+// Os dois ultimos estavam TROCADOS aqui: chamavamos 0xA6 de "chave de sobreposicao" e 0x94 de
+// "atuadores com energia". Como mandavamos a tal chave em falso, o que saia na linha era
+// ATUADORES SEM ENERGIA — e um jogo que consulta este relatorio antes de enviar forca simplesmente
+// nao envia. Foi exatamente a divisao observada na bancada em 20/08/2026: ACC e AC Evo consultam e
+// ficavam sem forca; AC1 e AMS2 nao consultam e funcionavam com o MESMO firmware. Perseguimos isso
+// o dia inteiro no USB, no descritor e no jogo — e o erro estava em duas linhas de tradução.
 inline uint8_t buildPidStateByte(bool devicePaused, bool actuatorsEnabled,
-                                 bool safetySwitch, bool actuatorOverride,
-                                 bool actuatorPower)
+                                 bool safetySwitch, bool actuatorPower,
+                                 bool effectPlaying)
 {
-    return (uint8_t)((devicePaused ? 1 : 0) |
-                     (actuatorsEnabled ? 2 : 0) |
-                     (safetySwitch ? 4 : 0) |
-                     (actuatorOverride ? 8 : 0) |
-                     (actuatorPower ? 16 : 0));
+    return (uint8_t)((devicePaused     ? 1  : 0) |
+                     (actuatorsEnabled ? 2  : 0) |
+                     (safetySwitch     ? 4  : 0) |
+                     (actuatorPower    ? 8  : 0) |
+                     (effectPlaying    ? 16 : 0));
 }

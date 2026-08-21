@@ -15,6 +15,7 @@
 #include "tusb.h"
 #include "ffb_hid_descriptor.h"
 #include "pid_state.h"
+extern "C" bool ffb_model_algum_efeito_tocando(void);
 #include "motor_link.h"
 #include "ffb_model.h"
 #include "wheel_center.h"   // eixo do jogo tem de sair do MESMO zero que o FFB
@@ -118,7 +119,7 @@ extern "C" int hid_send_joystick(void) {
     // A partir daqui estamos DENTRO do TinyUSB, que toma o mutex do endpoint com espera infinita.
     // Se o rastro parar neste passo, o travamento e ali — e nao no nosso codigo.
     blackbox_step(BB_STEP_TLM_HID_XFER);
-    if (!tud_hid_report(RID_JOYSTICK, &rep, sizeof(rep))) return 0;
+    if (!tud_hid_n_report(0 /*interface do jogo*/, RID_JOYSTICK, &rep, sizeof(rep))) return 0;
     g_hid_sent++;
     return 1;
 }
@@ -127,28 +128,137 @@ extern "C" int hid_send_joystick(void) {
 // SET_REPORT (host → device): Feature = Create New Effect / Output = efeitos.
 // Stage 3b: roteia pro ffb_model (EffectManager + ForceReconstructor) → torque.
 // ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+// O QUE O JOGO PEDE, NA ORDEM — e onde ele para
+// ------------------------------------------------------------------------------------------------
+// O jogo monta o efeito por etapas: cria o efeito, descreve o efeito, manda a forca, manda tocar, e
+// dai em diante so atualiza a forca a cada quadro. Medimos que ele cria DOIS efeitos, manda UMA
+// forca e para — e sem saber QUAIS pedidos chegaram, "para" nao diz onde.
+//
+// Aqui fica o rastro: os ultimos 24 pedidos, cada um com o tipo (pergunta ou escrita) e o numero do
+// relatorio. Lido por SWD, mostra a sequencia exata e o degrau em que ela morre.
+//   0x00 | id  = escrita do jogo (efeito, forca, tocar/parar)
+//   0x80 | id  = pergunta do jogo (quanto cabe, o efeito entrou, qual o estado)
+volatile uint8_t  g_ffb_pedidos[24] = {0};
+// OS PRIMEIROS pedidos da sessao, que o rastro circular acima NAO consegue guardar.
+// Num jogo que funciona, a forca chega mil vezes por segundo e varre o circulo em instantes — o
+// comeco, que e onde o jogo negocia o efeito, se perde. Aqui ele fica: grava os 32 primeiros e
+// congela. E o unico jeito de comparar a NEGOCIACAO de um jogo que funciona com a de um que nao.
+volatile uint8_t  g_ffb_inicio[32] = {0};
+volatile uint32_t g_ffb_inicio_n = 0;
+// Os pacotes INTEIROS do comeco da sessao — 12 pacotes, 10 bytes cada.
+// Saber QUE o jogo descreveu um efeito nao basta: o que decide se ele vai continuar mandando forca
+// esta DENTRO do pacote (o tipo do efeito, a duracao, o eixo, o modo de tocar). Dois jogos podem
+// fazer a mesma sequencia de pedidos e divergir inteiramente no conteudo — e e essa a diferenca
+// entre o que funciona e o que emudece.
+volatile uint8_t  g_ffb_bytes[12][10] = {{0}};
+volatile uint32_t g_ffb_bytes_n = 0;
+// E o que NOS respondemos. Ate aqui o rastro so guardava o que o jogo mandou — metade da conversa.
+// A decisao de continuar mandando forca e do jogo, mas ele a toma com base nas NOSSAS respostas:
+// quantos efeitos cabem, se o efeito entrou, em que bloco. Sem esta metade, comparar dois jogos so
+// mostra que um parou; com ela, da para ver o que ele ouviu antes de parar.
+volatile uint8_t  g_ffb_respostas[8][6] = {{0}};
+volatile uint32_t g_ffb_respostas_n = 0;
+static inline void anota_resposta(uint8_t rid, const uint8_t* b, uint8_t n) {
+    if (g_ffb_respostas_n >= 8) return;
+    const uint32_t k = g_ffb_respostas_n++;
+    g_ffb_respostas[k][0] = rid;
+    g_ffb_respostas[k][1] = n;
+    for (uint8_t i = 0; i < 4; ++i) g_ffb_respostas[k][2 + i] = (i < n) ? b[i] : 0;
+}
+// [0]=numero entregue pelo driver  [1]=tamanho  [2..9]=os 8 primeiros bytes crus
+volatile uint8_t  g_ffb_pacote[10] = {0};
+volatile uint32_t g_ffb_pedidos_pos = 0;
+static inline void anota_pedido(uint8_t marca) {
+    if (g_ffb_inicio_n < 32) g_ffb_inicio[g_ffb_inicio_n++] = marca;
+    g_ffb_pedidos[g_ffb_pedidos_pos % 24] = marca;
+    g_ffb_pedidos_pos = (g_ffb_pedidos_pos + 1) % 24;
+}
+
+// ------------------------------------------------------------------------------------------------
+// AVISAR O JOGO DO NOSSO ESTADO — o que faltava para ACC e AC Evo darem forca
+// ------------------------------------------------------------------------------------------------
+// Este relatorio diz ao jogo se os atuadores estao com energia e se o efeito esta tocando. Nos o
+// declaravamos no descritor e so respondiamos quando perguntados — e o ACC nao pergunta: ele espera
+// RECEBER. Sem receber, ele reinicia a negociacao do force feedback em circulo e nunca chega a
+// enviar forca. Era essa a diferenca entre os jogos: AC1 e AMS2 nao dependem deste relatorio.
+//
+// A implementacao de referencia envia nos mesmos dois momentos usados aqui: quando um efeito e
+// carregado e quando o jogo manda tocar ou parar. Sao poucos envios por sessao — nao disputa espaco
+// com o relatorio do volante.
+// ⚠️ NUNCA ENVIAR DE DENTRO DO CALLBACK DE RECEPCAO.
+//
+// A primeira versao disto chamava o envio direto no callback que recebe o pacote do jogo — ou seja,
+// pedia a pilha USB que transmitisse enquanto ela ainda estava processando o que acabara de chegar.
+// Isso a trava; o cao-de-guarda reinicia a base; e a base entra em ciclo de reinicio, sem conseguir
+// nem abrir o jogo (bancada, 20/08/2026). Reentrar na pilha de dentro dela mesma nao e detalhe de
+// estilo, e uma trava.
+//
+// Aqui apenas ANOTAMOS que ha aviso a dar. Quem envia e o laco, no seu proprio tempo, com a pilha
+// livre — ver ffb_hid_enviar_estado_pendente(), chamada de ffb_task.
+static volatile uint8_t s_estado_pendente = 0;
+
+extern "C" void ffb_hid_avisar_estado(void) { s_estado_pendente = 1; }
+
+extern "C" void ffb_hid_enviar_estado_pendente(void) {
+    if (!s_estado_pendente) return;
+    if (!tud_hid_ready()) return;                 // sem a vez do endpoint, tenta no proximo laco
+    uint8_t st = buildPidStateByte(false /*pausado*/, true /*atuadores habilitados*/,
+                                   true /*chave de seguranca*/, true /*ATUADORES COM ENERGIA*/,
+                                   ffb_model_algum_efeito_tocando() /*efeito tocando*/);
+    if (tud_hid_n_report(0, RID_PID_STATE, &st, 1)) s_estado_pendente = 0;
+}
+
 extern "C" void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id,
                                       hid_report_type_t report_type,
                                       uint8_t const* buffer, uint16_t bufsize) {
-    (void)instance;
+    // ⚠️ A INTERFACE JÁ DIZ DE QUEM É O RELATÓRIO — não precisamos mais adivinhar pelo id.
+    //
+    // Com um canal só, tudo chegava misturado e o despacho era por faixa de report id: 0x10/0x14/
+    // 0x15/0x22 do app, o resto do jogo. Funcionava, mas dependia de os dois espaços de id nunca se
+    // cruzarem — uma regra frágil que ninguém do lado de fora conhece. Agora a interface separa na
+    // origem: instância 1 é o app, instância 0 é o jogo. O despacho por id fica como rede de
+    // segurança para firmware antigo do lado do PC.
     // TinyUSB entrega o report_id em `report_id` quando != 0; se 0, o 1º byte do buffer é o ID.
     uint8_t rid = report_id;
     const uint8_t* buf = buffer;
     uint16_t len = bufsize;
     if (rid == 0 && len > 0) { rid = buffer[0]; buf = buffer; }
 
+    // Retrato do ultimo pacote do jogo, como ele CHEGOU. O leitor de pacotes assume que o primeiro
+    // byte e o numero do relatorio — verdade quando o pacote vem pelo canal de dados, FALSO quando
+    // vem pelo canal de controle (ali o numero vem separado e o pacote comeca nos dados). Nesse
+    // caso tudo e lido deslocado e a forca sai zero. Isto aqui mostra qual dos dois esta
+    // acontecendo, sem adivinhacao: o numero que o driver entregou, o tamanho, e os bytes crus.
+    if (report_type != HID_REPORT_TYPE_FEATURE) {
+        g_ffb_pacote[0] = report_id;
+        g_ffb_pacote[1] = (uint8_t)bufsize;
+        for (uint8_t i = 0; i < 8; ++i) g_ffb_pacote[2 + i] = (i < bufsize) ? buffer[i] : 0;
+        if (g_ffb_bytes_n < 12) {
+            const uint32_t k = g_ffb_bytes_n++;
+            g_ffb_bytes[k][0] = report_id;
+            g_ffb_bytes[k][1] = (uint8_t)bufsize;
+            for (uint8_t i = 0; i < 8; ++i) g_ffb_bytes[k][2 + i] = (i < bufsize) ? buffer[i] : 0;
+        }
+    }
+
+    anota_pedido((uint8_t)(rid & 0x7F));
     if (report_type == HID_REPORT_TYPE_FEATURE) {
-        if (rid == RID_PID_CREATE_NEW_EFFECT)
+        if (rid == RID_PID_CREATE_NEW_EFFECT) {
             s_last_effect_block = ffb_model_create_effect();   // reserva o 1º bloco livre (1-based)
+            ffb_hid_avisar_estado();
+        }
         return;
     }
 
     // OUTPUT reports: canal A0 do app (0x10 DIRECT / 0x14 SETWRITE / 0x15 SETREAD / 0x22 CMD) vs
     // FFB do jogo (0x01-0x06,0x0A-0x0D...). Despacha por report ID (buf[0]=rid quando veio pelo EP OUT).
-    if (rid == 0x10 || rid == 0x14 || rid == 0x15 || rid == 0x22) {
+    if (instance == 1 || rid == 0x10 || rid == 0x14 || rid == 0x15 || rid == 0x22) {
         a0_handle_out(buf, len);
     } else {
         ffb_model_handle_out(buf, len);
+        // Tocar/parar muda o estado que o jogo esta esperando ouvir de volta.
+        if (rid == RID_PID_EFFECT_OPERATION || rid == RID_PID_DEVICE_CONTROL) ffb_hid_avisar_estado();
     }
 }
 
@@ -160,11 +270,12 @@ extern "C" uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
                                           hid_report_type_t report_type,
                                           uint8_t* buffer, uint16_t reqlen) {
     (void)instance;
+    anota_pedido((uint8_t)(0x80u | (report_id & 0x7Fu)));
 
     if (report_type == HID_REPORT_TYPE_INPUT && report_id == RID_PID_STATE && reqlen >= 1) {
-        buffer[0] = buildPidStateByte(false /*devicePaused*/, true /*actuatorsEnabled*/,
-                                      true /*safetySwitch*/, false /*actuatorOverride*/,
-                                      true /*actuatorPower*/);
+        buffer[0] = buildPidStateByte(false /*pausado*/, true /*atuadores habilitados*/,
+                                      true /*chave de seguranca*/, true /*ATUADORES COM ENERGIA*/,
+                                      ffb_model_algum_efeito_tocando() /*efeito tocando*/);
         return 1;
     }
 
@@ -180,6 +291,7 @@ extern "C" uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
             uint16_t avail = (uint16_t)(ffb_model_max_blocks() - ffb_model_used_blocks());
             buffer[2] = (uint8_t)(avail & 0xFF);
             buffer[3] = (uint8_t)(avail >> 8);
+            anota_resposta(RID_PID_BLOCK_LOAD, buffer, 4);
             return 4;
         }
 
@@ -206,6 +318,7 @@ extern "C" uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
             buffer[1] = (uint8_t)(maxEffects >> 8);
             buffer[2] = (uint8_t)maxEffects;            // maxSimultaneousEffects = o banco inteiro
             buffer[3] = 1;                              // memoryManagement: 1 = SharedParameterBlocks
+            anota_resposta(RID_PID_POOL, buffer, 4);
             return 4;
         }
     }

@@ -17,12 +17,14 @@
 #include "overtravel_guard.h"      // o volante nao pode estar alem do curso (guarda por POSICAO)
 #include "wheel_center.h"         // o zero do volante (batente nasce centrado) — ver o header
 #include "watchdog.h"             // a base reinicia sozinha em vez de congelar — ver o header
+#include "nvm_kv.h"               // compactação da persistência (único passo que apaga flash)
 #include "encoder_eccentricity.h"  // "o ima esta torto, e por quantos graus" — ver o header
 extern BrakeMeter g_brake_meter;  // definido em vendor/odrive-fw/MotorControl/low_level.cpp
 
 // Definido em ffb_hid.cpp: joystick (direção pro jogo).
 extern "C" int hid_send_joystick(void);      // joystick (direção pro jogo) — PRIORIDADE
-extern "C" void hid_usb_watchdog(uint32_t nowTick);      // destrava o EP IN se o host parar de aceitar
+extern "C" void hid_usb_watchdog(uint32_t nowTick);
+extern "C" void ffb_hid_enviar_estado_pendente(void);  // aviso de estado ao jogo, fora da pilha USB      // destrava o EP IN se o host parar de aceitar
 extern "C" void drvlab_irq_janela(uint32_t irq_total);   // taxa de IRQ do USB, janela de 1 s
 extern "C" int32_t a0_peek_motor_enable(void);   // trava lida da NVM antes do eixo iniciar
 extern "C" int a0_service(uint32_t nowMs);   // canal A0 do app (0x16 resposta / 0x21 telemetria) — na sobra
@@ -40,16 +42,31 @@ extern "C" bool a0_rearm_pending(void);      // CMD_REARM: destravar a guarda e 
 extern "C" void a0_rearm_clear(void);
 extern "C" void a0_revoke_motor_enable(void);  // a proteção retira a permissão (ver a0_channel)
 extern "C" bool a0_save_pending(void);       // CMD_SAVE pediu persistir os settings na FFB_NVM?
-extern "C" bool a0_commit_save(void);        // empacota + grava na flash (chamar SÓ com motor IDLE)
+extern "C" bool a0_commit_save(void);        // grava os ajustes (chave a chave; NÃO apaga flash)
+extern "C" int  a0_precisa_compactar(void);  // a página encheu: compactar exige o motor parado
+extern "C" void a0_compactou(void);
+extern "C" int  motor_link_calibracao_guardar(void);  // grava o offset medido: calibrar UMA vez
+extern volatile int32_t g_cal_reaproveitada;          // 1 = este boot subiu sem redescobrir nada
 
 // Diagnóstico do eixo, lido por SWD (SÓ leitura — não age no motor).
 volatile int32_t g_axis_dbg[7] = {0};   // [0]armed [1]state [2]axis_err [3]motor_err [4]enc_err [5]pos*1e3 [6]vel*1e3
 // Auto-arme com retry: 1 = após a cal, se ficar em IDLE (mesmo com erro), limpa e pede closed loop.
 // A cal do motor às vezes falha (CONTROL_DEADLINE_MISSED, timing); re-tentar fecha o arme. Zerar = seguro.
 volatile int32_t g_arm_gate = 1;
+// ⚠️ O PRAZO, O ADIAMENTO E A "GRAVAÇÃO DE TOCAIA" MORRERAM AQUI — e é uma boa notícia.
+//
+// Eles existiam para contornar um problema que deixou de existir: gravar exigia apagar um setor,
+// apagar congela a CPU, e por isso era preciso esperar o motor parar. Toda aquela máquina de
+// espera, desistência e retomada era andaime em volta do mecanismo errado.
+//
+// Com a persistência por chave/valor (nvm_kv), gravar é acrescentar 8 bytes: acontece na hora,
+// com o motor armado. Sobrou um único caso que ainda apaga — a página encher —, e ele é tratado
+// no laço, sem contadores nem prazos.
 // 1 = a calibração de offset deste boot está TRANCADA (pre_calibrated + índice reancorando).
 // Só leitura, para diagnóstico por SWD: se ficar 0 depois do boot, a cal não concluiu.
 volatile int32_t g_cal_locked = 0;
+// 1 = a calibração deste boot já foi para a memória permanente (não repete).
+static uint8_t s_cal_guardada = 0;
 
 // Trava de bring-up pedida na bancada (2026-08-09): a base sobe DESARMADA e só responde a comando
 // depois que o usuário confere os campos de hardware e liga "Ativar motor" (setting 45). Um firmware
@@ -322,28 +339,34 @@ static void ffb_thread(void*) {
         // o motor re-arma (pode re-calibrar o offset do encoder) — validar o feel na bancada.
         blackbox_step(BB_STEP_SAVE_FLASH);
         if (a0_save_pending()) {
-            g_arm_gate = 0;                              // suspende o auto-arme (senão re-arma na hora)
-            if (motor_link_motor_is_armed()) {
-                motor_link_request_idle();            // desarma p/ a flash não estourar deadline
+            // ⚠️ GRAVAR DEIXOU DE EXIGIR O MOTOR PARADO.
+            //
+            // Enquanto a persistência era um blob, salvar significava APAGAR um setor — 250 ms de
+            // processador congelado, incompatível com o controle de 8 kHz. Por isso este bloco
+            // desarmava o motor, esperava, e numa base ocupada o "Salvar" simplesmente não
+            // acontecia. Era a origem de "cliquei em salvar e não salvou".
+            //
+            // Agora cada ajuste é uma chave acrescentada ao fim da página: duas escritas de 32
+            // bits, microssegundos, sem apagar nada. Pode acontecer com o motor armado, no meio de
+            // uma volta, sem ninguém perceber.
+            //
+            // Sobrou UM caso que ainda apaga: quando a página enche (a cada ~400 cliques em
+            // Salvar). Aí sim é preciso o motor parado — e aí sim vale desarmar, porque é raro,
+            // previsível e o pedido não se perde: a gravação fica pendente e conclui logo depois.
+            if (!a0_precisa_compactar()) {
+                a0_commit_save();
+            } else if (motor_link_motor_is_armed()) {
+                g_arm_gate = 0;
+                motor_link_request_idle();      // só para compactar, não para gravar
             } else {
-                motor_link_set_input_torque(0.0f);    // torque zero antes de congelar a CPU
-                // ⚠️ ALIMENTAR O WATCHDOG EM VOLTA DA GRAVAÇÃO. O erase/program CONGELA a CPU, e
-                // este laço é justamente quem alimenta — durante a gravação ninguém alimenta, e o
-                // watchdog reinicia a base achando que ela travou.
-                //
-                // MEDIDO em 14/08/2026: a base reiniciou sozinha 3× num dia de ajustes, e a
-                // caixa-preta mostrou IWDGRSTF nos três boots. Não era travamento: era o próprio
-                // "Salvar no controlador". O watchdog é novo (13/08); antes disso a mesma pausa
-                // passava despercebida.
-                //
-                // Alimentar ANTES dá a janela inteira para a gravação, e alimentar DEPOIS garante
-                // que o tick seguinte não herde um contador já quase no fim. Uma pausa longa e
-                // CONHECIDA não é o que o watchdog existe para pegar — ele existe para o travamento
-                // que ninguém previu.
+                motor_link_set_input_torque(0.0f);
+                // O watchdog é alimentado em volta do erase pelo mesmo motivo de sempre: a CPU
+                // congela e quem alimenta é este laço. Pausa longa e CONHECIDA não é o que o
+                // watchdog existe para pegar.
                 watchdog_feed();
-                a0_commit_save();                        // erase+program (bloqueia, mas motor OFF = ok)
+                if (nvm_kv_compact()) a0_compactou();
                 watchdog_feed();
-                g_arm_gate = 1;                          // re-permite o arme
+                g_arm_gate = 1;
             }
         }
 
@@ -358,6 +381,24 @@ static void ffb_thread(void*) {
         //     aborta ("gira um pouco pra um lado e para" → UNKNOWN_PHASE_ESTIMATE).
         // Com o motor armado, a cal já terminou e o vbus é leitura real e estável. (O arme do
         // resistor em si é feito sem janela dentro da função — ver motor_link.cpp.)
+        // ⚠️ GUARDA A CALIBRAÇÃO ASSIM QUE ELA DÁ CERTO — e uma vez só.
+        //
+        // Sem isto, a base refaz a varredura completa a cada partida: uma volta de ida e outra de
+        // volta antes de ficar pronta. É trabalho jogado fora, e o usuário apontou o óbvio — nenhum
+        // firmware maduro faz isso; a própria referência manda calibrar uma vez e desligar a
+        // calibração de boot.
+        //
+        // O momento certo de guardar é este: malha fechada alcançada, ou seja, a calibração que
+        // acabou de rodar produziu um zero elétrico que o controlador aceitou. Guardar antes seria
+        // gravar um número que talvez não preste; guardar depois, nunca — porque o motor arma e a
+        // ocasião passa.
+        //
+        // Roda uma vez por boot (a flag), e nos boots seguintes nem chega aqui: quando a calibração
+        // é reaproveitada, não há nada novo a guardar.
+        if (!g_cal_reaproveitada && !s_cal_guardada && g_axis_dbg[1] == 8) {
+            s_cal_guardada = (motor_link_calibracao_guardar() != 0);
+        }
+
         blackbox_step(BB_STEP_AUTOSCALE);
         if (!g_bus_autoscaled && g_axis_dbg[1] == 8) {
             g_bus_autoscaled = motor_link_autoscale_bus_limits();
@@ -605,6 +646,10 @@ static void ffb_thread(void*) {
         // prioridade (o jogo precisa da direção); o canal A0 do app pega a SOBRA (janela 3 de 4).
         // Se A0 não tem nada a enviar, o joystick usa a janela.
         blackbox_step(BB_STEP_TELEMETRIA);
+        // O aviso de estado ao jogo tem a vez ANTES do resto: sao poucos por sessao, e e ele que faz
+        // ACC e AC Evo comecarem a mandar forca. Se o endpoint estiver ocupado, fica pendente e sai
+        // no proximo laco — nunca espera aqui dentro.
+        ffb_hid_enviar_estado_pendente();
         if ((n & 3) == 3) {
             blackbox_step(BB_STEP_TLM_A0);
             if (!a0_service(n)) hid_send_joystick();
