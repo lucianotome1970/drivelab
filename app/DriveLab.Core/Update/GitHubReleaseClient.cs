@@ -66,14 +66,14 @@ public sealed class GitHubReleaseClient
     }
 
     /// <summary>Prefixo de tag por dispositivo (ex.: Base → "firmware-base-v").</summary>
-    public static string TagPrefixFor(DeviceKind kind) => kind switch
+    /// <summary>Prefixo do tag procurado. O projeto publica UMA release por versão — tag "vX.Y.Z"
+    /// (com sufixo opcional, como "-alpha") — levando o firmware de todos os dispositivos junto, em
+    /// vez de uma release por peça. Quem separa é o nome do arquivo, não o tag (ver AssetFor).</summary>
+    public static string TagPrefixFor(DeviceKind kind)
     {
-        DeviceKind.Base => "firmware-base-v",
-        DeviceKind.Pedal => "firmware-pedal-v",
-        DeviceKind.Handbrake => "firmware-handbrake-v",
-        DeviceKind.Wheel => "firmware-wheel-v",
-        _ => "firmware-v",
-    };
+        _ = kind;   // o tag é o mesmo para todos; fica no parâmetro por compatibilidade de chamada
+        return "v";
+    }
 
     /// <summary>Release de maior versão cujo tag começa com o prefixo, ou null.</summary>
     public static GitHubRelease? LatestFor(IEnumerable<GitHubRelease> releases, string prefix)
@@ -115,7 +115,25 @@ public sealed class GitHubReleaseClient
     /// <summary>Asset do release para o dispositivo: .bin para a base (STM32/DFU), .uf2 para os RP2040.</summary>
     public static GitHubAsset? AssetFor(GitHubRelease release, DeviceKind kind)
     {
+        // A release traz o firmware de vários dispositivos, então a extensão sozinha não basta: é o
+        // NOME que diz de quem é o arquivo. Casa primeiro pelo dispositivo; se a release for antiga
+        // e tiver um arquivo só, cai no primeiro da extensão certa.
         var ext = kind == DeviceKind.Base ? ".bin" : ".uf2";
+        var apelido = kind switch
+        {
+            DeviceKind.Base => "base",
+            DeviceKind.Pedal => "pedal",
+            DeviceKind.Handbrake => "handbrake",
+            DeviceKind.Wheel => "wheel",
+            _ => null,
+        };
+        if (apelido is not null)
+        {
+            var doDispositivo = release.Assets.FirstOrDefault(a =>
+                a.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase) &&
+                a.Name.Contains(apelido, StringComparison.OrdinalIgnoreCase));
+            if (doDispositivo is not null) return doDispositivo;
+        }
         return release.Assets.FirstOrDefault(a => a.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
     }
 }
