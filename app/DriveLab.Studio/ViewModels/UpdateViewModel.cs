@@ -42,6 +42,12 @@ public sealed partial class UpdateViewModel : ViewModelBase
     // Estado que persiste entre Send (tentativa auto) e Continuar/Cancelar (etapa manual SW1→DFU):
     // qual dispositivo está sendo atualizado e se o acesso exclusivo à USB ainda está retido.
     private IDeviceUpdater? _inFlightDevice;
+    private readonly Func<DeviceKind, Task<string?>>? _backupBeforeUpdate;
+
+    /// <summary>Onde ficou a copia das configuracoes tirada antes desta atualizacao. Nulo se nao
+    /// havia o que salvar (placa sem configuracao lida) ou se o backup nao esta configurado.</summary>
+    [ObservableProperty]
+    private string? _backupPath;
     private bool _exclusiveHeld;
 
     /// <summary>Placa detectada + versão do firmware que está rodando nela (da telemetria 0x21), ou
@@ -113,8 +119,10 @@ public sealed partial class UpdateViewModel : ViewModelBase
         Func<Uri, Task<byte[]>>? downloadBytes = null,
         Func<DeviceKind, (bool, FirmwareVersion)>? deviceStatus = null,
         TimeSpan? bootloaderPollInterval = null,
-        IUiDispatcher? uiDispatcher = null)
+        IUiDispatcher? uiDispatcher = null,
+        Func<DeviceKind, Task<string?>>? backupBeforeUpdate = null)
     {
+        _backupBeforeUpdate = backupBeforeUpdate;
         _bootloaderPollInterval = bootloaderPollInterval ?? TimeSpan.FromSeconds(3);
         _uiDispatcher = uiDispatcher;
         Devices = devices;
@@ -421,6 +429,29 @@ public sealed partial class UpdateViewModel : ViewModelBase
         Progress = 0;
         try
         {
+            // BACKUP PRIMEIRO — e nao por capricho de ordem: depois do EnterDfu a placa sai do HID
+            // e vira bootloader, entao nao ha mais de quem ler a configuracao. Se a atualizacao
+            // trouxer um schema que nao combina com o que estava gravado, este arquivo e a unica
+            // forma de devolver a alguem os ajustes que custaram horas para acertar.
+            if (_backupBeforeUpdate is not null)
+            {
+                StatusMessage = "Salvando uma cópia das suas configurações...";
+                try
+                {
+                    BackupPath = await _backupBeforeUpdate(device.Kind);
+                }
+                catch (Exception ex)
+                {
+                    // Sai por aqui, e com a mensagem dizendo que a placa NAO foi tocada. O texto
+                    // generico de falha ("Falha na atualizacao") faria a pessoa acreditar que ficou
+                    // com o firmware pela metade — e ela mexeria na placa para consertar o que nao
+                    // quebrou. Aqui nada saiu do lugar: o firmware e a configuracao seguem os mesmos.
+                    StatusMessage = $"Não foi possível salvar a cópia das suas configurações " +
+                                    $"({ex.Message}) — nada foi alterado na placa.";
+                    return;
+                }
+            }
+
             StatusMessage = "Enviando comando para entrar em modo de atualização (DFU)...";
             await device.EnterBootloaderAsync();
 

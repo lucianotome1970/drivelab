@@ -342,7 +342,37 @@ public static class CompositionRoot
             },
             // A vigília do bootloader (o aviso "placa em modo de atualização") roda fora da thread de
             // UI e mexe em propriedades que alimentam bindings — as mudanças passam por aqui.
-            uiDispatcher: dispatcher);
+            uiDispatcher: dispatcher,
+            // A CÓPIA DE SEGURANÇA, tirada enquanto a placa ainda responde. Só a base por enquanto:
+            // é a que tem dezenas de ajustes que custam horas, e a única que já sabemos que vai
+            // receber firmware de gente que não tem bancada para socorrer a si mesma.
+            backupBeforeUpdate: async kind =>
+            {
+                if (kind != DeviceKind.Base || !session.IsConnected)
+                    return null;   // nada conectado = nada a perder
+
+                var lidos = new List<(BaseSettingId, double)>();
+                foreach (var d in BaseSettingsSchema.All)
+                {
+                    // Um campo que a placa não devolve é PULADO, não é motivo para abortar: firmware
+                    // antigo não conhece setting novo, e um backup de 54 campos vale muito mais do
+                    // que nenhum. Quem falha de verdade é a gravação do arquivo, lá embaixo.
+                    try { lidos.Add((d.Id, (await session.ReadSettingAsync(d.Id)).AsDouble)); }
+                    catch { }
+                }
+
+                var json = PreUpdateBackup.Montar(lidos, session.FirmwareVersion, DateTimeOffset.Now);
+                if (json is null)
+                    return null;
+
+                var pasta = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "DriveLab", "backups");
+                Directory.CreateDirectory(pasta);
+                var caminho = Path.Combine(pasta, $"base-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+                await File.WriteAllTextAsync(caminho, json);
+                return caminho;
+            });
         // Selo do módulo Update reflete o dispositivo SELECIONADO: refresca quando qualquer módulo conecta/
         // desconecta (a base já é escutada dentro do VM). Evita mostrar "sem conexão" da base ao atualizar o pedal.
         void RefreshUpdateStatus(object? s, EventArgs e) => dispatcher.Post(update.RefreshStatus);

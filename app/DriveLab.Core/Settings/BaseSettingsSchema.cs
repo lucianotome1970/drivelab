@@ -9,6 +9,11 @@ namespace DriveLab.Core.Settings;
 
 public static class BaseSettingsSchema
 {
+    /// <summary>Versao do CONTRATO dos settings — o que cada id significa, em que unidade e faixa.
+    /// Sobe quando o contrato muda de um jeito que exige migracao. Tem de bater com o campo de mesmo
+    /// nome em docs/settings-schema-congelado.json, e scripts/check-schema-freeze.py cobra isso.</summary>
+    public const int SchemaVersion = 1;
+
     public static IReadOnlyList<SettingDescriptor> All { get; } = new List<SettingDescriptor>
     {
         // ⚠️ O TETO É 1080 POR LIMITE DO PROTOCOLO. O eixo que vai para o jogo representa ±540°

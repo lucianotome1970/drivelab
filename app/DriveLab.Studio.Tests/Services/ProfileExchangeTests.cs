@@ -38,6 +38,43 @@ public class ProfileExchangeTests
         Assert.Equal("molhado", env.Profiles[1].Data!.Label);
     }
 
+    // Um backup so serve se, na hora de restaurar, der para saber DE ONDE ele veio. Sem isso, o
+    // arquivo tirado antes de uma atualizacao e um monte de numeros sem contexto: nao da para dizer
+    // se ele bate com o firmware que esta na placa agora nem avisar quem esta restaurando.
+    [Fact]
+    public void Envelope_Registra_De_Qual_Base_O_Perfil_Saiu()
+    {
+        var json = ProfileExchange.Serialize("wheelbase", new[]
+        {
+            ("antes da atualizacao", new FakeProfile { Strength = 70, Label = "backup" }),
+        }, DateTimeOffset.UnixEpoch, new ProfileDeviceStamp("0.2.7", 1));
+
+        var env = ProfileExchange.Deserialize<FakeProfile>(json);
+
+        Assert.Equal("0.2.7", env.Device!.Firmware);
+        Assert.Equal(1, env.Device!.SchemaVersion);
+    }
+
+    // Arquivo exportado antes deste campo existir tem de continuar abrindo — e exatamente a regra
+    // que estamos cobrando do schema de settings, e ela vale para o nosso proprio formato.
+    [Fact]
+    public void Envelope_Sem_Selo_De_Dispositivo_Continua_Abrindo()
+    {
+        const string antigo = """
+        {
+          "Version": 1,
+          "ExportedAt": "1970-01-01T00:00:00+00:00",
+          "Module": "wheelbase",
+          "Profiles": [ { "Name": "GT3", "Data": { "Strength": 80, "Label": "seco" } } ]
+        }
+        """;
+
+        var env = ProfileExchange.Deserialize<FakeProfile>(antigo);
+
+        Assert.Null(env.Device);
+        Assert.Equal(80, env.Profiles[0].Data!.Strength);
+    }
+
     [Fact]
     public void UniqueName_SuffixesOnCollision_NeverOverwrites()
     {

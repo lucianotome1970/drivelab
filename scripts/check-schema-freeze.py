@@ -116,6 +116,15 @@ def main():
 
     graves, avisos, novos = [], [], []
 
+    # A versao do contrato vive em DOIS lugares: aqui e no app, que a carimba no backup tirado antes
+    # de cada atualizacao. Divergirem faz o arquivo mentir sobre a propria origem.
+    m = re.search(r"SchemaVersion\s*=\s*(\d+)", SCHEMA_CS.read_text(encoding="utf-8"))
+    if not m:
+        graves.append("BaseSettingsSchema.SchemaVersion sumiu — o backup nao teria como se carimbar")
+    elif int(m.group(1)) != dados["schema_version"]:
+        graves.append(f"schema_version diverge: congelado={dados['schema_version']}, "
+                      f"app={m.group(1)}")
+
     for sid, a in sorted(antes.items()):
         if sid not in atual:
             if sid in APOSENTADOS:

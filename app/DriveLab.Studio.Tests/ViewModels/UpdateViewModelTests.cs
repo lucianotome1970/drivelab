@@ -7,6 +7,7 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using System.IO;
 using System.Text;
 using DriveLab.Core.Update;
 using DriveLab.Studio.Services;
@@ -118,8 +119,47 @@ public class UpdateViewModelTests
     }
 
     private static UpdateViewModel New(FakeUpdater updater, FakeFilePicker picker, byte[] fileBytes,
-        IDeviceAccessCoordinator? coordinator = null) =>
-        new(new List<IDeviceUpdater> { updater }, picker, _ => Task.FromResult(fileBytes), coordinator);
+        IDeviceAccessCoordinator? coordinator = null,
+        Func<DeviceKind, Task<string?>>? backup = null) =>
+        new(new List<IDeviceUpdater> { updater }, picker, _ => Task.FromResult(fileBytes), coordinator,
+            backupBeforeUpdate: backup);
+
+    // A configuracao do usuario so pode ser salva ENQUANTO a placa ainda responde. Depois do
+    // EnterDfu ela some do HID e vira um bootloader: nao ha mais de quem ler. Por isso a ordem
+    // importa, e nao basta "o backup acontece em algum momento".
+    [Fact]
+    public async Task Send_Faz_Backup_Antes_De_Entrar_Em_DFU()
+    {
+        var updater = new FakeUpdater { Events = new List<string>() };
+        var picker = new FakeFilePicker { PathToReturn = "/tmp/fw.bin" };
+        var vm = New(updater, picker, MakeFirmwareBytes(DeviceKind.Base),
+            backup: _ => { updater.Events!.Add("backup"); return Task.FromResult<string?>("/tmp/backup.json"); });
+        await vm.SelectFileCommand.ExecuteAsync(null);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal(new[] { "backup", "enter", "wait", "flash" }, updater.Events!.ToArray());
+    }
+
+    // Backup que falha nao pode virar atualizacao assim mesmo: o backup existe justamente para o
+    // caso em que a atualizacao da errado. E a mensagem tem de dizer que a PLACA continua intacta —
+    // "Falha na atualizacao" faz a pessoa achar que ficou com o firmware pela metade.
+    [Fact]
+    public async Task Send_Aborta_E_Diz_Que_A_Placa_Segue_Intacta_Se_O_Backup_Falha()
+    {
+        var updater = new FakeUpdater { Events = new List<string>() };
+        var picker = new FakeFilePicker { PathToReturn = "/tmp/fw.bin" };
+        var vm = New(updater, picker, MakeFirmwareBytes(DeviceKind.Base),
+            backup: _ => throw new IOException("disco cheio"));
+        await vm.SelectFileCommand.ExecuteAsync(null);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        Assert.False(updater.EnterCalled);
+        Assert.Empty(updater.Events!);
+        Assert.Contains("cópia", vm.StatusMessage);
+        Assert.Contains("nada foi alterado", vm.StatusMessage);
+    }
 
     [Fact]
     public async Task SelectFile_With_Wrong_Kind_Sets_Invalid_And_Disables_Send()

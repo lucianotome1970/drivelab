@@ -20,6 +20,25 @@ public sealed class ProfileExportEntry<T>
     public T? Data { get; set; }
 }
 
+/// <summary>De qual base este arquivo saiu. Existe para o backup tirado antes de uma atualização
+/// poder ser lido com contexto: sem isso o arquivo é um monte de números sem dono, e quem restaura
+/// não tem como saber se ele combina com o firmware que está na placa agora.
+///
+/// <para>Nulo em arquivo exportado antes deste campo existir, e em perfil compartilhado por quem
+/// não estava conectado a uma base.</para></summary>
+public sealed class ProfileDeviceStamp
+{
+    public string Firmware { get; set; } = "";
+    public int SchemaVersion { get; set; }
+
+    public ProfileDeviceStamp() { }
+    public ProfileDeviceStamp(string firmware, int schemaVersion)
+    {
+        Firmware = firmware;
+        SchemaVersion = schemaVersion;
+    }
+}
+
 /// <summary>Arquivo de perfis exportados. <see cref="Version"/> permite evoluir o formato sem quebrar
 /// arquivos antigos; <see cref="Module"/> evita importar perfil de pedal na tela da base.</summary>
 public sealed class ProfileExportEnvelope<T>
@@ -28,6 +47,7 @@ public sealed class ProfileExportEnvelope<T>
     public string ExportedAt { get; set; } = "";
     public string Module { get; set; } = "";
     public List<ProfileExportEntry<T>> Profiles { get; set; } = new();
+    public ProfileDeviceStamp? Device { get; set; }
 }
 
 /// <summary>
@@ -44,7 +64,8 @@ public static class ProfileExchange
         Converters = { new JsonStringEnumConverter() },
     };
 
-    public static string Serialize<T>(string module, IEnumerable<(string Name, T Data)> profiles, DateTimeOffset exportedAt)
+    public static string Serialize<T>(string module, IEnumerable<(string Name, T Data)> profiles,
+                                      DateTimeOffset exportedAt, ProfileDeviceStamp? device = null)
     {
         var envelope = new ProfileExportEnvelope<T>
         {
@@ -52,6 +73,7 @@ public static class ProfileExchange
             ExportedAt = exportedAt.ToString("o"),
             Module = module,
             Profiles = profiles.Select(p => new ProfileExportEntry<T> { Name = p.Name, Data = p.Data }).ToList(),
+            Device = device,
         };
         return JsonSerializer.Serialize(envelope, Options);
     }
