@@ -26,6 +26,7 @@ volatile int32_t  g_bb_trace_prev_vbus_mv  = 0;
 volatile int32_t  g_bb_trace_prev_iq_ma    = 0;
 volatile int32_t  g_bb_trace_prev_pos_mrad = 0;
 volatile uint32_t g_bb_trace_prev_usb_task = 0;
+volatile uint32_t g_bb_trace_prev_relogio = 0;
 volatile uint32_t g_bb_trace_prev_usb_claim = 0;
 volatile uint32_t g_bb_trace_prev_dwc2_wait = 0;
 volatile uint32_t g_bb_trace_prev_txfe = 0;
@@ -43,6 +44,8 @@ void blackbox_condicoes(int32_t vbus_mv, int32_t iq_ma, int32_t pos_mrad) {
 
 // Marca o trecho do laço. Guarda o ANTERIOR junto: um trecho que trava logo na entrada pode não
 // chegar a se marcar, e aí o par (anterior, atual) situa melhor que o atual sozinho.
+extern "C" uint32_t xTaskGetTickCount(void);   // relogio do sistema (FreeRTOS)
+
 void blackbox_step(uint32_t step) {
     if (g_bb_trace.magic != BB_TRACE_MAGIC) {   // primeira marcação depois de uma queda de energia
         g_bb_trace.magic     = BB_TRACE_MAGIC;
@@ -51,7 +54,10 @@ void blackbox_step(uint32_t step) {
     }
     if (step != g_bb_trace.step) g_bb_trace.last_step = g_bb_trace.step;
     g_bb_trace.step = step;
-    if (step == BB_STEP_INICIO) g_bb_trace.tick++;   // uma volta completa do laço
+    if (step == BB_STEP_INICIO) {
+        g_bb_trace.tick++;                       // uma volta completa do laço
+        g_bb_trace.relogio_so = xTaskGetTickCount();
+    }
 }
 
 void blackbox_init(void) {
@@ -77,6 +83,7 @@ void blackbox_init(void) {
         g_bb_trace_prev_vbus_mv  = g_bb_trace.vbus_mv;
         g_bb_trace_prev_iq_ma    = g_bb_trace.iq_ma;
         g_bb_trace_prev_pos_mrad = g_bb_trace.pos_mrad;
+        g_bb_trace_prev_relogio  = g_bb_trace.relogio_so;
         g_bb_trace_prev_usb_task = g_bb_trace.usb_task_ticks;
         g_bb_trace_prev_usb_irq  = g_bb_trace.usb_irq_ticks;
         g_bb_trace_prev_usb_claim = g_bb_trace.usb_claim_timeouts;

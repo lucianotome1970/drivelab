@@ -220,7 +220,14 @@ static inline void irqbits_conta(void) {
 extern "C" void OTG_FS_IRQHandler(void) { g_bb_trace.usb_irq_ticks++; irqbits_conta(); tud_int_handler(0); }
 
 // Callbacks do TinyUSB → eventos do ODrive
-extern "C" void tud_mount_cb(void)   { osMessagePut(usb_event_queue, 1, 0); }
+extern "C" void ffb_model_host_reconfigurou(void);   // ver ffb_model.cpp
+
+extern "C" void tud_mount_cb(void)   {
+    // O PC acabou de (re)configurar o dispositivo: o estado de forca recomeca, para que o jogo
+    // volte a receber os primeiros blocos do banco quando refizer o acerto.
+    ffb_model_host_reconfigurou();
+    osMessagePut(usb_event_queue, 1, 0);
+}
 extern "C" void tud_umount_cb(void)  { osMessagePut(usb_event_queue, 2, 0); }
 extern "C" void tud_suspend_cb(bool) { osMessagePut(usb_event_queue, 2, 0); }
 extern "C" void tud_resume_cb(void)  { osMessagePut(usb_event_queue, 1, 0); }

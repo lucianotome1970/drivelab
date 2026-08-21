@@ -553,6 +553,19 @@ extern "C" int     ffb_model_used_blocks(void)   { return s_effects.usedBlocks()
 extern "C" int     ffb_model_max_blocks(void)    { return kEffectSlots; }
 // Ha efeito montado e valendo? E o que o relatorio de estado chama de "efeito tocando".
 extern "C" bool    ffb_model_algum_efeito_tocando(void) { return s_effects.usedBlocks() > 0; }
+// O PC RECONFIGUROU O DISPOSITIVO: o estado de forca recomeca do zero.
+//
+// Quando o jogo abre a tela de configuracao do volante, ele solta e reabre o dispositivo, e ao
+// voltar refaz o acerto de efeitos esperando comecar do primeiro bloco. Se os efeitos anteriores
+// continuarem ocupando o banco, devolvemos blocos 3 e 4 para quem espera 1 e 2 — e ele nao volta a
+// enviar forca, embora nada esteja travado (bancada, 21/08/2026: base viva, dois efeitos alocados,
+// jogo mudo).
+//
+// Um dispositivo real limpa o estado de forca ao ser reconfigurado. E o que fazemos aqui.
+extern "C" void ffb_model_host_reconfigurou(void) {
+    s_effects.reset();
+    s_recon.setTarget(0.0f);
+}
 extern "C" void    ffb_model_set_device_gain(uint8_t g) { s_deviceGain = g; }
 
 extern "C" void ffb_model_handle_out(const uint8_t* buf, uint16_t len) {

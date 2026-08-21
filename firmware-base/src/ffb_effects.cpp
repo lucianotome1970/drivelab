@@ -25,8 +25,19 @@ bool fxDecodeSetEffect(const uint8_t* buf, uint16_t len, FxEffect& e) {
 
     e.block = buf[1];
     e.type = fxTypeFromWire(buf[2]);
-    uint16_t duration = fxU16(&buf[3]);
-    e.durationMs = duration; // 0 == infinito (armazena 0)
+    // ⚠️ DURACAO: 0xFFFF SIGNIFICA "PARA SEMPRE" — e o que os jogos mandam.
+    //
+    // Tratavamos apenas o ZERO como infinito e guardavamos o resto como milissegundos. So que o
+    // valor que o protocolo usa para "sem fim" e 0xFFFF, e e exatamente esse que os jogos enviam
+    // (visto na captura do barramento: `01 02 01 FF FF ...`). Guardavamos 65.535 ms e o efeito
+    // vencia sozinho pouco mais de um minuto depois: o jogo seguia mandando forca, nos seguiamos
+    // recebendo, e o efeito ja nao entrava na soma — a forca sumia sem nada travar e sem erro
+    // nenhum, que e o pior tipo de defeito para achar.
+    //
+    // Zero continua valendo como infinito: ha implementacoes que o usam com esse sentido, e aceitar
+    // os dois nao custa nada.
+    const uint16_t duration = fxU16(&buf[3]);
+    e.durationMs = (duration == 0xFFFFu) ? 0u : duration;   // 0 = sem fim (interno)
     e.startMs = fxU16(&buf[9]);
     e.gain = buf[11];
     e.enableAxis = buf[13];                          // bitmask de eixos + bit de direção polar

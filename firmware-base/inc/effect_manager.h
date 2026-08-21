@@ -41,6 +41,8 @@ class EffectManager {
     // wrap e recebe um bloco reusado/errado → trava. Agora reusamos o 1º livre e o
     // Block Load reporta o pool REAL. Ver [[drivelab-game-compat-a0]].
     bool m_allocated[kEffectSlots] = {false};
+    // Comeca LIGADO: um jogo que nunca mande "habilitar" (a maioria) tem de funcionar.
+    bool m_ffbLigado = true;
 
     // Estado p/ estimar aceleração (efeito Inertia) entre chamadas de
     // computeForce — um único "sensor" compartilhado por todos os slots
@@ -228,12 +230,16 @@ public:
         const uint8_t reportId = buf[0];
 
         if (reportId == 0x0C) {
+            // O campo e uma MASCARA DE BITS, e os seis comandos importam — tratavamos dois.
+            // Ignorar "continuar" era o que deixava a forca sem voltar depois da tela de
+            // configuracao do jogo.
             const uint8_t mask = buf[1];
-            if (mask & 0x08) {
-                reset();
-            } else if (mask & 0x04) {
-                stopAll();
-            }
+            if (mask & 0x08) { reset(); m_ffbLigado = true; }  // reiniciar: limpa e volta pronto
+            if (mask & 0x02) stopAll();                        // desabilitar
+            if (mask & 0x04) stopAll();                        // parar tudo
+            if (mask & 0x10) stopAll();                        // pausar
+            if (mask & 0x01) resumeAll();                      // habilitar
+            if (mask & 0x20) resumeAll();                      // continuar
             return;
         }
 
@@ -272,11 +278,15 @@ public:
             case 1: // start
                 m_slots[s].active = true;
                 m_slots[s].startMs = nowMs;
+                m_ffbLigado = true;   // mandar tocar vale como religar: nao ficar mudo por um bit
                 break;
-            case 2: // startSolo
-                stopAll();
+            case 2: // startSolo — toca ESTE e cala os OUTROS
+                // ⚠️ Nao usar stopAll() aqui: agora ele e o interruptor GERAL da saida, e
+                // "tocar sozinho" quer silenciar os outros efeitos, nao a base inteira.
+                for (int k = 0; k < kEffectSlots; ++k) m_slots[k].active = false;
                 m_slots[s].active = true;
                 m_slots[s].startMs = nowMs;
+                m_ffbLigado = true;
                 break;
             case 3: // stop
                 m_slots[s].active = false;
@@ -319,6 +329,7 @@ public:
 
     // Limpa TODOS os slots pro estado default.
     void reset() {
+        m_ffbLigado = true;
         for (int i = 0; i < kEffectSlots; ++i) {
             m_slots[i] = FxEffect{};
             m_allocated[i] = false;
@@ -327,11 +338,21 @@ public:
     }
 
     // Desativa todos os slots, preservando os parâmetros.
-    void stopAll() {
-        for (int i = 0; i < kEffectSlots; ++i) {
-            m_slots[i].active = false;
-        }
-    }
+    // ============================================================================================
+    // PARAR A FORCA E UM INTERRUPTOR, NAO UM APAGADOR
+    // ============================================================================================
+    // Antes, "parar tudo" desligava CADA efeito, e para voltar cada um precisava receber um novo
+    // comando de tocar. So que o jogo nao remanda tocar: ele manda "continuar" e espera que o que
+    // ja estava montado volte a valer. Resultado: ao entrar na tela de configuracao e sair, a forca
+    // nunca voltava — o jogo seguia enviando, nos seguiamos recebendo, e nada saia (bancada,
+    // 21/08/2026).
+    //
+    // As duas implementacoes de referencia usam um interruptor global: os efeitos continuam
+    // montados e ativos, so a saida e silenciada. Religar devolve tudo de uma vez. E o que fazemos
+    // aqui.
+    void stopAll() { m_ffbLigado = false; }
+    void resumeAll() { m_ffbLigado = true; }
+    bool ffbLigado() const { return m_ffbLigado; }
 
     const FxEffect& slot(int i) const { return m_slots[i]; } // p/ testes
 
@@ -390,6 +411,7 @@ public:
 
         for (int i = 0; i < kEffectSlots; ++i) {
             const FxEffect& e = m_slots[i];
+            if (!m_ffbLigado) continue;   // saida silenciada: os efeitos ficam montados
             if (!e.active) continue;
             if (e.durationMs > 0 && (nowMs - e.startMs) >= e.durationMs) continue; // expirado
 

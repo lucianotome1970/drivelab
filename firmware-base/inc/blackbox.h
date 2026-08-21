@@ -216,6 +216,11 @@ typedef struct {
     // Transferencias concluidas. Nao entram no filme (mil por segundo o encheriam em 24 ms); aqui
     // servem para responder "o fluxo estava vivo?" sem gastar o espaco do que e raro.
     uint32_t usb_entregas;
+    // Relogio do sistema operacional na ultima volta do laco. E o que separa duas causas opostas
+    // de travamento: se ele ANDOU enquanto o laco nao rodava, alguem de prioridade maior
+    // monopolizou o processador; se ele PAROU, o proprio sistema travou (interrupcao presa). Sem
+    // isto, "travou no fim do laco" nao diz qual das duas — e as correcoes sao opostas.
+    uint32_t relogio_so;
     uint32_t usb_filme[24];
     uint32_t usb_filme_pos;
 } BlackBoxTrace;
@@ -258,6 +263,8 @@ extern volatile int32_t  g_bb_trace_prev_vbus_mv;
 extern volatile int32_t  g_bb_trace_prev_iq_ma;
 extern volatile int32_t  g_bb_trace_prev_pos_mrad;
 extern volatile uint32_t g_bb_trace_prev_usb_task;
+/// Relogio do sistema na ultima volta antes do travamento — ver relogio_so.
+extern volatile uint32_t g_bb_trace_prev_relogio;
 /// Desistencias de tomar o mutex do endpoint NO BOOT ANTERIOR. Sobrevive ao reset, que e
 /// justamente o caso interessante: se a base reiniciou, este numero diz se ela chegou a
 /// desistir antes — ou seja, se a espera infinita estava mesmo acontecendo.

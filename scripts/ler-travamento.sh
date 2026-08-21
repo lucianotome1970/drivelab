@@ -44,7 +44,10 @@ passo() {
 
 # le direto da memoria permanente: chaves 0xFF20..0xFF23
 D=$("$OCD/bin/openocd.exe" -s "$OCD/openocd/scripts" -f interface/stlink.cfg -f target/stm32f4x.cfg \
-      -c "init" -c "echo P:[read_memory 0x08004000 32 2048]" -c "shutdown" 2>&1 | grep -oE '^P:.*' | cut -c3-)
+# ⚠️ SAO DUAS PAGINAS (setores 1 e 2): a ativa alterna quando uma enche. Ler so a primeira
+# faz o rastro parecer inexistente quando ele esta na outra (visto em 21/08/2026).
+      -c "init" -c "echo P:[read_memory 0x08004000 32 2048]" -c "echo P:[read_memory 0x08008000 32 2048]" -c "shutdown" 2>&1 | grep -oE '^P:.*' | cut -c3- | tr '
+' ' ')
 [ -n "$D" ] || { echo "SWD nao respondeu — o ST-Link esta na USB?"; exit 1; }
 
 python - "$D" <<'PY'
