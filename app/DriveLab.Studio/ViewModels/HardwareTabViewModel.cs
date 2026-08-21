@@ -192,11 +192,29 @@ public sealed partial class HardwareTabViewModel : SettingsGroupViewModel
     [RelayCommand]
     private async Task RebootAsync()
     {
+        // ⚠️ CONFIRMAR QUE REINICIOU, e não apenas anunciar que o comando saiu.
+        //
+        // Antes esta tela dizia "reiniciando…" assim que o relatório era enviado, e pronto — se a
+        // base não reiniciasse, ninguém avisava. Na bancada de 18/08/2026 nenhum comando funcionava
+        // e o app seguia respondendo com a mesma frase otimista; a causa (o PC tinha parado de falar
+        // com a base) só apareceu com um leitor por SWD. Enviar não é executar.
+        //
+        // A prova do reinício é a base PARAR de falar e VOLTAR — nessa ordem, porque se ela nunca
+        // parou é sinal de que o comando não chegou. Ver ExecutarVerificadoAsync.
+        RebootStatus = "Reiniciando a base… o motor é desarmado antes do reset.";
         try
         {
-            await _session.SendCommandAsync(BaseCommand.Reboot);
-            RebootStatus = "Reiniciando a base… o motor é desarmado antes do reset. " +
-                           "A conexão cai e volta em alguns segundos.";
+            var r = await _session.ExecutarVerificadoAsync(BaseCommand.Reboot);
+            RebootStatus = r switch
+            {
+                ResultadoDeComando.Ok           => "Reiniciada. A base voltou e está respondendo.",
+                ResultadoDeComando.SemConexao   => "Não há base conectada.",
+                ResultadoDeComando.BaseMuda     => "A base não está respondendo — nenhum comando vai " +
+                                                   "chegar. Verifique o cabo USB e a porta antes de tentar de novo.",
+                ResultadoDeComando.NaoConfirmou => "A base NÃO confirmou o reinício. Ela pode ter reiniciado " +
+                                                   "e não voltado, ou o comando não chegou. Confira a conexão.",
+                _                               => "Comando enviado.",
+            };
         }
         catch (Exception ex)
         {

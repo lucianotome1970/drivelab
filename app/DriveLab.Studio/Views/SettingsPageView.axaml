@@ -12,10 +12,33 @@
              x:Class="DriveLab.Studio.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
     <Border Classes="card">
-        <Grid RowDefinitions="Auto,*">
+        <Grid RowDefinitions="Auto,Auto,*">
             <!-- Cabeçalho: o título do módulo vive no topo do app ("DriveLab Studio — Base do Volante").
                  Aqui só as ações (dir). -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+            <!-- RESULTADO DO SALVAR — ACIMA dos botões e COLORIDO pelo desfecho.
+                 Ficava embaixo, sobreposto ao conteúdo e sempre da mesma cor: um "salvo" tinha
+                 exatamente a mesma aparência de um "não gravou", e quem acabou de clicar precisava
+                 LER para saber o que houve. Verde e vermelho respondem antes da leitura; o texto
+                 explica só quando é preciso explicar. -->
+            <Border Grid.Row="0" Margin="0,0,0,10" CornerRadius="6" Padding="12,8"
+                    IsVisible="{Binding MensagemDeSalvar, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Border.Styles>
+                    <Style Selector="Border">
+                        <Setter Property="Background" Value="#33E74C3C" />
+                        <Setter Property="BorderBrush" Value="#88E74C3C" />
+                        <Setter Property="BorderThickness" Value="1" />
+                    </Style>
+                </Border.Styles>
+                <Panel>
+                    <Border Background="#332ECC71" BorderBrush="#882ECC71" BorderThickness="1"
+                            CornerRadius="6" Margin="-13,-9,-13,-9"
+                            IsVisible="{Binding SalvarDeuCerto}" />
+                    <TextBlock Text="{Binding MensagemDeSalvar}" TextWrapping="Wrap" FontSize="12"
+                               Foreground="{DynamicResource DlText}" />
+                </Panel>
+            </Border>
+
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
                 <!-- Retorno da última exportação/importação. Fica à ESQUERDA, na mesma linha dos
                      botões: é onde o olho já está depois de clicar, e não empurra o conteúdo. -->
                 <TextBlock Grid.Column="0" Text="{Binding ExchangeStatus}" TextWrapping="Wrap"
@@ -35,18 +58,7 @@
                 </StackPanel>
             </Grid>
 
-            <!-- RESULTADO DO SALVAR. Um "Salvar" que não responde é pior que um que falha avisando:
-                 a gravação exige o motor parado, e numa base presa tentando calibrar ela pode nunca
-                 acontecer — o ajuste vale na sessão e some no reinício. Sem esta linha, isso é
-                 indistinguível de "o app não salva" (bancada, 15/08/2026). -->
-            <Border Grid.Row="0" VerticalAlignment="Bottom" Margin="0,0,0,-14"
-                    IsVisible="{Binding MensagemDeSalvar, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Background="#22FFFFFF" CornerRadius="6" Padding="12,8">
-                <TextBlock Text="{Binding MensagemDeSalvar}" TextWrapping="Wrap" FontSize="12"
-                           Foreground="{DynamicResource DlText}" />
-            </Border>
-
-            <TabControl Grid.Row="1" ItemsSource="{Binding Tabs}">
+            <TabControl Grid.Row="2" ItemsSource="{Binding Tabs}">
                 <TabControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:PageTab">
                         <TextBlock Text="{Binding Header}" />

@@ -363,6 +363,10 @@ Esta curva vale DEPOIS da linearidade e ANTES dos limites de torque e de corrent
   <data name="Setting_MotorEnable" xml:space="preserve"><value>Permitir armar o motor</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>Salvo na base — sobrevive a reiniciar.</value></data>
   <data name="Settings_SaveBusy" xml:space="preserve"><value>A base não confirmou a gravação. Os ajustes estão VALENDO, mas só na memória: eles se perdem ao reiniciar. Isso acontece quando o motor nunca para — uma base presa tentando calibrar, por exemplo. Resolva o que a está impedindo e salve de novo.</value></data>
+  <data name="Settings_SaveMismatch" xml:space="preserve"><value>A base gravou, mas o que ficou guardado nao e o que voce mandou. Os valores abaixo voltarao diferentes ao reiniciar.</value></data>
+  <data name="Settings_SaveUnverified" xml:space="preserve"><value>A base gravou, mas nao deu para conferir estes campos — a leitura nao voltou a tempo. O mais provavel e que esteja tudo certo; para ter certeza, salve de novo daqui a pouco.</value></data>
+  <data name="Settings_SaveSemBase" xml:space="preserve"><value>A base nao esta respondendo — o comando nem chegou nela. Nada foi gravado. Verifique o cabo USB e a porta; se o volante tambem sumiu do controle de jogos do Windows, o problema e a conexao, nao o ajuste.</value></data>
+  <data name="Settings_SaveErroFlash" xml:space="preserve"><value>A memoria da base recusou a gravacao. Isso e falha de hardware da flash, nao ajuste — os valores continuam valendo ate reiniciar. Chaves recusadas:</value></data>
   <data name="Base_Rearm" xml:space="preserve"><value>Armar o motor</value></data>
   <data name="Base_RearmWhy" xml:space="preserve"><value>O motor está desligado. Se uma proteção o parou — a guarda de curso, por exemplo, quando o volante passa do fim do giro —, ele não volta sozinho. Armar destrava a proteção, limpa os erros e volta a aplicar força na hora. Confira se o volante está dentro do curso antes de fazer isso.</value></data>
   <data name="Tray_Open" xml:space="preserve"><value>Abrir o DriveLab</value></data>

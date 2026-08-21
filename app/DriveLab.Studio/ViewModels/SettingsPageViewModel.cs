@@ -66,7 +66,16 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
             field.Edited += OnFieldEdited;
     }
 
-    private void OnFieldEdited(object? sender, EventArgs e) => IsDirty = true;
+    // ⚠️ MEXEU, A MENSAGEM SOME. Ela descreve o resultado de UM clique em Salvar, e ficava na tela
+    // até o próximo — inclusive depois de a pessoa mudar os campos, reconectar a base ou resolver o
+    // que a impedia. Na bancada em 16/08/2026 o aviso de "não confirmou a gravação" continuou lá com
+    // a base já normal e nada pendente, e a leitura natural é que o problema persiste. Aviso que não
+    // corresponde mais ao estado é ruído, e ruído se aprende a ignorar — inclusive quando é verdade.
+    private void OnFieldEdited(object? sender, EventArgs e)
+    {
+        IsDirty = true;
+        MensagemDeSalvar = null;
+    }
 
     /// <summary>Todos os campos de setting das abas (cada aba de config é um SettingsGroupViewModel).</summary>
     private IEnumerable<SettingFieldViewModel> AllFields() =>
@@ -76,8 +85,10 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     {
         IsConnected = _session.IsConnected;
         // Ao (re)conectar os grupos recarregam da placa via read (não dispara SettingChanged):
-        // app passa a refletir a flash, então zera o dirty.
+        // app passa a refletir a flash, então zera o dirty. A mensagem do último Salvar vai junto:
+        // ela fala de uma tentativa contra uma conexão que já não é esta.
         IsDirty = false;
+        MensagemDeSalvar = null;
     }
 
     // SettingChanged só dispara em WriteSettingAsync (nunca em read/load) → todo write marca dirty.
@@ -89,37 +100,97 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()
     {
-        // ENVIA primeiro, persiste depois. Mexer nos controles não manda mais nada para a base
-        // (SettingFieldViewModel.OnValueChanged) — o usuário monta o ajuste inteiro na tela e só aqui
-        // ele vai para a placa, de uma vez. Evita reconfigurar a base ao vivo com o motor armado e a
-        // rajada de writes de quando se arrasta um slider.
+        // ============================================================================================
+        // SALVAR: MANDA, GRAVA, E A BASE DIZ O QUE ACONTECEU
+        // ============================================================================================
+        // Este método já teve rodadas de reenvio, prazos, releitura campo a campo e três mensagens
+        // diferentes de fracasso. Tudo isso era andaime em volta de um mecanismo que não dava
+        // resposta: a base empacotava tudo, apagava um setor e reescrevia — precisava do motor
+        // parado, e se um ajuste se perdesse no caminho ela gravava o valor velho sem saber.
+        //
+        // Com a persistência por chave, cada ajuste é gravado individualmente e CONFERIDO na própria
+        // base, que agora reporta o balanço: quantas chaves escreveu, quantas já estavam certas e
+        // quantas falharam. Não há mais o que deduzir daqui — só perguntar.
+        //
+        // A releitura continua, e de propósito: ela é a única prova de que o valor que saiu daqui é o
+        // que ficou lá. O balanço diz que a gravação funcionou; a releitura diz que gravou O SEU
+        // valor. As duas respondem perguntas diferentes, e já erramos por confundi-las.
+        MensagemDeSalvar = null;
+
         var enviados = new List<SettingFieldViewModel>();
         foreach (var field in AllFields())
             if (field.IsModified)
             {
                 await field.WriteAsync();
-                enviados.Add(field);   // só estes precisam ser conferidos depois
+                enviados.Add(field);
             }
 
-        // ⚠️ VERIFICAR O QUE FICOU GRAVADO, e não acreditar num aviso.
-        //
-        // A primeira versão disto perguntava à base "gravou?" por um contador na telemetria. Frágil
-        // dos dois lados: a telemetria é justamente o caminho onde o firmware trava, e um contador só
-        // diz que ALGO aconteceu — não QUE valor ficou lá. Se um campo não fosse enviado, o contador
-        // subiria igual e o app diria "salvo" sobre um ajuste que não foi.
-        //
-        // Agora o app relê os campos da memória permanente e compara com o que mandou. Se ler 4096,
-        // gravou 4096: não há o que interpretar. E se este caminho falhar, ele falha VISIVELMENTE (a
-        // leitura não volta) em vez de mentir — falhar avisando é aceitável, mentir não é.
-        //
-        // A gravação exige o motor PARADO (ela congela a CPU por ~250 ms), então numa base presa
-        // tentando calibrar ela pode não acontecer. É exatamente esse o caso que precisa ser dito.
-        await _session.SendCommandAsync(BaseCommand.SaveSettings);
+        if (enviados.Count == 0) { IsDirty = false; MensagemDeSalvar = L.Get("Settings_Saved"); return; }
 
-        MensagemDeSalvar = null;
-        var naoGravou = await ConferirGravacaoAsync(enviados);
-        IsDirty = naoGravou.Count > 0;
-        MensagemDeSalvar = naoGravou.Count == 0 ? L.Get("Settings_Saved") : L.Get("Settings_SaveBusy");
+        var r = await _session.ExecutarVerificadoAsync(BaseCommand.SaveSettings,
+                    prazo: TimeSpan.FromMilliseconds(PrazoDeConfirmacaoMs));
+
+        if (r is ResultadoDeComando.BaseMuda or ResultadoDeComando.SemConexao)
+        {
+            IsDirty = true;
+            MensagemDeSalvar = L.Get("Settings_SaveSemBase");
+            return;
+        }
+
+        // A base recusou alguma escrita? Isso é falha de flash de verdade — não vale insistir nem
+        // fingir sucesso, e o número vem dela, não de suposição nossa.
+        if (_session.UltimoEstado is { GravacoesComErro: > 0 } est)
+        {
+            IsDirty = true;
+            MensagemDeSalvar = L.Get("Settings_SaveErroFlash") + $" ({est.GravacoesComErro})";
+            return;
+        }
+
+        // Um ajuste pode ter se perdido a caminho da base — o relatório vai sem confirmação por
+        // campo. Reenviar os divergentes UMA vez cobre esse caso, que é o único que sobrou; se
+        // continuar diferente, a base está recusando aquele valor, e aí há o que investigar.
+        var naoBateu = await ConferirGravacaoAsync(enviados);
+        var divergiram = naoBateu.Where(c => !double.IsNaN(c.UltimoLidoDaMemoria)).ToList();
+        if (divergiram.Count > 0)
+        {
+            foreach (var campo in divergiram) await campo.WriteAsync();
+            await _session.ExecutarVerificadoAsync(BaseCommand.SaveSettings,
+                      prazo: TimeSpan.FromMilliseconds(PrazoDeConfirmacaoMs));
+            naoBateu   = await ConferirGravacaoAsync(divergiram);
+            divergiram = naoBateu.Where(c => !double.IsNaN(c.UltimoLidoDaMemoria)).ToList();
+        }
+
+        if (divergiram.Count == 0)
+        {
+            IsDirty = false;
+            MensagemDeSalvar = L.Get("Settings_Saved");
+            return;
+        }
+
+        IsDirty = true;
+        MensagemDeSalvar = L.Get("Settings_SaveMismatch") + "\n" +
+              string.Join("\n", divergiram.Select(c =>
+                  $"  • {c.DisplayName}: enviei {c.Value:0.###}, a base ficou com {c.UltimoLidoDaMemoria:0.###}"));
+    }
+
+    /// <summary>Quanto esperar pela confirmação da base antes de dizer que a gravação não aconteceu.
+    ///
+    /// <para>Público só porque o teste do caso "não gravou" precisa encurtá-lo — esperar dez segundos
+    /// de verdade num teste é tempo jogado fora, e um projeto que faz isso acaba deixando de rodar os
+    /// testes. Ninguém mais tem motivo para mexer aqui.</para></summary>
+    public int PrazoDeConfirmacaoMs { get; set; } = 10_000;
+
+    private async Task<bool> EsperarConfirmacaoAsync(byte? antes)
+    {
+        if (antes is null) return true;
+        const int passo = 200;
+        for (var esperou = 0; esperou < PrazoDeConfirmacaoMs; esperou += passo)
+        {
+            await Task.Delay(passo);
+            var agora = _session.UltimoEstado?.SaveCount;
+            if (agora is not null && agora != antes) return true;
+        }
+        return false;
     }
 
     /// <summary>Relê da memória permanente os campos que acabaram de ser enviados e devolve os que
@@ -139,13 +210,18 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
                 try
                 {
                     var gravado = await _session.ReadSettingSavedAsync(campo.SettingId);
-                    // Comparação numérica: o valor volta pelo mesmo tipo com que foi escrito, e a
-                    // tolerância cobre o ida-e-volta de float sem deixar passar diferença real.
-                    if (Math.Abs(gravado.AsDouble - campo.Value) > 0.001) restam.Add(campo);
+                    campo.UltimoLidoDaMemoria = gravado.AsDouble;
+                    // ⚠️ TOLERÂNCIA RELATIVA, e não absoluta. Um campo em ampères tolera 0,001 sem
+                    // problema; um Kt de 0,397 guardado como float de 32 bits volta como
+                    // 0,39699998..., e 0,001 absoluto é apertado o suficiente para acusar diferença
+                    // onde não há. Escalar pelo valor cobre os dois sem deixar passar erro real.
+                    var tolerancia = Math.Max(0.001, Math.Abs(campo.Value) * 0.001);
+                    if (Math.Abs(gravado.AsDouble - campo.Value) > tolerancia) restam.Add(campo);
                 }
                 catch
                 {
                     // Leitura não voltou: não dá para afirmar que gravou. Fica pendente e tenta de novo.
+                    campo.UltimoLidoDaMemoria = double.NaN;
                     restam.Add(campo);
                 }
             }
@@ -155,7 +231,16 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     }
 
     /// <summary>O que dizer depois de "Salvar" — vazio enquanto ninguém salvou nada nesta sessão.</summary>
-    [ObservableProperty] private string? _mensagemDeSalvar;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SalvarDeuCerto))]
+    private string? _mensagemDeSalvar;
+
+    /// <summary>Deu certo? Governa a COR do aviso.
+    ///
+    /// <para>A mensagem antiga era sempre da mesma cor, e um "salvo" tinha exatamente a mesma
+    /// aparência de um "não gravou". Quem acabou de clicar precisa saber o desfecho antes de ler —
+    /// verde e vermelho respondem em um relance, e o texto explica só quando é preciso explicar.</para></summary>
+    public bool SalvarDeuCerto => MensagemDeSalvar == L.Get("Settings_Saved");
 
     private bool CanSave() => IsConnected && IsDirty;
 

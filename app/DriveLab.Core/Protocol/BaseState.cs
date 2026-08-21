@@ -90,6 +90,30 @@ public sealed class BaseState
     /// "Salvar" e não sabia se salvou — o ajuste sumia no reinício e parecia bug do app.</para></summary>
     public byte SaveCount { get; set; }
 
+    /// <summary>O BALANÇO DO ÚLTIMO "SALVAR", dito pela base — não deduzido pelo app.
+    ///
+    /// <para>Cada ajuste é uma chave gravada individualmente, então a base sabe exatamente o que
+    /// aconteceu com cada uma: quantas foram escritas, quantas já estavam com o valor certo (e por
+    /// isso nem foram tocadas — gravar o que não mudou seria desgastar a flash à toa) e quantas ela
+    /// não conseguiu escrever.</para>
+    ///
+    /// <para>Antes disso, o app relia os campos um a um e ainda assim não distinguia "não gravou"
+    /// de "não consegui conferir" — e chegou a acusar como não salvos campos que estavam gravados
+    /// corretamente. Perguntar a quem sabe é melhor que inferir de fora.</para></summary>
+    public ushort GravacoesEscritas { get; set; }
+
+    /// <summary>Chaves que já estavam com o valor pedido. Alto é BOM: significa que salvar de novo
+    /// não custou nada.</summary>
+    public ushort GravacoesIguais { get; set; }
+
+    /// <summary>Chaves que a flash recusou. Qualquer valor acima de zero é um problema real de
+    /// gravação — e nomeia o único caso em que "não salvou" é verdade.</summary>
+    public ushort GravacoesComErro { get; set; }
+
+    /// <summary>Quantos ajustes ainda cabem antes de a base precisar compactar a memória (o único
+    /// momento que exige o motor parado). Serve para avisar antes, em vez de surpreender.</summary>
+    public ushort EspacoDeGravacaoLivre { get; set; }
+
     /// <summary>Pico de clipping do jogo na sessão, em 0..100%.</summary>
     public int ClippingPeakGamePercent => (int)System.Math.Round(ClippingPeakGame / 255.0 * 100);
 
@@ -176,5 +200,15 @@ public sealed class BaseState
         EncoderFaseGraus = src.Length > 46 ? BinaryPrimitives.ReadInt16LittleEndian(src[45..47]) / 10.0 : 0,
         EncoderPolePairs = src.Length > 47 ? src[47] : (byte)0,
         SaveCount = src.Length > 48 ? src[48] : (byte)0,
+        GravacoesEscritas     = LerU16(src, 49),
+        GravacoesIguais       = LerU16(src, 51),
+        GravacoesComErro      = LerU16(src, 53),
+        EspacoDeGravacaoLivre = LerU16(src, 55),
     };
+
+    /// <summary>Lê dois bytes só se eles existirem. Firmware mais antigo manda um relatório mais
+    /// curto, e ler além do fim quebraria a conexão inteira por causa de um campo novo — o app
+    /// precisa conversar com a base que a pessoa tem, não só com a mais recente.</summary>
+    private static ushort LerU16(ReadOnlySpan<byte> src, int pos) =>
+        src.Length > pos + 1 ? BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(pos, 2)) : (ushort)0;
 }

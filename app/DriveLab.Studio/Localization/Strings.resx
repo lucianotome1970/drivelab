@@ -364,6 +364,10 @@ This curve applies AFTER linearity and BEFORE the torque and current limits — 
   <data name="Setting_MotorEnable" xml:space="preserve"><value>Allow the motor to arm</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>Saved to the base — it survives a restart.</value></data>
   <data name="Settings_SaveBusy" xml:space="preserve"><value>The base did not confirm the write. Your settings are ACTIVE but only in memory: they will be lost when it restarts. This happens when the motor never stops — a base stuck retrying calibration, for instance. Fix what is stopping it and save again.</value></data>
+  <data name="Settings_SaveMismatch" xml:space="preserve"><value>The base wrote to memory, but what it stored is not what you sent. The values below will come back different after a restart.</value></data>
+  <data name="Settings_SaveUnverified" xml:space="preserve"><value>The base wrote to memory, but these fields could not be checked — the read did not come back in time. Most likely everything is fine; to be sure, save again in a moment.</value></data>
+  <data name="Settings_SaveSemBase" xml:space="preserve"><value>The base is not responding — the command never reached it, and nothing was saved. Check the USB cable and port; if the wheel also disappeared from the Windows game controllers, the problem is the connection, not the setting.</value></data>
+  <data name="Settings_SaveErroFlash" xml:space="preserve"><value>The base memory refused the write. This is a flash hardware failure, not a setting problem — your values stay active until restart. Keys refused:</value></data>
   <data name="Base_Rearm" xml:space="preserve"><value>Arm the motor</value></data>
   <data name="Base_RearmWhy" xml:space="preserve"><value>The motor is off. If a protection stopped it — the travel guard, for instance, when the wheel goes past the end of its range — it does not come back on its own. Arming releases the protection, clears the errors and applies force straight away. Check that the wheel is inside its range before you do it.</value></data>
   <data name="Tray_Open" xml:space="preserve"><value>Open DriveLab</value></data>

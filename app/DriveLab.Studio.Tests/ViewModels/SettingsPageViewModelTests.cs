@@ -5,6 +5,7 @@
 //  Copyright (c) 2026 Luciano Tomé — Licença MIT
 // ============================================================================
 
+using DriveLab.Core.Protocol;
 using DriveLab.Core.Settings;
 using DriveLab.Studio.Services;
 using DriveLab.Studio.Tests.Services;
@@ -83,7 +84,59 @@ public class SettingsPageViewModelTests
         // reiniciar. Limpar a pendência aqui faria a tela dizer que está tudo salvo sobre um valor
         // que vai sumir — exatamente a mentira que este trabalho remove.
         Assert.True(page.IsDirty);
-        Assert.Equal(L.Get("Settings_SaveBusy"), page.MensagemDeSalvar);
+        // A mensagem DIZ o que encontrou, e não só que algo falhou: sem o nome do campo e os dois
+        // valores, um aviso errado não pode ser investigado — e ele já errou uma vez na bancada.
+        // Aqui a base CONFIRMOU a gravação e o valor lido não bate: são coisas diferentes de a
+        // gravação não ter acontecido, e desde 16/08/2026 têm mensagens diferentes.
+        Assert.StartsWith(L.Get("Settings_SaveMismatch"), page.MensagemDeSalvar);
+        Assert.Contains("enviei", page.MensagemDeSalvar);
+        page.Dispose();
+    }
+
+    // ⚠️ O QUE MUDOU: "o contador não subiu" DEIXOU de ser falha.
+    //
+    // Este teste antes exigia um aviso quando a base não confirmava a gravação pelo contador da
+    // telemetria. Com a persistência por chave/valor isso virou ruído: a prova de que salvou é o
+    // valor ESTAR na memória permanente, e a releitura responde isso direto. Um contador que não
+    // chegou (telemetria é o canal que mais falha aqui) não desmente uma gravação que aconteceu —
+    // e alarmar sobre ela é o tipo de aviso falso que ensina a ignorar avisos.
+    //
+    // O que passou a ser falha, e é o que este teste cobre agora: a BASE dizer que a flash recusou
+    // a escrita. Aí não há o que insistir, e o problema é de hardware, não de ajuste.
+    [Fact]
+    public async Task Save_Avisa_Quando_A_Flash_Recusa_A_Escrita()
+    {
+        var (page, group, transporte) = MakeComTransporte();
+        await group.LoadAsync();
+        group.Fields[0].Value = 42;
+
+        // A base gravou o valor certo, mas relata chaves recusadas pela flash.
+        transporte.Emit(new BaseState { SaveCount = 4, GravacoesComErro = 2 });
+        page.PrazoDeConfirmacaoMs = 400;
+
+        await page.SaveCommand.ExecuteAsync(null);
+
+        Assert.True(page.IsDirty);
+        Assert.StartsWith(L.Get("Settings_SaveErroFlash"), page.MensagemDeSalvar);
+        page.Dispose();
+    }
+
+    // A mensagem descreve UM clique em Salvar. Ficava na tela até o próximo — inclusive depois de a
+    // pessoa mudar os campos e resolver o que impedia a base. Aviso que não corresponde mais ao
+    // estado é ruído, e ruído se aprende a ignorar, inclusive quando é verdade.
+    [Fact]
+    public async Task Mexer_Num_Campo_Limpa_A_Mensagem_Do_Salvar()
+    {
+        var (page, group, transporte) = MakeComTransporte();
+        await group.LoadAsync();
+        group.Fields[0].Value = 42;
+        transporte.SavedToReturn = new SettingValue(SettingType.UInt8, 7);
+        await page.SaveCommand.ExecuteAsync(null);
+        Assert.False(string.IsNullOrEmpty(page.MensagemDeSalvar));
+
+        group.Fields[0].Value = 43;
+
+        Assert.Null(page.MensagemDeSalvar);
         page.Dispose();
     }
 

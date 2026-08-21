@@ -76,6 +76,10 @@ public partial class SettingFieldViewModel : ViewModelBase
     public string SchemaKey => _descriptor.Key;
     /// <summary>Id do setting (BaseSettingId).</summary>
     public BaseSettingId SettingId => _descriptor.Id;
+
+    /// <summary>O que a última verificação leu da memória permanente. NaN = a leitura não voltou.
+    /// Serve para o aviso de "não gravou" poder DIZER o que encontrou, em vez de só acusar.</summary>
+    public double UltimoLidoDaMemoria { get; set; } = double.NaN;
     public double Min => _descriptor.Min;
     public double Max => _descriptor.Max;
 
@@ -114,7 +118,14 @@ public partial class SettingFieldViewModel : ViewModelBase
 
     /// <summary>Formato e passo do campo numérico acompanham o tipo: inteiro anda de 1 em 1 sem
     /// casas; decimal (o Kt, de 0 a 2) anda de 0,01 com duas casas — passo de 1 ali seria inútil.</summary>
-    public string NumericFormat => IsInteger ? "0" : "0.00";
+    // ⚠️ TRÊS CASAS, e não duas: o Kt é medido, não escolhido. Este motor mediu 0,397 Nm/A, e com
+    // duas casas o campo só aceita 0,40 — que parece "praticamente igual" e não é: erra 0,8% na
+    // conversão de força em corrente, num ajuste que multiplica TUDO o que a base entrega. Campo que
+    // arredonda um valor medido faz a pessoa acreditar que digitou o que mediu.
+    //
+    // O passo continua 0,01 porque é o que a pessoa quer ao clicar nas setas; a digitação é que
+    // precisa aceitar a terceira casa.
+    public string NumericFormat => IsInteger ? "0" : "0.000";
     public double NumericStep   => IsInteger ? 1 : 0.01;
 
     /// <summary>Slider só quando não é enum e não é numérico.</summary>
@@ -122,7 +133,7 @@ public partial class SettingFieldViewModel : ViewModelBase
 
     public string Unit => _descriptor.Unit;
     public bool IsInteger => _descriptor.Type != SettingType.Float;
-    public string ValueText => !IsLoaded ? "—" : (IsInteger ? DisplayValue.ToString("0") : DisplayValue.ToString("0.##"));
+    public string ValueText => !IsLoaded ? "—" : (IsInteger ? DisplayValue.ToString("0") : DisplayValue.ToString("0.###"));
 
     /// <summary>Valores fixos oferecidos como botões; vazio quando o campo usa slider livre.</summary>
     public IReadOnlyList<int> Presets { get; }

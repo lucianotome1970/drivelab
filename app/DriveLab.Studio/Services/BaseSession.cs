@@ -86,6 +86,90 @@ public sealed class BaseSession : IDisposable
     public Task SendDirectControlAsync(BaseDirectControl control) => _transport.SendDirectControlAsync(control);
     public Task SendCommandAsync(BaseCommand command, byte arg = 0) => _transport.SendCommandAsync(command, arg);
 
+    /// <summary>Há quanto tempo a base deu sinal de vida. Null = nunca deu.</summary>
+    public TimeSpan? SilencioDaBase => _ultimaTelemetria is { } t ? DateTime.UtcNow - t : null;
+
+    /// <summary>A base está falando conosco AGORA? Dois segundos é folgado: a telemetria chega a
+    /// cada 200 ms, então cinco em silêncio já seria anormal.</summary>
+    public bool BaseRespondendo => SilencioDaBase is { } s && s < TimeSpan.FromSeconds(2);
+
+    private DateTime? _ultimaTelemetria;
+
+    /// <summary>
+    /// ⚠️ COMANDO QUE CONFIRMA QUE ACONTECEU — ou diz que não aconteceu.
+    ///
+    /// <para>Enviar por USB não é executar. O relatório sai do PC, e daí em diante tudo pode dar
+    /// errado sem ninguém avisar: a base pode estar sem conseguir parar o motor para gravar, o canal
+    /// pode ter morrido, o Windows pode ter desligado a porta. Até aqui o app mandava e dizia
+    /// "pronto" — e o usuário descobria sozinho, testando, que não tinha sido feito. Na bancada de
+    /// 18/08/2026 isso chegou ao extremo: nenhum comando funcionava, o app não acusava nada, e o
+    /// motivo (o PC tinha parado de falar com a base) só apareceu com um leitor por SWD.</para>
+    ///
+    /// <para>Um comando que não pode ser verificado não deveria existir num aparelho que aplica
+    /// força nas mãos de alguém. Então cada um passa a ter uma PROVA:
+    /// <list type="bullet">
+    ///   <item>Salvar: o contador de gravações concluídas da base muda de valor;</item>
+    ///   <item>Reiniciar: a base fica em silêncio (ela some do barramento) e volta a falar.</item>
+    /// </list>
+    /// Sem prova dentro do prazo, devolve false — e quem chamou avisa em vez de mentir.</para>
+    ///
+    /// <para>A verificação começa por perguntar se a base está viva. Se ela já estava muda antes do
+    /// comando, nem enviamos: o resultado seria o mesmo e a mensagem seria pior ("não confirmou",
+    /// quando a verdade é "não há com quem falar").</para>
+    /// </summary>
+    public async Task<ResultadoDeComando> ExecutarVerificadoAsync(BaseCommand comando, byte arg = 0,
+                                                                  TimeSpan? prazo = null)
+    {
+        if (!IsConnected) return ResultadoDeComando.SemConexao;
+
+        // ⚠️ NÃO EXIGIR TELEMETRIA PARA TENTAR. A primeira versão recusava o comando quando a base
+        // estava calada — e isso inverte a prioridade: a telemetria é o canal que MAIS falha neste
+        // projeto, então o comando deixaria de funcionar justamente quando mais se precisa dele.
+        // Silêncio serve para EXPLICAR uma falha depois, nunca para impedir a tentativa.
+        var limite = prazo ?? TimeSpan.FromSeconds(10);
+        var antes  = UltimoEstado?.SaveCount;
+        await SendCommandAsync(comando, arg);
+
+        return comando switch
+        {
+            BaseCommand.SaveSettings => await EsperarAsync(limite,
+                () => UltimoEstado?.SaveCount is { } agora && antes is { } a && agora != a),
+            BaseCommand.Reboot       => await EsperarReinicioAsync(limite),
+            _                        => ResultadoDeComando.Enviado,
+        };
+        // (a classificação do fracasso vem abaixo, em quem chamou: sem prova + base calada = BaseMuda)
+    }
+
+    /// <summary>Reiniciar tem uma prova em DUAS etapas, e a ordem importa: a base precisa PARAR de
+    /// falar (é o reinício acontecendo) e depois VOLTAR. Só a segunda metade não serve — se ela
+    /// nunca parou, o comando não chegou, e a telemetria continuar chegando "provaria" um reinício
+    /// que não houve.</summary>
+    private async Task<ResultadoDeComando> EsperarReinicioAsync(TimeSpan limite)
+    {
+        var metade = TimeSpan.FromMilliseconds(limite.TotalMilliseconds / 2);
+        var parou = await EsperarAsync(metade, () => !BaseRespondendo);
+        if (parou != ResultadoDeComando.Ok) return ResultadoDeComando.NaoConfirmou;
+        return await EsperarAsync(limite, () => BaseRespondendo);
+    }
+
+    /// <summary>Espera a prova aparecer. Sem prova no prazo, o resultado depende de haver alguém do
+    /// outro lado: base calada explica o fracasso (é de conexão), base falando significa que o
+    /// comando chegou e não produziu efeito.</summary>
+    private async Task<ResultadoDeComando> EsperarAsync(TimeSpan limite, Func<bool> pronto)
+    {
+        const int passo = 100;
+        for (var esperou = 0; esperou < limite.TotalMilliseconds; esperou += passo)
+        {
+            await Task.Delay(passo);
+            if (pronto()) return ResultadoDeComando.Ok;
+        }
+        // SilencioDaBase null = nunca houve telemetria (transporte que não a fornece, como nos
+        // testes). Isso não é "base muda": é ausência de prova, e quem chamou decide pela releitura.
+        return SilencioDaBase is { } sil && sil > TimeSpan.FromSeconds(2)
+             ? ResultadoDeComando.BaseMuda
+             : ResultadoDeComando.NaoConfirmou;
+    }
+
     /// <summary>Última telemetria recebida, ou null antes da primeira. Guardada aqui porque há
     /// perguntas pontuais — "a base já confirmou a gravação?" — que não justificam cada tela assinar
     /// o evento e manter cópia própria só para consultar um campo.
@@ -98,6 +182,7 @@ public sealed class BaseSession : IDisposable
     private void OnTransportState(object? sender, BaseState state)
     {
         UltimoEstado = state;
+        _ultimaTelemetria = DateTime.UtcNow;
         _dispatcher.Post(() => StateReceived?.Invoke(this, state));
     }
 
@@ -109,6 +194,25 @@ public sealed class BaseSession : IDisposable
 }
 
 /// <summary>Payload for <see cref="BaseSession.SettingChanged"/>.</summary>
+/// <summary>Como terminou um comando verificado. Cada valor existe porque pede uma reação
+/// diferente de quem está na frente da tela — juntar tudo em um bool devolveria a pergunta sem
+/// resposta ("não funcionou, e agora?").</summary>
+public enum ResultadoDeComando
+{
+    /// <summary>A base confirmou: aconteceu.</summary>
+    Ok,
+    /// <summary>Comando sem prova definida; foi enviado e não há o que conferir.</summary>
+    Enviado,
+    /// <summary>Não há base conectada — nem tentamos.</summary>
+    SemConexao,
+    /// <summary>Conectada no papel, mas calada: não chega telemetria. Comando nenhum vai passar,
+    /// e o problema está na ligação (cabo, porta, o Windows ter desligado a porta), não no ajuste.</summary>
+    BaseMuda,
+    /// <summary>Enviamos e a prova não veio no prazo. O comando pode ter se perdido, ou a base pode
+    /// não ter conseguido executá-lo.</summary>
+    NaoConfirmou,
+}
+
 public sealed class SettingChangedEventArgs : EventArgs
 {
     public SettingChangedEventArgs(BaseSettingId id, SettingValue value)
