@@ -12,8 +12,23 @@
 #include "a0_hid_descriptor.h"    // a0_hid_report_desc[] (canal A0 vendor 0xFF00 do app) — nesta TU
 
 // Identidade NOSSA (VID pid.codes 0x1209, = firmware-base → DriveLab Studio reconhece).
+// ============================================================================================
+// IDENTIDADE DA BASE — trocar o PRODUTO faz o PC tratar a base como aparelho inedito
+// ============================================================================================
+// O nome nao basta: o Windows guarda o que aprendeu indexado por FABRICANTE + PRODUTO + numero de
+// serie, e nem chega a reler as descricoes de um aparelho que ele julga ja conhecer. Foi por isso
+// que trocar so o nome nao mudou nada na tela (20/08/2026).
+//
+// Trocando o PRODUTO, tudo nasce limpo: cadastro do dispositivo, nome, e — o que importa aqui — os
+// identificadores que o DirectInput entrega aos jogos. Nenhum resto de configuracao antiga e
+// reaproveitado, e nenhuma das dezenas de identidades que esta base teve hoje volta a assombrar.
+//
+// PRECO: todo jogo vai pedir para remapear o volante, porque para ele e outro aparelho.
+//
+// O numero de serie continua vindo do identificador do processador (ver drvlab_serial_do_mcu), o
+// que mantem a base distinguivel de outra igual na mesma maquina.
 #define USB_VID   0x1209
-#define USB_PID   0x0001
+#define USB_PID   0x0010   // era 0x0001 — identidade nova, sem heranca
 #define USB_BCD   0x0100
 
 static const tusb_desc_device_t desc_device = {
@@ -40,13 +55,37 @@ uint8_t const * tud_descriptor_device_cb(void) { return (uint8_t const *)&desc_d
 // Descriptor (HID_REPORT_DESC_LEN abaixo) e os bytes entregues em tud_hid_descriptor_report_cb
 // SAEM DO MESMO `sizeof(s_hid_report_desc)` → impossível divergir. Preenchido ANTES do tud_init
 // (usb_hid_report_desc_build, chamado de MX_USB_DEVICE_Init) + rede lazy no callback. ---
+#define DRVLAB_SO_JOYSTICK 0
+#if DRVLAB_SO_JOYSTICK
+static uint8_t s_hid_report_desc[sizeof(ffb_hid_report_desc)];
+#else
 static uint8_t s_hid_report_desc[sizeof(ffb_hid_report_desc) + sizeof(a0_hid_report_desc)];
+#endif
+// O comprimento declarado e os bytes entregues saem do MESMO sizeof: divergir aqui quebra a
+// enumeracao inteira.
 #define HID_REPORT_DESC_LEN (sizeof(s_hid_report_desc))
 static uint8_t s_hid_desc_ready = 0;
 
+// ============================================================================================
+// TESTE: UMA COLECAO SO — sem o canal do app dentro do descritor
+// ============================================================================================
+// O descritor sempre teve DUAS colecoes de topo: a do joystick (com os efeitos de forca) e a do
+// canal do app. Uma colecao de topo e, para o Windows, um CONTROLADOR — por isso o jogo passou a
+// listar duas "DriveLab Base", uma com o volante e outra sem nada.
+//
+// A implementacao que roda neste mesmo hardware nao tem essa segunda colecao: ela leva a telemetria
+// dentro do proprio relatorio do joystick. Nunca testamos assim, e e a unica diferenca estrutural
+// que sobrou depois de conferir que TODO o caminho de forca esta identico ao firmware que
+// funcionava (descritor de efeitos, gerenciador, leitor de pacotes e estado — 20/08/2026).
+//
+// Com 1, o app perde o canal dele enquanto o teste durar. E teste, nao decisao: se o jogo voltar a
+// dar forca, a solucao definitiva e mover a telemetria para dentro do relatorio do joystick, e nao
+// simplesmente ficar sem o canal do app.
 void usb_hid_report_desc_build(void) {   // chamar ANTES do tud_init()
     memcpy(s_hid_report_desc, ffb_hid_report_desc, sizeof(ffb_hid_report_desc));
+#if !DRVLAB_SO_JOYSTICK
     memcpy(s_hid_report_desc + sizeof(ffb_hid_report_desc), a0_hid_report_desc, sizeof(a0_hid_report_desc));
+#endif
     s_hid_desc_ready = 1;
 }
 
@@ -90,7 +129,7 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index) { (void)index; re
 static const char* string_desc_arr[] = {
     (const char[]){0x09, 0x04},   // 0: en-US
     "DriveLab",                   // 1: Manufacturer
-    "DriveLab Base",              // 2: Product
+    "DriveLab DD",                // 2: Product — nome novo junto da identidade nova
     "0001",                       // 3: Serial — SUBSTITUIDO em tempo de execucao pelo ID do MCU
                                   //    (ver drvlab_serial_do_mcu). Fica aqui so como reserva para
                                   //    o caso improvavel de o ID vir zerado.

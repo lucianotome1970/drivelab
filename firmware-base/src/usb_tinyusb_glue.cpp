@@ -56,36 +56,32 @@ static struct { uint8_t* buf; uint16_t size; uint8_t ep; volatile bool active; }
 // base reiniciou pelo watchdog, e no boot seguinte estavam ZERADOS — variavel comum e zerada pelo
 // startup. Perdi exatamente a medicao que existia para decidir a hipotese. Ver blackbox.h.
 
-// Task: roda tud_task + drena o CDC RX no buffer armado
+// Task: roda a pilha USB. A drenagem da serial saiu junto com o CDC — ver abaixo.
 static void usb_tusb_task(void*) {
     for (;;) {
         g_bb_trace.usb_task_ticks++;
         tud_task();
-        if (s_rx.active && tud_cdc_available() > 0) {
-            uint32_t n = tud_cdc_available();
-            if (n > s_rx.size) n = s_rx.size;
-            n = tud_cdc_read(s_rx.buf, n);
-            if (n > 0) { s_rx.active = false; usb_rx_process_packet(s_rx.buf, n, s_rx.ep); }
-        }
-        osDelay(1);   // tud_task é não-bloqueante; 1ms basta pro ASCII
+        osDelay(1);   // tud_task é não-bloqueante; 1 ms basta
     }
 }
 
-// ODrive → CDC IN. Espera espaço e copia TUDO antes de retornar OK (senão o ODrive marca
-// o stream como erro e trava no meio de uma resposta longa).
+// ⚠️ A PORTA SERIAL SAIU, E COM ELA UM RISCO QUE NINGUÉM TINHA MEDIDO.
+//
+// Ela consumia DOIS dos três endpoints de entrada do F405 para um diagnóstico que não usamos há
+// semanas — tudo é lido por SWD. Esses endpoints foram para o canal do app, que era quem estava
+// disputando espaço com o jogo.
+//
+// E havia um segundo motivo, que só apareceu ao ler este código para removê-lo: a função de envio
+// tinha um laço de espera com `osDelay(1)` repetido até 100 vezes. Ou seja, uma resposta longa do
+// ODrive podia prender esta tarefa por até 100 ms — na tarefa que atende TODA a pilha USB, e que é
+// justamente a que vimos congelada nos travamentos. Não é prova de que era a causa, mas é
+// exatamente a forma de bug que estávamos caçando, e agora deixou de existir.
+//
+// O ODrive continua chamando esta função (o protocolo ASCII dele fala por aqui). Ela responde OK e
+// descarta: sem porta serial, não há para onde mandar, e fingir sucesso é melhor que fazer o
+// chamador travar esperando um canal que não existe mais.
 extern "C" uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len, uint8_t endpoint_pair) {
-    if (endpoint_pair == CDC_IN_EP) {
-        if (!tud_cdc_connected()) return USBD_FAIL;
-        uint32_t rem = Len, spin = 0; const uint8_t* p = Buf;
-        while (rem > 0) {
-            if (!tud_cdc_connected()) return USBD_FAIL;
-            uint32_t n = tud_cdc_write(p, rem);
-            if (n > 0) { p += n; rem -= n; spin = 0; tud_cdc_write_flush(); }
-            else { tud_cdc_write_flush(); if (++spin > 100) return USBD_FAIL; osDelay(1); }
-        }
-        return USBD_OK;
-    }
-    // Endpoint nativo Fibre (não exposto no build CDC-only): finge OK + posta TX-done.
+    (void)Buf; (void)Len;
     if (endpoint_pair == ODRIVE_IN_EP) osMessagePut(usb_event_queue, 4, 0);
     return USBD_OK;
 }
@@ -216,7 +212,6 @@ extern "C" void tud_mount_cb(void)   { osMessagePut(usb_event_queue, 1, 0); }
 extern "C" void tud_umount_cb(void)  { osMessagePut(usb_event_queue, 2, 0); }
 extern "C" void tud_suspend_cb(bool) { osMessagePut(usb_event_queue, 2, 0); }
 extern "C" void tud_resume_cb(void)  { osMessagePut(usb_event_queue, 1, 0); }
-extern "C" void tud_cdc_tx_complete_cb(uint8_t) { osMessagePut(usb_event_queue, 3, 0); }
 
 // ============================================================================================
 // TU_BREAKPOINT desarmado — ver o porquê abaixo.
