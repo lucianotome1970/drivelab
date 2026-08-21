@@ -39,9 +39,15 @@ static const tusb_desc_device_t desc_device = {
     .bDescriptorType    = TUSB_DESC_DEVICE,
     .bcdUSB             = 0x0200,
     // Composite com IAD (a função CDC precisa do Interface Association Descriptor).
-    .bDeviceClass       = TUSB_CLASS_MISC,
-    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
+    // ⚠️ ZERO em classe/subclasse/protocolo, e isso TEM de casar com o descritor de configuracao.
+    // Enquanto existiu a porta serial, o certo era anunciar-se como composto com associacao de
+    // interfaces: a serial e UMA funcao feita de DUAS interfaces, e sem a associacao o PC nao sabe
+    // que andam juntas. Sem ela sobra uma interface HID sozinha, que nao usa associacao nenhuma —
+    // e declarar associacao para um descritor que nao tem faz o PC montar a pilha conforme algo que
+    // nao existe.
+    .bDeviceClass       = 0x00,
+    .bDeviceSubClass    = 0x00,
+    .bDeviceProtocol    = 0x00,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor           = USB_VID,
     .idProduct          = USB_PID,
@@ -98,34 +104,41 @@ uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance) {
     return s_hid_report_desc;
 }
 
-// --- Layout de interfaces + endpoints do composite ---
+// ============================================================================================
+// A PORTA SERIAL SAI — ela nao levava nada a lugar nenhum
+// ============================================================================================
+// A serial vinha do firmware do controlador de origem, que fala um protocolo de texto por ela. No
+// nosso caminho ela ja nao servia: o que o controlador tenta escrever e DESCARTADO (ver
+// CDC_Transmit_FS em usb_tinyusb_glue.cpp, que responde OK e joga fora), o interpretador de
+// comandos e um esboco vazio, e o app conversa com a base por HID. O diagnostico, que era o unico
+// uso real, passou a ser feito por SWD ha semanas.
+//
+// Anunciar ao PC um canal que ninguem atende nao e neutro:
+//   · consome DUAS das tres interfaces e DOIS dos tres endpoints de entrada do processador — os
+//     mesmos que faltaram quando quisemos um canal proprio para o app;
+//   · obriga a base a se declarar como dispositivo composto, com associacao de interfaces;
+//   · cria uma porta COM no Windows que nao responde a nada.
+//
+// Fica UM canal, com um par de endpoints. E o minimo, e e o que a base realmente usa.
 enum {
-    ITF_NUM_HID = 0,        // HID (joystick + FFB)  — PRIMEIRO
-    ITF_NUM_CDC_CTRL,       // CDC control
-    ITF_NUM_CDC_DATA,       // CDC data
+    ITF_NUM_HID = 0,        // unica interface: joystick, efeitos de forca e canal do app
     ITF_NUM_TOTAL
 };
 
-// Endpoints (STM32F405 OTG_FS: 4 IN + 4 OUT incluindo EP0):
-//   HID  : IN 0x81 / OUT 0x01  (bInterval=1 → 1kHz, pegadinha #10 da receita)
-//   CDC  : NOTIF 0x82 / OUT 0x02 / IN 0x83
+// bInterval=1 (1 kHz) no HID: e o que da resposta de forca, e foi a diferenca entre o ACC
+// funcionar e nao funcionar. Nao baixar sem medir.
 #define EPNUM_HID_OUT     0x01
 #define EPNUM_HID_IN      0x81
-#define EPNUM_CDC_NOTIF   0x82
-#define EPNUM_CDC_OUT     0x02
-#define EPNUM_CDC_IN      0x83
 
-#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_CDC_DESC_LEN)
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
 
 static uint8_t desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN,
         TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP | TUSB_DESC_CONFIG_ATT_SELF_POWERED, 100),
-    // HID (joystick+FFB+A0): comprimento do report descriptor = ffb + a0 concatenados.
+    // HID (joystick + efeitos de forca + canal do app): o comprimento do descritor de relatorio e
+    // os bytes entregues saem do MESMO sizeof — divergir aqui quebra a enumeracao inteira.
     TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID, 5 /* iInterface */, HID_ITF_PROTOCOL_NONE,
-        HID_REPORT_DESC_LEN, EPNUM_HID_OUT, EPNUM_HID_IN, 64, 1),
-    // CDC (serial)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_CTRL, 4 /* iInterface */, EPNUM_CDC_NOTIF, 8,
-                       EPNUM_CDC_OUT, EPNUM_CDC_IN, 64)
+        HID_REPORT_DESC_LEN, EPNUM_HID_OUT, EPNUM_HID_IN, 64, 1)
 };
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index) { (void)index; return desc_configuration; }
 
@@ -136,7 +149,7 @@ static const char* string_desc_arr[] = {
     "0001",                       // 3: Serial — SUBSTITUIDO em tempo de execucao pelo ID do MCU
                                   //    (ver drvlab_serial_do_mcu). Fica aqui so como reserva para
                                   //    o caso improvavel de o ID vir zerado.
-    "DriveLab Base CDC",          // 4: CDC interface
+    "DriveLab Base",              // 4: sobra da porta serial removida — o indice 5 depende desta posicao
     "DriveLab Base FFB"           // 5: HID interface
 };
 static uint16_t desc_str_buf[32];

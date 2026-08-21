@@ -47,7 +47,7 @@ extern "C" {
 #define CFG_TUD_ENDPOINT0_SIZE    64
 
 // CDC (console) + HID (volante). O resto desligado — ver o cabecalho.
-#define CFG_TUD_CDC               1
+#define CFG_TUD_CDC               0   // porta serial removida: nao levava nada a lugar nenhum
 #define CFG_TUD_MSC               0
 #define CFG_TUD_MIDI              0
 #define CFG_TUD_HID               1
