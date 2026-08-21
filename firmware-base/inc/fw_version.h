@@ -30,7 +30,7 @@
 // carimbo do .bin era o unico que ninguem subia, e por isso ficou preso em 0.4.0 enquanto o resto
 // andava para 0.2.3. Numero de firmware "proprio" e o que produziu a divergencia; nao existe mais.
 #define DRVLAB_FW_VER_MAJOR  0u
-#define DRVLAB_FW_VER_MINOR  2u
-#define DRVLAB_FW_VER_PATCH  7u
+#define DRVLAB_FW_VER_MINOR  3u
+#define DRVLAB_FW_VER_PATCH  0u
 
 #endif // DRIVELAB_FW_VERSION_H

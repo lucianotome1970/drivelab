@@ -1,4 +1,4 @@
-; ============================================================================
+﻿; ============================================================================
 ;  DriveLab — Inno Setup script (instalador Windows profissional).
 ;  Empacota o app PUBLICADO + o hardware-profile.json do criador. O comprador roda o setup.exe:
 ;  instala tudo e a config de hardware já vem junta — nada manual. Sem advanced.flag => a aba
@@ -12,7 +12,7 @@
 ; Era "1.0.0" enquanto todo o resto estava em 0.2.3, e um quarto numero solto so gera a duvida que a
 ; regra existe para evitar: "preciso atualizar?". A fonte do firmware e firmware-base/inc/fw_version.h
 ; e a do app e o <Version> do DriveLab.Studio.csproj.
-#define MyAppVersion "0.2.7"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "Sua Marca DD"
 #define MyAppURL "https://exemplo.com"
 #define MyAppExeName "DriveLab.Studio.exe"
