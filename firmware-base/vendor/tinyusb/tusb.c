@@ -245,6 +245,7 @@ uint8_t const* tu_desc_find3(uint8_t const* desc, uint8_t const* end, uint8_t by
 // para sabermos se o caso acontece e com que frequencia. Zero significa que o problema estava em
 // outro lugar; qualquer coisa acima de zero e a prova do diagnostico.
 #include "blackbox.h"
+#include "stm32f4xx.h"   // __disable_irq/__set_PRIMASK — a secao critica do release abaixo
 #define DRVLAB_EDPT_CLAIM_TIMEOUT_MS  2u   // duas voltas do laco de 1 kHz; o lock legitimo dura us
 
 bool tu_edpt_claim(volatile uint8_t* ep_state, osal_mutex_t mutex) {
@@ -252,8 +253,10 @@ bool tu_edpt_claim(volatile uint8_t* ep_state, osal_mutex_t mutex) {
 
   // pre-check to help reducing mutex lock
   TU_VERIFY((*ep_state & (TU_EDPT_STATE_BUSY | TU_EDPT_STATE_CLAIMED)) == 0);
+  g_bb_trace.usb_task_step = BB_USBT_CLAIM;
   if (!osal_mutex_lock(mutex, DRVLAB_EDPT_CLAIM_TIMEOUT_MS)) {
     g_bb_trace.usb_claim_timeouts++;
+    g_bb_trace.usb_task_step = BB_USBT_FORA;
     return false;   // "agora nao da" — o chamador tenta de novo no proximo tick
   }
 
@@ -264,20 +267,52 @@ bool tu_edpt_claim(volatile uint8_t* ep_state, osal_mutex_t mutex) {
   }
 
   (void) osal_mutex_unlock(mutex);
+  g_bb_trace.usb_task_step = BB_USBT_FORA;
   return available;
 }
 
-bool tu_edpt_release(volatile uint8_t* ep_state, osal_mutex_t mutex) {
-  (void) mutex;
-  (void) osal_mutex_lock(mutex, OSAL_TIMEOUT_WAIT_FOREVER);
+// DEVOLVER O ENDPOINT NUNCA PODE PARAR A TAREFA DA PILHA.
+//
+// Quando pusemos prazo em TOMAR o endpoint (acima), deixamos DEVOLVER esperando para sempre — e foi
+// uma assimetria perigosa, porque devolver roda DENTRO da tarefa da pilha USB. Uma espera sem prazo
+// ali significa que, no instante em que o mutex estiver ocupado, a tarefa inteira para; parada, a
+// base nao responde mais nem as perguntas de controle do PC, e o PC fica esperando por ela. O
+// sintoma que isso produz nao parece um defeito de USB: e o cadastro de dispositivos do Windows
+// inteiro travando — o painel de controles de jogo deixa de abrir, e so volta quando a base e
+// DESLIGADA (bancada, 19/08/2026).
+//
+// A operacao protegida aqui e apagar UM bit de um byte. Se o mutex nao vier no prazo, fazemos isso
+// mesmo assim, com as interrupcoes desligadas por alguns ciclos: a secao critica garante a mesma
+// exclusividade para uma operacao deste tamanho. Trocar uma espera infinita por dois ciclos de
+// interrupcao desligada e um negocio bom em qualquer laco de tempo real.
+#define DRVLAB_EDPT_RELEASE_TIMEOUT_MS  2u
 
-  // can only release the endpoint if it is claimed and not busy
-  bool const ret = (*ep_state & (TU_EDPT_STATE_CLAIMED | TU_EDPT_STATE_BUSY)) == TU_EDPT_STATE_CLAIMED;
-  if (ret) {
-    *ep_state &= (uint8_t) ~TU_EDPT_STATE_CLAIMED;
+bool tu_edpt_release(volatile uint8_t* ep_state, osal_mutex_t mutex) {
+  g_bb_trace.usb_task_step = BB_USBT_RELEASE;
+  bool const com_mutex = osal_mutex_lock(mutex, DRVLAB_EDPT_RELEASE_TIMEOUT_MS);
+  if (!com_mutex) {
+    g_bb_trace.usb_release_timeouts++;
   }
 
-  (void) osal_mutex_unlock(mutex);
+  bool ret;
+  if (com_mutex) {
+    ret = (*ep_state & (TU_EDPT_STATE_CLAIMED | TU_EDPT_STATE_BUSY)) == TU_EDPT_STATE_CLAIMED;
+    if (ret) {
+      *ep_state &= (uint8_t) ~TU_EDPT_STATE_CLAIMED;
+    }
+    (void) osal_mutex_unlock(mutex);
+  } else {
+    // Sem o mutex: mesma leitura-modificacao-escrita, protegida pela secao critica.
+    uint32_t const primask = __get_PRIMASK();
+    __disable_irq();
+    ret = (*ep_state & (TU_EDPT_STATE_CLAIMED | TU_EDPT_STATE_BUSY)) == TU_EDPT_STATE_CLAIMED;
+    if (ret) {
+      *ep_state &= (uint8_t) ~TU_EDPT_STATE_CLAIMED;
+    }
+    __set_PRIMASK(primask);
+  }
+
+  g_bb_trace.usb_task_step = BB_USBT_FORA;
   return ret;
 }
 

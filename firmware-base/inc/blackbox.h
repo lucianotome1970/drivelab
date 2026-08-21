@@ -104,7 +104,7 @@ typedef struct {
 // cara de medição — em 15/08/2026 acrescentei usb_claim_timeouts sem trocar o magic e o script
 // reportou 184.581.233 desistências, número que só não enganou porque era absurdo.
 // A cada mudança de layout: incremente o último dígito.
-#define BB_TRACE_MAGIC 0x0B007AD1u   // "BOOT TRACE" rev 1
+#define BB_TRACE_MAGIC 0x0B007AD3u   // "BOOT TRACE" rev 3 (entrou txfe_desistencias)
 
 // Trechos do laço de FFB. Ordem = ordem de execução, para o número sozinho já situar.
 enum {
@@ -135,6 +135,22 @@ enum {
     BB_STEP_A0_LEITURA    = 13,  // tud_hid_report da resposta 0x16 (leitura de setting)
     BB_STEP_A0_MONTA      = 14,  // a0_build_state — nosso codigo, sem USB
     BB_STEP_A0_TELEMETRIA = 15,  // tud_hid_report da telemetria 0x21
+    // Sub-passos DENTRO do tud_hid_report. Em 17/08/2026, com a placa ZERADA (sem configuracao que
+    // pudesse estar corrompida), o rastro seguia parando no passo 15 — dentro desta unica chamada —
+    // com a pilha USB viva e o mutex do endpoint sem estourar prazo. Ou seja: os dois suspeitos que
+    // ja tratamos estao descartados por medicao, e "dentro do TinyUSB" ainda sao quatro etapas.
+    //
+    // Estes quatro dizem QUAL delas. Sem eles a proxima queda devolve a mesma informacao das
+    // anteriores, e o diagnostico anda em circulo — foi o que aconteceu tres noites seguidas.
+    BB_STEP_USB_CLAIM     = 16,  // pedindo o endpoint (mutex, prazo de 2 ms)
+    BB_STEP_USB_COPIA     = 17,  // endpoint na mao, copiando o payload
+    BB_STEP_USB_XFER      = 18,  // entregando ao driver (usbd_edpt_xfer)
+    BB_STEP_USB_FIFO      = 19,  // dentro do DWC2, escrevendo no FIFO de transmissao
+    // O 19 apontou certo em 17/08/2026 — e ainda cobria muita coisa: a escrita, o retorno dela, a
+    // saida da secao critica e o caminho de volta ate o proximo marco. Estes dois cortam esse
+    // trecho ao meio, que e como se acha um travamento sem chutar: bissecao, nao palpite.
+    BB_STEP_USB_FIFO_FIM  = 20,  // a escrita no FIFO RETORNOU
+    BB_STEP_USB_XFER_FIM  = 21,  // dcd_edpt_xfer retornou (secao critica ja liberada)
 };
 
 typedef struct {
@@ -166,7 +182,69 @@ typedef struct {
     // Zero e o esperado; qualquer valor acima disso e a prova de que a espera infinita acontecia —
     // e a diferenca entre perder um pacote de telemetria e perder a base inteira.
     uint32_t usb_claim_timeouts;
+    // Quantas vezes uma espera por bits do DWC2 estourou o teto que pusemos nela (ver o patch em
+    // dcd_dwc2.c). Morava numa variavel comum e ZERAVA no boot — inutil, porque a pergunta so
+    // aparece depois do reinicio. Mesmo erro que ja tinhamos cometido com os sinais de vida da USB.
+    uint32_t dwc2_wait_timeouts;
+    // Quantas vezes a interrupcao de "FIFO vazio" foi DESLIGADA por falta de progresso. Zero e o
+    // esperado. Acima disso, o host parou de drenar o endpoint e nos soltamos em vez de deixar a
+    // interrupcao disparar sem fim — que era o que reiniciava a base. Ver o patch em dcd_dwc2.c.
+    uint32_t txfe_desistencias;
+    // Quantas vezes DEVOLVER o endpoint nao conseguiu o mutex no prazo. Este contador nasceu de uma
+    // assimetria que passou despercebida: quando pusemos prazo em TOMAR o endpoint, deixamos
+    // DEVOLVER esperando para sempre — e devolver roda dentro da tarefa da pilha USB. Bastava o
+    // mutex estar ocupado no instante errado para a tarefa parar de vez, e uma base que nao responde
+    // trava o cadastro de dispositivos do PC inteiro (o painel de controles de jogo deixa de abrir
+    // ate a base ser desligada). Zero e o esperado.
+    uint32_t usb_release_timeouts;
+    // ONDE a tarefa da pilha USB estava quando paramos de ve-la andar. usb_task_ticks ja dizia QUE
+    // ela parou; sem este campo, nao dizia ONDE — e a pilha tem meia duzia de lugares onde esperar.
+    // Ver BB_USBT_* logo abaixo. Fica zerado enquanto a tarefa esta fora, entre uma volta e outra.
+    uint32_t usb_task_step;
+    // ============================================================================================
+    // O FILME: os ultimos acontecimentos do USB antes do silencio
+    // ============================================================================================
+    // Contadores dizem QUE parou. Nao dizem o que aconteceu ANTES — e e o antes que explica por que
+    // o PC fecha a porta. Cada acontecimento do USB (reset de barramento, suspensao, retomada,
+    // desconexao, pergunta do PC, transferencia concluida) passa por UM unico ponto do codigo, e e
+    // ali que anotamos. Vinte e quatro posicoes em circulo bastam: o que interessa sao os ultimos
+    // milissegundos, e o rastro sobrevive ao reset.
+    //
+    // Formato de cada anotacao: milissegundos nos 24 bits de cima, codigo do acontecimento nos 8 de
+    // baixo (BB_UEV_* abaixo). Com os milissegundos da para ver o RITMO — dez resets de barramento
+    // em cem milissegundos contam uma historia bem diferente de um reset a cada dois segundos.
+    // Transferencias concluidas. Nao entram no filme (mil por segundo o encheriam em 24 ms); aqui
+    // servem para responder "o fluxo estava vivo?" sem gastar o espaco do que e raro.
+    uint32_t usb_entregas;
+    uint32_t usb_filme[24];
+    uint32_t usb_filme_pos;
 } BlackBoxTrace;
+
+/// Acontecimentos anotados no filme (byte de baixo de cada posicao de usb_filme).
+enum {
+    BB_UEV_RESET     = 1,   // o PC reiniciou o barramento (recomecar do zero)
+    BB_UEV_DESLIGOU  = 2,   // o PC nos tirou do barramento
+    BB_UEV_DORMIU    = 3,   // suspensao
+    BB_UEV_ACORDOU   = 4,   // retomada
+    BB_UEV_PERGUNTA  = 5,   // o PC perguntou algo (transferencia de controle)
+    BB_UEV_SOF       = 7,   // marco de tempo
+    BB_UEV_RECUSA    = 8,   // NAO soubemos responder: canal de controle travado
+};
+
+/// Anota um acontecimento no filme. Chamavel da interrupcao: so escreve duas palavras.
+void blackbox_usb_evento(uint8_t codigo);
+
+/// Marcos DENTRO da tarefa da pilha USB (g_bb_trace.usb_task_step).
+enum {
+    BB_USBT_FORA      = 0,   // entre uma volta e outra: normal
+    BB_USBT_FILA      = 1,   // pegando o proximo evento da fila
+    BB_USBT_RESET     = 2,   // tratando reset de barramento
+    BB_USBT_SETUP     = 3,   // respondendo a uma pergunta do PC (descritor, configuracao...)
+    BB_USBT_XFER      = 4,   // avisando a classe que uma transferencia terminou
+    BB_USBT_SUSPEND   = 5,   // suspensao / retomada / desconexao
+    BB_USBT_CLAIM     = 10,  // tomando o endpoint (mutex)
+    BB_USBT_RELEASE   = 11,  // devolvendo o endpoint (mutex)
+};
 
 extern BlackBoxTrace g_bb_trace;
 
@@ -184,6 +262,10 @@ extern volatile uint32_t g_bb_trace_prev_usb_task;
 /// justamente o caso interessante: se a base reiniciou, este numero diz se ela chegou a
 /// desistir antes — ou seja, se a espera infinita estava mesmo acontecendo.
 extern volatile uint32_t g_bb_trace_prev_usb_claim;
+/// Esperas do DWC2 estouradas NO BOOT ANTERIOR — a prova que so existe depois do reset.
+extern volatile uint32_t g_bb_trace_prev_dwc2_wait;
+/// Desistencias da interrupcao TXFE NO BOOT ANTERIOR — sobrevive ao reset, que e quando interessa.
+extern volatile uint32_t g_bb_trace_prev_txfe;
 extern volatile uint32_t g_bb_trace_prev_usb_irq;
 
 /// Anota as condicoes eletricas/mecanicas do tick atual. Chamada UMA vez por volta do laco — tres

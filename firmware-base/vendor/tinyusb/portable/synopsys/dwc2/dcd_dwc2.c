@@ -42,6 +42,7 @@
 #include "device/usbd.h"
 #include "device/usbd_pvt.h"
 #include "dwc2_common.h"
+#include "blackbox.h"   // PATCH DriveLab: marcos finos + contador que sobrevive ao reset
 
 //--------------------------------------------------------------------+
 // MACRO TYPEDEF CONSTANT ENUM
@@ -233,6 +234,33 @@ static bool dfifo_alloc(uint8_t rhport, uint8_t ep_addr, uint16_t packet_size, b
       fifo_size *= 2;
     }
 
+    // ============================================================================================
+    // FOLGA PARA OS CANAIS DE INTERRUPCAO — a memoria estava sobrando e a falta dela custava caro.
+    // ============================================================================================
+    // O driver so dobra a fila de transmissao de canais de transferencia em massa. Os nossos sao de
+    // interrupcao (e o tipo que joystick e telemetria usam), entao cada um ficava com o MINIMO
+    // exato: 16 palavras, 64 bytes, o tamanho de um unico pacote e nem um byte de folga.
+    //
+    // Sem folga, escrever o proximo pacote so pode comecar depois que o PC levou o anterior. Se o
+    // PC pede dados nessa janela, o canal e pego de fila vazia — o aviso ITTXFE. Isso conta como
+    // erro de transacao, e erros seguidos fazem o PC DESABILITAR A PORTA. Quando isso acontece,
+    // nao e so a nossa base que cai: o cadastro de controles de jogo do Windows abre vazio,
+    // levando junto os controles de outros fabricantes, e so volta quando a base e desligada.
+    // Foi o retrato do periferico tirado com a base travada (bancada, 20/08/2026) que mostrou os
+    // dois canais com esse aviso e a porta sem sincronismo.
+    //
+    // E o mais irritante: das 320 palavras do periferico, 216 estavam PARADAS sem uso. O driver
+    // aloca as filas de transmissao a partir do topo e a de recepcao a partir da base; o miolo
+    // ficava vazio. Aqui damos o dobro a cada canal de interrupcao QUANDO CABE — dois pacotes em
+    // vez de um, para que escrever o proximo nao dependa de o PC ter levado o anterior. Se nao
+    // couber, segue com o minimo: nunca vale a pena estourar a memoria por folga.
+    if (epnum > 0 && !is_bulk) {
+      const uint16_t com_folga = (uint16_t)(fifo_size * 2);
+      if (_dcd_data.dfifo_top >= com_folga + dwc2->grxfsiz) {
+        fifo_size = com_folga;
+      }
+    }
+
     // Check if free space is available
     TU_ASSERT(_dcd_data.dfifo_top >= fifo_size + dwc2->grxfsiz);
     _dcd_data.dfifo_top -= fifo_size;
@@ -328,7 +356,7 @@ volatile uint32_t g_dwc2_wait_timeouts = 0;   // legivel por SWD; 0 = nunca esto
 #define DRVLAB_WAIT_FOR(cond) do {                                     \
     uint32_t _n = DRVLAB_EDPT_WAIT_MAX;                                \
     while (!(cond) && --_n) { }                                        \
-    if (_n == 0) g_dwc2_wait_timeouts++;                               \
+    if (_n == 0) { g_dwc2_wait_timeouts++; g_bb_trace.dwc2_wait_timeouts++; }  \
   } while (0)
 
 static void edpt_disable(uint8_t rhport, uint8_t ep_addr, bool stall) {
@@ -451,7 +479,9 @@ static void edpt_schedule_packets(uint8_t rhport, const uint8_t epnum, const uin
     dep->diepctl = depctl.value; // enable endpoint
 
     if (dir == TUSB_DIR_IN && total_bytes != 0) {
+      blackbox_step(BB_STEP_USB_FIFO);              // PATCH DriveLab
       const uint16_t xferred_bytes = epin_write_tx_fifo(dwc2, epnum);
+      blackbox_step(BB_STEP_USB_FIFO_FIM);          // PATCH DriveLab
 
       // Enable TXFE interrupt if there are still data to be sent
       // EP0 only sends one packet at a time, so no need to check for EP0
@@ -708,6 +738,7 @@ bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t* buffer, uint16_t to
   }
 
   usbd_spin_unlock(is_isr);
+  blackbox_step(BB_STEP_USB_XFER_FIM);              // PATCH DriveLab
 
   return ret;
 }
@@ -882,6 +913,12 @@ TU_ATTR_ALWAYS_INLINE static inline void print_doepint(uint32_t doepint) {
 #endif
 
 #if CFG_TUD_DWC2_SLAVE_ENABLE
+// PATCH DriveLab: estado por endpoint para detectar a interrupcao TXFE sem progresso.
+// Ver o bloco longo em handle_epin_slave, onde a desistencia acontece.
+#define DRVLAB_TXFE_MAX_PARADO 64u
+static uint16_t s_txfe_ultimo[16];
+static uint16_t s_txfe_parado[16];
+
 static uint16_t epin_write_tx_fifo(dwc2_regs_t *dwc2, uint8_t epnum) {
   dwc2_dep_t *const epin = &dwc2->ep[0][epnum];
   xfer_ctl_t *const xfer = XFER_CTL_BASE(epnum, TUSB_DIR_IN);
@@ -1040,6 +1077,42 @@ static void handle_epin_slave(uint8_t rhport, uint8_t epnum, dwc2_diepint_t diep
     dwc2_ep_tsize_t tsiz = {.value = epin->tsiz};
     if (tsiz.xfer_size == 0) {
       dwc2->diepempmsk &= ~(1u << epnum);
+      s_txfe_parado[epnum] = 0;
+    } else {
+      // ============================================================================
+      // PATCH DriveLab (2026-08-19) — A INTERRUPCAO PRECISA DESISTIR.
+      //
+      // O bit "TX FIFO vazio" e SOMENTE LEITURA: o hardware so o apaga quando bytes
+      // suficientes sao escritos. O upstream so tira a mascara quando a transferencia
+      // termina inteira (xfer_size == 0). Se a escrita nao progride — host parou de
+      // drenar, endpoint em halt, jogo fechou a conexao — a condicao nunca e atingida:
+      // a mascara fica ligada, o bit continua aceso, e a interrupcao volta a disparar
+      // no instante seguinte. Sem fim.
+      //
+      // MEDIDO nesta bancada em 19/08/2026, com a caixa-preta e bissecao por marcos:
+      // o laco de 1 kHz morria entre o retorno da escrita no FIFO e a saida da secao
+      // critica, com 450.654 interrupcoes do USB contra 58.682 voltas da tarefa — quase
+      // oito por uma. A ISR tomava o processador, a tarefa nunca mais rodava e o
+      // watchdog reiniciava a base ~2 s depois. Do outro lado do mesmo defeito, o jogo
+      // mandava 48 relatorios de forca e parava: o canal deixava de ser atendido.
+      //
+      // A saida e desistir quando nao ha PROGRESSO. Progresso e xfer_size diminuindo;
+      // enquanto diminuir, seguimos normalmente por quanto for preciso. Parou de
+      // diminuir por 64 interrupcoes seguidas, desligamos a mascara: perde-se o resto
+      // de UM relatorio de telemetria, e a base continua viva. O proximo envio comeca
+      // limpo.
+      //
+      // O contador na caixa-preta existe para isto nao virar remendo silencioso — se
+      // ele subir, a desistencia esta acontecendo e ha uma causa a caçar do lado do
+      // host.
+      if (tsiz.xfer_size < s_txfe_ultimo[epnum]) {
+        s_txfe_parado[epnum] = 0;                 // esta andando: deixa trabalhar
+      } else if (++s_txfe_parado[epnum] >= DRVLAB_TXFE_MAX_PARADO) {
+        dwc2->diepempmsk &= ~(1u << epnum);       // travou: solta o endpoint
+        s_txfe_parado[epnum] = 0;
+        g_bb_trace.txfe_desistencias++;
+      }
+      s_txfe_ultimo[epnum] = (uint16_t)tsiz.xfer_size;
     }
   }
 }

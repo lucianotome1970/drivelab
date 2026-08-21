@@ -92,6 +92,12 @@ case $(d "$step") in
  13) onde="a0_service: enviando a RESPOSTA DE LEITURA (0x16) — dentro do TinyUSB";;
  14) onde="a0_service: montando a telemetria (nosso codigo, sem USB)";;
  15) onde="a0_service: enviando a TELEMETRIA (0x21) — dentro do TinyUSB";;
+ 16) onde="USB: pedindo o endpoint (mutex, prazo de 2 ms)";;
+ 17) onde="USB: endpoint na mao, copiando o payload";;
+ 18) onde="USB: entregando ao driver (usbd_edpt_xfer)";;
+ 19) onde="USB: DENTRO do DWC2, escrevendo no FIFO de transmissao";;
+ 20) onde="USB: a escrita no FIFO retornou";;
+ 21) onde="USB: dcd_edpt_xfer retornou (secao critica liberada)";;
   *) onde="trecho $step";;
 esac
 

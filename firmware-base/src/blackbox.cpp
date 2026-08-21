@@ -27,6 +27,8 @@ volatile int32_t  g_bb_trace_prev_iq_ma    = 0;
 volatile int32_t  g_bb_trace_prev_pos_mrad = 0;
 volatile uint32_t g_bb_trace_prev_usb_task = 0;
 volatile uint32_t g_bb_trace_prev_usb_claim = 0;
+volatile uint32_t g_bb_trace_prev_dwc2_wait = 0;
+volatile uint32_t g_bb_trace_prev_txfe = 0;
 volatile uint32_t g_bb_trace_prev_usb_irq  = 0;
 
 // As condições do último tick antes de o laço parar. Servem tanto para CONFIRMAR quanto para
@@ -78,12 +80,27 @@ void blackbox_init(void) {
         g_bb_trace_prev_usb_task = g_bb_trace.usb_task_ticks;
         g_bb_trace_prev_usb_irq  = g_bb_trace.usb_irq_ticks;
         g_bb_trace_prev_usb_claim = g_bb_trace.usb_claim_timeouts;
+        g_bb_trace_prev_dwc2_wait = g_bb_trace.dwc2_wait_timeouts;
+        g_bb_trace_prev_txfe      = g_bb_trace.txfe_desistencias;
     }
     // Zera os contadores do USB para o boot NOVO: eles contam a vida desta sessao, e o valor do
     // boot anterior ja foi copiado acima.
     g_bb_trace.usb_task_ticks = 0;
     g_bb_trace.usb_irq_ticks  = 0;
     g_bb_trace.usb_claim_timeouts = 0;
+    g_bb_trace.dwc2_wait_timeouts = 0;
+    g_bb_trace.txfe_desistencias  = 0;
+    // ⚠️ Campo novo TEM de ser zerado aqui. A area sobrevive ao reset de proposito, o que significa
+    // que um campo recem-criado nasce com LIXO — e lixo num contador nao parece lixo, parece
+    // medicao. Foi o que aconteceu com usb_release_timeouts em 20/08/2026: a leitura mostrou dois
+    // bilhoes de desistencias e por um instante isso passou por dado.
+    g_bb_trace.usb_release_timeouts = 0;
+    g_bb_trace.usb_entregas         = 0;
+    g_bb_trace.usb_task_step        = 0;
+    // O filme NAO e zerado: ele guarda os ultimos acontecimentos ANTES do reset, e e essa a
+    // pergunta que ele existe para responder. A posicao e limitada ao tamanho do circulo caso
+    // tenha vindo com lixo.
+    g_bb_trace.usb_filme_pos %= (sizeof(g_bb_trace.usb_filme) / sizeof(g_bb_trace.usb_filme[0]));
 
     g_bb_boots.boots++;
     g_bb_boots.csr[g_bb_boots.idx % BB_BOOT_HIST] = csr;
@@ -146,4 +163,18 @@ void blackbox_record_fault(uint32_t pc, uint32_t lr, uint32_t cfsr) {
 // para acabar.
 void blackbox_record_hang(uint32_t kind, uint32_t task) {
     registrar(kind, 0, 0, 0, task);
+}
+
+// ------------------------------------------------------------------------------------------------
+// O FILME DO USB — ver blackbox.h
+// ------------------------------------------------------------------------------------------------
+// Escrita minima de proposito: isto roda DENTRO da interrupcao do USB, no caminho mais quente do
+// firmware. Duas palavras e um resto de divisao; nada de desligar interrupcao, nada de mutex. Se
+// duas escritas se atropelarem, perde-se uma anotacao — e uma anotacao perdida custa infinitamente
+// menos que uma interrupcao atrasada por causa de diagnostico.
+void blackbox_usb_evento(uint8_t codigo) {
+    const uint32_t n = sizeof(g_bb_trace.usb_filme) / sizeof(g_bb_trace.usb_filme[0]);
+    const uint32_t ms = HAL_GetTick();
+    g_bb_trace.usb_filme[g_bb_trace.usb_filme_pos % n] = (ms << 8) | codigo;
+    g_bb_trace.usb_filme_pos = (g_bb_trace.usb_filme_pos + 1) % n;
 }

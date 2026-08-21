@@ -33,6 +33,7 @@
 #include "common/tusb_private.h"
 
 #include "device/usbd.h"
+#include "blackbox.h"   // PATCH DriveLab: marcos finos (ver blackbox.h)
 #include "device/usbd_pvt.h"
 
 //--------------------------------------------------------------------+
@@ -702,7 +703,12 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
     }
 #endif
     dcd_event_t event;
+    // Marcos de onde a tarefa esta. Ela ja tinha um contador de voltas, que dizia QUE parou; sem
+    // saber ONDE, cada travada virava uma rodada de adivinhacao. Sao escritas de uma palavra numa
+    // area que sobrevive ao reset — custo nulo perto do que economizam.
+    g_bb_trace.usb_task_step = BB_USBT_FILA;
     if (!osal_queue_receive(_usbd_q, &event, timeout_ms)) {
+      g_bb_trace.usb_task_step = BB_USBT_FORA;
       return;
     }
 
@@ -715,6 +721,7 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
 
     switch (event.event_id) {
       case DCD_EVENT_BUS_RESET:
+        g_bb_trace.usb_task_step = BB_USBT_RESET;
         TU_LOG_USBD(": %s Speed\r\n", tu_str_speed[event.bus_reset.speed]);
         usbd_reset(event.rhport);
         _usbd_dev.speed = event.bus_reset.speed;
@@ -727,6 +734,7 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
         break;
 
       case DCD_EVENT_SETUP_RECEIVED:
+        g_bb_trace.usb_task_step = BB_USBT_SETUP;
         if (_usbd_queued_setup == 0) {
           break;
         }
@@ -747,6 +755,12 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
 
         // Process control request
         if (!process_setup_received(event.rhport, &event.setup_received)) {
+          // ⚠️ RECUSA: o PC perguntou e nao soubemos responder, entao travamos o canal de
+          // controle. Para ele isso e erro no meio do reconhecimento — e erro ali e o que o faz
+          // reiniciar o barramento, tentar de novo e, insistindo, desistir da porta inteira,
+          // levando junto os outros controles. No filme, a pergunta anotada IMEDIATAMENTE ANTES
+          // desta marca e a que nao conseguimos responder.
+          blackbox_usb_evento(BB_UEV_RECUSA);
           TU_LOG_USBD("  Stall EP0\r\n");
           // Failed -> stall both control endpoint IN and OUT
           dcd_edpt_stall(event.rhport, TU_EP0_OUT);
@@ -755,6 +769,7 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
         break;
 
       case DCD_EVENT_XFER_COMPLETE: {
+        g_bb_trace.usb_task_step = BB_USBT_XFER;
         // Invoke the class callback associated with the endpoint address
         uint8_t const ep_addr = event.xfer_complete.ep_addr;
         uint8_t const epnum = tu_edpt_number(ep_addr);
@@ -778,6 +793,7 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
       }
 
       case DCD_EVENT_SUSPEND:
+        g_bb_trace.usb_task_step = BB_USBT_SUSPEND;
         // NOTE: When plugging/unplugging device, the D+/D- state are unstable and
         // can accidentally meet the SUSPEND condition ( Bus Idle for 3ms ), which result in a series of event
         // e.g suspend -> resume -> unplug/plug. Skip suspend/resume if not connected
@@ -1390,6 +1406,35 @@ static bool process_get_descriptor(uint8_t rhport, tusb_control_request_t const 
 //--------------------------------------------------------------------+
 TU_ATTR_FAST_FUNC void dcd_event_handler(dcd_event_t const* event, bool in_isr) {
   bool send = false;
+  // PATCH DriveLab: anota no filme (ver blackbox.h). Este e o funil por onde TODO acontecimento do
+  // USB passa — anotar aqui cobre tudo de uma vez, sem espalhar diagnostico pelo driver.
+  switch (event->event_id) {
+    case DCD_EVENT_BUS_RESET:      blackbox_usb_evento(BB_UEV_RESET);    break;
+    case DCD_EVENT_UNPLUGGED:      blackbox_usb_evento(BB_UEV_DESLIGOU); break;
+    case DCD_EVENT_SUSPEND:        blackbox_usb_evento(BB_UEV_DORMIU);   break;
+    case DCD_EVENT_RESUME:         blackbox_usb_evento(BB_UEV_ACORDOU);  break;
+    case DCD_EVENT_SETUP_RECEIVED: {
+      // Anota QUAL pergunta, nao so "perguntou". Foi o filme que mostrou a re-enumeracao morrendo
+      // no meio (bancada, 20/08/2026): o PC reinicia o barramento, faz as primeiras perguntas e
+      // trava. Saber em qual delas ele parou e a diferenca entre procurar e achar.
+      //   0x80 | codigo         -> pergunta comum (pedido de estado, endereco, configuracao...)
+      //   0xC0 | tipo           -> pedido de DESCRICAO, e qual (dispositivo, configuracao, texto...)
+      const uint8_t* s8 = (const uint8_t*) &event->setup_received;
+      const uint8_t pedido = s8[1];          // bRequest
+      const uint8_t tipo   = s8[3];          // wValue alto: qual descricao, quando for pedido de descricao
+      blackbox_usb_evento((pedido == 6u) ? (uint8_t)(0xC0u | (tipo & 0x0Fu))
+                                         : (uint8_t)(0x80u | (pedido & 0x0Fu)));
+      break;
+    }
+    // ⚠️ A ENTREGA DE ROTINA NAO ENTRA NO FILME.
+    // Ela acontece mil vezes por segundo: anotada, encheria as 24 posicoes em 24 MILISSEGUNDOS e
+    // enterraria justamente os acontecimentos raros — reinicio de barramento, suspensao, pergunta —
+    // que sao os que explicam a queda. Em vez de anotar, contamos: g_bb_trace.usb_entregas diz se
+    // o fluxo estava vivo, e o filme fica reservado para o que e excepcional. Assim ele cobre
+    // minutos em vez de um piscar de olhos.
+    case DCD_EVENT_XFER_COMPLETE:  g_bb_trace.usb_entregas++; break;
+    default: break;
+  }
   switch (event->event_id) {
     case DCD_EVENT_UNPLUGGED:
       _usbd_dev.connected = 0;
@@ -1590,6 +1635,7 @@ bool usbd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t* buffer, uint16_t t
   // could return and USBD task can preempt and clear the busy
   _usbd_dev.ep_status[epnum][dir] |= TU_EDPT_STATE_BUSY;
 
+  blackbox_step(BB_STEP_USB_XFER);                  // PATCH DriveLab
   if (dcd_edpt_xfer(rhport, ep_addr, buffer, total_bytes, is_isr)) {
     return true;
   } else {

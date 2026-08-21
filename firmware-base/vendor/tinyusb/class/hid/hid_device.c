@@ -35,6 +35,7 @@
 #include "device/usbd_pvt.h"
 
 #include "hid_device.h"
+#include "blackbox.h"   // PATCH DriveLab: marcos finos dentro do envio (ver blackbox.h)
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF
@@ -117,7 +118,9 @@ bool tud_hid_n_report(uint8_t instance, uint8_t report_id, void const *report, u
   hidd_epbuf_t *p_epbuf = &_hidd_epbuf[instance];
 
   // claim endpoint
+  blackbox_step(BB_STEP_USB_CLAIM);                 // PATCH DriveLab
   TU_VERIFY(usbd_edpt_claim(rhport, p_hid->ep_in));
+  blackbox_step(BB_STEP_USB_COPIA);                 // PATCH DriveLab
 
   // prepare data
   if (report_id) {
