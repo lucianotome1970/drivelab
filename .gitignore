@@ -32,3 +32,6 @@ release-artifacts/
 
 # Configuração local do editor (contém caminhos absolutos da máquina)
 .vscode/
+
+# Capturas de USB (arquivos grandes, gerados em bancada)
+capturas/
