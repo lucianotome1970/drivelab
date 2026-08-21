@@ -28,6 +28,19 @@ static void fugir_ate_desarmar(OvertravelState* s, const OvertravelCfg* c, float
         a = overtravel_update(s, c, fora + i * 0.04f, dor, 40.0f, 1);
 }
 
+// Poe a maquina em OT_ST_OUT (desarmado, esperando o volante voltar).
+//
+// POR QUE DIRETO, E NAO FUGINDO: desde que a fuga passou a TRAVAR em qualquer modo, nenhum caminho
+// normal chega mais ao OUT — ele sobrou para o caso de excecao, quando o pedido de desarme nao e
+// obedecido. A logica de re-arme continua existindo e continua precisando de teste; o que mudou foi
+// como se chega ate ela. Fugir para tentar chegar aqui era o que fazia estes casos falharem, e o
+// teto de re-armes passar sem exercitar nada.
+static void por_em_out(OvertravelState* s) {
+    s->state = (uint8_t)OT_ST_OUT;
+    s->disarmed_by_us = 1;
+    s->fuga_ticks = 0;
+}
+
 int main(void) {
     printf("== test_overtravel_guard.c\n");
 
@@ -172,8 +185,7 @@ int main(void) {
         c.mode = (uint8_t)OT_MODE_REARM;
         const float fora = kDor + 0.85f;
 
-        fugir_ate_desarmar(&s, &c, fora, kDor);
-        ok("modo re-armar fica esperando", s.state == OT_ST_OUT);
+        por_em_out(&s);
 
         ok("ainda fora do curso: nao re-arma",
            overtravel_update(&s, &c, fora, kDor, 0.0f, 1) == OT_ACT_HOLD);
@@ -183,7 +195,6 @@ int main(void) {
            overtravel_update(&s, &c, 0.0f, kDor, 0.0f, 1) == OT_ACT_NORMAL);
         ok("volta ao normal", s.state == OT_ST_NORMAL);
         ok("contou o re-arme", s.trips == 1);
-        ok("e contou o disparo", s.disparos == 1);
     }
 
     // ---- O TESTE QUE FALTAVA: no modo TRAVAR, o disparo tem de ser contado -----------------
@@ -212,7 +223,7 @@ int main(void) {
         OvertravelCfg c = overtravel_default_cfg();
         c.mode = (uint8_t)OT_MODE_REARM;
 
-        fugir_ate_desarmar(&s, &c, kDor + 0.85f, kDor);           // desarmou
+        por_em_out(&s);                                          // desarmado, esperando voltar
 
         // Voltou para 30° alem do fim: ja saiu da margem de 45°, mas AINDA nao voltou ao curso.
         ok("sair da margem nao basta",
@@ -227,12 +238,15 @@ int main(void) {
         OvertravelCfg c = overtravel_default_cfg();
         c.mode = (uint8_t)OT_MODE_REARM;
         c.max_trips = 3;
-        const float fora = kDor + 0.85f;
 
+        // Cada volta: desarmado esperando -> volta ao curso, parado -> re-arma. Na terceira, o teto.
+        // (Ate 21/08/2026 este laco chamava fugir_ate_desarmar, que TRAVA de primeira desde que a
+        // fuga passou a ignorar o modo — o teste passava sem nunca contar um re-arme sequer.)
         for (int i = 0; i < 3; ++i) {
-            fugir_ate_desarmar(&s, &c, fora, kDor);
+            por_em_out(&s);
             overtravel_update(&s, &c, 0.0f, kDor, 0.0f, 1);    // volta ao curso, parado
         }
+        ok("os dois primeiros re-armaram", s.trips == 3);
         ok("no terceiro disparo trava", s.state == OT_ST_LOCKED);
         ok("e nao volta mais",
            overtravel_update(&s, &c, 0.0f, kDor, 0.0f, 1) == OT_ACT_HOLD);
